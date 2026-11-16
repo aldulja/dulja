@@ -1,0 +1,195 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dulja.local/schemas/einvoice-profile.schema.json",
+  "title": "E-invoice transmitter profile",
+  "description": "The remote call shape of a fiscalisation authority, as DATA (ADR 0052). This schema names no authority's endpoint, field or version; a profile FILE does, and its `source` says which document those values came from (ADR 0051 for a real one).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["code", "version", "jurisdiction", "source", "baseUrl", "auth", "calls"],
+  "properties": {
+    "code": {
+      "description": "The transmitter code. Closed vocabulary, matching app.company.einvoice_transmitter and app.einvoice_transmission.transmitter.",
+      "enum": ["synthetic", "myinvois"]
+    },
+    "version": {
+      "description": "The profile file's own version. Recorded on every transmission as profile_version (SAH-013).",
+      "type": "integer",
+      "minimum": 1
+    },
+    "jurisdiction": {
+      "const": "MY"
+    },
+    "source": {
+      "description": "Where these values came from. For a real profile this cites the ADR that recorded the authority's own current documentation. scripts/check/no-authority-literals.sh fails the build when a myinvois profile does not cite 0051.",
+      "type": "string",
+      "minLength": 8
+    },
+    "baseUrl": {
+      "description": "Scheme, host and optional port. No path, no query: a path belongs to a call spec.",
+      "type": "string",
+      "pattern": "^https?://[A-Za-z0-9.:_-]+/?$"
+    },
+    "timeoutMs": {
+      "description": "The one deadline of a remote call: the token fetch, the request and its single 401 retry share it (packages/db/src/einvoice/http-transmitter.ts). At most HALF of CLAIM_WINDOW_SECONDS (120 s, packages/db/src/einvoice/transmission.ts), after which another caller may take the transmission's claim over and call the authority again; packages/db/test/einvoice/profile.test.ts pins the relation.",
+      "type": "integer",
+      "minimum": 1000,
+      "maximum": 60000,
+      "default": 30000
+    },
+    "auth": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "header"],
+          "properties": {
+            "kind": {
+              "description": "Direct bearer token, preserved for existing profiles.",
+              "const": "bearer"
+            },
+            "header": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9-]{0,63}$"
+            },
+            "scheme": {
+              "type": "string",
+              "pattern": "^[A-Za-z]{1,32}$",
+              "default": "Bearer"
+            },
+            "clientIdHeader": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9-]{0,63}$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "header", "tokenUrl"],
+          "properties": {
+            "kind": {
+              "const": "oauth2_client_credentials"
+            },
+            "header": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9-]{0,63}$"
+            },
+            "tokenUrl": {
+              "type": "string",
+              "pattern": "^(https://[A-Za-z0-9.:_-]+|http://127\\.0\\.0\\.1(:[0-9]+)?)/[A-Za-z0-9/_-]+$"
+            },
+            "scope": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          }
+        }
+      ]
+    },
+    "calls": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["submit", "poll", "cancel"],
+      "properties": {
+        "submit": {
+          "$ref": "#/$defs/call"
+        },
+        "poll": {
+          "$ref": "#/$defs/call"
+        },
+        "cancel": {
+          "$ref": "#/$defs/call"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "call": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "pathTemplate", "statusPointer", "statusMap"],
+      "properties": {
+        "method": {
+          "enum": ["GET", "POST", "PUT", "DELETE"]
+        },
+        "pathTemplate": {
+          "description": "A rooted path with {externalId} as the only permitted placeholder. It cannot carry a scheme or a host, so a profile cannot redirect one call away from baseUrl.",
+          "type": "string",
+          "pattern": "^/[A-Za-z0-9/_.,;:=@$&+~*'()-]*(\\{externalId\\}[A-Za-z0-9/_.,;:=@$&+~*'()-]*)?$"
+        },
+        "body": {
+          "enum": ["document", "cancellation", "none"],
+          "default": "none"
+        },
+        "externalIdPointer": {
+          "$ref": "#/$defs/pointer"
+        },
+        "statusPointer": {
+          "$ref": "#/$defs/pointer"
+        },
+        "statusMap": {
+          "description": "The authority's own status labels, mapped onto \u00a74.9.3's six. A label absent from this map becomes 'error' with the raw label recorded in last_error \u2014 never a silent 'accepted'.",
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "enum": ["pending", "submitted", "accepted", "rejected", "cancelled", "error"]
+          },
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          }
+        },
+        "errorPointer": {
+          "$ref": "#/$defs/pointer"
+        }
+      },
+      "allOf": [
+        {
+          "description": "A call that names a remote object must be able to interpolate its id.",
+          "if": {
+            "properties": {
+              "method": {
+                "enum": ["GET", "PUT", "DELETE"]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "pathTemplate": {
+                "pattern": "\\{externalId\\}",
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "description": "The submit call \u2014 the one that sends the document \u2014 MUST name where the authority's id comes back, because `einvoice_transmission_external_id_check` (migration 0057) refuses status submitted/accepted/cancelled with a null external_id. Without this clause a profile that omits externalIdPointer validates, submitTransmission sets the status the statusMap yields, and a raw SQLSTATE 23514 escapes a worker job as an unmapped database error instead of an EInvoiceError. `required: [\"body\"]` is deliberate: `body` defaults to \"none\", so a call that omits it is not the submit call and this clause must not fire on it.",
+          "if": {
+            "properties": {
+              "body": {
+                "const": "document"
+              }
+            },
+            "required": ["body"]
+          },
+          "then": {
+            "required": ["externalIdPointer"],
+            "properties": {
+              "externalIdPointer": {
+                "$ref": "#/$defs/pointer"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "pointer": {
+      "description": "RFC 6901 JSON Pointer with at least one reference token.",
+      "type": "string",
+      "pattern": "^(/([^/~]|~[01])*)+$",
+      "maxLength": 256
+    }
+  }
+}

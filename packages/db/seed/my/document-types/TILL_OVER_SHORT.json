@@ -1,0 +1,37 @@
+{
+  "code": "TILL_OVER_SHORT",
+  "nameEn": "Till Over/Short",
+  "nameAr": "زيادة/نقص الصندوق",
+  "module": "pos",
+  "policyVersion": 1,
+  "effectiveFrom": "2026-01-01",
+  "policy": {
+    "version": 1,
+    "documentType": "TILL_OVER_SHORT",
+    "direction": "internal",
+    "requires": ["attributed_to"],
+    "lines": [
+      {
+        "for": "each_line",
+        "side": "debit",
+        "account": { "from": "line.account" },
+        "amount": "line.debit",
+        "when": { "line.kind": "account" }
+      },
+      {
+        "for": "each_line",
+        "side": "credit",
+        "account": { "from": "line.account" },
+        "amount": "line.credit",
+        "when": { "line.kind": "account" }
+      }
+    ],
+    "inventory": { "effect": "none" },
+    "tax": { "applies": false },
+    "numbering": { "series": "TOS", "assignAt": "issue" },
+    "reversal": { "allowed": true, "producesType": "TILL_OVER_SHORT" },
+    "approval": { "required": false, "approve": null, "post": "pos.sync.push" },
+    "fxRoundingAccount": { "from": "company.fx_rounding_account_id" },
+    "dimensions": { "required": ["BRANCH"] }
+  }
+}

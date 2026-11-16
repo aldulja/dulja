@@ -1,0 +1,492 @@
+{
+  "engineVersion": "WI-V2.5.9.27139 Firebird 2.5",
+  "tables": {
+    "UNITS": {
+      "keyColumns": ["UNTID"],
+      "columns": [
+        {
+          "name": "UNTID",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "UNTNAME",
+          "kind": "text",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "UNTNOTE",
+          "kind": "text",
+          "scale": 0,
+          "nullable": true
+        }
+      ]
+    },
+    "WAREHOUSES": {
+      "keyColumns": ["WARID"],
+      "columns": [
+        {
+          "name": "WARID",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "WARNAME",
+          "kind": "text",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "WARNOTE",
+          "kind": "text",
+          "scale": 0,
+          "nullable": true
+        }
+      ]
+    },
+    "MATERIALS": {
+      "keyColumns": ["MATID"],
+      "columns": [
+        {
+          "name": "MATID",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "MATCODE",
+          "kind": "text",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "MATNAME",
+          "kind": "text",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "MATNAMEAR",
+          "kind": "text",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "MATUNIT",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "MATISSERVICE",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "MATISBATCH",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": true
+        }
+      ]
+    },
+    "MATBATCHES": {
+      "keyColumns": ["BATID"],
+      "columns": [
+        {
+          "name": "BATID",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "BATMAT",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "BATCODE",
+          "kind": "text",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "BATEXPIRY",
+          "kind": "date",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "BATMFG",
+          "kind": "date",
+          "scale": 0,
+          "nullable": true
+        }
+      ]
+    },
+    "ACCOUNTS": {
+      "keyColumns": ["ACCID"],
+      "columns": [
+        {
+          "name": "ACCID",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "ACCCODE",
+          "kind": "text",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "ACCNAME",
+          "kind": "text",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "ACCNAMEAR",
+          "kind": "text",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "ACCISCUSTOMER",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "ACCISVENDOR",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "ACCTAXNO",
+          "kind": "text",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "ACCEMAIL",
+          "kind": "text",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "ACCPHONE",
+          "kind": "text",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "ACCOPENBAL",
+          "kind": "decimal",
+          "scale": 4,
+          "nullable": true
+        }
+      ]
+    },
+    "ACCTOTALS": {
+      "keyColumns": ["ACTACC"],
+      "columns": [
+        {
+          "name": "ACTACC",
+          "kind": "text",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "ACTDEBIT",
+          "kind": "decimal",
+          "scale": 4,
+          "nullable": false
+        },
+        {
+          "name": "ACTCREDIT",
+          "kind": "decimal",
+          "scale": 4,
+          "nullable": false
+        }
+      ]
+    },
+    "BILLITEMS": {
+      "keyColumns": ["BTMID"],
+      "columns": [
+        {
+          "name": "BTMID",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "BTMMAT",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "BTMWAR",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "BTMBAT",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "BTMDATE",
+          "kind": "date",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "BTMSEQ",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "BTMROW",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "BTMIN",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "BTMQNT",
+          "kind": "decimal",
+          "scale": 6,
+          "nullable": false
+        },
+        {
+          "name": "BTMVAL",
+          "kind": "decimal",
+          "scale": 4,
+          "nullable": true
+        }
+      ]
+    },
+    "BILLS": {
+      "keyColumns": ["BILID"],
+      "columns": [
+        {
+          "name": "BILID",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "BILNUMBER",
+          "kind": "text",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "BILACC",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "BILDATE",
+          "kind": "date",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "BILOPEN",
+          "kind": "decimal",
+          "scale": 4,
+          "nullable": false
+        },
+        {
+          "name": "BILKIND",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        }
+      ]
+    },
+    "EMPLOYEES": {
+      "keyColumns": ["EMPID"],
+      "columns": [
+        {
+          "name": "EMPID",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "EMPNUMBER",
+          "kind": "text",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "EMPNAME",
+          "kind": "text",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "EMPNAMEAR",
+          "kind": "text",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "EMPHIRED",
+          "kind": "date",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "EMPLEFT",
+          "kind": "date",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "EMPYTDGROSS",
+          "kind": "decimal",
+          "scale": 4,
+          "nullable": true
+        },
+        {
+          "name": "EMPYTDNET",
+          "kind": "decimal",
+          "scale": 4,
+          "nullable": true
+        },
+        {
+          "name": "EMPNATID",
+          "kind": "text",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "EMPDOB",
+          "kind": "date",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "EMPBANKACC",
+          "kind": "text",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "EMPEPFNO",
+          "kind": "text",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "EMPSOCSONO",
+          "kind": "text",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "EMPTAXNO",
+          "kind": "text",
+          "scale": 0,
+          "nullable": true
+        }
+      ]
+    },
+    "PAYITEMS": {
+      "keyColumns": ["PITID"],
+      "columns": [
+        {
+          "name": "PITID",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "PITEMP",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "PITYEAR",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "PITGROSS",
+          "kind": "decimal",
+          "scale": 4,
+          "nullable": false
+        },
+        {
+          "name": "PITNET",
+          "kind": "decimal",
+          "scale": 4,
+          "nullable": false
+        }
+      ]
+    },
+    "VOUITEMS": {
+      "keyColumns": ["SITE", "ID", "ROW"],
+      "columns": [
+        {
+          "name": "SITE",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "ID",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "ROW",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "ACCOUNT",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "DEBIT",
+          "kind": "decimal",
+          "scale": 4,
+          "nullable": true
+        },
+        {
+          "name": "CREDIT",
+          "kind": "decimal",
+          "scale": 4,
+          "nullable": true
+        }
+      ]
+    }
+  }
+}

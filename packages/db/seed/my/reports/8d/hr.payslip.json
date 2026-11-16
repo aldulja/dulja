@@ -1,0 +1,95 @@
+{
+  "definitionVersion": 1,
+  "definition": {
+    "version": 1,
+    "code": "hr.payslip",
+    "nameEn": "Payslip",
+    "nameAr": "قسيمة الراتب",
+    "module": "hr",
+    "permission": "hr.payroll.read",
+    "parameters": [
+      { "name": "payrollDocumentId", "kind": "text", "required": true },
+      { "name": "employeeId", "kind": "text", "required": true }
+    ],
+    "dataset": {
+      "source": "payroll_line",
+      "filters": [
+        { "field": "payroll_document_id", "op": "eq", "param": "payrollDocumentId" },
+        { "field": "employee_id", "op": "eq", "param": "employeeId" }
+      ]
+    },
+    "columns": [
+      {
+        "field": "component_code",
+        "labelEn": "Item",
+        "labelAr": "البند",
+        "format": "text",
+        "align": "start",
+        "width": 130
+      },
+      {
+        "field": "component_kind",
+        "labelEn": "Kind",
+        "labelAr": "النوع",
+        "format": "text",
+        "align": "start",
+        "width": 70
+      },
+      {
+        "field": "scheme_code",
+        "labelEn": "Scheme",
+        "labelAr": "النظام",
+        "format": "text",
+        "align": "start",
+        "width": 60
+      },
+      {
+        "field": "share",
+        "labelEn": "Share",
+        "labelAr": "الحصة",
+        "format": "text",
+        "align": "start",
+        "width": 60
+      },
+      {
+        "field": "quantity",
+        "labelEn": "Quantity",
+        "labelAr": "الكمية",
+        "format": "quantity",
+        "align": "end",
+        "width": 70
+      },
+      {
+        "field": "amount",
+        "labelEn": "Amount",
+        "labelAr": "المبلغ",
+        "format": "money",
+        "align": "end",
+        "width": 80
+      },
+      {
+        "field": "net_contribution",
+        "labelEn": "To net pay",
+        "labelAr": "أثره في الصافي",
+        "format": "money",
+        "align": "end",
+        "width": 80
+      }
+    ],
+    "groups": [],
+    "totals": [{ "field": "net_contribution", "fn": "sum" }],
+    "sort": [
+      { "field": "component_kind", "dir": "asc" },
+      { "field": "component_code", "dir": "asc" },
+      { "field": "scheme_code", "dir": "asc" },
+      { "field": "share", "dir": "desc" }
+    ],
+    "layout": {
+      "orientation": "portrait",
+      "paper": "A5",
+      "header": "{title} — {employeeNumber} {employeeName} — {branchCode} — {periodStart} … {periodEnd}",
+      "footer": "Gross {gross} · Deductions {totalDeductions} · Net {net} · Pay date {payDate} — الإجمالي · الاستقطاعات · صافي الراتب · تاريخ الصرف"
+    },
+    "tieOut": { "kind": "none" }
+  }
+}

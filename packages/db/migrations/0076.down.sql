@@ -1,0 +1,11 @@
+-- 0076.down.sql — deletes exactly the code the up inserted (§3.6.3).
+--
+-- PRECONDITION (contracts §3.4.5, round 3): reversible only against an UNSEEDED database. It does NOT touch the
+-- auditor's grant the seed tier holds for this code, because it cannot: app.role_permission.permission_code
+-- references app.permission(code) with no `on delete` action and RI checks bypass RLS, so on a database where
+-- `--only roles` has run this delete RAISES SQLSTATE 23503 rather than orphaning the grant; a migration sets no
+-- app.tenant_id, so forced RLS hides every role_permission row from it; and app.tenant is itself
+-- policy-guarded, so it cannot enumerate tenants to set a context for. The operator removes the grant per tenant
+-- first and re-runs `bun run seed --tenant <id> --only roles` after re-migrating. NEVER disable or drop the
+-- policy to make this file "work" — SAH-027, SAH-041, SAH-053.
+delete from app.permission where code = 'accounting.report.export';

@@ -1,0 +1,6 @@
+[
+  { "code": "EPF", "nameEn": "Employees Provident Fund", "nameAr": "صندوق ادخار الموظفين" },
+  { "code": "SOCSO", "nameEn": "Social Security Organisation", "nameAr": "منظمة الضمان الاجتماعي" },
+  { "code": "EIS", "nameEn": "Employment Insurance System", "nameAr": "نظام تأمين التوظيف" },
+  { "code": "PCB", "nameEn": "Monthly Tax Deduction (PCB/MTD)", "nameAr": "الخصم الشهري للضريبة" }
+]

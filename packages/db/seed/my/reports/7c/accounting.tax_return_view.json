@@ -1,0 +1,144 @@
+{
+  "definitionVersion": 1,
+  "definition": {
+    "version": 1,
+    "code": "accounting.tax_return_view",
+    "nameEn": "Tax return view",
+    "nameAr": "عرض الإقرار الضريبي",
+    "module": "accounting",
+    "permission": "accounting.tax.manage",
+    "parameters": [
+      { "name": "fiscalPeriodId", "kind": "period", "required": true },
+      { "name": "taxCodeKind", "kind": "enum", "required": true, "options": ["output", "input"] },
+      { "name": "regimeCode", "kind": "text", "required": false }
+    ],
+    "dataset": {
+      "source": "tax_transaction",
+      "filters": [
+        { "field": "fiscal_period_id", "op": "eq", "param": "fiscalPeriodId" },
+        { "field": "tax_code_kind", "op": "eq", "param": "taxCodeKind" },
+        { "field": "regime_code", "op": "eq", "param": "regimeCode" }
+      ]
+    },
+    "columns": [
+      {
+        "field": "regime_code",
+        "labelEn": "Regime",
+        "labelAr": "النظام",
+        "format": "text",
+        "align": "start",
+        "width": 90
+      },
+      {
+        "field": "tax_code",
+        "labelEn": "Tax code",
+        "labelAr": "رمز الضريبة",
+        "format": "text",
+        "align": "start",
+        "width": 90
+      },
+      {
+        "field": "tax_code_kind",
+        "labelEn": "Kind",
+        "labelAr": "النوع",
+        "format": "text",
+        "align": "start",
+        "width": 80
+      },
+      {
+        "field": "tax_rate",
+        "labelEn": "Rate",
+        "labelAr": "النسبة",
+        "format": "percent",
+        "align": "end",
+        "width": 80
+      },
+      {
+        "field": "document_type_code",
+        "labelEn": "Type",
+        "labelAr": "نوع المستند",
+        "format": "text",
+        "align": "start",
+        "width": 130
+      },
+      {
+        "field": "number",
+        "labelEn": "Number",
+        "labelAr": "الرقم",
+        "format": "integer",
+        "align": "end",
+        "width": 80
+      },
+      {
+        "field": "effective_date",
+        "labelEn": "Date",
+        "labelAr": "التاريخ",
+        "format": "date",
+        "align": "start",
+        "width": 100
+      },
+      {
+        "field": "party_tax_registration",
+        "labelEn": "Party registration",
+        "labelAr": "تسجيل الطرف",
+        "format": "text",
+        "align": "start",
+        "width": 140
+      },
+      {
+        "field": "base_base",
+        "labelEn": "Taxable base",
+        "labelAr": "الوعاء",
+        "format": "money",
+        "align": "end",
+        "width": 120
+      },
+      {
+        "field": "tax_base",
+        "labelEn": "Tax",
+        "labelAr": "الضريبة",
+        "format": "money",
+        "align": "end",
+        "width": 120
+      },
+      {
+        "field": "posting_seq",
+        "labelEn": "Seq",
+        "labelAr": "التسلسل",
+        "format": "integer",
+        "align": "end",
+        "width": 8
+      },
+      {
+        "field": "line_no",
+        "labelEn": "Line",
+        "labelAr": "السطر",
+        "format": "integer",
+        "align": "end",
+        "width": 8
+      }
+    ],
+    "groups": [
+      { "field": "regime_code", "subtotal": true },
+      { "field": "tax_code", "subtotal": true }
+    ],
+    "totals": [
+      { "field": "tax_base", "fn": "sum" },
+      { "field": "base_base", "fn": "sum" }
+    ],
+    "sort": [
+      { "field": "regime_code", "dir": "asc" },
+      { "field": "tax_code", "dir": "asc" },
+      { "field": "effective_date", "dir": "asc" },
+      { "field": "posting_seq", "dir": "asc" },
+      { "field": "line_no", "dir": "asc" }
+    ],
+    "layout": {
+      "orientation": "landscape",
+      "paper": "A4",
+      "header": "{title} — {fiscalPeriodId} · {taxCodeKind}",
+      "footer": "{rowCount} transactions · {generatedAt}"
+    },
+    "tieOut": { "kind": "ledger_sum", "account": "2300" }
+  }
+}

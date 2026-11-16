@@ -1,0 +1,119 @@
+{
+  "definitionVersion": 1,
+  "definition": {
+    "version": 1,
+    "code": "hr.payable_reconciliation",
+    "nameEn": "Salaries- and scheme-payable reconciliation",
+    "nameAr": "مطابقة استحقاقات الرواتب والأنظمة",
+    "module": "hr",
+    "permission": "hr.payroll.read",
+    "parameters": [
+      { "name": "fromDate", "kind": "date", "required": true },
+      { "name": "toDate", "kind": "date", "required": true },
+      { "name": "schemeCode", "kind": "text", "required": false }
+    ],
+    "dataset": {
+      "source": "payroll_line",
+      "filters": [
+        { "field": "period_start", "op": "gte", "param": "fromDate" },
+        { "field": "period_end", "op": "lte", "param": "toDate" },
+        { "field": "scheme_code", "op": "eq", "param": "schemeCode" }
+      ]
+    },
+    "columns": [
+      {
+        "field": "scheme_code",
+        "labelEn": "Scheme",
+        "labelAr": "النظام",
+        "format": "text",
+        "align": "start",
+        "width": 60
+      },
+      {
+        "field": "share",
+        "labelEn": "Share",
+        "labelAr": "الحصة",
+        "format": "text",
+        "align": "start",
+        "width": 60
+      },
+      {
+        "field": "component_kind",
+        "labelEn": "Component kind",
+        "labelAr": "نوع البند",
+        "format": "text",
+        "align": "start",
+        "width": 80
+      },
+      {
+        "field": "employee_number",
+        "labelEn": "Number",
+        "labelAr": "الرقم",
+        "format": "text",
+        "align": "start",
+        "width": 70
+      },
+      {
+        "field": "branch_code",
+        "labelEn": "Branch",
+        "labelAr": "الفرع",
+        "format": "text",
+        "align": "start",
+        "width": 60
+      },
+      {
+        "field": "document_number",
+        "labelEn": "Run",
+        "labelAr": "المسير",
+        "format": "text",
+        "align": "start",
+        "width": 70
+      },
+      {
+        "field": "payable_contribution",
+        "labelEn": "To scheme payable",
+        "labelAr": "أثره في استحقاق النظام",
+        "format": "money",
+        "align": "end",
+        "width": 100
+      },
+      {
+        "field": "net_contribution",
+        "labelEn": "To net pay",
+        "labelAr": "أثره في الصافي",
+        "format": "money",
+        "align": "end",
+        "width": 80
+      },
+      {
+        "field": "amount",
+        "labelEn": "Amount",
+        "labelAr": "المبلغ",
+        "format": "money",
+        "align": "end",
+        "width": 80
+      }
+    ],
+    "groups": [
+      { "field": "scheme_code", "subtotal": true },
+      { "field": "share", "subtotal": true }
+    ],
+    "totals": [
+      { "field": "payable_contribution", "fn": "sum" },
+      { "field": "net_contribution", "fn": "sum" }
+    ],
+    "sort": [
+      { "field": "scheme_code", "dir": "asc" },
+      { "field": "share", "dir": "asc" },
+      { "field": "employee_number", "dir": "asc" },
+      { "field": "component_code", "dir": "asc" }
+    ],
+    "layout": {
+      "orientation": "portrait",
+      "paper": "A4",
+      "header": "{title} — {fromDate} … {toDate}",
+      "footer": "2400 salaries payable and 2411-2414 statutory payable, §4.15 — الحسابات وفق سجل الحسابات"
+    },
+    "tieOut": { "kind": "ledger_sum" }
+  }
+}

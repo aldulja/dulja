@@ -1,0 +1,12 @@
+{
+  // Its own project, not a wider `lib` on the main one: the e2e specs run callbacks *inside the
+  // browser* (`getComputedStyle`, `Range`, `TreeWalker`), so they need the DOM types, and the
+  // invariants and regression suites next door must keep running under Node's types alone — a
+  // `fetch`, `Response` or `crypto` resolved from the DOM lib there would be a different type than
+  // the one those files actually run against.
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"]
+  },
+  "include": ["e2e", "playwright.config.ts"]
+}

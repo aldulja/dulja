@@ -1,0 +1,22 @@
+{
+  "code": "SALES_ORDER",
+  "nameEn": "Sales Order",
+  "nameAr": "أمر بيع",
+  "module": "inventory",
+  "policyVersion": 1,
+  "effectiveFrom": "2026-01-01",
+  "policy": {
+    "version": 1,
+    "documentType": "SALES_ORDER",
+    "direction": "none",
+    "requires": ["party"],
+    "lines": [],
+    "inventory": { "effect": "none" },
+    "tax": { "applies": false },
+    "numbering": { "series": "SO", "assignAt": "issue" },
+    "reversal": { "allowed": false, "producesType": null },
+    "approval": { "required": false, "approve": null, "post": "accounting.sales.create" },
+    "fxRoundingAccount": { "from": "company.fx_rounding_account_id" },
+    "dimensions": { "required": [] }
+  }
+}

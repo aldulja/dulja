@@ -1,0 +1,124 @@
+{
+  "definitionVersion": 1,
+  "definition": {
+    "version": 1,
+    "code": "accounting.document_register",
+    "nameEn": "Document register",
+    "nameAr": "سجل المستندات",
+    "module": "accounting",
+    "permission": "accounting.report.read",
+    "parameters": [
+      { "name": "fromDate", "kind": "date", "required": true },
+      { "name": "toDate", "kind": "date", "required": true },
+      { "name": "documentTypeCode", "kind": "text", "required": false },
+      {
+        "name": "status",
+        "kind": "enum",
+        "required": false,
+        "options": ["draft", "submitted", "approved", "issued", "void", "posted", "reversed"]
+      },
+      { "name": "branchId", "kind": "branch", "required": false }
+    ],
+    "dataset": {
+      "source": "document",
+      "filters": [
+        { "field": "effective_date", "op": "gte", "param": "fromDate" },
+        { "field": "effective_date", "op": "lte", "param": "toDate" },
+        { "field": "document_type_code", "op": "eq", "param": "documentTypeCode" },
+        { "field": "status", "op": "eq", "param": "status" },
+        { "field": "branch_id", "op": "eq", "param": "branchId" }
+      ]
+    },
+    "columns": [
+      {
+        "field": "effective_date",
+        "labelEn": "Date",
+        "labelAr": "التاريخ",
+        "format": "date",
+        "align": "start",
+        "width": 80
+      },
+      {
+        "field": "document_type_code",
+        "labelEn": "Type",
+        "labelAr": "النوع",
+        "format": "text",
+        "align": "start",
+        "width": 110
+      },
+      {
+        "field": "series",
+        "labelEn": "Series",
+        "labelAr": "السلسلة",
+        "format": "text",
+        "align": "start",
+        "width": 60
+      },
+      {
+        "field": "number",
+        "labelEn": "Number",
+        "labelAr": "الرقم",
+        "format": "text",
+        "align": "start",
+        "width": 70
+      },
+      {
+        "field": "status",
+        "labelEn": "Status",
+        "labelAr": "الحالة",
+        "format": "text",
+        "align": "start",
+        "width": 70
+      },
+      {
+        "field": "branch_code",
+        "labelEn": "Branch",
+        "labelAr": "الفرع",
+        "format": "text",
+        "align": "start",
+        "width": 60
+      },
+      {
+        "field": "party_name_en",
+        "labelEn": "Party",
+        "labelAr": "الطرف",
+        "format": "text",
+        "align": "start",
+        "width": 160
+      },
+      {
+        "field": "currency",
+        "labelEn": "Currency",
+        "labelAr": "العملة",
+        "format": "text",
+        "align": "start",
+        "width": 50
+      },
+      {
+        "field": "base_total",
+        "labelEn": "Amount",
+        "labelAr": "المبلغ",
+        "format": "money",
+        "align": "end",
+        "width": 110
+      }
+    ],
+    "groups": [{ "field": "document_type_code", "subtotal": true }],
+    "totals": [
+      { "field": "base_total", "fn": "sum" },
+      { "field": "number", "fn": "count" }
+    ],
+    "sort": [
+      { "field": "effective_date", "dir": "asc" },
+      { "field": "series", "dir": "asc" },
+      { "field": "number", "dir": "asc" }
+    ],
+    "layout": {
+      "orientation": "landscape",
+      "paper": "A4",
+      "header": "{title} — {documentTypeCode} — {fromDate} – {toDate}",
+      "footer": "{rowCount} documents · {generatedAt}"
+    },
+    "tieOut": { "kind": "ledger_sum" }
+  }
+}

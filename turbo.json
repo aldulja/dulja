@@ -1,0 +1,20 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "typecheck": { "dependsOn": ["^typecheck"] },
+    "test": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "passThroughEnv": ["CHROMIUM_EXECUTABLE_PATH"]
+    },
+    "test:electron": { "dependsOn": ["build"], "cache": false },
+    "build": { "dependsOn": ["^build"], "outputs": ["dist/**"] },
+    // A package#task entry REPLACES the generic build definition rather than extending it, so ^build
+    // must be restated here — otherwise the day apps/desktop takes its first @dulja/* dependency the
+    // build ordering breaks with no error.
+    "@dulja/desktop#build": {
+      "dependsOn": ["^build", "@dulja/backoffice#build"],
+      "outputs": ["dist/**"]
+    }
+  }
+}

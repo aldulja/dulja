@@ -1,0 +1,337 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+# Declared rather than inherited, matching release.yml. The repository default is `read` today, so this
+# grants and removes nothing right now; what it removes is the dependence on that one setting, which a
+# single toggle can flip to `write` for every workflow at once. `contents: read` is sufficient for both
+# jobs below: they check out, install, build, test and run a local `git diff`, and neither writes to the
+# repository, comments on a pull request, or creates a release.
+permissions:
+  contents: read
+jobs:
+  # Windows-only, by the owner's decision (2026-09-17). Dulja ships a Windows desktop application
+  # and nothing else, so the platform CI proves it on is the platform it runs on.
+  #
+  # The cost is real, was measured rather than predicted, and is named here so nobody has to
+  # rediscover it. Run 35204170359 put the full suite on windows-latest and `@dulja/worker` failed
+  # with `(HTTP code 500) server error - invalid volume specification:
+  # '//var/run/docker.sock:/var/run/docker.sock:rw'` — Testcontainers bind-mounting a Unix socket
+  # path against a Windows daemon. That particular error is not the real barrier, though: a
+  # GitHub-hosted windows-latest runner's Docker serves *Windows* containers, and every suite here
+  # needs the Linux `postgres` image, which such a daemon cannot run at all. There is no
+  # configuration of this runner that fixes it.
+  #
+  # So four workspaces and one suite cannot run on this job, and this is the list:
+  #   packages/db, apps/api, apps/worker, tests   — Testcontainers + Postgres
+  #   bun run e2e (acceptance test 23)            — boots the same stack through Playwright
+  # Restored on 2026-09-30, at the owner's direction, by the two ubuntu jobs at the end of this file:
+  # `database` runs packages/db, apps/api, apps/worker and tests, and `e2e` runs acceptance test 23. The
+  # Linux there is the server's own platform (spec §3.0: Cloudflare Containers and Supabase), not a
+  # second desktop target, so D1 is unchanged.
+  #
+  # Owner-approved costing remediations (2026-10-01) resolve acceptance test 7's exact-value tie-out
+  # and SAH-004's purchase reversal. The complete `tests` workspace now joins `database`, with no quarantine.
+  checks:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      # On the tag, deliberately, and the asymmetry with the other two workflows is the reason rather than
+      # an oversight. `deploy-staging.yml` and `release.yml` pin `oven-sh/setup-bun` — the one action here
+      # GitHub does not own — to a SHA because they hold secrets, and `release.yml`'s `post:` step runs
+      # after the one that holds the OD-18 certificate. This workflow holds none: it checks out public
+      # code, builds it and throws the runner away, so pinning would buy little and cost a bump on every
+      # update. Give this workflow a secret and it joins the other two.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
+      - run: bun run lint:rules
+      - name: Contracts amendments (5A)
+        shell: bash
+        run: bash scripts/check/contracts-5a-amendments.sh
+      - run: bun run check:5b
+        shell: bash
+      - name: Contracts amendments (6A)
+        shell: bash
+        run: bash scripts/check/contracts-6a-amendments.sh
+      - name: Contracts amendments (6C)
+        shell: bash
+        run: bash scripts/check/contracts-6c-amendments.sh
+      - name: Phase 6B contracts
+        run: bash scripts/check/contracts-6b-amendments.sh
+      - name: Phase 6D contracts
+        shell: bash
+        run: bash scripts/check/contracts-6d-amendments.sh
+      - name: Contracts amendments (7B)
+        # Same shape as the 6D step. Its repository half names 7A's engine, statement and seed surfaces and
+        # the 1B/3B/3D/4A/4B read functions the 7B catalogue consumes rather than duplicates.
+        shell: bash
+        run: bash scripts/check/contracts-7b-amendments.sh
+      - name: Contracts amendments (7C)
+        # Same shape as the 7B step. Its repository half names 7A's registry and statements, 7B's harness, the
+        # Phase 6 tables and read functions 7C re-expresses, and the 4B/5A corpora its fixtures build on.
+        shell: bash
+        run: bash scripts/check/contracts-7c-amendments.sh
+      - name: Contracts amendments (8A)
+        # Same shape as the 7C step. Its repository half names the Phase 4 gate, 6C's employee master (the
+        # 6C-FIRST branch), the 0A/2B surfaces the HR migrations and fixtures consume, and 7C's export pin.
+        shell: bash
+        run: bash scripts/check/contracts-8a-amendments.sh
+      - name: Contracts amendments (8B)
+        # Same shape as the 8A step. Its repository half names 8A's tables, fixtures and payroll subpath, 6A's
+        # six-label kind union, 2A's line.employee, and the two maps 8B Task 3 extends.
+        shell: bash
+        run: bash scripts/check/contracts-8b-amendments.sh
+      - name: Contracts amendments (8C)
+        # Same shape as the 8B step. Its repository half names 8B's run, chart and helpers, 8A's schemes and R4,
+        # 6C's cashier tombstone, 4B's Reconcilable and 1B's projection registry — what 8C pays out and projects.
+        shell: bash
+        run: bash scripts/check/contracts-8c-amendments.sh
+      - name: Contracts amendments (8D)
+        # Same shape as the 8C step. Its repository half names 8C's schedules, projection and money-out types, 8B's
+        # run and chart, 8A's key ring, 7A/7B's report engine and tie-out harness, and 2C's print engine — what 8D reports on.
+        shell: bash
+        run: bash scripts/check/contracts-8d-amendments.sh
+      - name: Contracts amendments (9B)
+        # Same shape as the 8D step. Its repository half names 9A's importer barrel, the job and posting surfaces the
+        # loaders write through, 8A/8C's HR surfaces, the 7A/7C status resources C2 narrows around, and 7C's export registry.
+        shell: bash
+        run: bash scripts/check/contracts-9b-amendments.sh
+      - name: Contracts amendments (3D)
+        # `shell: bash` rather than the default. This job is `runs-on: windows-latest`, where GitHub's
+        # default shell is pwsh; `run: bash x.sh` there depends on Git Bash being on PATH, while
+        # `shell: bash` is the documented mapping to it. Line endings are already safe — .gitattributes
+        # pins eol=lf for every text file, which is what keeps `#!/usr/bin/env bash` readable on a
+        # Windows checkout.
+        shell: bash
+        run: bash scripts/check/contracts-3d-amendments.sh
+      - name: Contracts amendments (4A)
+        # Same shape and the same reason for `shell: bash` as the 3D step above.
+        shell: bash
+        run: bash scripts/check/contracts-4a-amendments.sh
+      - name: Contracts amendments (4B)
+        # Same shape again. Its repository half names 4A's allocation, receipt and payment surfaces, so it
+        # joins CI from the commit where those landed (4A Task 10).
+        shell: bash
+        run: bash scripts/check/contracts-4b-amendments.sh
+      - run: bun run format:check
+      - run: bun run typecheck
+      # The workspaces that need no container, named explicitly rather than excluded by filter.
+      #
+      # An earlier version of this comment justified the inclusion list by claiming it "goes red the day
+      # someone adds a workspace and forgets it". That was backwards. Measured on turbo 2.10.12 in this
+      # tree: omitting an existing workspace plans no task for it and exits 0 — silently untested, CI
+      # green — while only a filter naming a workspace that does *not* exist is an error ("x No package
+      # found with name '@dulja/nonexistent' in workspace"). The list goes red on a rename or a removal,
+      # never on an addition.
+      #
+      # The missing half is `scripts/lint/rules/ci-test-filters.ts`, which the `bun run lint:rules` step
+      # above runs on every PR and which no filter list can silently drop: every workspace with a `test`
+      # script must be named here or carry a reason on that rule's exclusion list, and every name on that
+      # list must still be a workspace with a `test` script. Fifteen workspaces define one; the nine below
+      # run here and six are excluded there — `@dulja/db`, `@dulja/importer` (since 9B's loader suites),
+      # `@dulja/api`, `@dulja/worker` and `@dulja/tests` because they need the Linux postgres image this
+      # runner cannot serve (header comment above), and `@dulja/desktop` because the `desktop` job below
+      # runs its unit tests alongside the packaged specs, where running them twice would only slow the PR.
+      - run: >
+          bun run turbo run test
+          --filter=@dulja/domain
+          --filter=@dulja/contracts
+          --filter=@dulja/sync
+          --filter=@dulja/pos
+          --filter=@dulja/i18n
+          --filter=@dulja/ui
+          --filter=@dulja/backoffice
+          --filter=@dulja/edge
+          --filter=@dulja/infra
+      # No Docker anywhere in this one: it builds the document from the route definitions in
+      # `apps/api/src/openapi.ts` and diffs it against the committed file, so it survives the move to
+      # Windows unchanged and still catches an API change that never reached `packages/contracts`.
+      - run: bun run --cwd apps/api openapi:generate && git diff --exit-code packages/contracts/openapi.json
+
+  desktop:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: 1.4.2 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+      - run: bun install --frozen-lockfile
+      - run: bun run --cwd apps/backoffice build
+        env:
+          VITE_API_BASE_URL: https://api.invalid
+          VITE_SUPABASE_URL: https://project.invalid
+          VITE_SUPABASE_ANON_KEY: ci-placeholder
+      - run: bun run --cwd apps/desktop build
+      - run: bun run --cwd apps/desktop test
+      # `electron-builder --win --dir` (0E T13, after review): the unpacked payload
+      # (`dist-installer/win-unpacked/`) a full `dist` also produces, without the NSIS script, LZMA
+      # compression or the 126 MB write that make a full installer too expensive for every PR. Needs
+      # neither the OD-18 signing secrets nor `DULJA_UPDATE_FEED` — `--dir` skips both signing's
+      # meaningful path and publish-metadata generation (no `latest.yml`, no `app-update.yml`), so two
+      # pieces of coverage that need those two files are not bought here. They are not in the same place:
+      #  - the one updater spec that reads `resources/app-update.yml` does run at release time —
+      #    `.github/workflows/release.yml` runs `test:electron` straight after its full `dist`;
+      #  - `tests/regression/sah-087.test.ts`'s "— 0E" block runs in no CI job on either workflow, and
+      #    since the Windows-only split it is not even loaded. That file lives in `@dulja/tests`, which
+      #    the `checks` job's filter list above no longer includes — the same commit that wrote an
+      #    earlier version of this comment removed it, so the comment outlived the thing it described
+      #    by one edit. `release.yml` produces the two files but runs no test step at all. Closing the
+      #    gap means changing what a release run executes, which is the owner's decision, not this
+      #    comment's.
+      # What this buys: `native-module.spec.ts`'s and `posture.spec.ts`'s packaged cases, which
+      # `test:electron` below `test.skip`s without it, now run on every PR instead of only at release time.
+      # (The updater spec's packaged case now runs here too: the step below writes the file. PRD-32.)
+      - run: bun run --cwd apps/desktop dist:dir
+      - name: Build POS renderer, main bundle and preload
+        run: bun run --cwd apps/desktop build:pos
+      # `--dir`, like the back office (OPS-04): a full NSIS installer on every PR cost minutes and, uploaded
+      # with the default 90-day retention, filled the account's artifact storage and turned `main` red.
+      # The till's API origin is baked at packaging time (ADR 0093); `.invalid` never resolves, and the
+      # smoke spec rewrites the baked file to its own local stub.
+      - name: Package unsigned POS (unpacked tree)
+        env:
+          DULJA_POS_UPDATE_FEED: https://updates.invalid/pos/
+          DULJA_API_BASE_URL: https://api.invalid
+        run: bun run --cwd apps/desktop dist:pos:dir
+      # `--dir` writes no `resources/app-update.yml`, so the specs that prove a packaged build ignores a
+      # user-set feed skipped on every PR (PRD-32). This is the file a full `dist` writes, with an
+      # `.invalid` placeholder feed the specs rewrite to their own local server.
+      - name: Give both unpacked trees the app-update.yml a full build ships
+        shell: pwsh
+        run: |
+          Set-Content -NoNewline -Path apps/desktop/dist-installer/win-unpacked/resources/app-update.yml -Value "provider: generic`nurl: https://updates.invalid/backoffice/`nupdaterCacheDirName: dulja-back-office-updater`n"
+          Set-Content -NoNewline -Path apps/desktop/dist-installer-pos/win-unpacked/resources/app-update.yml -Value "provider: generic`nurl: https://updates.invalid/pos/`nupdaterCacheDirName: dulja-pos-updater`n"
+      # Both products, packaged: window paints under its CSP, sign-in / enrolment screen, SQLite, the
+      # configured backend reached through a local https stub, and an update check that does not crash.
+      # `DULJA_REQUIRE_PACKAGE` turns every packaged case's skip into a failure, so a run that packaged
+      # nothing cannot pass on skips.
+      - name: Smoke-test both packaged apps
+        env:
+          DULJA_REQUIRE_PACKAGE: "1"
+          DULJA_REQUIRE_POS_PACKAGE: "1"
+        run: bun run --cwd apps/desktop test:electron
+      # No artefact upload here: installers come from `release.yml` (a tag, or a `preview` dispatch).
+
+  # The suites the Windows jobs cannot serve (header comment above): Testcontainers on the runner's own
+  # Docker, which on ubuntu-latest serves the Linux `postgres:18` image. One runner per workspace, so the
+  # four run side by side; each keeps its own vitest config (files serially, one container per file).
+  # Playwright's Chromium is installed for the print tests (apps/api's engine and packages/db's render
+  # cases launch it through the one `playwright-core` the lockfile pins).
+  database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace: [packages/db, packages/importer, apps/api, apps/worker, tests]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: 1.4.2 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+      - run: bun install --frozen-lockfile
+      - name: Playwright Chromium (print tests)
+        working-directory: apps/api
+        run: bunx playwright install --with-deps chromium
+      - run: bun run --cwd ${{ matrix.workspace }} test
+
+  # Acceptance test 23: RTL/LTR parity, through the whole local stack the suite boots itself
+  # (tests/e2e/support/boot.ts: Testcontainers Postgres, the API, a backoffice build and its preview).
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: 1.4.2 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+      - run: bun install --frozen-lockfile
+      - name: Playwright Chromium
+        working-directory: tests
+        run: bunx playwright install --with-deps chromium
+      - run: bun run e2e
+
+  # The runtime image (infra/Dockerfile — one image, two entrypoints) built and run as deployed: both entrypoints
+  # boot against Postgres 18 and answer /healthz, and each prints an English and an Arabic PDF through its own
+  # Chromium path inside the image (ADR 0016, OD-20). The build environment's proxy blocks the Debian mirror, so
+  # this job is where the image's apt layer is proven. APP_ENV=dev and every value below are throwaway: dev needs no
+  # R2, no HR key and no SUPABASE_SERVICE_ROLE_KEY (OPS-01 is an open owner decision; nothing here works around it).
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:18
+        env: { POSTGRES_PASSWORD: postgres }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 2s --health-timeout 5s --health-retries 30
+    env:
+      IMAGE: dulja-runtime:ci
+      PG_URL: postgres://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the runtime image
+        run: docker build -f infra/Dockerfile -t "$IMAGE" .
+      - name: Image carries the browser, the variable and the Noto Arabic faces
+        run: |
+          docker run --rm --entrypoint sh "$IMAGE" -c '
+            set -e
+            test "$(id -un)" = bun
+            test "$CHROMIUM_EXECUTABLE_PATH" = /usr/bin/chromium
+            "$CHROMIUM_EXECUTABLE_PATH" --version
+            fc-list :lang=ar family | sort -u
+            fc-list :lang=ar family | grep -qE "Noto (Naskh|Sans|Kufi) Arabic"'
+      - name: Install pg-boss's tables and queues (the deploy step, as the migrator)
+        run: docker run --rm --network host -e DATABASE_URL_MIGRATOR="$PG_URL" --entrypoint bun "$IMAGE" run apps/worker/src/install.ts
+      - name: Boot both entrypoints and wait for /healthz
+        run: |
+          common=(--network host -e APP_ENV=dev -e DATABASE_URL="$PG_URL")
+          docker run -d --name api "${common[@]}" -e DULJA_ENTRYPOINT=api -e PORT=8080 \
+            -e SUPABASE_JWKS_URL=http://127.0.0.1:9/jwks -e SUPABASE_JWT_ISSUER=http://127.0.0.1:9/auth/v1 \
+            -e TERMINAL_JWT_SIGNING_KEY="$(openssl rand -base64 48)" "$IMAGE"
+          docker run -d --name worker "${common[@]}" -e DULJA_ENTRYPOINT=worker -e PORT=8081 "$IMAGE"
+          for port in 8080 8081; do
+            for _ in $(seq 60); do curl -fsS "http://127.0.0.1:$port/healthz" && echo && continue 2; sleep 1; done
+            echo "nothing answered /healthz on $port"; docker logs api; docker logs worker; exit 1
+          done
+          test "$(docker inspect -f '{{.State.Running}}' api worker | sort -u)" = true
+      - name: Print English and Arabic PDFs inside the image, through each entrypoint's engine
+        run: |
+          mkdir -p "$RUNNER_TEMP/pdf" && chmod 777 "$RUNNER_TEMP/pdf"
+          docker run --rm --entrypoint bun -v "$PWD/infra/test/image:/probe:ro" -v "$RUNNER_TEMP/pdf:/out" \
+            "$IMAGE" run /probe/render-probe.ts /out
+          sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils
+          infra/test/image/check-pdfs.sh "$RUNNER_TEMP/pdf"
+      # Informational, never failing: the data for the sandbox decision (docs/runbooks/deploy.md, "Runtime image").
+      # Chromium started WITHOUT --no-sandbox, as `bun`, under Docker's default seccomp profile and with seccomp
+      # unconfined, so the summary shows whether this image's sandbox can start and what the runtime must allow.
+      - name: Chromium sandbox probe (informational)
+        if: always()
+        run: |
+          helper="$(docker run --rm --entrypoint sh "$IMAGE" -c 'ls -l /usr/lib/chromium/chrome-sandbox 2>/dev/null || echo none')"
+          echo "- setuid sandbox helper in the image: $helper" | tee -a "$GITHUB_STEP_SUMMARY"
+          for opts in "" "--security-opt seccomp=unconfined"; do
+            if docker run --rm $opts --entrypoint /usr/bin/chromium "$IMAGE" --headless --disable-gpu \
+                 --dump-dom "data:text/html,<p>sandboxed</p>" >"$RUNNER_TEMP/sandbox.log" 2>&1; then
+              result="starts"; else result="refused: $(grep -m1 -iE 'sandbox|fatal' "$RUNNER_TEMP/sandbox.log" || tail -n1 "$RUNNER_TEMP/sandbox.log")"; fi
+            echo "- Chromium sandbox, docker run ${opts:-(defaults)}: $result" | tee -a "$GITHUB_STEP_SUMMARY"
+          done
+      - name: Container logs
+        if: always()
+        run: docker logs api || true; docker logs worker || true

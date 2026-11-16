@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  // No `rootDir`: `test/**` reaches the shared test-tier helper tests/invariants/support/post-journal.ts
+  // (dependency-rule's apps/*/test/** → tests/invariants/support/** allowance), which sits outside this
+  // directory and so trips TS6059 under a pinned root. Nothing is emitted — `noEmit` is true and the
+  // worker is a deployable started from src/index.ts, not a published type surface — so no emit layout
+  // depends on it.
+  "compilerOptions": { "noEmit": true, "types": ["node", "bun-types"] },
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts",
+    "vitest.config.ts",
+    "../../tests/invariants/support/**/*.ts",
+    "../../tests/support/**/*.ts"
+  ]
+}

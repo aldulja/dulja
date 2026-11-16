@@ -1,0 +1,34 @@
+{
+  "name": "@dulja/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Dulja Back Office",
+  "author": "Dulja",
+  "type": "commonjs",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && bun build src/preload.ts --outfile dist/preload.js --target node --format cjs --external electron && bun build src/preload-pos.ts --outfile dist/preload-pos.js --target node --format cjs --external electron",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node ../../node_modules/vitest/vitest.mjs run",
+    "test:electron": "playwright test",
+    "start": "electron .",
+    "dist": "electron-builder --win --publish never",
+    "dist:dir": "electron-builder --win --dir --publish never",
+    "build:pos": "bun run --cwd ../pos build && bun run --cwd ../pos build:main && bun run build",
+    "start:pos": "electron dist/main-pos.js",
+    "dist:pos": "bun scripts/write-pos-config.ts && electron-builder --config electron-builder.pos.yml --win --publish never",
+    "dist:pos:dir": "bun scripts/write-pos-config.ts && electron-builder --config electron-builder.pos.yml --win --dir --publish never"
+  },
+  "dependencies": {
+    "@sentry/electron": "^7.19.0",
+    "better-sqlite3": "^13.0.3",
+    "electron-updater": "^6.8.9"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^4.2.0",
+    "@playwright/test": "^1.63.0",
+    "electron": "^44.4.1",
+    "electron-builder": "^26.15.3",
+    "yaml": "^2.9.0"
+  }
+}

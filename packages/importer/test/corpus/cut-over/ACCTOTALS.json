@@ -1,0 +1,22 @@
+[
+  {
+    "ACTACC": "1101",
+    "ACTDEBIT": "5000.0000",
+    "ACTCREDIT": "0.0000"
+  },
+  {
+    "ACTACC": "1301",
+    "ACTDEBIT": "1800.0000",
+    "ACTCREDIT": "0.0000"
+  },
+  {
+    "ACTACC": "1401",
+    "ACTDEBIT": "2400.0000",
+    "ACTCREDIT": "0.0000"
+  },
+  {
+    "ACTACC": "2101",
+    "ACTDEBIT": "0.0000",
+    "ACTCREDIT": "900.0000"
+  }
+]

@@ -1,0 +1,8 @@
+{
+  "documentType": "NOSUCH",
+  "code": "standard",
+  "version": 1,
+  "nameEn": "Nothing",
+  "engine": "chromium",
+  "labels": { "en": { "title": "Nothing" }, "ar": { "title": "لا شيء" } }
+}

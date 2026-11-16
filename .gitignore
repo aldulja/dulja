@@ -1,0 +1,21 @@
+node_modules/
+dist/
+.turbo/
+.drizzle/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+.claude/
+.DS_Store
+Thumbs.db
+.wrangler/
+storybook-static/
+test-results/
+playwright-report/
+dist-installer/
+drill-capture.json
+dist-main/
+# Legacy extraction artefacts hold customer data and are never committed (plan 9A).
+artefacts/

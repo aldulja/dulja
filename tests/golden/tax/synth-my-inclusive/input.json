@@ -1,0 +1,53 @@
+{
+  "regimeCode": "SYNTH-MY-v1",
+  "regimeVersion": 1,
+  "periodStart": "2026-01-01",
+  "periodEnd": "2026-03-31",
+  "documents": [
+    {
+      "typeCode": "SALES_INVOICE",
+      "effectiveDate": "2026-01-15",
+      "party": "customer",
+      "taxInclusive": true,
+      "lines": [
+        { "lineNo": 1, "accountCode": "4000", "amount": "1110.0000", "taxCode": "SYN-OUT-STD" }
+      ]
+    },
+    {
+      "typeCode": "SALES_CREDIT_NOTE",
+      "effectiveDate": "2026-02-10",
+      "party": "customer",
+      "taxInclusive": true,
+      "lines": [
+        { "lineNo": 1, "accountCode": "4000", "amount": "-222.0000", "taxCode": "SYN-OUT-STD" }
+      ]
+    },
+    {
+      "typeCode": "PURCHASE_INVOICE",
+      "effectiveDate": "2026-02-20",
+      "party": "vendor",
+      "taxInclusive": true,
+      "lines": [
+        { "lineNo": 1, "accountCode": "5900", "amount": "555.0000", "taxCode": "SYN-IN-STD" }
+      ]
+    },
+    {
+      "typeCode": "SALES_INVOICE",
+      "effectiveDate": "2026-03-05",
+      "party": "customer",
+      "taxInclusive": true,
+      "lines": [
+        { "lineNo": 1, "accountCode": "4000", "amount": "300.0000", "taxCode": "SYN-OUT-ZERO" }
+      ]
+    },
+    {
+      "typeCode": "SALES_INVOICE",
+      "effectiveDate": "2026-03-20",
+      "party": "customer",
+      "taxInclusive": true,
+      "lines": [
+        { "lineNo": 1, "accountCode": "4000", "amount": "150.0000", "taxCode": "SYN-EXEMPT" }
+      ]
+    }
+  ]
+}

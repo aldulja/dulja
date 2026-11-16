@@ -1,0 +1,31 @@
+[
+  {
+    "SITE": "1",
+    "ID": "1",
+    "NAME": "AccMovement",
+    "USERNAME": "SYSDBA",
+    "DEFINITION": "VER1/+AAECAw"
+  },
+  {
+    "SITE": "1",
+    "ID": "2",
+    "NAME": "AccMovementHorizontal",
+    "USERNAME": "SYSDBA",
+    "DEFINITION": "VER1/+AAECBA"
+  },
+  {
+    "SITE": "1",
+    "ID": "3",
+    "NAME": "2.VouEntiers",
+    "USERNAME": "ahmad",
+    "DEFINITION": "VER1/+AAECBQ"
+  },
+  {
+    "SITE": "1",
+    "ID": "4",
+    "NAME": "sprAccTargets",
+    "USERNAME": "ahmad",
+    "DEFINITION": "VER1/+AAECBg"
+  },
+  { "SITE": "1", "ID": "5", "NAME": "MatBalances", "USERNAME": null, "DEFINITION": null }
+]

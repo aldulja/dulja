@@ -1,0 +1,87 @@
+[
+  {
+    "code": "1400",
+    "nameEn": "Staff advances",
+    "nameAr": "سلف الموظفين",
+    "type": "asset",
+    "parentCode": "1"
+  },
+  {
+    "code": "2400",
+    "nameEn": "Salaries payable",
+    "nameAr": "رواتب مستحقة",
+    "type": "liability",
+    "parentCode": "2"
+  },
+  {
+    "code": "2410",
+    "nameEn": "Statutory payable",
+    "nameAr": "مستحقات نظامية",
+    "type": "liability",
+    "isGroup": true,
+    "parentCode": "2"
+  },
+  {
+    "code": "2411",
+    "nameEn": "Statutory payable — EPF",
+    "nameAr": "مستحق — صندوق الادخار",
+    "type": "liability",
+    "parentCode": "2410"
+  },
+  {
+    "code": "2412",
+    "nameEn": "Statutory payable — SOCSO",
+    "nameAr": "مستحق — الضمان الاجتماعي",
+    "type": "liability",
+    "parentCode": "2410"
+  },
+  {
+    "code": "2413",
+    "nameEn": "Statutory payable — EIS",
+    "nameAr": "مستحق — تأمين التوظيف",
+    "type": "liability",
+    "parentCode": "2410"
+  },
+  {
+    "code": "2414",
+    "nameEn": "Statutory payable — PCB",
+    "nameAr": "مستحق — الاستقطاع الشهري",
+    "type": "liability",
+    "parentCode": "2410"
+  },
+  {
+    "code": "5300",
+    "nameEn": "Salaries expense",
+    "nameAr": "مصروف الرواتب",
+    "type": "expense",
+    "parentCode": "5"
+  },
+  {
+    "code": "5311",
+    "nameEn": "Employer contribution — EPF",
+    "nameAr": "مساهمة صاحب العمل — صندوق الادخار",
+    "type": "expense",
+    "parentCode": "5"
+  },
+  {
+    "code": "5312",
+    "nameEn": "Employer contribution — SOCSO",
+    "nameAr": "مساهمة صاحب العمل — الضمان الاجتماعي",
+    "type": "expense",
+    "parentCode": "5"
+  },
+  {
+    "code": "5313",
+    "nameEn": "Employer contribution — EIS",
+    "nameAr": "مساهمة صاحب العمل — تأمين التوظيف",
+    "type": "expense",
+    "parentCode": "5"
+  },
+  {
+    "code": "5314",
+    "nameEn": "Employer contribution — PCB",
+    "nameAr": "مساهمة صاحب العمل — الاستقطاع الشهري",
+    "type": "expense",
+    "parentCode": "5"
+  }
+]

@@ -1,0 +1,130 @@
+{
+  "definitionVersion": 1,
+  "definition": {
+    "version": 1,
+    "code": "accounting.document_event_log",
+    "nameEn": "Document event log",
+    "nameAr": "سجل أحداث المستندات",
+    "module": "accounting",
+    "permission": "admin.audit_log.read",
+    "parameters": [
+      { "name": "fromTime", "kind": "text", "required": true },
+      { "name": "toTime", "kind": "text", "required": true },
+      { "name": "documentTypeCode", "kind": "text", "required": false },
+      {
+        "name": "eventKind",
+        "kind": "enum",
+        "required": false,
+        "options": ["transition", "override"]
+      },
+      {
+        "name": "toStatus",
+        "kind": "enum",
+        "required": false,
+        "options": ["draft", "submitted", "approved", "issued", "void", "posted", "reversed"]
+      }
+    ],
+    "dataset": {
+      "source": "document_event",
+      "filters": [
+        { "field": "occurred_at", "op": "gte", "param": "fromTime" },
+        { "field": "occurred_at", "op": "lt", "param": "toTime" },
+        { "field": "document_type_code", "op": "eq", "param": "documentTypeCode" },
+        { "field": "event_kind", "op": "eq", "param": "eventKind" },
+        { "field": "to_status", "op": "eq", "param": "toStatus" }
+      ]
+    },
+    "columns": [
+      {
+        "field": "occurred_at",
+        "labelEn": "When (UTC)",
+        "labelAr": "الوقت (UTC)",
+        "format": "text",
+        "align": "start",
+        "width": 140
+      },
+      {
+        "field": "document_type_code",
+        "labelEn": "Type",
+        "labelAr": "النوع",
+        "format": "text",
+        "align": "start",
+        "width": 110
+      },
+      {
+        "field": "number",
+        "labelEn": "Number",
+        "labelAr": "الرقم",
+        "format": "text",
+        "align": "start",
+        "width": 70
+      },
+      {
+        "field": "event_kind",
+        "labelEn": "Event",
+        "labelAr": "الحدث",
+        "format": "text",
+        "align": "start",
+        "width": 80
+      },
+      {
+        "field": "from_status",
+        "labelEn": "From",
+        "labelAr": "من",
+        "format": "text",
+        "align": "start",
+        "width": 80
+      },
+      {
+        "field": "to_status",
+        "labelEn": "To",
+        "labelAr": "إلى",
+        "format": "text",
+        "align": "start",
+        "width": 80
+      },
+      {
+        "field": "override_code",
+        "labelEn": "Override",
+        "labelAr": "التجاوز",
+        "format": "text",
+        "align": "start",
+        "width": 200
+      },
+      {
+        "field": "actor_display_name",
+        "labelEn": "Actor",
+        "labelAr": "المستخدم",
+        "format": "text",
+        "align": "start",
+        "width": 140
+      },
+      {
+        "field": "attributed_to",
+        "labelEn": "Attributed to",
+        "labelAr": "منسوب إلى",
+        "format": "text",
+        "align": "start",
+        "width": 140
+      },
+      {
+        "field": "reason",
+        "labelEn": "Reason",
+        "labelAr": "السبب",
+        "format": "text",
+        "align": "start",
+        "width": 200
+      }
+    ],
+    "groups": [{ "field": "number", "subtotal": false }],
+    "totals": [{ "field": "number", "fn": "count" }],
+    "sort": [{ "field": "occurred_at", "dir": "asc" }],
+    "layout": {
+      "orientation": "landscape",
+      "paper": "A4",
+      "header": "{title} — {fromTime} – {toTime}",
+      "footer": "{rowCount} events · {generatedAt}"
+    },
+    "tieOut": { "kind": "none" }
+  }
+}

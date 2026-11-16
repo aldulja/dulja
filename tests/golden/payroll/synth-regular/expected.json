@@ -1,0 +1,248 @@
+{
+  "lines": [
+    {
+      "employeeNumber": "E-0001",
+      "kind": "payroll",
+      "componentCode": "BASIC",
+      "schemeCode": null,
+      "share": null,
+      "quantity": null,
+      "amount": "2000.0000",
+      "rateTableVersion": null,
+      "overrideReason": null,
+      "branchCode": "HQ",
+      "employeeDimensionCode": "E-0001"
+    },
+    {
+      "employeeNumber": "E-0001",
+      "kind": "payroll",
+      "componentCode": null,
+      "schemeCode": "EPF",
+      "share": "employee",
+      "quantity": null,
+      "amount": "50.0000",
+      "rateTableVersion": 1,
+      "overrideReason": null,
+      "branchCode": "HQ",
+      "employeeDimensionCode": "E-0001"
+    },
+    {
+      "employeeNumber": "E-0001",
+      "kind": "payroll",
+      "componentCode": null,
+      "schemeCode": "EPF",
+      "share": "employer",
+      "quantity": null,
+      "amount": "100.0000",
+      "rateTableVersion": 1,
+      "overrideReason": null,
+      "branchCode": "HQ",
+      "employeeDimensionCode": "E-0001"
+    },
+    {
+      "employeeNumber": "E-0001",
+      "kind": "account",
+      "componentCode": null,
+      "schemeCode": null,
+      "share": null,
+      "quantity": null,
+      "amount": "1950.0000",
+      "rateTableVersion": null,
+      "overrideReason": null,
+      "branchCode": "HQ",
+      "employeeDimensionCode": "E-0001"
+    },
+    {
+      "employeeNumber": "E-0002",
+      "kind": "payroll",
+      "componentCode": "BASIC",
+      "schemeCode": null,
+      "share": null,
+      "quantity": null,
+      "amount": "6000.0000",
+      "rateTableVersion": null,
+      "overrideReason": null,
+      "branchCode": "BR2",
+      "employeeDimensionCode": "E-0002"
+    },
+    {
+      "employeeNumber": "E-0002",
+      "kind": "payroll",
+      "componentCode": "ADV_RECOVERY",
+      "schemeCode": null,
+      "share": null,
+      "quantity": null,
+      "amount": "500.0000",
+      "rateTableVersion": null,
+      "overrideReason": null,
+      "branchCode": "BR2",
+      "employeeDimensionCode": "E-0002"
+    },
+    {
+      "employeeNumber": "E-0002",
+      "kind": "payroll",
+      "componentCode": null,
+      "schemeCode": "EPF",
+      "share": "employee",
+      "quantity": null,
+      "amount": "250.0000",
+      "rateTableVersion": 1,
+      "overrideReason": null,
+      "branchCode": "BR2",
+      "employeeDimensionCode": "E-0002"
+    },
+    {
+      "employeeNumber": "E-0002",
+      "kind": "payroll",
+      "componentCode": null,
+      "schemeCode": "EPF",
+      "share": "employer",
+      "quantity": null,
+      "amount": "500.0000",
+      "rateTableVersion": 1,
+      "overrideReason": null,
+      "branchCode": "BR2",
+      "employeeDimensionCode": "E-0002"
+    },
+    {
+      "employeeNumber": "E-0002",
+      "kind": "account",
+      "componentCode": null,
+      "schemeCode": null,
+      "share": null,
+      "quantity": null,
+      "amount": "5250.0000",
+      "rateTableVersion": null,
+      "overrideReason": null,
+      "branchCode": "BR2",
+      "employeeDimensionCode": "E-0002"
+    }
+  ],
+  "ledger": [
+    {
+      "accountCode": "5300",
+      "debit": "2000.0000",
+      "credit": "0.0000",
+      "dimensions": {
+        "BRANCH": "HQ",
+        "EMPLOYEE": "E-0001"
+      }
+    },
+    {
+      "accountCode": "5300",
+      "debit": "6000.0000",
+      "credit": "0.0000",
+      "dimensions": {
+        "BRANCH": "BR2",
+        "EMPLOYEE": "E-0002"
+      }
+    },
+    {
+      "accountCode": "1400",
+      "debit": "0.0000",
+      "credit": "500.0000",
+      "dimensions": {
+        "BRANCH": "BR2",
+        "EMPLOYEE": "E-0002"
+      }
+    },
+    {
+      "accountCode": "2411",
+      "debit": "0.0000",
+      "credit": "50.0000",
+      "dimensions": {
+        "BRANCH": "HQ",
+        "EMPLOYEE": "E-0001"
+      }
+    },
+    {
+      "accountCode": "2411",
+      "debit": "0.0000",
+      "credit": "250.0000",
+      "dimensions": {
+        "BRANCH": "BR2",
+        "EMPLOYEE": "E-0002"
+      }
+    },
+    {
+      "accountCode": "5311",
+      "debit": "100.0000",
+      "credit": "0.0000",
+      "dimensions": {
+        "BRANCH": "HQ",
+        "EMPLOYEE": "E-0001"
+      }
+    },
+    {
+      "accountCode": "5311",
+      "debit": "500.0000",
+      "credit": "0.0000",
+      "dimensions": {
+        "BRANCH": "BR2",
+        "EMPLOYEE": "E-0002"
+      }
+    },
+    {
+      "accountCode": "2411",
+      "debit": "0.0000",
+      "credit": "100.0000",
+      "dimensions": {
+        "BRANCH": "HQ",
+        "EMPLOYEE": "E-0001"
+      }
+    },
+    {
+      "accountCode": "2411",
+      "debit": "0.0000",
+      "credit": "500.0000",
+      "dimensions": {
+        "BRANCH": "BR2",
+        "EMPLOYEE": "E-0002"
+      }
+    },
+    {
+      "accountCode": "2400",
+      "debit": "0.0000",
+      "credit": "1950.0000",
+      "dimensions": {
+        "BRANCH": "HQ",
+        "EMPLOYEE": "E-0001"
+      }
+    },
+    {
+      "accountCode": "2400",
+      "debit": "0.0000",
+      "credit": "5250.0000",
+      "dimensions": {
+        "BRANCH": "BR2",
+        "EMPLOYEE": "E-0002"
+      }
+    }
+  ],
+  "payslips": [
+    {
+      "employeeNumber": "E-0001",
+      "gross": "2000.0000",
+      "net": "1950.0000",
+      "schemes": [
+        {
+          "employee": "50.0000",
+          "employer": "100.0000",
+          "schemeCode": "EPF"
+        }
+      ]
+    },
+    {
+      "employeeNumber": "E-0002",
+      "gross": "6000.0000",
+      "net": "5250.0000",
+      "schemes": [
+        {
+          "employee": "250.0000",
+          "employer": "500.0000",
+          "schemeCode": "EPF"
+        }
+      ]
+    }
+  ]
+}

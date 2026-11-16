@@ -1,0 +1,344 @@
+[
+  {
+    "header": {
+      "id": "d1",
+      "companyId": "c1",
+      "documentTypeCode": "STOCK_RECEIPT_TEST",
+      "status": "issued",
+      "series": "SRT",
+      "fiscalPeriodId": "p1",
+      "number": null,
+      "effectiveDate": "2026-01-10",
+      "partyId": null,
+      "currency": "MYR",
+      "exchangeRate": {
+        "from": "MYR",
+        "to": "MYR",
+        "rate": "1.00000000",
+        "effectiveFrom": "2026-01-01",
+        "source": "unit"
+      },
+      "branchId": "b1",
+      "attributedTo": null,
+      "clientRef": null,
+      "warehouseId": "w1",
+      "toWarehouseId": null,
+      "taxInclusive": false,
+      "reversesDocumentId": null,
+      "customFields": {}
+    },
+    "company": {
+      "id": "c1",
+      "baseCurrency": "MYR",
+      "fxRoundingAccountId": "a5920",
+      "costingMethod": "fifo"
+    },
+    "party": null,
+    "refs": {
+      "accountsByCode": {
+        "1300": "a1300",
+        "5000": "a5000",
+        "5900": "a5900"
+      },
+      "items": {
+        "i1": {
+          "id": "i1",
+          "code": "GOLD",
+          "kind": "product",
+          "baseUnitId": "u1",
+          "trackLots": false,
+          "revenueAccountId": "a4000",
+          "inventoryAccountId": "a1300",
+          "cogsAccountId": "a5000",
+          "expenseAccountId": "a5900"
+        }
+      },
+      "taxCodes": {},
+      "components": {},
+      "schemes": {},
+      "dimensionTypesByCode": {
+        "BRANCH": "dt1"
+      }
+    },
+    "lines": [
+      {
+        "id": "l1",
+        "lineNo": 1,
+        "kind": "item",
+        "description": "first in",
+        "accountId": null,
+        "itemId": "i1",
+        "quantity": "100.000000",
+        "unitPrice": {
+          "amount": "10.0000",
+          "currency": "MYR"
+        },
+        "discount": {
+          "amount": "0.0000",
+          "currency": "MYR"
+        },
+        "amount": {
+          "amount": "1000.0000",
+          "currency": "MYR"
+        },
+        "taxCodeId": null,
+        "taxAmount": {
+          "amount": "0.0000",
+          "currency": "MYR"
+        },
+        "totalInclTax": {
+          "amount": "1000.0000",
+          "currency": "MYR"
+        },
+        "debit": {
+          "amount": "0.0000",
+          "currency": "MYR"
+        },
+        "credit": {
+          "amount": "0.0000",
+          "currency": "MYR"
+        },
+        "cost": null,
+        "warehouseId": "w1",
+        "toWarehouseId": null,
+        "lotId": null,
+        "unitId": "u1",
+        "unitQuantity": "100.000000",
+        "countedQuantity": null,
+        "expectedQuantity": null,
+        "tenderMethod": null,
+        "customFields": {},
+        "dimensions": {},
+        "payroll": null
+      }
+    ]
+  },
+  {
+    "header": {
+      "id": "d2",
+      "companyId": "c1",
+      "documentTypeCode": "STOCK_RECEIPT_TEST",
+      "status": "issued",
+      "series": "SRT",
+      "fiscalPeriodId": "p2",
+      "number": null,
+      "effectiveDate": "2026-02-10",
+      "partyId": null,
+      "currency": "MYR",
+      "exchangeRate": {
+        "from": "MYR",
+        "to": "MYR",
+        "rate": "1.00000000",
+        "effectiveFrom": "2026-01-01",
+        "source": "unit"
+      },
+      "branchId": "b1",
+      "attributedTo": null,
+      "clientRef": null,
+      "warehouseId": "w1",
+      "toWarehouseId": null,
+      "taxInclusive": false,
+      "reversesDocumentId": null,
+      "customFields": {}
+    },
+    "company": {
+      "id": "c1",
+      "baseCurrency": "MYR",
+      "fxRoundingAccountId": "a5920",
+      "costingMethod": "fifo"
+    },
+    "party": null,
+    "refs": {
+      "accountsByCode": {
+        "1300": "a1300",
+        "5000": "a5000",
+        "5900": "a5900"
+      },
+      "items": {
+        "i1": {
+          "id": "i1",
+          "code": "GOLD",
+          "kind": "product",
+          "baseUnitId": "u1",
+          "trackLots": false,
+          "revenueAccountId": "a4000",
+          "inventoryAccountId": "a1300",
+          "cogsAccountId": "a5000",
+          "expenseAccountId": "a5900"
+        }
+      },
+      "taxCodes": {},
+      "components": {},
+      "schemes": {},
+      "dimensionTypesByCode": {
+        "BRANCH": "dt1"
+      }
+    },
+    "lines": [
+      {
+        "id": "l2",
+        "lineNo": 1,
+        "kind": "item",
+        "description": "second in",
+        "accountId": null,
+        "itemId": "i1",
+        "quantity": "100.000000",
+        "unitPrice": {
+          "amount": "20.0000",
+          "currency": "MYR"
+        },
+        "discount": {
+          "amount": "0.0000",
+          "currency": "MYR"
+        },
+        "amount": {
+          "amount": "2000.0000",
+          "currency": "MYR"
+        },
+        "taxCodeId": null,
+        "taxAmount": {
+          "amount": "0.0000",
+          "currency": "MYR"
+        },
+        "totalInclTax": {
+          "amount": "2000.0000",
+          "currency": "MYR"
+        },
+        "debit": {
+          "amount": "0.0000",
+          "currency": "MYR"
+        },
+        "credit": {
+          "amount": "0.0000",
+          "currency": "MYR"
+        },
+        "cost": null,
+        "warehouseId": "w1",
+        "toWarehouseId": null,
+        "lotId": null,
+        "unitId": "u1",
+        "unitQuantity": "100.000000",
+        "countedQuantity": null,
+        "expectedQuantity": null,
+        "tenderMethod": null,
+        "customFields": {},
+        "dimensions": {},
+        "payroll": null
+      }
+    ]
+  },
+  {
+    "header": {
+      "id": "d3",
+      "companyId": "c1",
+      "documentTypeCode": "STOCK_ISSUE_TEST",
+      "status": "issued",
+      "series": "SIT",
+      "fiscalPeriodId": "p3",
+      "number": null,
+      "effectiveDate": "2026-03-05",
+      "partyId": null,
+      "currency": "MYR",
+      "exchangeRate": {
+        "from": "MYR",
+        "to": "MYR",
+        "rate": "1.00000000",
+        "effectiveFrom": "2026-01-01",
+        "source": "unit"
+      },
+      "branchId": "b1",
+      "attributedTo": null,
+      "clientRef": null,
+      "warehouseId": "w1",
+      "toWarehouseId": null,
+      "taxInclusive": false,
+      "reversesDocumentId": null,
+      "customFields": {}
+    },
+    "company": {
+      "id": "c1",
+      "baseCurrency": "MYR",
+      "fxRoundingAccountId": "a5920",
+      "costingMethod": "fifo"
+    },
+    "party": null,
+    "refs": {
+      "accountsByCode": {
+        "1300": "a1300",
+        "5000": "a5000",
+        "5900": "a5900"
+      },
+      "items": {
+        "i1": {
+          "id": "i1",
+          "code": "GOLD",
+          "kind": "product",
+          "baseUnitId": "u1",
+          "trackLots": false,
+          "revenueAccountId": "a4000",
+          "inventoryAccountId": "a1300",
+          "cogsAccountId": "a5000",
+          "expenseAccountId": "a5900"
+        }
+      },
+      "taxCodes": {},
+      "components": {},
+      "schemes": {},
+      "dimensionTypesByCode": {
+        "BRANCH": "dt1"
+      }
+    },
+    "lines": [
+      {
+        "id": "l3",
+        "lineNo": 1,
+        "kind": "item",
+        "description": "the issue that walks two layers",
+        "accountId": null,
+        "itemId": "i1",
+        "quantity": "150.000000",
+        "unitPrice": {
+          "amount": "40.0000",
+          "currency": "MYR"
+        },
+        "discount": {
+          "amount": "0.0000",
+          "currency": "MYR"
+        },
+        "amount": {
+          "amount": "6000.0000",
+          "currency": "MYR"
+        },
+        "taxCodeId": null,
+        "taxAmount": {
+          "amount": "0.0000",
+          "currency": "MYR"
+        },
+        "totalInclTax": {
+          "amount": "6000.0000",
+          "currency": "MYR"
+        },
+        "debit": {
+          "amount": "0.0000",
+          "currency": "MYR"
+        },
+        "credit": {
+          "amount": "0.0000",
+          "currency": "MYR"
+        },
+        "cost": null,
+        "warehouseId": "w1",
+        "toWarehouseId": null,
+        "lotId": null,
+        "unitId": "u1",
+        "unitQuantity": "150.000000",
+        "countedQuantity": null,
+        "expectedQuantity": null,
+        "tenderMethod": null,
+        "customFields": {},
+        "dimensions": {},
+        "payroll": null
+      }
+    ]
+  }
+]

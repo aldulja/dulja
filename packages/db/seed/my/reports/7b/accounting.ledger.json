@@ -1,0 +1,131 @@
+{
+  "definitionVersion": 2,
+  "definition": {
+    "version": 1,
+    "code": "accounting.ledger",
+    "nameEn": "Ledger",
+    "nameAr": "دفتر الأستاذ",
+    "module": "accounting",
+    "permission": "accounting.report.read",
+    "parameters": [
+      { "name": "accountId", "kind": "account", "required": true },
+      { "name": "fromDate", "kind": "date", "required": true },
+      { "name": "toDate", "kind": "date", "required": true }
+    ],
+    "dataset": {
+      "source": "ledger_entry",
+      "filters": [
+        { "field": "account_id", "op": "eq", "param": "accountId" },
+        { "field": "effective_date", "op": "gte", "param": "fromDate" },
+        { "field": "effective_date", "op": "lte", "param": "toDate" }
+      ]
+    },
+    "columns": [
+      {
+        "field": "effective_date",
+        "labelEn": "Date",
+        "labelAr": "التاريخ",
+        "format": "date",
+        "align": "start",
+        "width": 80
+      },
+      {
+        "field": "document_type_code",
+        "labelEn": "Type",
+        "labelAr": "النوع",
+        "format": "text",
+        "align": "start",
+        "width": 100
+      },
+      {
+        "field": "series",
+        "labelEn": "Series",
+        "labelAr": "السلسلة",
+        "format": "text",
+        "align": "start",
+        "width": 60
+      },
+      {
+        "field": "number",
+        "labelEn": "Number",
+        "labelAr": "الرقم",
+        "format": "text",
+        "align": "start",
+        "width": 70
+      },
+      {
+        "field": "line_no",
+        "labelEn": "Line",
+        "labelAr": "السطر",
+        "format": "integer",
+        "align": "end",
+        "width": 40
+      },
+      {
+        "field": "posting_seq",
+        "labelEn": "Seq",
+        "labelAr": "التسلسل",
+        "format": "integer",
+        "align": "end",
+        "width": 45
+      },
+      {
+        "field": "currency",
+        "labelEn": "Currency",
+        "labelAr": "العملة",
+        "format": "text",
+        "align": "start",
+        "width": 50
+      },
+      {
+        "field": "debit",
+        "labelEn": "Debit",
+        "labelAr": "مدين",
+        "format": "money",
+        "align": "end",
+        "width": 100
+      },
+      {
+        "field": "credit",
+        "labelEn": "Credit",
+        "labelAr": "دائن",
+        "format": "money",
+        "align": "end",
+        "width": 100
+      },
+      {
+        "field": "base_debit",
+        "labelEn": "Base debit",
+        "labelAr": "مدين بالعملة الأساسية",
+        "format": "money",
+        "align": "end",
+        "width": 110
+      },
+      {
+        "field": "base_credit",
+        "labelEn": "Base credit",
+        "labelAr": "دائن بالعملة الأساسية",
+        "format": "money",
+        "align": "end",
+        "width": 110
+      }
+    ],
+    "groups": [],
+    "totals": [
+      { "field": "base_debit", "fn": "sum" },
+      { "field": "base_credit", "fn": "sum" }
+    ],
+    "sort": [
+      { "field": "effective_date", "dir": "asc" },
+      { "field": "posting_seq", "dir": "asc" },
+      { "field": "line_no", "dir": "asc" }
+    ],
+    "layout": {
+      "orientation": "portrait",
+      "paper": "A4",
+      "header": "{title} — {accountId} — {fromDate} – {toDate}",
+      "footer": "{rowCount} entries · {generatedAt}"
+    },
+    "tieOut": { "kind": "projection", "projection": "account_balance" }
+  }
+}

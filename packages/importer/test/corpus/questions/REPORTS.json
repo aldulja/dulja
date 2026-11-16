@@ -1,0 +1,23 @@
+[
+  {
+    "SITE": "1",
+    "ID": "1",
+    "NAME": "AccMovement",
+    "USERNAME": "SYSDBA",
+    "DEFINITION": "VER1/+AAECAw"
+  },
+  {
+    "SITE": "1",
+    "ID": "2",
+    "NAME": "sprAccTargets",
+    "USERNAME": "ahmad",
+    "DEFINITION": "VER1/+AAECBg"
+  },
+  {
+    "SITE": "1",
+    "ID": "3",
+    "NAME": "MatBalances",
+    "USERNAME": null,
+    "DEFINITION": null
+  }
+]

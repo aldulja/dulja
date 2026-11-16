@@ -1,0 +1,59 @@
+/* Dulja design tokens. Values are the single source; Tailwind reads them through tailwind-preset.ts. */
+:root {
+  color-scheme: light dark;
+
+  /* Arabic needs a face with full shaping; the stack names one before falling back. */
+  --dulja-font-sans: "Segoe UI", "Noto Sans Arabic", "Noto Sans", system-ui, sans-serif;
+  --dulja-font-mono: "Cascadia Mono", "Noto Sans Mono", ui-monospace, monospace;
+
+  --dulja-space-1: 0.25rem;
+  --dulja-space-2: 0.5rem;
+  --dulja-space-3: 0.75rem;
+  --dulja-space-4: 1rem;
+  --dulja-space-6: 1.5rem;
+  --dulja-space-8: 2rem;
+
+  --dulja-radius-sm: 0.25rem;
+  --dulja-radius-md: 0.5rem;
+
+  --dulja-color-surface: #ffffff;
+  --dulja-color-surface-raised: #f5f6f8;
+  /* Every ratio below is computed against its stated surface with the WCAG relative-luminance
+     formula (SC 1.4.3 text ≥4.5:1, SC 1.4.11 UI-boundary/focus ≥3:1) — not eyeballed. The original
+     `#c3c8d0` border measured 1.68:1 and failed outright; `#8b929c` is the replacement. */
+  --dulja-color-border: #8b929c; /* 3.14:1 on surface — AA for a UI boundary */
+  --dulja-color-text: #12161c; /* 18.15:1 on surface */
+  --dulja-color-text-muted: #4a5058; /* 8.14:1 on surface */
+  --dulja-color-accent: #17457a; /* 9.68:1 with accent-text */
+  --dulja-color-accent-text: #ffffff;
+  --dulja-color-danger: #8c1d18; /* 9.11:1 with danger-text */
+  --dulja-color-danger-text: #ffffff;
+  /* Text only — the over/short's surplus tone (6D Task 12), beside `danger` for a shortage, which
+     reads 9.11:1 on surface and 8.43:1 on surface-raised as text. */
+  --dulja-color-success: #1b6b33; /* 6.57:1 on surface, 6.07:1 on surface-raised */
+  --dulja-color-focus: #0b6bcb; /* 5.28:1 on surface — AA for a focus indicator */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --dulja-color-surface: #12161c;
+    --dulja-color-surface-raised: #1b212a;
+    /* The original `#454c57` measured 2.10:1 against this surface and failed SC 1.4.11's 3:1
+       UI-boundary minimum — the same defect as the light-mode border above. */
+    --dulja-color-border: #6b7482; /* 3.84:1 on surface — AA for a UI boundary */
+    --dulja-color-text: #f2f4f7;
+    --dulja-color-text-muted: #b3bac4;
+    --dulja-color-accent: #9cc4f2;
+    --dulja-color-accent-text: #0a1420;
+    --dulja-color-danger: #f2b8b5;
+    --dulja-color-danger-text: #4a0e0b;
+    --dulja-color-success: #8fd19e; /* 10.18:1 on surface, 9.08:1 on surface-raised */
+    --dulja-color-focus: #9cc4f2;
+  }
+}
+
+/* One focus indicator for the whole system — keyboard operability is a requirement, not a preference. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--dulja-color-focus);
+  outline-offset: 2px;
+}

@@ -1,0 +1,130 @@
+{
+  "definitionVersion": 1,
+  "definition": {
+    "version": 1,
+    "code": "accounting.allocation_register",
+    "nameEn": "Allocation register",
+    "nameAr": "سجل التخصيص",
+    "module": "accounting",
+    "permission": "accounting.report.read",
+    "parameters": [
+      { "name": "fromDate", "kind": "date", "required": true },
+      { "name": "toDate", "kind": "date", "required": true },
+      { "name": "partyId", "kind": "party", "required": false },
+      { "name": "settlementTypeCode", "kind": "text", "required": false }
+    ],
+    "dataset": {
+      "source": "allocation",
+      "filters": [
+        { "field": "settled_effective_date", "op": "gte", "param": "fromDate" },
+        { "field": "settled_effective_date", "op": "lte", "param": "toDate" },
+        { "field": "party_id", "op": "eq", "param": "partyId" },
+        { "field": "settlement_type_code", "op": "eq", "param": "settlementTypeCode" }
+      ]
+    },
+    "columns": [
+      {
+        "field": "party_code",
+        "labelEn": "Party",
+        "labelAr": "الطرف",
+        "format": "text",
+        "align": "start",
+        "width": 90
+      },
+      {
+        "field": "settlement_type_code",
+        "labelEn": "Settlement",
+        "labelAr": "التسوية",
+        "format": "text",
+        "align": "start",
+        "width": 120
+      },
+      {
+        "field": "settlement_number",
+        "labelEn": "No.",
+        "labelAr": "رقم",
+        "format": "integer",
+        "align": "end",
+        "width": 70
+      },
+      {
+        "field": "settled_type_code",
+        "labelEn": "Settles",
+        "labelAr": "يسدد",
+        "format": "text",
+        "align": "start",
+        "width": 120
+      },
+      {
+        "field": "settled_number",
+        "labelEn": "No.",
+        "labelAr": "رقم",
+        "format": "integer",
+        "align": "end",
+        "width": 70
+      },
+      {
+        "field": "settled_effective_date",
+        "labelEn": "Document date",
+        "labelAr": "تاريخ المستند",
+        "format": "date",
+        "align": "start",
+        "width": 100
+      },
+      {
+        "field": "amount",
+        "labelEn": "Amount",
+        "labelAr": "المبلغ",
+        "format": "money",
+        "align": "end",
+        "width": 110
+      },
+      {
+        "field": "base_amount",
+        "labelEn": "Base amount",
+        "labelAr": "المبلغ الأساسي",
+        "format": "money",
+        "align": "end",
+        "width": 110
+      },
+      {
+        "field": "fx_difference",
+        "labelEn": "FX difference",
+        "labelAr": "فرق الصرف",
+        "format": "money",
+        "align": "end",
+        "width": 110
+      },
+      {
+        "field": "unallocated_at",
+        "labelEn": "Unallocated at",
+        "labelAr": "أُلغي في",
+        "format": "text",
+        "align": "start",
+        "width": 130
+      },
+      {
+        "field": "allocation_id",
+        "labelEn": "Allocation id",
+        "labelAr": "معرف التخصيص",
+        "format": "text",
+        "align": "start",
+        "width": 8
+      }
+    ],
+    "groups": [{ "field": "party_code", "subtotal": true }],
+    "totals": [{ "field": "base_amount", "fn": "sum" }],
+    "sort": [
+      { "field": "party_code", "dir": "asc" },
+      { "field": "settled_effective_date", "dir": "asc" },
+      { "field": "allocation_id", "dir": "asc" }
+    ],
+    "layout": {
+      "orientation": "landscape",
+      "paper": "A4",
+      "header": "{title} — {fromDate} … {toDate}",
+      "footer": "{rowCount} allocations · {generatedAt}"
+    },
+    "tieOut": { "kind": "projection", "projection": "allocation" }
+  }
+}

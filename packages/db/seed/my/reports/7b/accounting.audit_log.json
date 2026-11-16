@@ -1,0 +1,93 @@
+{
+  "definitionVersion": 1,
+  "definition": {
+    "version": 1,
+    "code": "accounting.audit_log",
+    "nameEn": "Audit log",
+    "nameAr": "سجل التدقيق",
+    "module": "accounting",
+    "permission": "admin.audit_log.read",
+    "parameters": [
+      { "name": "fromTime", "kind": "text", "required": true },
+      { "name": "toTime", "kind": "text", "required": true },
+      { "name": "tableName", "kind": "text", "required": false },
+      {
+        "name": "action",
+        "kind": "enum",
+        "required": false,
+        "options": ["insert", "update", "delete"]
+      },
+      { "name": "actorId", "kind": "text", "required": false }
+    ],
+    "dataset": {
+      "source": "audit_log",
+      "filters": [
+        { "field": "occurred_at", "op": "gte", "param": "fromTime" },
+        { "field": "occurred_at", "op": "lt", "param": "toTime" },
+        { "field": "table_name", "op": "eq", "param": "tableName" },
+        { "field": "action", "op": "eq", "param": "action" },
+        { "field": "actor_id", "op": "eq", "param": "actorId" }
+      ]
+    },
+    "columns": [
+      {
+        "field": "seq",
+        "labelEn": "Sequence",
+        "labelAr": "التسلسل",
+        "format": "integer",
+        "align": "end",
+        "width": 70
+      },
+      {
+        "field": "occurred_at",
+        "labelEn": "When (UTC)",
+        "labelAr": "الوقت (UTC)",
+        "format": "text",
+        "align": "start",
+        "width": 140
+      },
+      {
+        "field": "actor_display_name",
+        "labelEn": "Actor",
+        "labelAr": "المستخدم",
+        "format": "text",
+        "align": "start",
+        "width": 150
+      },
+      {
+        "field": "table_name",
+        "labelEn": "Table",
+        "labelAr": "الجدول",
+        "format": "text",
+        "align": "start",
+        "width": 130
+      },
+      {
+        "field": "row_id",
+        "labelEn": "Row",
+        "labelAr": "السجل",
+        "format": "text",
+        "align": "start",
+        "width": 260
+      },
+      {
+        "field": "action",
+        "labelEn": "Action",
+        "labelAr": "الإجراء",
+        "format": "text",
+        "align": "start",
+        "width": 70
+      }
+    ],
+    "groups": [{ "field": "table_name", "subtotal": false }],
+    "totals": [{ "field": "seq", "fn": "count" }],
+    "sort": [{ "field": "seq", "dir": "asc" }],
+    "layout": {
+      "orientation": "landscape",
+      "paper": "A4",
+      "header": "{title} — {fromTime} – {toTime}",
+      "footer": "{rowCount} audit rows · {generatedAt}"
+    },
+    "tieOut": { "kind": "none" }
+  }
+}

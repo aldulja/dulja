@@ -1,0 +1,107 @@
+{
+  "definitionVersion": 1,
+  "definition": {
+    "version": 1,
+    "code": "inventory.count_register",
+    "nameEn": "Stock-count register",
+    "nameAr": "سجل جرد المخزون",
+    "module": "inventory",
+    "permission": "inventory.stock.read",
+    "parameters": [
+      { "name": "fromDate", "kind": "date", "required": true },
+      { "name": "toDate", "kind": "date", "required": true },
+      { "name": "countTypes", "kind": "enum", "required": true, "options": ["STOCK_COUNT"] },
+      { "name": "branchId", "kind": "branch", "required": false },
+      {
+        "name": "status",
+        "kind": "enum",
+        "required": false,
+        "options": ["draft", "submitted", "approved", "issued", "void", "posted", "reversed"]
+      }
+    ],
+    "dataset": {
+      "source": "document",
+      "filters": [
+        { "field": "effective_date", "op": "gte", "param": "fromDate" },
+        { "field": "effective_date", "op": "lte", "param": "toDate" },
+        { "field": "document_type_code", "op": "in", "param": "countTypes" },
+        { "field": "branch_id", "op": "eq", "param": "branchId" },
+        { "field": "status", "op": "eq", "param": "status" }
+      ]
+    },
+    "columns": [
+      {
+        "field": "effective_date",
+        "labelEn": "Date",
+        "labelAr": "التاريخ",
+        "format": "date",
+        "align": "start",
+        "width": 80
+      },
+      {
+        "field": "series",
+        "labelEn": "Series",
+        "labelAr": "السلسلة",
+        "format": "text",
+        "align": "start",
+        "width": 60
+      },
+      {
+        "field": "number",
+        "labelEn": "Number",
+        "labelAr": "الرقم",
+        "format": "text",
+        "align": "start",
+        "width": 70
+      },
+      {
+        "field": "status",
+        "labelEn": "Status",
+        "labelAr": "الحالة",
+        "format": "text",
+        "align": "start",
+        "width": 80
+      },
+      {
+        "field": "branch_code",
+        "labelEn": "Branch",
+        "labelAr": "الفرع",
+        "format": "text",
+        "align": "start",
+        "width": 70
+      },
+      {
+        "field": "posted_at",
+        "labelEn": "Posted",
+        "labelAr": "تاريخ الترحيل",
+        "format": "text",
+        "align": "start",
+        "width": 130
+      },
+      {
+        "field": "base_total",
+        "labelEn": "Variance value",
+        "labelAr": "قيمة الفرق",
+        "format": "money",
+        "align": "end",
+        "width": 120
+      }
+    ],
+    "groups": [{ "field": "branch_code", "subtotal": true }],
+    "totals": [
+      { "field": "base_total", "fn": "sum" },
+      { "field": "number", "fn": "count" }
+    ],
+    "sort": [
+      { "field": "effective_date", "dir": "asc" },
+      { "field": "number", "dir": "asc" }
+    ],
+    "layout": {
+      "orientation": "portrait",
+      "paper": "A4",
+      "header": "{title} — {fromDate} – {toDate}",
+      "footer": "{rowCount} counts · {generatedAt}"
+    },
+    "tieOut": { "kind": "ledger_sum" }
+  }
+}

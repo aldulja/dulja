@@ -1,0 +1,42 @@
+{
+  "code": "OPENING_STOCK",
+  "nameEn": "Opening stock",
+  "nameAr": "مخزون افتتاحي",
+  "module": "inventory",
+  "policyVersion": 1,
+  "effectiveFrom": "2026-01-01",
+  "policy": {
+    "version": 1,
+    "documentType": "OPENING_STOCK",
+    "direction": "inbound",
+    "requires": ["warehouse"],
+    "lines": [
+      {
+        "for": "each_line",
+        "side": "debit",
+        "account": { "from": "item.inventory_account" },
+        "amount": "line.amount",
+        "when": { "line.kind": "item" }
+      },
+      {
+        "for": "each_line",
+        "side": "credit",
+        "account": { "code": "3900" },
+        "amount": "line.amount",
+        "when": { "line.kind": "item" }
+      }
+    ],
+    "inventory": {
+      "effect": "receipt",
+      "warehouse": "header.warehouse",
+      "costing": "create_layer",
+      "allowNegative": false
+    },
+    "tax": { "applies": false },
+    "numbering": { "series": "OS", "assignAt": "issue" },
+    "reversal": { "allowed": true, "producesType": "OPENING_STOCK" },
+    "approval": { "required": false, "approve": null, "post": "inventory.receipt.post" },
+    "fxRoundingAccount": { "from": "company.fx_rounding_account_id" },
+    "dimensions": { "required": [] }
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "code": "PURCHASE_RETURN",
+  "nameEn": "Purchase Return",
+  "nameAr": "مرتجع مشتريات",
+  "module": "inventory",
+  "policyVersion": 1,
+  "effectiveFrom": "2026-01-01",
+  "policy": {
+    "version": 1,
+    "documentType": "PURCHASE_RETURN",
+    "direction": "outbound",
+    "requires": ["party", "warehouse"],
+    "lines": [
+      {
+        "for": "each_line",
+        "side": "debit",
+        "account": { "from": "party.payable_account" },
+        "amount": "line.cost",
+        "when": { "line.kind": "item" }
+      },
+      {
+        "for": "each_line",
+        "side": "credit",
+        "account": { "from": "item.inventory_account" },
+        "amount": "line.cost",
+        "when": { "line.kind": "item" }
+      }
+    ],
+    "inventory": { "effect": "issue", "warehouse": "line.warehouse", "costing": "consume_layers" },
+    "tax": { "applies": false },
+    "numbering": { "series": "PR", "assignAt": "issue" },
+    "reversal": { "allowed": true, "producesType": "PURCHASE_RETURN" },
+    "approval": {
+      "required": false,
+      "approve": null,
+      "post": "accounting.purchase.post",
+      "create": "accounting.purchase.create"
+    },
+    "fxRoundingAccount": { "from": "company.fx_rounding_account_id" },
+    "dimensions": { "required": ["BRANCH"] }
+  }
+}

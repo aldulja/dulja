@@ -1,0 +1,92 @@
+{
+  "definitionVersion": 1,
+  "definition": {
+    "version": 1,
+    "code": "accounting.balance_sheet",
+    "nameEn": "Balance sheet",
+    "nameAr": "الميزانية العمومية",
+    "module": "accounting",
+    "permission": "accounting.report.read",
+    "columns": [
+      {
+        "field": "section_label",
+        "labelEn": "Section",
+        "labelAr": "القسم",
+        "format": "text",
+        "align": "start",
+        "width": 120
+      },
+      {
+        "field": "account_code",
+        "labelEn": "Code",
+        "labelAr": "الرمز",
+        "format": "text",
+        "align": "start",
+        "width": 80
+      },
+      {
+        "field": "account_name_en",
+        "labelEn": "Name",
+        "labelAr": "الاسم",
+        "format": "text",
+        "align": "start"
+      },
+      {
+        "field": "base_balance",
+        "labelEn": "Balance",
+        "labelAr": "الرصيد",
+        "format": "money",
+        "align": "end",
+        "width": 120
+      }
+    ],
+    "groups": [
+      {
+        "field": "section_label",
+        "subtotal": true
+      }
+    ],
+    "totals": [
+      {
+        "field": "base_balance",
+        "fn": "sum"
+      }
+    ],
+    "sort": [
+      {
+        "field": "section_rank",
+        "dir": "asc"
+      },
+      {
+        "field": "account_code",
+        "dir": "asc"
+      }
+    ],
+    "parameters": [
+      {
+        "name": "fiscalPeriodId",
+        "kind": "period",
+        "required": true
+      }
+    ],
+    "dataset": {
+      "source": "account_balance",
+      "filters": [
+        {
+          "field": "fiscal_period_id",
+          "op": "eq",
+          "param": "fiscalPeriodId"
+        }
+      ]
+    },
+    "layout": {
+      "orientation": "portrait",
+      "paper": "A4",
+      "header": "{title} — {fiscalPeriodId}",
+      "footer": "{rowCount} accounts · {generatedAt}"
+    },
+    "tieOut": {
+      "kind": "ledger_sum"
+    }
+  }
+}

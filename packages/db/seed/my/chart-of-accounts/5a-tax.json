@@ -1,0 +1,16 @@
+[
+  {
+    "code": "2300",
+    "nameEn": "Output tax payable",
+    "nameAr": "ضريبة المخرجات المستحقة",
+    "type": "liability",
+    "parentCode": "2"
+  },
+  {
+    "code": "1350",
+    "nameEn": "Input tax receivable",
+    "nameAr": "ضريبة المدخلات المستحقة القبض",
+    "type": "asset",
+    "parentCode": "1"
+  }
+]

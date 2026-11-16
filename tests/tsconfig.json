@@ -1,0 +1,15 @@
+{
+  "extends": "../tsconfig.base.json",
+  "include": [
+    "support",
+    "golden",
+    "invariants",
+    "regression",
+    "staging",
+    "vitest.config.ts",
+    "../scripts/lint",
+    "../apps/worker/src/handlers/**/*.ts",
+    "../apps/pos/src/main/**/*.ts",
+    "../packages/db/seed/roles.ts"
+  ]
+}

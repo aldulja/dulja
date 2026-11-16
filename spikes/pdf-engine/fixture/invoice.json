@@ -1,0 +1,31 @@
+{
+  "number": "INV-EXAMPLE-000042",
+  "issuedOn": "2026-01-15",
+  "currency": "MYR",
+  "seller": {
+    "nameEn": "Example Trading Sdn Bhd",
+    "nameAr": "شركة المثال للتجارة",
+    "addressEn": "12 Example Street, Kuala Lumpur",
+    "addressAr": "١٢ شارع المثال، كوالالمبور",
+    "registrationId": "REG-EXAMPLE-0001"
+  },
+  "buyer": {
+    "nameEn": "Al-Amin Stores",
+    "nameAr": "متاجر الأمين",
+    "addressEn": "5 Sample Road, Penang",
+    "addressAr": "٥ طريق العينة، بينانج",
+    "registrationId": "REG-EXAMPLE-0002"
+  },
+  "lines": [
+    { "descriptionEn": "Arabica coffee beans 1 kg", "descriptionAr": "حبوب قهوة عربية ١ كجم", "quantity": "12.000000", "unitPrice": "38.5000", "amount": "462.0000" },
+    { "descriptionEn": "Paper cups (sleeve of 50)", "descriptionAr": "أكواب ورقية (رزمة ٥٠)", "quantity": "40.000000", "unitPrice": "7.2500", "amount": "290.0000" },
+    { "descriptionEn": "Delivery to Penang — model XR-9", "descriptionAr": "التوصيل إلى بينانج — طراز XR-9", "quantity": "1.000000", "unitPrice": "60.0000", "amount": "60.0000" }
+  ],
+  "subtotal": "812.0000",
+  "tax": { "labelEn": "Tax (example rate)", "labelAr": "الضريبة (نسبة توضيحية)", "rate": "0.0600", "amount": "48.7200" },
+  "total": "860.7200",
+  "notes": {
+    "en": "This is a synthetic fixture. No figure here is a real statutory rate.",
+    "ar": "هذه وثيقة اختبارية. لا يمثل أي رقم فيها نسبة قانونية حقيقية."
+  }
+}

@@ -1,0 +1,42 @@
+[
+  {
+    "SITE": "1",
+    "ID": "1",
+    "ROW": "1",
+    "ACCOUNT": "10",
+    "JOB": "0",
+    "COSTCENTRE": null,
+    "DEBIT": "100.0000",
+    "CREDIT": "0.0000"
+  },
+  {
+    "SITE": "1",
+    "ID": "1",
+    "ROW": "2",
+    "ACCOUNT": "11",
+    "JOB": "0",
+    "COSTCENTRE": null,
+    "DEBIT": "0.0000",
+    "CREDIT": "100.0000"
+  },
+  {
+    "SITE": "1",
+    "ID": "2",
+    "ROW": "1",
+    "ACCOUNT": "10",
+    "JOB": "99",
+    "COSTCENTRE": null,
+    "DEBIT": "250.0000",
+    "CREDIT": "0.0000"
+  },
+  {
+    "SITE": "1",
+    "ID": "2",
+    "ROW": "2",
+    "ACCOUNT": "11",
+    "JOB": "0",
+    "COSTCENTRE": null,
+    "DEBIT": "250.0000",
+    "CREDIT": "0.0000"
+  }
+]

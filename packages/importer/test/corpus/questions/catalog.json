@@ -1,0 +1,262 @@
+{
+  "engineVersion": "WI-V2.5.9.27139 Firebird 2.5",
+  "tables": {
+    "ACCOUNTS": {
+      "keyColumns": ["SITE", "ID"],
+      "constraints": [
+        {
+          "table": "ACCOUNTS",
+          "name": "PK_ACCOUNTS",
+          "kind": "PRIMARY KEY",
+          "columns": ["SITE", "ID"],
+          "referencedTable": null
+        }
+      ],
+      "columns": [
+        {
+          "name": "SITE",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "ID",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "CODE",
+          "kind": "text",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "PARENT",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": true
+        }
+      ]
+    },
+    "MATOPENS": {
+      "keyColumns": ["SITE", "ID"],
+      "columns": [
+        {
+          "name": "SITE",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "ID",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "JOB",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "QUANTITY",
+          "kind": "decimal",
+          "scale": 4,
+          "nullable": true
+        }
+      ]
+    },
+    "MATUNITS": {
+      "keyColumns": ["SITE", "ID", "UNIT"],
+      "columns": [
+        {
+          "name": "SITE",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "ID",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "UNIT",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "EXCHANGE",
+          "kind": "float",
+          "scale": 0,
+          "nullable": true
+        }
+      ]
+    },
+    "MATOBJECTS": {
+      "keyColumns": [],
+      "columns": [
+        {
+          "name": "SITE",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "ID",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "QUANTITY",
+          "kind": "decimal",
+          "scale": 4,
+          "nullable": true
+        }
+      ]
+    },
+    "EMPLOYEES": {
+      "keyColumns": ["SITE", "ID"],
+      "columns": [
+        {
+          "name": "SITE",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "ID",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "NAME",
+          "kind": "text",
+          "scale": 0,
+          "nullable": true
+        }
+      ]
+    },
+    "PAYROLLS": {
+      "keyColumns": ["SITE", "ID"],
+      "columns": [
+        {
+          "name": "SITE",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "ID",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "DATE",
+          "kind": "date",
+          "scale": 0,
+          "nullable": true
+        }
+      ]
+    },
+    "PAYITEMS": {
+      "keyColumns": ["SITE", "ID", "ROW"],
+      "columns": [
+        {
+          "name": "SITE",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "ID",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "ROW",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        }
+      ]
+    },
+    "TAXLAYERS": {
+      "keyColumns": ["SITE", "ID"],
+      "columns": [
+        {
+          "name": "SITE",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "ID",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        }
+      ]
+    },
+    "SPRORDERS": {
+      "keyColumns": ["SITE", "ID"],
+      "columns": [
+        {
+          "name": "SITE",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "ID",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        }
+      ]
+    },
+    "REPORTS": {
+      "keyColumns": ["SITE", "ID"],
+      "columns": [
+        {
+          "name": "SITE",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "ID",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "NAME",
+          "kind": "text",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "USERNAME",
+          "kind": "text",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "DEFINITION",
+          "kind": "blob",
+          "scale": 0,
+          "nullable": true
+        }
+      ]
+    }
+  }
+}

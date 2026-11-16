@@ -1,0 +1,111 @@
+{
+  "definitionVersion": 1,
+  "definition": {
+    "version": 1,
+    "code": "pos.needs_attention",
+    "nameEn": "Needs-attention log",
+    "nameAr": "سجل يحتاج انتباه",
+    "module": "pos",
+    "permission": "pos.needs_attention.resolve",
+    "parameters": [
+      { "name": "isOpen", "kind": "enum", "required": true, "options": ["true", "false"] },
+      { "name": "branchId", "kind": "branch", "required": false },
+      { "name": "errorCode", "kind": "text", "required": false },
+      { "name": "fromDate", "kind": "date", "required": false }
+    ],
+    "dataset": {
+      "source": "needs_attention",
+      "filters": [
+        { "field": "is_open", "op": "eq", "param": "isOpen" },
+        { "field": "branch_id", "op": "eq", "param": "branchId" },
+        { "field": "error_code", "op": "eq", "param": "errorCode" },
+        { "field": "created_on", "op": "gte", "param": "fromDate" }
+      ]
+    },
+    "columns": [
+      {
+        "field": "created_on",
+        "labelEn": "Raised",
+        "labelAr": "أُثير",
+        "format": "date",
+        "align": "start",
+        "width": 110
+      },
+      {
+        "field": "branch_code",
+        "labelEn": "Branch",
+        "labelAr": "الفرع",
+        "format": "text",
+        "align": "start",
+        "width": 90
+      },
+      {
+        "field": "terminal_code",
+        "labelEn": "Terminal",
+        "labelAr": "الجهاز",
+        "format": "text",
+        "align": "start",
+        "width": 90
+      },
+      {
+        "field": "client_ref",
+        "labelEn": "Ticket ref",
+        "labelAr": "مرجع الفاتورة",
+        "format": "text",
+        "align": "start",
+        "width": 180
+      },
+      {
+        "field": "error_code",
+        "labelEn": "Error",
+        "labelAr": "الخطأ",
+        "format": "text",
+        "align": "start",
+        "width": 180
+      },
+      {
+        "field": "error_detail",
+        "labelEn": "Detail",
+        "labelAr": "التفصيل",
+        "format": "text",
+        "align": "start"
+      },
+      {
+        "field": "resolved_at",
+        "labelEn": "Resolved",
+        "labelAr": "حُل",
+        "format": "text",
+        "align": "start",
+        "width": 130
+      },
+      {
+        "field": "resolution_note",
+        "labelEn": "Note",
+        "labelAr": "ملاحظة",
+        "format": "text",
+        "align": "start"
+      },
+      {
+        "field": "created_at",
+        "labelEn": "Raised at",
+        "labelAr": "أُثير في",
+        "format": "text",
+        "align": "start",
+        "width": 8
+      }
+    ],
+    "groups": [{ "field": "branch_code", "subtotal": false }],
+    "totals": [{ "field": "client_ref", "fn": "count" }],
+    "sort": [
+      { "field": "created_at", "dir": "desc" },
+      { "field": "client_ref", "dir": "asc" }
+    ],
+    "layout": {
+      "orientation": "landscape",
+      "paper": "A4",
+      "header": "{title} — {isOpen}",
+      "footer": "{rowCount} items · {generatedAt}"
+    },
+    "tieOut": { "kind": "none" }
+  }
+}

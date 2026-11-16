@@ -1,0 +1,179 @@
+{
+  "definitionVersion": 2,
+  "definition": {
+    "version": 1,
+    "code": "pos.z_report",
+    "nameEn": "Z-report",
+    "nameAr": "تقرير Z",
+    "module": "pos",
+    "permission": "pos.report.read",
+    "parameters": [
+      { "name": "shiftId", "kind": "text", "required": false },
+      { "name": "branchId", "kind": "branch", "required": false },
+      { "name": "fromDate", "kind": "date", "required": false },
+      { "name": "toDate", "kind": "date", "required": false }
+    ],
+    "dataset": {
+      "source": "shift",
+      "filters": [
+        { "field": "shift_id", "op": "eq", "param": "shiftId" },
+        { "field": "branch_id", "op": "eq", "param": "branchId" },
+        { "field": "opened_on", "op": "gte", "param": "fromDate" },
+        { "field": "opened_on", "op": "lte", "param": "toDate" }
+      ]
+    },
+    "columns": [
+      {
+        "field": "branch_code",
+        "labelEn": "Branch",
+        "labelAr": "الفرع",
+        "format": "text",
+        "align": "start",
+        "width": 90
+      },
+      {
+        "field": "terminal_code",
+        "labelEn": "Terminal",
+        "labelAr": "الجهاز",
+        "format": "text",
+        "align": "start",
+        "width": 90
+      },
+      {
+        "field": "cashier_name",
+        "labelEn": "Cashier",
+        "labelAr": "أمين الصندوق",
+        "format": "text",
+        "align": "start"
+      },
+      {
+        "field": "opened_at",
+        "labelEn": "Opened",
+        "labelAr": "فُتح",
+        "format": "text",
+        "align": "start",
+        "width": 130
+      },
+      {
+        "field": "closed_at",
+        "labelEn": "Closed",
+        "labelAr": "أُغلق",
+        "format": "text",
+        "align": "start",
+        "width": 130
+      },
+      {
+        "field": "currency",
+        "labelEn": "Currency",
+        "labelAr": "العملة",
+        "format": "text",
+        "align": "start",
+        "width": 70
+      },
+      {
+        "field": "opening_float",
+        "labelEn": "Opening float",
+        "labelAr": "الرصيد الافتتاحي",
+        "format": "money",
+        "align": "end",
+        "width": 110
+      },
+      {
+        "field": "net_sales_base",
+        "labelEn": "Net sales",
+        "labelAr": "صافي المبيعات",
+        "format": "money",
+        "align": "end",
+        "width": 110
+      },
+      {
+        "field": "counted_cash",
+        "labelEn": "Counted cash",
+        "labelAr": "النقد المعدود",
+        "format": "money",
+        "align": "end",
+        "width": 110
+      },
+      {
+        "field": "expected_cash",
+        "labelEn": "Expected cash",
+        "labelAr": "النقد المتوقع",
+        "format": "money",
+        "align": "end",
+        "width": 110
+      },
+      {
+        "field": "over_short",
+        "labelEn": "Over / short",
+        "labelAr": "زيادة / عجز",
+        "format": "money",
+        "align": "end",
+        "width": 110
+      },
+      {
+        "field": "ticket_count",
+        "labelEn": "Tickets",
+        "labelAr": "الفواتير",
+        "format": "integer",
+        "align": "end",
+        "width": 80
+      },
+      {
+        "field": "return_count",
+        "labelEn": "Returns",
+        "labelAr": "المرتجعات",
+        "format": "integer",
+        "align": "end",
+        "width": 80
+      },
+      {
+        "field": "no_sale_count",
+        "labelEn": "No sale",
+        "labelAr": "بدون بيع",
+        "format": "integer",
+        "align": "end",
+        "width": 80
+      },
+      {
+        "field": "drawer_open_count",
+        "labelEn": "Drawer opens",
+        "labelAr": "فتح الدرج",
+        "format": "integer",
+        "align": "end",
+        "width": 90
+      },
+      {
+        "field": "void_count",
+        "labelEn": "Voids",
+        "labelAr": "الإلغاءات",
+        "format": "integer",
+        "align": "end",
+        "width": 80
+      },
+      {
+        "field": "shift_id",
+        "labelEn": "Shift",
+        "labelAr": "الوردية",
+        "format": "text",
+        "align": "start",
+        "width": 8
+      }
+    ],
+    "groups": [{ "field": "branch_code", "subtotal": true }],
+    "totals": [
+      { "field": "net_sales_base", "fn": "sum" },
+      { "field": "shift_id", "fn": "count" }
+    ],
+    "sort": [
+      { "field": "opened_at", "dir": "desc" },
+      { "field": "shift_id", "dir": "desc" }
+    ],
+    "layout": {
+      "orientation": "landscape",
+      "paper": "A4",
+      "header": "{title} — {fromDate} … {toDate}",
+      "footer": "{rowCount} shifts · {generatedAt}"
+    },
+    "tieOut": { "kind": "projection", "projection": "shift" }
+  }
+}

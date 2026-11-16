@@ -1,0 +1,20 @@
+[
+  {
+    "PTKID": "9100",
+    "PTKNUMBER": "T-000431",
+    "PTKDATE": "2025-12-30",
+    "PTKTERMINAL": "TILL-1",
+    "PTKCASHIER": "5001",
+    "PTKTOTAL": "45.0000",
+    "PTKTENDER": "cash"
+  },
+  {
+    "PTKID": "9101",
+    "PTKNUMBER": "T-000432",
+    "PTKDATE": "2025-12-31",
+    "PTKTERMINAL": "TILL-1",
+    "PTKCASHIER": null,
+    "PTKTOTAL": "20.0000",
+    "PTKTENDER": "voucher"
+  }
+]

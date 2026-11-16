@@ -1,0 +1,36 @@
+{
+  "period": {
+    "start": "2026-01-01",
+    "end": "2026-01-31",
+    "payDate": "2026-02-05",
+    "prorationRule": "calendar_days"
+  },
+  "kind": "regular",
+  "effectiveDate": "2026-01-31",
+  "schemes": [{ "code": "EPF", "table": "SYNTH" }],
+  "components": [
+    { "code": "BASIC", "kind": "earning", "accountCode": "5300", "schemeCodes": ["EPF"] },
+    { "code": "ADV_RECOVERY", "kind": "deduction", "accountCode": "1400", "schemeCodes": [] }
+  ],
+  "employees": [
+    {
+      "employeeNumber": "E-0001",
+      "branchCode": "HQ",
+      "hiredOn": "2020-01-01",
+      "terminatedOn": null,
+      "statutoryProfile": {},
+      "compensation": [{ "componentCode": "BASIC", "amount": "2000.0000", "quantity": null }]
+    },
+    {
+      "employeeNumber": "E-0002",
+      "branchCode": "BR2",
+      "hiredOn": "2020-01-01",
+      "terminatedOn": null,
+      "statutoryProfile": {},
+      "compensation": [
+        { "componentCode": "BASIC", "amount": "6000.0000", "quantity": null },
+        { "componentCode": "ADV_RECOVERY", "amount": "500.0000", "quantity": null }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "name": "@dulja/importer",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node ../../node_modules/vitest/vitest.mjs run"
+  },
+  "dependencies": {
+    "@dulja/db": "workspace:*",
+    "@dulja/domain": "workspace:*",
+    "decimal.js": "^10.6.0",
+    "odbc": "^2.6.0",
+    "postgres": "^3.4.9"
+  }
+}

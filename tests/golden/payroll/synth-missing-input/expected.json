@@ -1,0 +1,9 @@
+{
+  "lines": [],
+  "ledger": [],
+  "payslips": [],
+  "refusal": {
+    "code": "ERR_PAYROLL_INPUT_MISSING",
+    "detailContains": "employee E-0201 has a quantity of 8.000000 on component OT and no per-unit amount; a quantity without a rate is not a zero line"
+  }
+}

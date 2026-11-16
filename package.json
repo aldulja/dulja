@@ -1,0 +1,48 @@
+{
+  "name": "dulja",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "tests",
+    "infra"
+  ],
+  "scripts": {
+    "lint": "oxlint .",
+    "lint:rules": "bun run scripts/lint/run.ts",
+    "format": "oxfmt --ignore-path .prettierignore .",
+    "format:check": "oxfmt --check --ignore-path .prettierignore .",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "e2e": "bun run --cwd tests test:e2e",
+    "build": "turbo run build",
+    "seed": "bun run --cwd packages/db seed",
+    "legacy": "bun run packages/importer/src/cli.ts",
+    "payroll:reconcile": "bun run scripts/payroll-reconcile.ts",
+    "test:staging": "node node_modules/vitest/vitest.mjs run --config tests/staging/vitest.config.ts",
+    "storybook": "bun run --cwd packages/ui storybook",
+    "check:5b": "bash scripts/check/contracts-5b-amendments.sh && bash scripts/check/no-authority-literals.sh"
+  },
+  "devDependencies": {
+    "@types/node": "^26.5.1",
+    "oxfmt": "^0.67.0",
+    "oxlint": "^1.82.0",
+    "turbo": "^2.10.12",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  },
+  "engines": {
+    "bun": ">=1.4",
+    "node": ">=24"
+  },
+  "packageManager": "bun@1.4.2",
+  "trustedDependencies": [
+    "cpu-features",
+    "electron",
+    "electron-winstaller",
+    "esbuild",
+    "sharp",
+    "ssh2",
+    "workerd"
+  ]
+}

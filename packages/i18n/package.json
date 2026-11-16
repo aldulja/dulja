@@ -1,0 +1,19 @@
+{
+  "name": "@dulja/i18n",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./catalogues/en.json": "./catalogues/en.json",
+    "./catalogues/ar.json": "./catalogues/ar.json"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node ../../node_modules/vitest/vitest.mjs run"
+  },
+  "dependencies": {
+    "i18next": "^26.4.2",
+    "i18next-icu": "^2.4.4",
+    "intl-messageformat": "^12.0.0"
+  }
+}

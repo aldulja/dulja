@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:dulja:document-type-seed:1",
+  "title": "The seed-file envelope for one document type (contracts §4.3.7)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["code", "nameEn", "module", "policyVersion", "effectiveFrom", "policy"],
+  "properties": {
+    "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{1,63}$" },
+    "nameEn": { "type": "string", "minLength": 1 },
+    "nameAr": { "type": "string", "minLength": 1 },
+    "module": { "enum": ["accounting", "inventory", "hr", "pos"] },
+    "policyVersion": { "type": "integer", "minimum": 1 },
+    "effectiveFrom": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "policy": true
+  }
+}

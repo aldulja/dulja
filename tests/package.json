@@ -1,0 +1,33 @@
+{
+  "name": "@dulja/tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.e2e.json",
+    "test": "node ../node_modules/vitest/vitest.mjs run --config vitest.config.ts",
+    "golden:costing": "GOLDEN_WRITE=1 node ../node_modules/vitest/vitest.mjs run golden/costing.test.ts",
+    "golden:payroll": "GOLDEN_WRITE=1 node ../node_modules/vitest/vitest.mjs run golden/payroll.test.ts",
+    "test:e2e": "playwright test --config playwright.config.ts"
+  },
+  "devDependencies": {
+    "@dulja/api": "workspace:*",
+    "@dulja/contracts": "workspace:*",
+    "@dulja/db": "workspace:*",
+    "@dulja/domain": "workspace:*",
+    "@dulja/i18n": "workspace:*",
+    "@dulja/importer": "workspace:*",
+    "@dulja/sync": "workspace:*",
+    "@dulja/worker": "workspace:*",
+    "@hono/node-server": "^2.1.1",
+    "@playwright/test": "^1.63.0",
+    "@types/better-sqlite3": "^9.6.0",
+    "better-sqlite3": "^13.0.3",
+    "decimal.js": "^10.6.0",
+    "fast-check": "^4.10.2",
+    "hono": "^4.13.8",
+    "pdfjs-dist": "^6.3.289",
+    "pg-boss": "^12.32.0",
+    "postgres": "^3.4.9",
+    "vitest": "^5.0.0"
+  }
+}

@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:dulja:report-definition:1",
+  "title": "ReportDefinition",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "code",
+    "nameEn",
+    "nameAr",
+    "module",
+    "permission",
+    "parameters",
+    "dataset",
+    "columns",
+    "groups",
+    "totals",
+    "sort",
+    "layout",
+    "tieOut"
+  ],
+  "properties": {
+    "version": { "const": 1 },
+    "code": {
+      "type": "string",
+      "pattern": "^(accounting|inventory|hr|pos)\\.[a-z][a-z0-9_]{2,47}$"
+    },
+    "nameEn": { "type": "string", "minLength": 1 },
+    "nameAr": { "type": "string", "minLength": 1 },
+    "module": { "enum": ["accounting", "inventory", "hr", "pos"] },
+    "permission": {
+      "type": "string",
+      "pattern": "^(admin|accounting|inventory|hr|pos)\\.[a-z_]+\\.[a-z_]+$"
+    },
+    "parameters": { "type": "array", "items": { "$ref": "#/$defs/parameter" } },
+    "dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "filters"],
+      "properties": {
+        "source": { "type": "string", "pattern": "^[a-z][a-z0-9_]{2,47}$" },
+        "filters": { "type": "array", "items": { "$ref": "#/$defs/filter" } }
+      }
+    },
+    "columns": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/column" } },
+    "groups": { "type": "array", "items": { "$ref": "#/$defs/group" } },
+    "totals": { "type": "array", "items": { "$ref": "#/$defs/total" } },
+    "sort": { "type": "array", "items": { "$ref": "#/$defs/sortKey" } },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["orientation", "paper", "header", "footer"],
+      "properties": {
+        "orientation": { "enum": ["portrait", "landscape"] },
+        "paper": { "enum": ["A4", "A5", "receipt"] },
+        "header": { "type": "string" },
+        "footer": { "type": "string" }
+      }
+    },
+    "tieOut": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": { "enum": ["ledger_sum", "projection", "none"] },
+        "account": { "type": "string", "pattern": "^[0-9A-Z][0-9A-Za-z_]{0,31}$" },
+        "projection": { "type": "string", "pattern": "^[a-z][a-z0-9_]{2,47}$" }
+      }
+    }
+  },
+  "$defs": {
+    "parameter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "required"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]{0,47}$" },
+        "kind": {
+          "enum": [
+            "date",
+            "date_range",
+            "period",
+            "account",
+            "party",
+            "item",
+            "warehouse",
+            "branch",
+            "dimension_value",
+            "enum",
+            "text"
+          ]
+        },
+        "required": { "type": "boolean" },
+        "options": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "filter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "op", "param"],
+      "properties": {
+        "field": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,47}$" },
+        "op": { "enum": ["eq", "ne", "lt", "lte", "gt", "gte", "in", "like"] },
+        "param": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]{0,47}$" }
+      }
+    },
+    "column": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "labelEn", "labelAr", "format", "align"],
+      "properties": {
+        "field": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,47}$" },
+        "labelEn": { "type": "string", "minLength": 1 },
+        "labelAr": { "type": "string", "minLength": 1 },
+        "format": { "enum": ["text", "money", "quantity", "date", "integer", "percent"] },
+        "align": { "enum": ["start", "end"] },
+        "width": { "type": "integer", "minimum": 8, "maximum": 400 }
+      }
+    },
+    "group": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "subtotal"],
+      "properties": {
+        "field": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,47}$" },
+        "subtotal": { "type": "boolean" }
+      }
+    },
+    "total": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "fn"],
+      "properties": {
+        "field": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,47}$" },
+        "fn": { "enum": ["sum", "count", "avg"] }
+      }
+    },
+    "sortKey": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "dir"],
+      "properties": {
+        "field": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,47}$" },
+        "dir": { "enum": ["asc", "desc"] }
+      }
+    }
+  }
+}

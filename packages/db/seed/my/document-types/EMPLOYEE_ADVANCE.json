@@ -1,0 +1,64 @@
+{
+  "code": "EMPLOYEE_ADVANCE",
+  "nameEn": "Employee Advance",
+  "nameAr": "سلفة موظف",
+  "module": "hr",
+  "policyVersion": 1,
+  "effectiveFrom": "2026-01-01",
+  "policy": {
+    "version": 1,
+    "documentType": "EMPLOYEE_ADVANCE",
+    "direction": "outbound",
+    "requires": [],
+    "lines": [
+      {
+        "for": "each_line",
+        "side": "debit",
+        "account": {
+          "code": "1400"
+        },
+        "amount": "line.amount",
+        "when": {
+          "line.kind": "payroll"
+        },
+        "dimensions": {
+          "from": ["line.dimensions"]
+        }
+      },
+      {
+        "for": "document",
+        "side": "credit",
+        "account": {
+          "code": "1100"
+        },
+        "amount": "document.total_excl_tax"
+      }
+    ],
+    "inventory": {
+      "effect": "none"
+    },
+    "tax": {
+      "applies": false
+    },
+    "numbering": {
+      "series": "ADV",
+      "assignAt": "issue"
+    },
+    "reversal": {
+      "allowed": true,
+      "producesType": "EMPLOYEE_ADVANCE"
+    },
+    "approval": {
+      "required": true,
+      "approve": "accounting.payment.approve",
+      "post": "accounting.payment.post",
+      "create": "hr.advance.create"
+    },
+    "fxRoundingAccount": {
+      "from": "company.fx_rounding_account_id"
+    },
+    "dimensions": {
+      "required": ["BRANCH"]
+    }
+  }
+}

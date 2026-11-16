@@ -1,0 +1,37 @@
+{
+  "code": "FX_REVALUATION",
+  "nameEn": "Foreign-exchange revaluation",
+  "nameAr": "إعادة تقييم العملات الأجنبية",
+  "module": "accounting",
+  "policyVersion": 1,
+  "effectiveFrom": "2026-01-01",
+  "policy": {
+    "version": 1,
+    "documentType": "FX_REVALUATION",
+    "direction": "internal",
+    "requires": [],
+    "lines": [
+      {
+        "for": "each_line",
+        "side": "debit",
+        "account": { "from": "line.account" },
+        "amount": "line.debit",
+        "when": { "line.kind": "account" }
+      },
+      {
+        "for": "each_line",
+        "side": "credit",
+        "account": { "from": "line.account" },
+        "amount": "line.credit",
+        "when": { "line.kind": "account" }
+      }
+    ],
+    "inventory": { "effect": "none" },
+    "tax": { "applies": false },
+    "numbering": { "series": "FXR", "assignAt": "issue" },
+    "reversal": { "allowed": true, "producesType": "FX_REVALUATION" },
+    "approval": { "required": false, "approve": null, "post": "accounting.journal.post" },
+    "fxRoundingAccount": { "from": "company.fx_rounding_account_id" },
+    "dimensions": { "required": [] }
+  }
+}

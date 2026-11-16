@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:dulja:rate-table:1",
+  "title": "RateTable",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "scheme", "version", "kind", "effective_from", "source", "table"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "scheme": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{1,15}$" },
+    "version": { "type": "integer", "minimum": 1 },
+    "kind": { "enum": ["banded_contribution", "percentage_with_ceiling", "progressive_schedule"] },
+    "effective_from": { "type": "string", "format": "date" },
+    "effective_to": { "type": ["string", "null"], "format": "date" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authority", "publication", "url", "retrieved_on"],
+      "properties": {
+        "authority": { "type": "string" },
+        "publication": { "type": "string" },
+        "url": { "type": "string", "format": "uri" },
+        "retrieved_on": { "type": "string", "format": "date" },
+        "notes": { "type": "string" }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verified_by", "verified_on", "method"],
+      "properties": {
+        "verified_by": { "type": "string" },
+        "verified_on": { "type": "string", "format": "date" },
+        "method": { "enum": ["accountant_sign_off", "worked_examples", "synthetic_test"] }
+      }
+    },
+    "rounding_mode": {
+      "enum": ["HALF_AWAY_FROM_ZERO", "HALF_EVEN", "TOWARD_ZERO", "AWAY_FROM_ZERO"]
+    },
+    "required_profile_fields": { "type": "array", "items": { "type": "string" } },
+    "table": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["bands"],
+          "properties": {
+            "bands": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["from", "to", "employee", "employer"],
+                "properties": {
+                  "from": { "type": "string" },
+                  "to": { "type": ["string", "null"] },
+                  "employee": { "type": "string" },
+                  "employer": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["employee_rate", "employer_rate", "ceiling"],
+          "properties": {
+            "employee_rate": { "type": "string" },
+            "employer_rate": { "type": "string" },
+            "ceiling": { "type": ["string", "null"] },
+            "floor": { "type": ["string", "null"] }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["brackets", "reliefs"],
+          "properties": {
+            "brackets": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["from", "to", "rate", "cumulative"],
+                "properties": {
+                  "from": { "type": "string" },
+                  "to": { "type": ["string", "null"] },
+                  "rate": { "type": "string" },
+                  "cumulative": { "type": "string" }
+                }
+              }
+            },
+            "reliefs": { "type": "object", "additionalProperties": { "type": "string" } }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,22 @@
+-- 0059.down.sql — reverse dependency order (§3.4.5).
+drop trigger if exists catalogue_revision on app.tax_code;
+drop trigger if exists catalogue_revision on app.party;
+drop trigger if exists catalogue_revision on app.promotion;
+drop trigger if exists catalogue_revision on app.price_list_line;
+drop trigger if exists catalogue_revision on app.price_list;
+drop trigger if exists catalogue_revision on app.item;
+drop function if exists app.catalogue_revision() cascade;
+drop index if exists app.tax_code_revision_idx;
+drop index if exists app.party_revision_idx;
+drop index if exists app.promotion_revision_idx;
+drop index if exists app.price_list_line_revision_idx;
+drop index if exists app.price_list_revision_idx;
+drop index if exists app.item_revision_idx;
+alter table app.tax_code        drop column if exists revision;
+alter table app.party           drop column if exists revision;
+alter table app.promotion       drop column if exists revision;
+alter table app.price_list_line drop column if exists revision;
+alter table app.price_list      drop column if exists revision;
+alter table app.item            drop column if exists revision;
+drop table if exists app.catalogue_tombstone;
+drop sequence if exists app.catalogue_revision_seq;

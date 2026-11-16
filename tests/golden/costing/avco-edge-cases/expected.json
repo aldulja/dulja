@@ -1,0 +1,162 @@
+{
+  "plans": [
+    {
+      "ledgerLines": [
+        {
+          "lineNo": 1,
+          "accountId": "a1300",
+          "side": "debit",
+          "amount": {
+            "amount": "0.0001",
+            "currency": "MYR"
+          },
+          "base": {
+            "amount": "0.0001",
+            "currency": "MYR"
+          },
+          "dimensions": {
+            "BRANCH": "b1"
+          },
+          "sourceLineNo": 1,
+          "role": "policy"
+        },
+        {
+          "lineNo": 2,
+          "accountId": "a5900",
+          "side": "credit",
+          "amount": {
+            "amount": "0.0001",
+            "currency": "MYR"
+          },
+          "base": {
+            "amount": "0.0001",
+            "currency": "MYR"
+          },
+          "dimensions": {
+            "BRANCH": "b1"
+          },
+          "sourceLineNo": 1,
+          "role": "policy"
+        }
+      ],
+      "movements": [
+        {
+          "lineNo": 1,
+          "movementNo": 1,
+          "itemId": "i1",
+          "warehouseId": "w1",
+          "lotId": null,
+          "quantity": "0.000001",
+          "effect": "receipt",
+          "value": {
+            "amount": "0.0001",
+            "currency": "MYR"
+          },
+          "costing": "create_layer"
+        }
+      ],
+      "taxLines": [],
+      "warnings": []
+    },
+    {
+      "ledgerLines": [
+        {
+          "lineNo": 1,
+          "accountId": "a5000",
+          "side": "debit",
+          "amount": {
+            "amount": "0.0001",
+            "currency": "MYR"
+          },
+          "base": {
+            "amount": "0.0001",
+            "currency": "MYR"
+          },
+          "dimensions": {
+            "BRANCH": "b1"
+          },
+          "sourceLineNo": 1,
+          "role": "cost",
+          "fill": "cost"
+        },
+        {
+          "lineNo": 2,
+          "accountId": "a1300",
+          "side": "credit",
+          "amount": {
+            "amount": "0.0001",
+            "currency": "MYR"
+          },
+          "base": {
+            "amount": "0.0001",
+            "currency": "MYR"
+          },
+          "dimensions": {
+            "BRANCH": "b1"
+          },
+          "sourceLineNo": 1,
+          "role": "cost",
+          "fill": "cost"
+        }
+      ],
+      "movements": [
+        {
+          "lineNo": 1,
+          "movementNo": 1,
+          "itemId": "i1",
+          "warehouseId": "w1",
+          "lotId": null,
+          "quantity": "0.000001",
+          "effect": "issue",
+          "value": {
+            "amount": "0.0001",
+            "currency": "MYR"
+          },
+          "costing": "consume_layers"
+        }
+      ],
+      "taxLines": [],
+      "warnings": []
+    },
+    {
+      "ledgerLines": [],
+      "movements": [
+        {
+          "lineNo": 1,
+          "movementNo": 1,
+          "itemId": "i1",
+          "warehouseId": "w1",
+          "lotId": null,
+          "quantity": "1.000000",
+          "effect": "issue",
+          "value": {
+            "amount": "0.0000",
+            "currency": "MYR"
+          },
+          "costing": "zero"
+        }
+      ],
+      "taxLines": [],
+      "warnings": []
+    }
+  ],
+  "consumptions": [
+    [],
+    [
+      {
+        "layerId": "L-mv-1-1",
+        "quantity": "0.000001",
+        "unitCost": {
+          "amount": "100.0000",
+          "currency": "MYR"
+        },
+        "value": {
+          "amount": "0.0001",
+          "currency": "MYR"
+        }
+      }
+    ],
+    []
+  ],
+  "layersAfter": []
+}

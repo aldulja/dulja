@@ -1,0 +1,23 @@
+[
+  {
+    "code": "1130",
+    "nameEn": "Cash in transit",
+    "nameAr": "نقد في الطريق",
+    "type": "asset",
+    "parentCode": "1"
+  },
+  {
+    "code": "5120",
+    "nameEn": "Till over/short",
+    "nameAr": "زيادة/نقص الصندوق",
+    "type": "expense",
+    "parentCode": "5"
+  },
+  {
+    "code": "5130",
+    "nameEn": "Till paid out",
+    "nameAr": "مدفوعات من الصندوق",
+    "type": "expense",
+    "parentCode": "5"
+  }
+]

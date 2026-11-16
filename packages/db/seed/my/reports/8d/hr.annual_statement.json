@@ -1,0 +1,108 @@
+{
+  "definitionVersion": 2,
+  "definition": {
+    "version": 1,
+    "code": "hr.annual_statement",
+    "nameEn": "Annual statement of remuneration",
+    "nameAr": "البيان السنوي للأجور",
+    "module": "hr",
+    "permission": "hr.payroll.read",
+    "parameters": [
+      { "name": "taxYear", "kind": "text", "required": true },
+      { "name": "employeeId", "kind": "text", "required": false },
+      { "name": "branchId", "kind": "branch", "required": false },
+      { "name": "formName", "kind": "text", "required": false },
+      { "name": "formYear", "kind": "text", "required": false }
+    ],
+    "dataset": {
+      "source": "employee_ytd",
+      "filters": [
+        { "field": "tax_year", "op": "eq", "param": "taxYear" },
+        { "field": "employee_id", "op": "eq", "param": "employeeId" },
+        { "field": "branch_id", "op": "eq", "param": "branchId" }
+      ]
+    },
+    "columns": [
+      {
+        "field": "employee_number",
+        "labelEn": "Number",
+        "labelAr": "الرقم",
+        "format": "text",
+        "align": "start",
+        "width": 72
+      },
+      {
+        "field": "employee_name_en",
+        "labelEn": "Name",
+        "labelAr": "الاسم",
+        "format": "text",
+        "align": "start",
+        "width": 168
+      },
+      {
+        "field": "branch_code",
+        "labelEn": "Branch",
+        "labelAr": "الفرع",
+        "format": "text",
+        "align": "start",
+        "width": 60
+      },
+      {
+        "field": "gross",
+        "labelEn": "Gross for the year",
+        "labelAr": "إجمالي السنة",
+        "format": "money",
+        "align": "end",
+        "width": 96
+      },
+      {
+        "field": "net",
+        "labelEn": "Net for the year",
+        "labelAr": "صافي السنة",
+        "format": "money",
+        "align": "end",
+        "width": 96
+      },
+      {
+        "field": "scheme_code",
+        "labelEn": "Scheme",
+        "labelAr": "النظام",
+        "format": "text",
+        "align": "start",
+        "width": 60
+      },
+      {
+        "field": "scheme_employee",
+        "labelEn": "Employee share",
+        "labelAr": "حصة الموظف",
+        "format": "money",
+        "align": "end",
+        "width": 84
+      },
+      {
+        "field": "scheme_employer",
+        "labelEn": "Employer share",
+        "labelAr": "حصة صاحب العمل",
+        "format": "money",
+        "align": "end",
+        "width": 84
+      }
+    ],
+    "groups": [{ "field": "employee_number", "subtotal": true }],
+    "totals": [
+      { "field": "scheme_employee", "fn": "sum" },
+      { "field": "scheme_employer", "fn": "sum" }
+    ],
+    "sort": [
+      { "field": "employee_number", "dir": "asc" },
+      { "field": "scheme_code", "dir": "asc" }
+    ],
+    "layout": {
+      "orientation": "portrait",
+      "paper": "A4",
+      "header": "{title} {formName} {formYear} — {taxYear}",
+      "footer": "From posted payroll lines plus the cut-over opening (spec:2084); an internal document until its form is verified — من السطور المرحّلة والرصيد الافتتاحي؛ وثيقة داخلية"
+    },
+    "tieOut": { "kind": "projection", "projection": "employee_ytd" }
+  }
+}

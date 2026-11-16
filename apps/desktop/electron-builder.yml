@@ -1,0 +1,108 @@
+appId: my.dulja.backoffice
+productName: Dulja Back Office
+copyright: © Dulja
+# Complementary to `app.setName("Dulja Back Office")` in `main.ts` (0E T13), not a replacement for it —
+# the two fix different things at different times. `packager.js` merges `extraMetadata` into the
+# `package.json` data before anything else reads it (`deepAssign(this._metadata,
+# configuration.extraMetadata)`, ahead of `AppInfo.name`), so this also corrects what electron-builder
+# itself derives at *build* time from the Bun workspace name `@dulja/desktop`: `updaterCacheDirName`
+# (sanitized name, lowercased, plus "-updater") goes from `@duljadesktop-updater` to
+# `dulja-back-office-updater` under `%LOCALAPPDATA%`, a path `app.setName()` cannot reach because
+# electron-builder computes it once during packaging, not from anything Electron reads at launch.
+# Kept lowercase and hyphenated rather than "Dulja Back Office" because this is still an npm-style
+# `name` field with other build-time readers (e.g. `linuxPackageName`); the human-facing runtime string
+# stays `main.ts`'s job, same as it already is for `app.getName()` and the default userData path.
+extraMetadata:
+  name: dulja-back-office
+directories:
+  output: dist-installer
+# No `buildResources:` — it defaulted to `build/`, a directory that does not exist, which promised an
+# icon and other branding assets that are not there. The build says so on every run ("default Electron
+# icon is used  reason=application icon is not set"). Branding belonged here (0E T13's business).
+#
+# 0E T13 decision: still deferred, deliberately not fabricated. No brand asset — not even a favicon —
+# exists anywhere in this repository, no OD gate covers one (OD-24 is screenshots of built screens, not
+# a logo), and DoD 0.13's four clauses (spec:2323) say nothing about an icon. Drawing one now, with no
+# owner input, would put an invented mark on the one artefact a clean-VM verifier is told to trust, and
+# it would be thrown away the day real branding arrives. `docs/runbooks/clean-vm-install.md` records
+# the default Electron icon as expected, not a defect, until then. When an icon exists: add it as
+# `build/icon.ico` (multi-resolution, >= 256x256) and restore `buildResources: build` above — that is
+# the entire change, because `build/` is also electron-builder's own default and every other reference
+# to branding in this file already assumes it.
+# `desktop` imports build outputs only (spec:2389): the renderer arrives as files, not as a dependency.
+files:
+  - dist/**/*
+  - package.json
+extraResources:
+  - from: ../backoffice/dist
+    to: renderer
+asar: true
+asarUnpack:
+  # A native module belongs on disk, not inside the archive — the binary is then where signing (OD-18)
+  # and endpoint security can see it. Stated explicitly even though it is currently redundant:
+  # electron-builder's own smart-unpack detects `.node` files and unpacks `better-sqlite3` with or
+  # without this line (measured — ADR 0017). Redundant, not useless: it says what must be true, and
+  # `test/native-module.spec.ts` asserts the file on disk rather than trusting either mechanism.
+  - "**/node_modules/better-sqlite3/**"
+# `false`, deliberately — ADR 0017. `better-sqlite3@13` ships its own N-API binaries under
+# `prebuilds/` (`win32-x64.node`, built for Node-API 10) and its `binding.gyp` makes a rebuild a
+# no-op when one is present. Electron 44.4.1 reports `process.versions.napi === "10"`, so the
+# shipped binary is already the right ABI and `@electron/rebuild` has nothing to do — it only
+# invokes `node-gyp`, whose Windows `configure` step demands MSVC before it ever evaluates
+# `prebuild_exists`. `test/native-module.spec.ts` proves the load inside the packaged app.
+npmRebuild: false
+# OD-18 (spec:92, 2323; contracts §3.11). No `certificateFile`/`certificatePassword` key here — those
+# exist only "if you cannot use env variable CSC_LINK ... for some reason" (app-builder-lib's own
+# `winOptions.d.ts`), and `.github/workflows/release.yml` sets exactly that env var from the frozen
+# `WINDOWS_CODE_SIGN_CERT`/`WINDOWS_CODE_SIGN_PASSWORD` secrets — the one place the two are joined. This
+# file needs nothing else for signing to activate, but the reason is the opposite of "the environment
+# wins": `platformPackager.js`'s `getCscLink` is
+# `chooseNotNull(chooseNotNull(config.cscLink, win.cscLink), envValue)` — a `cscLink` set in *this file*,
+# root or under `win:`, would win over `CSC_LINK`/`WIN_CSC_LINK` outright, not layer under it. This file
+# sets neither, on purpose, so the environment is what is actually consulted; adding one here later would
+# silently override the workflow's secrets instead of complementing them. That assumes the owner's
+# certificate is an exportable `.pfx` (§3.11 names `WINDOWS_CODE_SIGN_CERT` as "base64 of the .pfx"); an
+# EV certificate issued to a hardware token/HSM often is not exportable at all, in which case `CSC_LINK`
+# has nothing to carry and this file would need a real addition —
+# `win.signtoolOptions.certificateSubjectName` naming the certificate already installed in the signing
+# machine's certificate store. Not assumed here; recorded so the day it turns out to be true is not a
+# surprise.
+#
+# `forceCodeSigning: false` is the library default (app-builder-lib's own `configuration.d.ts`) and is
+# written out explicitly rather than left implicit, the same way `asarUnpack` above is kept redundant:
+# it says what is currently a design decision, not an accident — CSC_LINK absent means an unsigned
+# build, on purpose, until OD-18 lands. The day the certificate exists, `false` stops being the safe
+# default and starts hiding a broken or rotated secret behind a silent unsigned release; that is this
+# task's one recorded instruction for its own future: flip it to `true` in the same PR that supplies
+# the certificate, so a signing failure fails the build instead of shipping quietly unsigned.
+forceCodeSigning: false
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  # No spaces (OPS-03): electron-updater requests the name `latest.yml` records percent-encoded, and the
+  # edge feed (`apps/edge/src/updates.ts`) admits no `%`, so a spaced name could never be downloaded.
+  artifactName: dulja-backoffice-${version}-windows-x64.${ext}
+  # Nested under `signtoolOptions`, not flat under `win` — that is where it belongs, and where
+  # `winOptions.d.ts` puts it too: `WindowsConfiguration`'s own `signtoolOptions` field is typed
+  # `WindowsSigntoolConfiguration | null`, and `signingHashAlgorithms` is a member of that nested
+  # interface (`winOptions.d.ts:73` onward), never of `WindowsConfiguration` itself. A flat
+  # `win.signingHashAlgorithms` was this file's own mistake on the first pass, not a stale or
+  # inconsistent typing — the typings and the runtime schema (`app-builder-lib/scheme.json`) agree with
+  # each other, and `electron-builder --win` correctly refused the flat placement outright
+  # ("configuration.win should be one of these: null" — measured on this repo, 2026-09-17).
+  signtoolOptions:
+    # Default is `['sha1', 'sha256']` (`scheme.json`) — dual-signing for Windows XP/Vista, which cannot
+    # verify a SHA-256 Authenticode signature. Electron 44 does not run on either (Chromium's own floor
+    # is Windows 10), and this app's only stated minimum is the clean-VM runbook's "fresh Windows 11
+    # image" (docs/runbooks/clean-vm-install.md), so the legacy cross-signature buys nothing here — it
+    # only doubles the timestamp-server round trips a signed build makes. Unexercised while OD-18 is
+    # pending: this key changes nothing about an unsigned build, only a signed one.
+    signingHashAlgorithms: ["sha256"]
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+publish:
+  - provider: generic
+    url: ${env.DULJA_UPDATE_FEED}

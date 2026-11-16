@@ -1,0 +1,103 @@
+{
+  "definitionVersion": 1,
+  "definition": {
+    "version": 1,
+    "code": "hr.attendance",
+    "nameEn": "Attendance",
+    "nameAr": "الحضور والانصراف",
+    "module": "hr",
+    "permission": "hr.employee.read",
+    "parameters": [
+      { "name": "fromDate", "kind": "date", "required": true },
+      { "name": "toDate", "kind": "date", "required": true },
+      { "name": "branchId", "kind": "branch", "required": false },
+      {
+        "name": "kind",
+        "kind": "enum",
+        "required": false,
+        "options": ["clock_in", "clock_out", "manual_correction"]
+      }
+    ],
+    "dataset": {
+      "source": "attendance_event",
+      "filters": [
+        { "field": "occurred_on", "op": "gte", "param": "fromDate" },
+        { "field": "occurred_on", "op": "lte", "param": "toDate" },
+        { "field": "branch_id", "op": "eq", "param": "branchId" },
+        { "field": "kind", "op": "eq", "param": "kind" }
+      ]
+    },
+    "columns": [
+      {
+        "field": "occurred_on",
+        "labelEn": "Date",
+        "labelAr": "التاريخ",
+        "format": "date",
+        "align": "start",
+        "width": 70
+      },
+      {
+        "field": "occurred_at",
+        "labelEn": "Time (UTC)",
+        "labelAr": "الوقت (بالتوقيت العالمي)",
+        "format": "text",
+        "align": "start",
+        "width": 130
+      },
+      {
+        "field": "employee_number",
+        "labelEn": "Number",
+        "labelAr": "الرقم",
+        "format": "text",
+        "align": "start",
+        "width": 70
+      },
+      {
+        "field": "employee_name_en",
+        "labelEn": "Name",
+        "labelAr": "الاسم",
+        "format": "text",
+        "align": "start",
+        "width": 170
+      },
+      {
+        "field": "branch_code",
+        "labelEn": "Branch",
+        "labelAr": "الفرع",
+        "format": "text",
+        "align": "start",
+        "width": 60
+      },
+      {
+        "field": "kind",
+        "labelEn": "Event",
+        "labelAr": "الحدث",
+        "format": "text",
+        "align": "start",
+        "width": 100
+      },
+      {
+        "field": "note",
+        "labelEn": "Note",
+        "labelAr": "ملاحظة",
+        "format": "text",
+        "align": "start",
+        "width": 180
+      }
+    ],
+    "groups": [{ "field": "employee_number", "subtotal": false }],
+    "totals": [{ "field": "employee_number", "fn": "count" }],
+    "sort": [
+      { "field": "occurred_on", "dir": "asc" },
+      { "field": "employee_number", "dir": "asc" },
+      { "field": "occurred_at", "dir": "asc" }
+    ],
+    "layout": {
+      "orientation": "landscape",
+      "paper": "A4",
+      "header": "{title} — {fromDate} … {toDate}",
+      "footer": "Attendance is a record, never a pay input (spec:2089) — الحضور سجل ولا يدخل في احتساب الأجر"
+    },
+    "tieOut": { "kind": "none" }
+  }
+}

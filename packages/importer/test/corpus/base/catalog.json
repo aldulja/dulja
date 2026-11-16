@@ -1,0 +1,308 @@
+{
+  "engineVersion": "WI-V2.5.9.27139 Firebird 2.5",
+  "tables": {
+    "ACCOUNTS": {
+      "keyColumns": ["SITE", "ID"],
+      "columns": [
+        {
+          "name": "SITE",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "ID",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "CODE",
+          "kind": "text",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "NAME",
+          "kind": "text",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "ISEMPLOYEE",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": true
+        }
+      ]
+    },
+    "VOUCHERS": {
+      "keyColumns": ["SITE", "ID"],
+      "columns": [
+        {
+          "name": "SITE",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "ID",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "DATE",
+          "kind": "date",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "MUNIMENT",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": true
+        }
+      ]
+    },
+    "VOUITEMS": {
+      "keyColumns": ["SITE", "ID", "ROW"],
+      "columns": [
+        {
+          "name": "SITE",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "ID",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "ROW",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "ACCOUNT",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "JOB",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "COSTCENTRE",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "DEBIT",
+          "kind": "decimal",
+          "scale": 4,
+          "nullable": true
+        },
+        {
+          "name": "CREDIT",
+          "kind": "decimal",
+          "scale": 4,
+          "nullable": true
+        }
+      ]
+    },
+    "ACCTOTALS": {
+      "keyColumns": ["ACCOUNT"],
+      "columns": [
+        {
+          "name": "ACCOUNT",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "DEBIT",
+          "kind": "decimal",
+          "scale": 4,
+          "nullable": true
+        },
+        {
+          "name": "CREDIT",
+          "kind": "decimal",
+          "scale": 4,
+          "nullable": true
+        },
+        {
+          "name": "ADMINDEBIT",
+          "kind": "decimal",
+          "scale": 4,
+          "nullable": true
+        },
+        {
+          "name": "ADMINCREDIT",
+          "kind": "decimal",
+          "scale": 4,
+          "nullable": true
+        }
+      ]
+    },
+    "ACCOBJECTS": {
+      "keyColumns": ["SITE", "ACCOUNT"],
+      "columns": [
+        {
+          "name": "SITE",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "ACCOUNT",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "DEBIT",
+          "kind": "decimal",
+          "scale": 4,
+          "nullable": true
+        },
+        {
+          "name": "CREDIT",
+          "kind": "decimal",
+          "scale": 4,
+          "nullable": true
+        },
+        {
+          "name": "OPENDEBIT",
+          "kind": "decimal",
+          "scale": 4,
+          "nullable": true
+        },
+        {
+          "name": "OPENCREDIT",
+          "kind": "decimal",
+          "scale": 4,
+          "nullable": true
+        }
+      ]
+    },
+    "JOBS": {
+      "keyColumns": ["ID"],
+      "columns": [
+        {
+          "name": "ID",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "NAME",
+          "kind": "text",
+          "scale": 0,
+          "nullable": true
+        }
+      ]
+    },
+    "MATOBJECTS": {
+      "keyColumns": [],
+      "columns": [
+        {
+          "name": "MATERIAL",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "WAREHOUSE",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "QNT",
+          "kind": "decimal",
+          "scale": 6,
+          "nullable": true
+        }
+      ]
+    },
+    "EMPLOYEES": {
+      "keyColumns": ["SITE", "ID"],
+      "columns": [
+        {
+          "name": "SITE",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "ID",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "NAME",
+          "kind": "text",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "ACCOUNT",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "ORGANIC",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": true
+        }
+      ]
+    },
+    "REPORTS": {
+      "keyColumns": ["SITE", "ID"],
+      "columns": [
+        {
+          "name": "SITE",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "ID",
+          "kind": "integer",
+          "scale": 0,
+          "nullable": false
+        },
+        {
+          "name": "NAME",
+          "kind": "text",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "USERNAME",
+          "kind": "text",
+          "scale": 0,
+          "nullable": true
+        },
+        {
+          "name": "DEFINITION",
+          "kind": "blob",
+          "scale": 0,
+          "nullable": true
+        }
+      ]
+    }
+  }
+}

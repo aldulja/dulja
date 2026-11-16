@@ -1,0 +1,41 @@
+{
+  "code": "synthetic",
+  "version": 1,
+  "jurisdiction": "MY",
+  "source": "Slice 5B, ADR 0052. A loopback stub for CI and `bun run dev`. This is NOT an authority and describes no authority's API.",
+  "baseUrl": "http://127.0.0.1:0",
+  "timeoutMs": 5000,
+  "auth": {
+    "kind": "bearer",
+    "header": "Authorization",
+    "scheme": "Bearer",
+    "clientIdHeader": "X-Stub-Client-Id"
+  },
+  "calls": {
+    "submit": {
+      "method": "POST",
+      "pathTemplate": "/stub/documents",
+      "body": "document",
+      "externalIdPointer": "/receiptId",
+      "statusPointer": "/state",
+      "statusMap": { "queued": "submitted", "cleared": "accepted", "refused": "rejected" },
+      "errorPointer": "/reason"
+    },
+    "poll": {
+      "method": "GET",
+      "pathTemplate": "/stub/documents/{externalId}",
+      "body": "none",
+      "statusPointer": "/state",
+      "statusMap": { "queued": "submitted", "cleared": "accepted", "refused": "rejected" },
+      "errorPointer": "/reason"
+    },
+    "cancel": {
+      "method": "POST",
+      "pathTemplate": "/stub/documents/{externalId}/cancel",
+      "body": "cancellation",
+      "statusPointer": "/state",
+      "statusMap": { "withdrawn": "cancelled", "refused": "rejected" },
+      "errorPointer": "/reason"
+    }
+  }
+}

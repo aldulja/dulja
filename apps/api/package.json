@@ -1,0 +1,39 @@
+{
+  "name": "@dulja/api",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/app.ts",
+    "./routes": "./src/routes/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node ../../node_modules/vitest/vitest.mjs run",
+    "dev": "bun run --watch src/index.ts",
+    "openapi:generate": "bun run src/openapi.ts"
+  },
+  "dependencies": {
+    "@dulja/contracts": "workspace:*",
+    "@dulja/db": "workspace:*",
+    "@dulja/domain": "workspace:*",
+    "@dulja/sync": "workspace:*",
+    "@hono/zod-openapi": "^1.6.3",
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.222.0",
+    "@opentelemetry/resources": "^2.11.0",
+    "@opentelemetry/sdk-node": "^0.222.0",
+    "@opentelemetry/sdk-trace-base": "^2.11.0",
+    "@sentry/node": "^10.74.0",
+    "hono": "^4.13.7",
+    "jose": "^6.2.12",
+    "playwright": "^1.63.0",
+    "postgres": "^3.4.9",
+    "uuid": "^14.0.2",
+    "zod": "^4.6.4"
+  },
+  "devDependencies": {
+    "@types/node": "^26.5.1",
+    "fast-check": "^4.10.1",
+    "pdfjs-dist": "^6.3.289"
+  }
+}

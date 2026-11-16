@@ -1,0 +1,74 @@
+[
+  {
+    "ACCID": "100",
+    "ACCCODE": "1101",
+    "ACCNAME": "Cash on hand",
+    "ACCNAMEAR": "الصندوق",
+    "ACCISCUSTOMER": "0",
+    "ACCISVENDOR": "0",
+    "ACCTAXNO": null,
+    "ACCEMAIL": null,
+    "ACCPHONE": null,
+    "ACCOPENBAL": "5000.0000"
+  },
+  {
+    "ACCID": "101",
+    "ACCCODE": "1301",
+    "ACCNAME": "Trade receivables",
+    "ACCNAMEAR": null,
+    "ACCISCUSTOMER": "0",
+    "ACCISVENDOR": "0",
+    "ACCTAXNO": null,
+    "ACCEMAIL": null,
+    "ACCPHONE": null,
+    "ACCOPENBAL": "1800.0000"
+  },
+  {
+    "ACCID": "102",
+    "ACCCODE": "1401",
+    "ACCNAME": "Inventory",
+    "ACCNAMEAR": null,
+    "ACCISCUSTOMER": "0",
+    "ACCISVENDOR": "0",
+    "ACCTAXNO": null,
+    "ACCEMAIL": null,
+    "ACCPHONE": null,
+    "ACCOPENBAL": "2400.0000"
+  },
+  {
+    "ACCID": "103",
+    "ACCCODE": "2101",
+    "ACCNAME": "Trade payables",
+    "ACCNAMEAR": null,
+    "ACCISCUSTOMER": "0",
+    "ACCISVENDOR": "0",
+    "ACCTAXNO": null,
+    "ACCEMAIL": null,
+    "ACCPHONE": null,
+    "ACCOPENBAL": "900.0000"
+  },
+  {
+    "ACCID": "200",
+    "ACCCODE": "2001",
+    "ACCNAME": "Alpha Trading",
+    "ACCNAMEAR": "ألفا للتجارة",
+    "ACCISCUSTOMER": "1",
+    "ACCISVENDOR": "0",
+    "ACCTAXNO": "TX-2001",
+    "ACCEMAIL": "ap@alpha.example",
+    "ACCPHONE": "+60-3-0000-0001",
+    "ACCOPENBAL": "1800.0000"
+  },
+  {
+    "ACCID": "300",
+    "ACCCODE": "3001",
+    "ACCNAME": "Beta Supplies",
+    "ACCNAMEAR": null,
+    "ACCISCUSTOMER": "0",
+    "ACCISVENDOR": "1",
+    "ACCTAXNO": "TX-3001",
+    "ACCEMAIL": null,
+    "ACCPHONE": null,
+    "ACCOPENBAL": "900.0000"
+  }
+]

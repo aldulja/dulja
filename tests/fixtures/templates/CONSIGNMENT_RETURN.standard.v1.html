@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="{{ lang }}" dir="{{ dir }}">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      :root {
+        font-family: "Noto Sans", "Noto Sans Arabic", system-ui, sans-serif;
+        font-size: 11pt;
+      }
+      body {
+        margin: 0;
+        padding: 16mm;
+      }
+      h1 {
+        font-size: 16pt;
+        margin: 0 0 4mm;
+      }
+      dl {
+        display: grid;
+        grid-template-columns: auto auto;
+        gap: 1mm 4mm;
+        margin: 0 0 8mm;
+      }
+      dt {
+        color: #555;
+      }
+      dd {
+        margin: 0;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        border-block-end: 0.3mm solid #ccc;
+        padding: 2mm 1mm;
+        text-align: start;
+      }
+      th.num,
+      td.num {
+        text-align: end;
+        font-variant-numeric: tabular-nums;
+      }
+      tfoot td {
+        font-weight: 600;
+        border-block-start: 0.5mm solid #333;
+        border-block-end: none;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>{{ document.typeName }}</h1>
+    <dl>
+      <dt>{{ labels.documentNo }}</dt>
+      <dd dir="auto">{{ document.series }}-{{ document.number }}</dd>
+      <dt>{{ labels.date }}</dt>
+      <dd>{{ document.effectiveDate }}</dd>
+      <dt>{{ labels.dateHijri }}</dt>
+      <dd>{{ document.effectiveDateHijri }}</dd>
+      <dt>{{ labels.currency }}</dt>
+      <dd>{{ document.currency }}</dd>
+      <dt>{{ labels.status }}</dt>
+      <dd>{{ document.status }}</dd>
+      {{#if document.partyName}}
+      <dt>{{ labels.returnedTo }}</dt>
+      <dd dir="auto">{{ document.partyName }}</dd>
+      {{/if}}
+    </dl>
+    <table>
+      <thead>
+        <tr>
+          <th>{{ labels.line }}</th>
+          <th>{{ labels.description }}</th>
+          <th>{{ labels.account }}</th>
+          <th class="num">{{ labels.debit }}</th>
+          <th class="num">{{ labels.credit }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each lines}}
+        <tr>
+          <td>{{ lineNo }}</td>
+          <td dir="auto">{{ description }}</td>
+          <td dir="auto">{{ account }}</td>
+          <td class="num">{{ debit }}</td>
+          <td class="num">{{ credit }}</td>
+        </tr>
+        {{/each}}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td></td>
+          <td>{{ labels.total }}</td>
+          <td></td>
+          <td class="num">{{ totals.debit }}</td>
+          <td class="num">{{ totals.credit }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </body>
+</html>

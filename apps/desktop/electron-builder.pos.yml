@@ -1,0 +1,45 @@
+appId: my.dulja.pos
+productName: Dulja POS
+copyright: © Dulja
+extraMetadata:
+  name: dulja-pos
+  main: dist/main-pos.js
+directories:
+  output: dist-installer-pos
+files:
+  - dist/**/*
+  - package.json
+  # A built file, never a workspace/source dependency. Its external SQLite require resolves inside asar.
+  - from: ../pos/dist-main
+    to: pos-main
+    filter: ["*.cjs"]
+extraResources:
+  - from: ../pos/dist
+    to: renderer
+  # The API origin baked at packaging time (ADR 0093): `scripts/write-pos-config.ts` writes it from
+  # `DULJA_API_BASE_URL`. A packaged till reads only this, never the user's environment.
+  - from: dist-config/pos-config.json
+    to: pos-config.json
+asar: true
+asarUnpack:
+  - "**/node_modules/better-sqlite3/**"
+# The same N-API 10 prebuild verified by the back-office package; no MSVC rebuild is needed.
+npmRebuild: false
+forceCodeSigning: false
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  # No spaces (OPS-03): electron-updater requests the name `latest.yml` records percent-encoded, and the
+  # edge feed (`apps/edge/src/updates.ts`) admits no `%`, so a spaced name could never be downloaded.
+  artifactName: dulja-pos-${version}-windows-x64.${ext}
+  signtoolOptions:
+    signingHashAlgorithms: ["sha256"]
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  shortcutName: Dulja POS
+publish:
+  - provider: generic
+    url: ${env.DULJA_POS_UPDATE_FEED}
