@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="{{ lang }}" dir="{{ dir }}">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      :root {
+        font-family: "Noto Sans", "Noto Sans Arabic", system-ui, sans-serif;
+        font-size: 11pt;
+      }
+      body {
+        margin: 0;
+        padding: 16mm;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-block-end: 8mm;
+      }
+      h1 {
+        font-size: 16pt;
+        margin: 0 0 2mm;
+      }
+      dl {
+        display: grid;
+        grid-template-columns: auto auto;
+        gap: 1mm 4mm;
+        margin: 0;
+      }
+      dt {
+        color: #555;
+      }
+      dd {
+        margin: 0;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        border-block-end: 0.3mm solid #ccc;
+        padding: 2mm 1mm;
+        text-align: start;
+      }
+      th.num,
+      td.num {
+        text-align: end;
+        font-variant-numeric: tabular-nums;
+      }
+      tfoot td {
+        font-weight: 600;
+        border-block-end: none;
+        border-block-start: 0.5mm solid #333;
+      }
+      footer {
+        margin-block-start: 8mm;
+        color: #555;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>{{ document.typeName }}</h1>
+        <div>{{ company.name }}</div>
+      </div>
+      <dl>
+        <dt>{{ labels.documentNo }}</dt>
+        <dd>{{ document.series }}-{{ document.number }}</dd>
+        <dt>{{ labels.date }}</dt>
+        <dd>{{ document.effectiveDate }}</dd>
+        <dt>{{ labels.dateHijri }}</dt>
+        <dd>{{ document.effectiveDateHijri }}</dd>
+        <dt>{{ labels.currency }}</dt>
+        <dd>{{ document.currency }}</dd>
+        <dt>{{ labels.status }}</dt>
+        <dd>{{ document.status }}</dd>
+      </dl>
+    </header>
+
+    <table>
+      <thead>
+        <tr>
+          <th>{{ labels.line }}</th>
+          <th>{{ labels.description }}</th>
+          <th>{{ labels.account }}</th>
+          <th class="num">{{ labels.debit }}</th>
+          <th class="num">{{ labels.credit }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each lines}}
+        <tr>
+          <td>{{ lineNo }}</td>
+          <td dir="auto">{{ description }}</td>
+          <td dir="auto">{{ account }}</td>
+          <td class="num">{{ debit }}</td>
+          <td class="num">{{ credit }}</td>
+        </tr>
+        {{/each}}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="3">{{ labels.total }}</td>
+          <td class="num">{{ totals.debit }}</td>
+          <td class="num">{{ totals.credit }}</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    {{#if document.notes}}
+    <footer>{{ labels.notes }}: {{ document.notes }}</footer>
+    {{/if}}
+  </body>
+</html>

@@ -1,0 +1,99 @@
+{
+  "definitionVersion": 1,
+  "definition": {
+    "version": 1,
+    "code": "inventory.profit_by_item",
+    "nameEn": "Profit by item",
+    "nameAr": "الأرباح حسب الصنف",
+    "module": "inventory",
+    "permission": "inventory.cost.read",
+    "parameters": [
+      { "name": "fiscalPeriodId", "kind": "period", "required": false },
+      { "name": "itemId", "kind": "item", "required": false }
+    ],
+    "dataset": {
+      "source": "item_profitability",
+      "filters": [
+        { "field": "fiscal_period_id", "op": "eq", "param": "fiscalPeriodId" },
+        { "field": "item_id", "op": "eq", "param": "itemId" }
+      ]
+    },
+    "columns": [
+      {
+        "field": "fiscal_period_code",
+        "labelEn": "Period",
+        "labelAr": "الفترة",
+        "format": "text",
+        "align": "start",
+        "width": 70
+      },
+      {
+        "field": "item_code",
+        "labelEn": "Item",
+        "labelAr": "الصنف",
+        "format": "text",
+        "align": "start",
+        "width": 90
+      },
+      {
+        "field": "item_name_en",
+        "labelEn": "Item name",
+        "labelAr": "اسم الصنف",
+        "format": "text",
+        "align": "start",
+        "width": 200
+      },
+      {
+        "field": "quantity_sold",
+        "labelEn": "Quantity sold",
+        "labelAr": "الكمية المباعة",
+        "format": "quantity",
+        "align": "end",
+        "width": 100
+      },
+      {
+        "field": "revenue_base",
+        "labelEn": "Revenue",
+        "labelAr": "الإيرادات",
+        "format": "money",
+        "align": "end",
+        "width": 110
+      },
+      {
+        "field": "cogs_base",
+        "labelEn": "Cost",
+        "labelAr": "التكلفة",
+        "format": "money",
+        "align": "end",
+        "width": 110
+      },
+      {
+        "field": "margin_base",
+        "labelEn": "Margin",
+        "labelAr": "هامش الربح",
+        "format": "money",
+        "align": "end",
+        "width": 110
+      }
+    ],
+    "groups": [{ "field": "fiscal_period_code", "subtotal": true }],
+    "totals": [
+      { "field": "quantity_sold", "fn": "sum" },
+      { "field": "revenue_base", "fn": "sum" },
+      { "field": "cogs_base", "fn": "sum" },
+      { "field": "margin_base", "fn": "sum" }
+    ],
+    "sort": [
+      { "field": "fiscal_period_code", "dir": "asc" },
+      { "field": "margin_base", "dir": "desc" },
+      { "field": "item_code", "dir": "asc" }
+    ],
+    "layout": {
+      "orientation": "landscape",
+      "paper": "A4",
+      "header": "{title} — {fiscalPeriodId}",
+      "footer": "{rowCount} rows · {generatedAt}"
+    },
+    "tieOut": { "kind": "projection", "projection": "item_profitability" }
+  }
+}

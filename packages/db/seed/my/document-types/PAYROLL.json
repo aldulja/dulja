@@ -1,0 +1,145 @@
+{
+  "code": "PAYROLL",
+  "nameEn": "Payroll Run",
+  "nameAr": "مسير الرواتب",
+  "module": "hr",
+  "policyVersion": 1,
+  "effectiveFrom": "2026-01-01",
+  "policy": {
+    "version": 1,
+    "documentType": "PAYROLL",
+    "direction": "none",
+    "requires": [],
+    "lines": [
+      {
+        "for": "each_line",
+        "side": "debit",
+        "account": {
+          "from": "line.component.expense_account"
+        },
+        "amount": "line.amount",
+        "when": {
+          "line.kind": "payroll",
+          "line.component.kind": "earning"
+        },
+        "dimensions": {
+          "from": ["line.dimensions", "line.employee"]
+        }
+      },
+      {
+        "for": "each_line",
+        "side": "credit",
+        "account": {
+          "from": "line.component.expense_account"
+        },
+        "amount": "line.amount",
+        "when": {
+          "line.kind": "payroll",
+          "line.component.kind": "deduction"
+        },
+        "dimensions": {
+          "from": ["line.dimensions", "line.employee"]
+        }
+      },
+      {
+        "for": "each_line",
+        "side": "credit",
+        "account": {
+          "from": "line.scheme.payable_account"
+        },
+        "amount": "line.amount",
+        "when": {
+          "line.kind": "payroll",
+          "line.share": "employee"
+        },
+        "dimensions": {
+          "from": ["line.dimensions", "line.employee"]
+        }
+      },
+      {
+        "for": "each_line",
+        "side": "debit",
+        "account": {
+          "from": "line.scheme.expense_account"
+        },
+        "amount": "line.amount",
+        "when": {
+          "line.kind": "payroll",
+          "line.share": "employer"
+        },
+        "dimensions": {
+          "from": ["line.dimensions", "line.employee"]
+        }
+      },
+      {
+        "for": "each_line",
+        "side": "credit",
+        "account": {
+          "from": "line.scheme.payable_account"
+        },
+        "amount": "line.amount",
+        "when": {
+          "line.kind": "payroll",
+          "line.share": "employer"
+        },
+        "dimensions": {
+          "from": ["line.dimensions", "line.employee"]
+        }
+      },
+      {
+        "for": "each_line",
+        "side": "credit",
+        "account": {
+          "from": "line.account"
+        },
+        "amount": "line.credit",
+        "when": {
+          "line.kind": "account"
+        },
+        "dimensions": {
+          "from": ["line.dimensions", "line.employee"]
+        }
+      },
+      {
+        "for": "each_line",
+        "side": "debit",
+        "account": {
+          "from": "line.account"
+        },
+        "amount": "line.debit",
+        "when": {
+          "line.kind": "account"
+        },
+        "dimensions": {
+          "from": ["line.dimensions", "line.employee"]
+        }
+      }
+    ],
+    "inventory": {
+      "effect": "none"
+    },
+    "tax": {
+      "applies": false
+    },
+    "numbering": {
+      "series": "PAY",
+      "assignAt": "issue"
+    },
+    "reversal": {
+      "allowed": false,
+      "producesType": null
+    },
+    "approval": {
+      "required": true,
+      "approve": "hr.payroll.approve",
+      "post": "hr.payroll.post",
+      "create": "hr.payroll.prepare"
+    },
+    "fxRoundingAccount": {
+      "from": "company.fx_rounding_account_id"
+    },
+    "dimensions": {
+      "required": ["BRANCH", "EMPLOYEE"]
+    }
+  }
+}

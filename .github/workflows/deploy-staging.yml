@@ -1,0 +1,161 @@
+# The one command of §5.0 row 0.5, as a job beside `checks` (.github/workflows/ci.yml, Plan 0A).
+# Deploy order is fixed and is the same order docs/runbooks/deploy.md gives for production:
+#   1. migrate (app_migrator)  2. install pg-boss queues (app_migrator)  3. deploy the Worker and both containers
+#   4. re-apply the seed (§3.4.8: re-applying the seed against staging after deploy is a release-runbook step)
+# Migrations run BEFORE the deploy because they are expand-only (§3.4.7): the running old code tolerates the new
+# schema. A contract migration is a separate, later PR, which is the whole point of expand/contract (LEGACY-080).
+name: deploy-staging
+# `workflow_dispatch` only, and that is a deliberate hold rather than an oversight: the workflow below is
+# complete, and unrunnable until OD-19–OD-22 supply its six secrets — DATABASE_URL, DATABASE_URL_MIGRATOR,
+# SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN. None is set today.
+#
+# `push: branches: [main]` is therefore removed rather than merely unused. GitHub renders a missing secret as
+# the empty string, not as absent, so an automatic run would not skip: it would reach the first step with an
+# empty DATABASE_URL_MIGRATOR and `packages/db/src/cli.ts:19` would exit 2 with "DATABASE_URL_MIGRATOR is
+# required". That turns `main` red on the merge commit that first brings this file there, and on every push
+# after it, for as long as the secrets are open.
+#
+# A removed trigger is the honest expression of "this cannot work yet". A `vars` flag would have said "someone
+# turned it off", which is a different and false claim. Restore `push: branches: [main]` in the same change
+# that adds the six secrets — not before, and not separately.
+on:
+  workflow_dispatch:
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+# Declared rather than inherited, matching ci.yml and release.yml. `contents: read` is sufficient: every
+# job below authenticates to Postgres, Supabase and Cloudflare with its own secrets, never with
+# GITHUB_TOKEN, and writes nothing back to the repository. Cloudflare auth here is an API token, not
+# OIDC, so no `id-token: write` either.
+permissions:
+  contents: read
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      # SHA-pinned rather than tagged, here and in `release.yml`, because these are the two workflows that
+      # hold secrets. `oven-sh/setup-bun` is the only action in this repository GitHub does not own and a
+      # tag is a movable ref, so what runs alongside the secrets below would otherwise be whatever `v2`
+      # points at on the day. `0c5077e…` is what it resolved to on 2026-09-17; the trailing `# v2` is the
+      # only record of which tag that was, so keep it accurate when the pin moves. `ci.yml` deliberately
+      # stays on the tag — the note there says why.
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+
+      # The mirror of `release.yml`'s repository-variable guard. GitHub renders an unset variable as the
+      # empty string rather than as absent, so neither of these two stops a run early; both fail late,
+      # which is the whole argument for checking them here.
+      #
+      # `STAGING_TENANT_ID` is read at step 6. `parseSeedArgs` does reject it properly —
+      # `packages/db/src/seed/config.ts:67` raises "--tenant <uuid> is required" and the empty string
+      # never reaches Postgres (measured 2026-09-17) — but by then the migrations, the schema lint, the
+      # posture check, the queue install and the Worker deploy have all run against staging. The problem
+      # is when it fails, not how.
+      #
+      # `STAGING_BASE_URL` is read at step 7, where an empty value makes curl fail on a URL with no host
+      # and takes the deploy down after it has finished deploying. It is also the variable
+      # `tests/staging/phase-0-exit.test.ts` keys its skip condition on, so an empty one is the single
+      # value that could turn the exit gate into a pass that asserted nothing.
+      #
+      # Before the first migration, so nothing has been changed when it fires.
+      - name: Fail fast if the two repository variables this deploy needs are unset
+        env:
+          STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
+          STAGING_TENANT_ID: ${{ vars.STAGING_TENANT_ID }}
+        run: |
+          set -e
+          missing=""
+          [ -n "$STAGING_BASE_URL" ] || missing="$missing STAGING_BASE_URL"
+          [ -n "$STAGING_TENANT_ID" ] || missing="$missing STAGING_TENANT_ID"
+          if [ -n "$missing" ]; then
+            echo "Missing repository variable(s), required before this workflow can deploy anything:$missing. Empty rather than set, the seed fails inside Postgres after the migrations have been applied, and the exit gate skips every case and passes -- see docs/runbooks/deploy.md." >&2
+            exit 1
+          fi
+
+      - name: Apply migrations as app_migrator
+        run: bun run --cwd packages/db db:migrate
+        env:
+          DATABASE_URL_MIGRATOR: ${{ secrets.DATABASE_URL_MIGRATOR }}
+
+      - name: Schema linter must report zero violations before anything is deployed
+        run: bun run --cwd packages/db db:lint
+        env:
+          DATABASE_URL_MIGRATOR: ${{ secrets.DATABASE_URL_MIGRATOR }}
+
+      - name: Verify the database posture (§5.0 row 0.2)
+        run: bun run --cwd packages/db provision:verify
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_MIGRATOR: ${{ secrets.DATABASE_URL_MIGRATOR }}
+
+      - name: Install the pg-boss queues as app_migrator (contracts §4.2.6)
+        run: bun run --cwd apps/worker jobs:install
+        env:
+          DATABASE_URL_MIGRATOR: ${{ secrets.DATABASE_URL_MIGRATOR }}
+
+      - name: Deploy the Worker and both container classes
+        run: bun run --cwd apps/edge deploy
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      # The tenant id arrives through `env:` and is read as a shell variable. `${{ }}` inside a `run:`
+      # body is textual substitution into the shell source — the pattern `release.yml`'s guard was
+      # deliberately moved away from — and this was the last instance of it across the three workflows.
+      # `vars.*` is admin-set, so nothing here was exploitable; the reason is that one shape for reading
+      # configuration is worth more than an exception that has to be re-justified every time it is read.
+      # `APP_ENV` is stated because the seed is an offline CLI that never reads the container's
+      # (`infra/wrangler.jsonc`): unset, it seeds as dev and prints a warning, and only `production` keeps the
+      # synthetic tax regime out of a company (docs/runbooks/deploy.md). Staging loads that regime either way;
+      # stating it keeps the seed's view of where it runs the same as the environment's.
+      - name: Re-apply the seed pack (idempotent — §3.4.8)
+        run: bun run seed --tenant "$STAGING_TENANT_ID"
+        env:
+          APP_ENV: staging
+          STAGING_TENANT_ID: ${{ vars.STAGING_TENANT_ID }}
+          DATABASE_URL_MIGRATOR: ${{ secrets.DATABASE_URL_MIGRATOR }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+      # The host is `vars.STAGING_BASE_URL`, not a literal. The staging domain is a placeholder until
+      # OD-20 (docs/runbooks/deploy.md), and hard-coding it here meant that the deploy the owner runs
+      # straight after swapping the domain in `infra/wrangler.jsonc` would smoke-test a host that does
+      # not resolve — and fail, after the migrations had been applied. A variable moves with the domain.
+      - name: Smoke — /healthz through the Worker, and /v1 refused without a token
+        env:
+          STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
+        run: |
+          set -e
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$STAGING_BASE_URL/healthz")" = "200"
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$STAGING_BASE_URL/v1/companies")" = "401"
+
+  staging-gate:
+    # The Phase 0 exit gate (contracts §2.1). It asserts facts about a deployed environment rather than about the
+    # code, so it runs only after this workflow's deploy job has succeeded — never on a pull request, and never
+    # racing the deploy it is meant to check (a job in ci.yml cannot wait for another workflow).
+    needs: [deploy]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: bun install --frozen-lockfile
+      # The root script, from the repository root — no `working-directory`. The config sets its own `root`, so the
+      # include pattern resolves the same way here as it does on a developer's machine.
+      - run: bun run test:staging
+        env:
+          STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
+          STAGING_TENANT_ID: ${{ vars.STAGING_TENANT_ID }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_MIGRATOR: ${{ secrets.DATABASE_URL_MIGRATOR }}

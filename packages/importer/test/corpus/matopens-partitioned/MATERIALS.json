@@ -1,0 +1,29 @@
+[
+  {
+    "MATID": "10",
+    "MATCODE": "WIDGET",
+    "MATNAME": "Widget",
+    "MATNAMEAR": "أداة",
+    "MATUNIT": "1",
+    "MATISSERVICE": "0",
+    "MATISBATCH": "1"
+  },
+  {
+    "MATID": "11",
+    "MATCODE": "GADGET",
+    "MATNAME": "Gadget",
+    "MATNAMEAR": null,
+    "MATUNIT": "2",
+    "MATISSERVICE": "0",
+    "MATISBATCH": "0"
+  },
+  {
+    "MATID": "12",
+    "MATCODE": "DELIVERY",
+    "MATNAME": "Delivery service",
+    "MATNAMEAR": null,
+    "MATUNIT": "1",
+    "MATISSERVICE": "1",
+    "MATISBATCH": "0"
+  }
+]

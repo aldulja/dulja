@@ -1,0 +1,85 @@
+{
+  "definitionVersion": 1,
+  "definition": {
+    "version": 1,
+    "code": "hr.contract_expiry",
+    "nameEn": "Contract expiry",
+    "nameAr": "انتهاء العقود",
+    "module": "hr",
+    "permission": "hr.employee.read",
+    "parameters": [
+      { "name": "asOf", "kind": "date", "required": true },
+      { "name": "branchId", "kind": "branch", "required": false }
+    ],
+    "dataset": {
+      "source": "employee",
+      "filters": [
+        { "field": "contract_ends_on", "op": "lte", "param": "asOf" },
+        { "field": "branch_id", "op": "eq", "param": "branchId" }
+      ]
+    },
+    "columns": [
+      {
+        "field": "employee_number",
+        "labelEn": "Number",
+        "labelAr": "الرقم",
+        "format": "text",
+        "align": "start",
+        "width": 70
+      },
+      {
+        "field": "employee_name_en",
+        "labelEn": "Name",
+        "labelAr": "الاسم",
+        "format": "text",
+        "align": "start",
+        "width": 180
+      },
+      {
+        "field": "branch_code",
+        "labelEn": "Branch",
+        "labelAr": "الفرع",
+        "format": "text",
+        "align": "start",
+        "width": 60
+      },
+      {
+        "field": "employment_type",
+        "labelEn": "Type",
+        "labelAr": "نوع التوظيف",
+        "format": "text",
+        "align": "start",
+        "width": 70
+      },
+      {
+        "field": "contract_ends_on",
+        "labelEn": "Contract ends",
+        "labelAr": "نهاية العقد",
+        "format": "date",
+        "align": "start",
+        "width": 80
+      },
+      {
+        "field": "active",
+        "labelEn": "Active",
+        "labelAr": "على رأس العمل",
+        "format": "text",
+        "align": "start",
+        "width": 60
+      }
+    ],
+    "groups": [{ "field": "branch_code", "subtotal": false }],
+    "totals": [{ "field": "employee_number", "fn": "count" }],
+    "sort": [
+      { "field": "contract_ends_on", "dir": "asc" },
+      { "field": "employee_number", "dir": "asc" }
+    ],
+    "layout": {
+      "orientation": "portrait",
+      "paper": "A4",
+      "header": "{title} — as of {asOf}",
+      "footer": "Work-permit expiry is gated by hr.employee.read_sensitive and is listed at GET /v1/companies/{{companyId}}/employees/permit-expiry — انتهاء تصاريح العمل متاح لمن يملك صلاحية البيانات الحساسة"
+    },
+    "tieOut": { "kind": "none" }
+  }
+}

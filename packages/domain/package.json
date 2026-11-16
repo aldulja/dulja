@@ -1,0 +1,25 @@
+{
+  "name": "@dulja/domain",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./payroll": "./payroll/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node ../../node_modules/vitest/vitest.mjs run",
+    "policy:types": "bun run scripts/generate-policy-type.ts",
+    "report:types": "bun run scripts/generate-report-type.ts",
+    "rate-table:types": "bun run scripts/generate-rate-table-type.ts"
+  },
+  "dependencies": {
+    "ajv": "^8.20.0",
+    "decimal.js": "^10.6.0"
+  },
+  "devDependencies": {
+    "fast-check": "^4.10.0",
+    "json-schema-to-typescript": "^16.0.0",
+    "vitest": "^5.0.0"
+  }
+}

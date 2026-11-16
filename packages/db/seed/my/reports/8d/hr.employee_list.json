@@ -1,0 +1,108 @@
+{
+  "definitionVersion": 1,
+  "definition": {
+    "version": 1,
+    "code": "hr.employee_list",
+    "nameEn": "Employee list by branch",
+    "nameAr": "قائمة الموظفين حسب الفرع",
+    "module": "hr",
+    "permission": "hr.employee.read",
+    "parameters": [
+      { "name": "branchId", "kind": "branch", "required": false },
+      {
+        "name": "employmentType",
+        "kind": "enum",
+        "required": false,
+        "options": ["full_time", "part_time", "contract", "hourly"]
+      },
+      { "name": "activeOnly", "kind": "enum", "required": false, "options": ["true", "false"] }
+    ],
+    "dataset": {
+      "source": "employee",
+      "filters": [
+        { "field": "branch_id", "op": "eq", "param": "branchId" },
+        { "field": "employment_type", "op": "eq", "param": "employmentType" },
+        { "field": "active", "op": "eq", "param": "activeOnly" }
+      ]
+    },
+    "columns": [
+      {
+        "field": "employee_number",
+        "labelEn": "Number",
+        "labelAr": "الرقم",
+        "format": "text",
+        "align": "start",
+        "width": 70
+      },
+      {
+        "field": "employee_name_en",
+        "labelEn": "Name",
+        "labelAr": "الاسم",
+        "format": "text",
+        "align": "start",
+        "width": 180
+      },
+      {
+        "field": "branch_code",
+        "labelEn": "Branch",
+        "labelAr": "الفرع",
+        "format": "text",
+        "align": "start",
+        "width": 60
+      },
+      {
+        "field": "position",
+        "labelEn": "Position",
+        "labelAr": "الوظيفة",
+        "format": "text",
+        "align": "start",
+        "width": 120
+      },
+      {
+        "field": "employment_type",
+        "labelEn": "Type",
+        "labelAr": "نوع التوظيف",
+        "format": "text",
+        "align": "start",
+        "width": 70
+      },
+      {
+        "field": "hired_on",
+        "labelEn": "Hired",
+        "labelAr": "تاريخ التعيين",
+        "format": "date",
+        "align": "start",
+        "width": 70
+      },
+      {
+        "field": "terminated_on",
+        "labelEn": "Left",
+        "labelAr": "تاريخ الترك",
+        "format": "date",
+        "align": "start",
+        "width": 70
+      },
+      {
+        "field": "has_login",
+        "labelEn": "Login",
+        "labelAr": "حساب دخول",
+        "format": "text",
+        "align": "start",
+        "width": 50
+      }
+    ],
+    "groups": [{ "field": "branch_code", "subtotal": false }],
+    "totals": [{ "field": "employee_number", "fn": "count" }],
+    "sort": [
+      { "field": "branch_code", "dir": "asc" },
+      { "field": "employee_number", "dir": "asc" }
+    ],
+    "layout": {
+      "orientation": "portrait",
+      "paper": "A4",
+      "header": "{title} — {generatedAt}",
+      "footer": "{rowCount} employees"
+    },
+    "tieOut": { "kind": "none" }
+  }
+}

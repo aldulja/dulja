@@ -1,0 +1,23 @@
+[
+  {
+    "code": "1110",
+    "nameEn": "Cash in till",
+    "nameAr": "نقد في الصندوق",
+    "type": "asset",
+    "parentCode": "1"
+  },
+  {
+    "code": "1120",
+    "nameEn": "Card clearing",
+    "nameAr": "مقاصة البطاقات",
+    "type": "asset",
+    "parentCode": "1"
+  },
+  {
+    "code": "2200",
+    "nameEn": "Store-credit liability",
+    "nameAr": "التزام رصيد المتجر",
+    "type": "liability",
+    "parentCode": "2"
+  }
+]

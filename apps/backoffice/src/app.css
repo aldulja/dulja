@@ -1,0 +1,32 @@
+/*
+ * The app's Tailwind entry point. `@config` is what loads `../tailwind.config.ts` — Tailwind v4's
+ * own config format is CSS-native, so a JS config (and with it `tailwindPreset` and the `content`
+ * globs that reach into `packages/ui/src`) is only read when this directive names it. Same order as
+ * `packages/ui/src/tailwind.css`: the framework, then the config, then the tokens the preset's
+ * `var(--dulja-*)` values resolve against.
+ */
+@import "tailwindcss";
+@config "../tailwind.config.ts";
+@import "@dulja/ui/tokens.css";
+
+/*
+ * The Z-report prints alone (6D Task 12): printing drops everything that neither holds the report nor is
+ * inside it — the shell, the company picker, the register's own title and list — and, inside it, whatever is
+ * marked `data-print="hide"`. It lives in this stylesheet, not in an inline `<style>` beside the report,
+ * because `backoffice.exe` serves the renderer under `style-src 'self'` (`apps/desktop/src/window-options.ts`),
+ * which refuses an inline style element (found verifying PR 12). `display` has no direction, so this is safe
+ * in both.
+ */
+@media print {
+  body *:not(:has([data-z-report])):not([data-z-report]):not([data-z-report] *),
+  [data-z-report] [data-print="hide"] {
+    display: none !important;
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--dulja-color-surface);
+  color: var(--dulja-color-text);
+  font-family: var(--dulja-font-sans);
+}

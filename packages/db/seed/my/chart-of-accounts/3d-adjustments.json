@@ -1,0 +1,16 @@
+[
+  {
+    "code": "1250",
+    "nameEn": "Goods delivered not invoiced",
+    "nameAr": "بضاعة مسلَّمة غير مفوترة",
+    "type": "asset",
+    "parentCode": "1200"
+  },
+  {
+    "code": "5110",
+    "nameEn": "Stock-count variance",
+    "nameAr": "فروق جرد المخزون",
+    "type": "expense",
+    "parentCode": "5100"
+  }
+]

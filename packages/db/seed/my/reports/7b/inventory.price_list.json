@@ -1,0 +1,126 @@
+{
+  "definitionVersion": 1,
+  "definition": {
+    "version": 1,
+    "code": "inventory.price_list",
+    "nameEn": "Price list",
+    "nameAr": "قائمة الأسعار",
+    "module": "inventory",
+    "permission": "inventory.item.read",
+    "parameters": [
+      { "name": "priceListId", "kind": "text", "required": false },
+      { "name": "itemId", "kind": "item", "required": false }
+    ],
+    "dataset": {
+      "source": "price_list_line",
+      "filters": [
+        { "field": "price_list_id", "op": "eq", "param": "priceListId" },
+        { "field": "item_id", "op": "eq", "param": "itemId" }
+      ]
+    },
+    "columns": [
+      {
+        "field": "price_list_code",
+        "labelEn": "Price list",
+        "labelAr": "قائمة الأسعار",
+        "format": "text",
+        "align": "start",
+        "width": 90
+      },
+      {
+        "field": "price_list_currency",
+        "labelEn": "Currency",
+        "labelAr": "العملة",
+        "format": "text",
+        "align": "start",
+        "width": 50
+      },
+      {
+        "field": "customer_kind",
+        "labelEn": "Customer type",
+        "labelAr": "نوع العميل",
+        "format": "text",
+        "align": "start",
+        "width": 90
+      },
+      {
+        "field": "valid_from",
+        "labelEn": "Valid from",
+        "labelAr": "صالح من",
+        "format": "date",
+        "align": "start",
+        "width": 80
+      },
+      {
+        "field": "valid_to",
+        "labelEn": "Valid to",
+        "labelAr": "صالح حتى",
+        "format": "date",
+        "align": "start",
+        "width": 80
+      },
+      {
+        "field": "item_code",
+        "labelEn": "Item",
+        "labelAr": "الصنف",
+        "format": "text",
+        "align": "start",
+        "width": 90
+      },
+      {
+        "field": "item_name_en",
+        "labelEn": "Item name",
+        "labelAr": "اسم الصنف",
+        "format": "text",
+        "align": "start",
+        "width": 180
+      },
+      {
+        "field": "unit_code",
+        "labelEn": "Unit",
+        "labelAr": "الوحدة",
+        "format": "text",
+        "align": "start",
+        "width": 50
+      },
+      {
+        "field": "min_quantity",
+        "labelEn": "Minimum quantity",
+        "labelAr": "الحد الأدنى للكمية",
+        "format": "quantity",
+        "align": "end",
+        "width": 100
+      },
+      {
+        "field": "unit_price",
+        "labelEn": "Price",
+        "labelAr": "السعر",
+        "format": "money",
+        "align": "end",
+        "width": 100
+      },
+      {
+        "field": "archived_at",
+        "labelEn": "Archived",
+        "labelAr": "مؤرشف",
+        "format": "text",
+        "align": "start",
+        "width": 130
+      }
+    ],
+    "groups": [{ "field": "price_list_code", "subtotal": false }],
+    "totals": [{ "field": "unit_price", "fn": "count" }],
+    "sort": [
+      { "field": "price_list_code", "dir": "asc" },
+      { "field": "item_code", "dir": "asc" },
+      { "field": "min_quantity", "dir": "asc" }
+    ],
+    "layout": {
+      "orientation": "landscape",
+      "paper": "A4",
+      "header": "{title}",
+      "footer": "{rowCount} prices · {generatedAt}"
+    },
+    "tieOut": { "kind": "none" }
+  }
+}

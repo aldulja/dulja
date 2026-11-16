@@ -1,0 +1,116 @@
+{
+  "STOCK_RECEIPT_TEST": {
+    "version": 1,
+    "documentType": "STOCK_RECEIPT_TEST",
+    "direction": "inbound",
+    "requires": [],
+    "lines": [
+      {
+        "for": "each_line",
+        "side": "debit",
+        "account": {
+          "from": "item.inventory_account"
+        },
+        "amount": "line.amount",
+        "when": {
+          "line.kind": "item"
+        }
+      },
+      {
+        "for": "each_line",
+        "side": "credit",
+        "account": {
+          "code": "5900"
+        },
+        "amount": "line.amount",
+        "when": {
+          "line.kind": "item"
+        }
+      }
+    ],
+    "inventory": {
+      "effect": "receipt",
+      "warehouse": "line.warehouse",
+      "costing": "create_layer"
+    },
+    "tax": {
+      "applies": false
+    },
+    "numbering": {
+      "series": "SRT",
+      "assignAt": "issue"
+    },
+    "reversal": {
+      "allowed": true,
+      "producesType": "STOCK_ISSUE_TEST"
+    },
+    "approval": {
+      "required": false,
+      "approve": null,
+      "post": "accounting.journal.post"
+    },
+    "fxRoundingAccount": {
+      "from": "company.fx_rounding_account_id"
+    },
+    "dimensions": {
+      "required": []
+    }
+  },
+  "STOCK_ISSUE_TEST": {
+    "version": 1,
+    "documentType": "STOCK_ISSUE_TEST",
+    "direction": "outbound",
+    "requires": [],
+    "lines": [
+      {
+        "for": "each_line",
+        "side": "debit",
+        "account": {
+          "from": "item.cogs_account"
+        },
+        "amount": "line.cost",
+        "when": {
+          "line.kind": "item"
+        }
+      },
+      {
+        "for": "each_line",
+        "side": "credit",
+        "account": {
+          "from": "item.inventory_account"
+        },
+        "amount": "line.cost",
+        "when": {
+          "line.kind": "item"
+        }
+      }
+    ],
+    "inventory": {
+      "effect": "issue",
+      "warehouse": "line.warehouse",
+      "costing": "consume_layers"
+    },
+    "tax": {
+      "applies": false
+    },
+    "numbering": {
+      "series": "SIT",
+      "assignAt": "issue"
+    },
+    "reversal": {
+      "allowed": true,
+      "producesType": "STOCK_RECEIPT_TEST"
+    },
+    "approval": {
+      "required": false,
+      "approve": null,
+      "post": "accounting.journal.post"
+    },
+    "fxRoundingAccount": {
+      "from": "company.fx_rounding_account_id"
+    },
+    "dimensions": {
+      "required": []
+    }
+  }
+}

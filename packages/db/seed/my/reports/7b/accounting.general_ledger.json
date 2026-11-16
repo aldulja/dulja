@@ -1,0 +1,184 @@
+{
+  "definitionVersion": 1,
+  "definition": {
+    "version": 1,
+    "code": "accounting.general_ledger",
+    "nameEn": "General ledger",
+    "nameAr": "دفتر الأستاذ العام",
+    "module": "accounting",
+    "permission": "accounting.report.read",
+    "parameters": [
+      {
+        "name": "fromDate",
+        "kind": "date",
+        "required": true
+      },
+      {
+        "name": "toDate",
+        "kind": "date",
+        "required": true
+      },
+      {
+        "name": "accountId",
+        "kind": "account",
+        "required": false
+      },
+      {
+        "name": "branchId",
+        "kind": "branch",
+        "required": false
+      }
+    ],
+    "dataset": {
+      "source": "ledger_entry",
+      "filters": [
+        {
+          "field": "effective_date",
+          "op": "gte",
+          "param": "fromDate"
+        },
+        {
+          "field": "effective_date",
+          "op": "lte",
+          "param": "toDate"
+        },
+        {
+          "field": "account_id",
+          "op": "eq",
+          "param": "accountId"
+        },
+        {
+          "field": "branch_id",
+          "op": "eq",
+          "param": "branchId"
+        }
+      ]
+    },
+    "columns": [
+      {
+        "field": "account_code",
+        "labelEn": "Account",
+        "labelAr": "الحساب",
+        "format": "text",
+        "align": "start",
+        "width": 70
+      },
+      {
+        "field": "effective_date",
+        "labelEn": "Date",
+        "labelAr": "التاريخ",
+        "format": "date",
+        "align": "start",
+        "width": 80
+      },
+      {
+        "field": "document_type_code",
+        "labelEn": "Type",
+        "labelAr": "النوع",
+        "format": "text",
+        "align": "start",
+        "width": 90
+      },
+      {
+        "field": "number",
+        "labelEn": "Number",
+        "labelAr": "الرقم",
+        "format": "text",
+        "align": "start",
+        "width": 80
+      },
+      {
+        "field": "branch_code",
+        "labelEn": "Branch",
+        "labelAr": "الفرع",
+        "format": "text",
+        "align": "start",
+        "width": 60
+      },
+      {
+        "field": "currency",
+        "labelEn": "Currency",
+        "labelAr": "العملة",
+        "format": "text",
+        "align": "start",
+        "width": 50
+      },
+      {
+        "field": "posting_seq",
+        "labelEn": "Seq",
+        "labelAr": "التسلسل",
+        "format": "integer",
+        "align": "end",
+        "width": 45
+      },
+      {
+        "field": "line_no",
+        "labelEn": "Line",
+        "labelAr": "السطر",
+        "format": "integer",
+        "align": "end",
+        "width": 40
+      },
+      {
+        "field": "base_debit",
+        "labelEn": "Debit",
+        "labelAr": "مدين",
+        "format": "money",
+        "align": "end",
+        "width": 100
+      },
+      {
+        "field": "base_credit",
+        "labelEn": "Credit",
+        "labelAr": "دائن",
+        "format": "money",
+        "align": "end",
+        "width": 100
+      }
+    ],
+    "groups": [
+      {
+        "field": "account_code",
+        "subtotal": true
+      }
+    ],
+    "totals": [
+      {
+        "field": "base_debit",
+        "fn": "sum"
+      },
+      {
+        "field": "base_credit",
+        "fn": "sum"
+      }
+    ],
+    "sort": [
+      {
+        "field": "account_code",
+        "dir": "asc"
+      },
+      {
+        "field": "effective_date",
+        "dir": "asc"
+      },
+      {
+        "field": "posting_seq",
+        "dir": "asc"
+      },
+      {
+        "field": "line_no",
+        "dir": "asc"
+      }
+    ],
+    "layout": {
+      "orientation": "landscape",
+      "paper": "A4",
+      "header": "{title} — {fromDate} – {toDate}",
+      "footer": "{rowCount} lines · {generatedAt}"
+    },
+    "tieOut": {
+      "kind": "projection",
+      "projection": "account_balance"
+    }
+  }
+}

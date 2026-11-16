@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "documentType": "SALES_INVOICE",
+  "direction": "outbound",
+  "requires": ["party", "warehouse"],
+  "lines": [
+    {
+      "for": "each_line",
+      "side": "debit",
+      "account": { "from": "party.receivable_account" },
+      "amount": "line.total_incl_tax"
+    },
+    {
+      "for": "each_line",
+      "side": "credit",
+      "account": { "from": "item.revenue_account" },
+      "amount": "line.total_excl_tax"
+    },
+    {
+      "for": "each_tax",
+      "side": "credit",
+      "account": { "from": "tax_code.output_account" },
+      "amount": "tax.amount"
+    },
+    {
+      "for": "each_line",
+      "side": "credit",
+      "account": { "from": "item.inventory_account" },
+      "amount": "line.cost"
+    },
+    {
+      "for": "each_line",
+      "side": "debit",
+      "account": { "from": "item.cogs_account" },
+      "amount": "line.cost"
+    }
+  ],
+  "inventory": { "effect": "issue", "warehouse": "header.warehouse", "costing": "consume_layers" },
+  "tax": { "applies": true, "inclusive": "header.tax_inclusive" },
+  "numbering": { "series": "INV", "assignAt": "issue" },
+  "reversal": { "allowed": true, "producesType": "SALES_CREDIT_NOTE" },
+  "approval": { "required": false, "approve": null, "post": "accounting.sales.post" },
+  "fxRoundingAccount": { "from": "company.fx_rounding_account_id" }
+}

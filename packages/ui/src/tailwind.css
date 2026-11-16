@@ -1,0 +1,12 @@
+/*
+ * Storybook-only entry point. This is what actually compiles `tailwindPreset` into real CSS rules
+ * for the preview iframe — nothing else in this package does. A consuming app (apps/backoffice)
+ * runs its own `@tailwindcss/vite` over its own source with `tailwindPreset` as a `presets` entry
+ * in its own Tailwind config; it never imports this file. Deliberately not part of this package's
+ * `package.json` "exports" map for that reason — `tokens.css` is the public, side-effect-import
+ * contract, declared as the `"./tokens.css"` entry of that same map and imported through it by
+ * `apps/backoffice/src/app.css`; this file is private to `.storybook/preview.tsx`.
+ */
+@import "tailwindcss";
+@config "../tailwind.config.ts";
+@import "./tokens.css";

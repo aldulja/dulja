@@ -1,0 +1,95 @@
+{
+  "definitionVersion": 2,
+  "definition": {
+    "version": 1,
+    "code": "accounting.ageing",
+    "nameEn": "AR / AP ageing",
+    "nameAr": "أعمار الذمم",
+    "module": "accounting",
+    "permission": "accounting.report.read",
+    "parameters": [
+      { "name": "asOf", "kind": "date", "required": true },
+      { "name": "partyKind", "kind": "enum", "required": false, "options": ["customer", "vendor"] },
+      { "name": "currency", "kind": "text", "required": false }
+    ],
+    "dataset": {
+      "source": "party_ageing",
+      "filters": [
+        { "field": "as_of", "op": "eq", "param": "asOf" },
+        { "field": "party_kind", "op": "eq", "param": "partyKind" },
+        { "field": "currency", "op": "eq", "param": "currency" }
+      ]
+    },
+    "columns": [
+      {
+        "field": "party_code",
+        "labelEn": "Party",
+        "labelAr": "الطرف",
+        "format": "text",
+        "align": "start",
+        "width": 90
+      },
+      {
+        "field": "party_name_en",
+        "labelEn": "Name",
+        "labelAr": "الاسم",
+        "format": "text",
+        "align": "start"
+      },
+      {
+        "field": "party_kind",
+        "labelEn": "Kind",
+        "labelAr": "النوع",
+        "format": "text",
+        "align": "start",
+        "width": 80
+      },
+      {
+        "field": "currency",
+        "labelEn": "Currency",
+        "labelAr": "العملة",
+        "format": "text",
+        "align": "start",
+        "width": 70
+      },
+      {
+        "field": "bucket",
+        "labelEn": "Bucket",
+        "labelAr": "الفترة",
+        "format": "text",
+        "align": "start",
+        "width": 80
+      },
+      {
+        "field": "amount",
+        "labelEn": "Amount",
+        "labelAr": "المبلغ",
+        "format": "money",
+        "align": "end",
+        "width": 120
+      },
+      {
+        "field": "base_amount",
+        "labelEn": "Base amount",
+        "labelAr": "المبلغ الأساسي",
+        "format": "money",
+        "align": "end",
+        "width": 120
+      }
+    ],
+    "groups": [{ "field": "party_code", "subtotal": true }],
+    "totals": [{ "field": "base_amount", "fn": "sum" }],
+    "sort": [
+      { "field": "party_code", "dir": "asc" },
+      { "field": "currency", "dir": "asc" },
+      { "field": "bucket_rank", "dir": "asc" }
+    ],
+    "layout": {
+      "orientation": "landscape",
+      "paper": "A4",
+      "header": "{title} — {asOf}",
+      "footer": "{rowCount} rows · {generatedAt}"
+    },
+    "tieOut": { "kind": "projection", "projection": "party_ageing" }
+  }
+}

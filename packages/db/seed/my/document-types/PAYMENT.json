@@ -1,0 +1,42 @@
+{
+  "code": "PAYMENT",
+  "nameEn": "Payment",
+  "nameAr": "سند صرف",
+  "module": "accounting",
+  "policyVersion": 1,
+  "effectiveFrom": "2026-01-01",
+  "policy": {
+    "version": 1,
+    "documentType": "PAYMENT",
+    "direction": "outbound",
+    "requires": ["party"],
+    "lines": [
+      {
+        "for": "each_line",
+        "side": "debit",
+        "account": { "from": "party.payable_account" },
+        "amount": "line.total_incl_tax",
+        "when": { "line.kind": "account" }
+      },
+      {
+        "for": "each_line",
+        "side": "credit",
+        "account": { "from": "line.account" },
+        "amount": "line.total_incl_tax",
+        "when": { "line.kind": "account" }
+      }
+    ],
+    "inventory": { "effect": "none" },
+    "tax": { "applies": false },
+    "numbering": { "series": "PAY-OUT", "assignAt": "issue" },
+    "reversal": { "allowed": true, "producesType": "PAYMENT" },
+    "approval": {
+      "required": true,
+      "approve": "accounting.payment.approve",
+      "post": "accounting.payment.post",
+      "create": "accounting.payment.create"
+    },
+    "fxRoundingAccount": { "from": "company.fx_rounding_account_id" },
+    "dimensions": { "required": [] }
+  }
+}

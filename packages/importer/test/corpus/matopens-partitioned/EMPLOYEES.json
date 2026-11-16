@@ -1,0 +1,34 @@
+[
+  {
+    "EMPID": "5001",
+    "EMPNUMBER": "E-001",
+    "EMPNAME": "Aisyah binti Rahman",
+    "EMPNAMEAR": "عائشة بنت رحمن",
+    "EMPHIRED": "2019-03-01",
+    "EMPLEFT": null,
+    "EMPYTDGROSS": "36000.0000",
+    "EMPYTDNET": "31200.0000",
+    "EMPNATID": "880101-14-5555",
+    "EMPDOB": "1988-01-01",
+    "EMPBANKACC": "1234567890",
+    "EMPEPFNO": "EPF-0001",
+    "EMPSOCSONO": "SOC-0001",
+    "EMPTAXNO": "SG-0001"
+  },
+  {
+    "EMPID": "5002",
+    "EMPNUMBER": "E-002",
+    "EMPNAME": "Lim Wei Jie",
+    "EMPNAMEAR": null,
+    "EMPHIRED": "2021-07-15",
+    "EMPLEFT": "2026-01-20",
+    "EMPYTDGROSS": "24000.0000",
+    "EMPYTDNET": "21600.0000",
+    "EMPNATID": "950620-10-1111",
+    "EMPDOB": "1995-06-20",
+    "EMPBANKACC": "9876543210",
+    "EMPEPFNO": "EPF-0002",
+    "EMPSOCSONO": "SOC-0002",
+    "EMPTAXNO": "SG-0002"
+  }
+]

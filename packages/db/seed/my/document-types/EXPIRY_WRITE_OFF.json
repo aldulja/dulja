@@ -1,0 +1,47 @@
+{
+  "code": "EXPIRY_WRITE_OFF",
+  "nameEn": "Expiry Write-off",
+  "nameAr": "إعدام بضاعة منتهية",
+  "module": "inventory",
+  "policyVersion": 1,
+  "effectiveFrom": "2026-01-01",
+  "policy": {
+    "version": 1,
+    "documentType": "EXPIRY_WRITE_OFF",
+    "direction": "internal",
+    "requires": ["warehouse"],
+    "lines": [
+      {
+        "for": "each_line",
+        "side": "debit",
+        "account": { "code": "5100" },
+        "amount": "line.cost",
+        "when": { "line.kind": "item" }
+      },
+      {
+        "for": "each_line",
+        "side": "credit",
+        "account": { "from": "item.inventory_account" },
+        "amount": "line.cost",
+        "when": { "line.kind": "item" }
+      }
+    ],
+    "inventory": {
+      "effect": "issue",
+      "warehouse": "line.warehouse",
+      "costing": "consume_layers",
+      "allowNegative": false
+    },
+    "tax": { "applies": false },
+    "numbering": { "series": "EWO", "assignAt": "issue" },
+    "reversal": { "allowed": true, "producesType": "EXPIRY_WRITE_OFF" },
+    "approval": {
+      "required": true,
+      "approve": "inventory.adjustment.approve",
+      "post": "inventory.adjustment.approve",
+      "create": "inventory.adjustment.create"
+    },
+    "fxRoundingAccount": { "from": "company.fx_rounding_account_id" },
+    "dimensions": { "required": ["BRANCH"] }
+  }
+}

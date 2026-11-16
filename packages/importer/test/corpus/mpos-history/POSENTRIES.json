@@ -1,0 +1,17 @@
+[
+  {
+    "PENID": "1",
+    "PENTICKET": "9100",
+    "PENMAT": "10",
+    "PENQNT": "3.000000",
+    "PENPRICE": "10.0000"
+  },
+  {
+    "PENID": "2",
+    "PENTICKET": "9100",
+    "PENMAT": "11",
+    "PENQNT": "1.000000",
+    "PENPRICE": "15.0000"
+  },
+  { "PENID": "3", "PENTICKET": "9101", "PENMAT": "10", "PENQNT": "2.000000", "PENPRICE": "10.0000" }
+]

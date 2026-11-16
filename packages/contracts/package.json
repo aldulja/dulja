@@ -1,0 +1,23 @@
+{
+  "name": "@dulja/contracts",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./permissions": "./permissions.ts",
+    "./admin/*": "./src/admin/*.ts",
+    "./accounting/*": "./src/accounting/*.ts",
+    "./sync/*": "./src/sync/*.ts",
+    "./pos/*": "./src/pos/*.ts",
+    "./hr/*": "./src/hr/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node ../../node_modules/vitest/vitest.mjs run",
+    "openapi:generate": "bun run --cwd ../../apps/api openapi:generate"
+  },
+  "dependencies": {
+    "@dulja/domain": "workspace:*",
+    "zod": "^4.6.4"
+  }
+}

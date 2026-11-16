@@ -1,0 +1,42 @@
+{
+  "code": "RECEIPT",
+  "nameEn": "Receipt",
+  "nameAr": "سند قبض",
+  "module": "accounting",
+  "policyVersion": 1,
+  "effectiveFrom": "2026-01-01",
+  "policy": {
+    "version": 1,
+    "documentType": "RECEIPT",
+    "direction": "inbound",
+    "requires": ["party"],
+    "lines": [
+      {
+        "for": "each_line",
+        "side": "debit",
+        "account": { "from": "line.account" },
+        "amount": "line.total_incl_tax",
+        "when": { "line.kind": "account" }
+      },
+      {
+        "for": "each_line",
+        "side": "credit",
+        "account": { "from": "party.receivable_account" },
+        "amount": "line.total_incl_tax",
+        "when": { "line.kind": "account" }
+      }
+    ],
+    "inventory": { "effect": "none" },
+    "tax": { "applies": false },
+    "numbering": { "series": "RCT", "assignAt": "issue" },
+    "reversal": { "allowed": true, "producesType": "RECEIPT" },
+    "approval": {
+      "required": false,
+      "approve": null,
+      "post": "accounting.receipt.post",
+      "create": "accounting.receipt.create"
+    },
+    "fxRoundingAccount": { "from": "company.fx_rounding_account_id" },
+    "dimensions": { "required": [] }
+  }
+}

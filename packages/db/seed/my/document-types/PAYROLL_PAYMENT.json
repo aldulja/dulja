@@ -1,0 +1,64 @@
+{
+  "code": "PAYROLL_PAYMENT",
+  "nameEn": "Payroll Payment Batch",
+  "nameAr": "دفعة رواتب",
+  "module": "hr",
+  "policyVersion": 1,
+  "effectiveFrom": "2026-01-01",
+  "policy": {
+    "version": 1,
+    "documentType": "PAYROLL_PAYMENT",
+    "direction": "outbound",
+    "requires": [],
+    "lines": [
+      {
+        "for": "each_line",
+        "side": "debit",
+        "account": {
+          "code": "2400"
+        },
+        "amount": "line.amount",
+        "when": {
+          "line.kind": "payroll"
+        },
+        "dimensions": {
+          "from": ["line.dimensions"]
+        }
+      },
+      {
+        "for": "document",
+        "side": "credit",
+        "account": {
+          "code": "1100"
+        },
+        "amount": "document.total_excl_tax"
+      }
+    ],
+    "inventory": {
+      "effect": "none"
+    },
+    "tax": {
+      "applies": false
+    },
+    "numbering": {
+      "series": "PAYB",
+      "assignAt": "issue"
+    },
+    "reversal": {
+      "allowed": true,
+      "producesType": "PAYROLL_PAYMENT"
+    },
+    "approval": {
+      "required": true,
+      "approve": "accounting.payment.approve",
+      "post": "accounting.payment.post",
+      "create": "hr.payroll.pay"
+    },
+    "fxRoundingAccount": {
+      "from": "company.fx_rounding_account_id"
+    },
+    "dimensions": {
+      "required": ["BRANCH"]
+    }
+  }
+}

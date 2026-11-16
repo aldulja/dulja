@@ -1,0 +1,48 @@
+{
+  "code": "TRANSFER",
+  "nameEn": "Stock Transfer (dispatch)",
+  "nameAr": "تحويل مخزون (إرسال)",
+  "module": "inventory",
+  "policyVersion": 1,
+  "effectiveFrom": "2026-01-01",
+  "policy": {
+    "version": 1,
+    "documentType": "TRANSFER",
+    "direction": "internal",
+    "requires": ["warehouse", "to_warehouse"],
+    "lines": [
+      {
+        "for": "each_line",
+        "side": "debit",
+        "account": { "code": "1310" },
+        "amount": "line.cost",
+        "when": { "line.kind": "item" }
+      },
+      {
+        "for": "each_line",
+        "side": "credit",
+        "account": { "from": "item.inventory_account" },
+        "amount": "line.cost",
+        "when": { "line.kind": "item" }
+      }
+    ],
+    "inventory": {
+      "effect": "transfer",
+      "warehouse": "line.warehouse",
+      "to_warehouse": "header.to_warehouse",
+      "costing": "consume_layers",
+      "allowNegative": false
+    },
+    "tax": { "applies": false },
+    "numbering": { "series": "TRF", "assignAt": "issue" },
+    "reversal": { "allowed": true, "producesType": "TRANSFER" },
+    "approval": {
+      "required": false,
+      "approve": null,
+      "post": "inventory.transfer.post",
+      "create": "inventory.transfer.create"
+    },
+    "fxRoundingAccount": { "from": "company.fx_rounding_account_id" },
+    "dimensions": { "required": ["BRANCH"] }
+  }
+}

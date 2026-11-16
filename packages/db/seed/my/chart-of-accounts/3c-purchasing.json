@@ -1,0 +1,23 @@
+[
+  {
+    "code": "2150",
+    "nameEn": "Goods received not invoiced",
+    "nameAr": "بضاعة مستلمة غير مفوترة",
+    "type": "liability",
+    "parentCode": "2100"
+  },
+  {
+    "code": "1310",
+    "nameEn": "Goods in transit",
+    "nameAr": "بضاعة في الطريق",
+    "type": "asset",
+    "parentCode": "1300"
+  },
+  {
+    "code": "5100",
+    "nameEn": "Inventory write-off — expiry loss",
+    "nameAr": "إتلاف مخزون — خسارة انتهاء الصلاحية",
+    "type": "expense",
+    "parentCode": "5000"
+  }
+]

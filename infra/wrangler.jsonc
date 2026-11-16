@@ -1,0 +1,108 @@
+{
+  // Deployment description for the Dulja edge Worker and its two container classes (spec §3.2.4).
+  // Secrets are NEVER here (spec:2273) — set them with `wrangler secret put <NAME>`; the inventory is §3.11.
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "dulja-edge",
+  "main": "../apps/edge/src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "observability": { "enabled": true },
+
+  // THE TOP LEVEL IS STAGING: `.github/workflows/deploy-staging.yml` runs `wrangler deploy` with no `--env`.
+  // Production is `env.production` below, deployed by hand with `--env production` (docs/runbooks/deploy.md).
+  //
+  // Wrangler does NOT inherit `containers`, `durable_objects`, `r2_buckets` or `ratelimits` into an `env.*`
+  // block (OPS-02/API-04): each block below repeats all four, and infra/test/wrangler.test.ts asserts them in
+  // every environment. `migrations`, `triggers`, `observability` and the compatibility keys are inherited.
+  //
+  // PLACEHOLDER HOSTS — the owner's domain is OD-20. Each environment has ONE hostname of its own, and the
+  // electron-builder feed is the path `/updates/*` under it, because apps/edge/src/router.ts keys the R2 object
+  // on that path prefix (a second host would 404 every request). 0E's update-feed URL is production's host.
+  "routes": [{ "pattern": "api-staging.dulja.example/*", "zone_name": "dulja.example" }],
+
+  // One image, two classes, different DULJA_ENTRYPOINT — infra/Dockerfile, infra/entrypoint.sh (ADR 0011).
+  // `image_build_context` is ".." — relative to THIS file, i.e. the repository root. Wrangler's default is the
+  // directory of `image` (here infra/), and infra/Dockerfile's first COPY only resolves from the root.
+  // The containers have NO public ingress: they are reachable only through the Durable Object bindings below,
+  // which is spec:1156's answer to "how does the Worker authenticate to the container".
+  "containers": [
+    {
+      "class_name": "ApiContainer",
+      "image": "./Dockerfile",
+      "image_build_context": "..",
+      "max_instances": 1,
+      "instance_type": "standard-1",
+    },
+    {
+      "class_name": "WorkerContainer",
+      "image": "./Dockerfile",
+      "image_build_context": "..",
+      "max_instances": 1,
+      "instance_type": "standard-1",
+    },
+  ],
+
+  "durable_objects": {
+    "bindings": [
+      { "name": "API", "class_name": "ApiContainer" },
+      { "name": "WORKER", "class_name": "WorkerContainer" },
+    ],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ApiContainer", "WorkerContainer"] }],
+
+  // spec:1157 — one ping a minute so the worker container never sleeps while pg-boss has work.
+  "triggers": { "crons": ["* * * * *"] },
+
+  "r2_buckets": [
+    { "binding": "UPDATE_FEED", "bucket_name": "dulja-staging-update-feed" },
+    { "binding": "ATTACHMENTS", "bucket_name": "dulja-staging-attachments" },
+  ],
+
+  // spec:2204 — RateLimit-* headers for abuse protection; per-plan quotas are deferred (§4.4).
+  "ratelimits": [
+    { "name": "RATE_LIMIT", "namespace_id": "1001", "simple": { "limit": 600, "period": 60 } },
+  ],
+
+  // Plain-text configuration only. DATABASE_URL, SUPABASE_*, TERMINAL_JWT_SIGNING_KEY, HR_FIELD_ENCRYPTION_KEY*,
+  // R2_*, SENTRY_DSN and OTEL_* are secrets — docs/runbooks/deploy.md, "Secrets", binds them.
+  "vars": { "APP_ENV": "staging", "LOG_LEVEL": "info" },
+
+  "env": {
+    // Deployed as `dulja-edge-production`. Every binding block is repeated, with production's own buckets and
+    // rate-limit namespace: nothing is shared with staging.
+    "production": {
+      "vars": { "APP_ENV": "production", "LOG_LEVEL": "info" },
+      "routes": [{ "pattern": "api.dulja.example/*", "zone_name": "dulja.example" }],
+      "containers": [
+        {
+          "class_name": "ApiContainer",
+          "image": "./Dockerfile",
+          "image_build_context": "..",
+          "max_instances": 1,
+          "instance_type": "standard-1",
+        },
+        {
+          "class_name": "WorkerContainer",
+          "image": "./Dockerfile",
+          "image_build_context": "..",
+          "max_instances": 1,
+          "instance_type": "standard-1",
+        },
+      ],
+      "durable_objects": {
+        "bindings": [
+          { "name": "API", "class_name": "ApiContainer" },
+          { "name": "WORKER", "class_name": "WorkerContainer" },
+        ],
+      },
+      "r2_buckets": [
+        { "binding": "UPDATE_FEED", "bucket_name": "dulja-update-feed" },
+        { "binding": "ATTACHMENTS", "bucket_name": "dulja-attachments" },
+      ],
+      "ratelimits": [
+        { "name": "RATE_LIMIT", "namespace_id": "1002", "simple": { "limit": 600, "period": 60 } },
+      ],
+    },
+  },
+}

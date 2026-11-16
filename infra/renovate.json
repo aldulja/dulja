@@ -1,0 +1,26 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":semanticCommits", ":dependencyDashboard"],
+  "timezone": "Asia/Kuala_Lumpur",
+  "schedule": ["before 6am on monday"],
+  "labels": ["dependencies"],
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "description": "the patch SLA of spec:2270"
+    },
+    { "matchUpdateTypes": ["minor", "major"], "automerge": false },
+    {
+      "matchDatasources": ["docker"],
+      "pinDigests": true,
+      "description": "infra/Dockerfile's base image is pinned by digest so two builds of one commit are one image; Renovate rebases the digest, and a rebase arrives as updateType 'digest', which no rule above automerges"
+    },
+    {
+      "matchPackageNames": ["postgres", "pg-boss", "decimal.js"],
+      "automerge": false,
+      "description": "money, transactions and jobs require human review"
+    }
+  ],
+  "vulnerabilityAlerts": { "labels": ["security"], "automerge": false }
+}

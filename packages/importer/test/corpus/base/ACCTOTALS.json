@@ -1,0 +1,16 @@
+[
+  {
+    "ACCOUNT": "10",
+    "DEBIT": "300.0000",
+    "CREDIT": "0.0000",
+    "ADMINDEBIT": "0.0000",
+    "ADMINCREDIT": "0.0000"
+  },
+  {
+    "ACCOUNT": "11",
+    "DEBIT": "250.0000",
+    "CREDIT": null,
+    "ADMINDEBIT": "0.0000",
+    "ADMINCREDIT": "0.0000"
+  }
+]

@@ -1,0 +1,127 @@
+{
+  "definitionVersion": 1,
+  "definition": {
+    "version": 1,
+    "code": "inventory.movement_register",
+    "nameEn": "Movement register",
+    "nameAr": "سجل حركات المخزون",
+    "module": "inventory",
+    "permission": "inventory.stock.read",
+    "parameters": [
+      { "name": "fromDate", "kind": "date", "required": true },
+      { "name": "toDate", "kind": "date", "required": true },
+      { "name": "itemId", "kind": "item", "required": false },
+      { "name": "warehouseId", "kind": "warehouse", "required": false },
+      { "name": "documentTypeCode", "kind": "text", "required": false }
+    ],
+    "dataset": {
+      "source": "inventory_movement",
+      "filters": [
+        { "field": "effective_date", "op": "gte", "param": "fromDate" },
+        { "field": "effective_date", "op": "lte", "param": "toDate" },
+        { "field": "item_id", "op": "eq", "param": "itemId" },
+        { "field": "warehouse_id", "op": "eq", "param": "warehouseId" },
+        { "field": "document_type_code", "op": "eq", "param": "documentTypeCode" }
+      ]
+    },
+    "columns": [
+      {
+        "field": "effective_date",
+        "labelEn": "Date",
+        "labelAr": "التاريخ",
+        "format": "date",
+        "align": "start",
+        "width": 80
+      },
+      {
+        "field": "document_type_code",
+        "labelEn": "Type",
+        "labelAr": "النوع",
+        "format": "text",
+        "align": "start",
+        "width": 120
+      },
+      {
+        "field": "document_number",
+        "labelEn": "Number",
+        "labelAr": "الرقم",
+        "format": "text",
+        "align": "start",
+        "width": 70
+      },
+      {
+        "field": "posting_seq",
+        "labelEn": "Seq",
+        "labelAr": "التسلسل",
+        "format": "integer",
+        "align": "end",
+        "width": 45
+      },
+      {
+        "field": "movement_no",
+        "labelEn": "Movement",
+        "labelAr": "رقم الحركة",
+        "format": "integer",
+        "align": "end",
+        "width": 60
+      },
+      {
+        "field": "item_code",
+        "labelEn": "Item",
+        "labelAr": "الصنف",
+        "format": "text",
+        "align": "start",
+        "width": 90
+      },
+      {
+        "field": "warehouse_code",
+        "labelEn": "Warehouse",
+        "labelAr": "المستودع",
+        "format": "text",
+        "align": "start",
+        "width": 90
+      },
+      {
+        "field": "lot_code",
+        "labelEn": "Lot",
+        "labelAr": "الدفعة",
+        "format": "text",
+        "align": "start",
+        "width": 90
+      },
+      {
+        "field": "quantity",
+        "labelEn": "Quantity",
+        "labelAr": "الكمية",
+        "format": "quantity",
+        "align": "end",
+        "width": 100
+      },
+      {
+        "field": "value",
+        "labelEn": "Value",
+        "labelAr": "القيمة",
+        "format": "money",
+        "align": "end",
+        "width": 110
+      }
+    ],
+    "groups": [{ "field": "item_code", "subtotal": true }],
+    "totals": [
+      { "field": "quantity", "fn": "sum" },
+      { "field": "value", "fn": "sum" }
+    ],
+    "sort": [
+      { "field": "effective_date", "dir": "asc" },
+      { "field": "posting_seq", "dir": "asc" },
+      { "field": "movement_no", "dir": "asc" }
+    ],
+    "layout": {
+      "orientation": "landscape",
+      "paper": "A4",
+      "header": "{title} — {fromDate} – {toDate}",
+      "footer": "{rowCount} movements · {generatedAt}"
+    },
+    "tieOut": { "kind": "projection", "projection": "stock_on_hand" }
+  }
+}

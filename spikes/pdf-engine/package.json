@@ -1,0 +1,21 @@
+{
+  "name": "dulja-spike-pdf-engine",
+  "dependencies": {
+    "@fontsource/noto-sans": "^5.3.0",
+    "@fontsource/noto-sans-arabic": "^5.3.0",
+    "@react-pdf/renderer": "^4.9.0",
+    "pdfjs-dist": "^6.3.289",
+    "playwright": "^1.63.0",
+    "react": "^19.3.0"
+  },
+  "private": true,
+  "scripts": {
+    "render": "bun run render.ts",
+    "inspect": "bun run inspect.ts",
+    "rasterize": "bun run rasterize.ts"
+  },
+  "type": "module",
+  "devDependencies": {
+    "@napi-rs/canvas": "^1.0.9"
+  }
+}

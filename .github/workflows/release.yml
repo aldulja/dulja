@@ -1,0 +1,304 @@
+# The DoD 0.13 / OD-18 release path (0E Task 13). Builds the Windows installer with electron-builder,
+# signing it when the owner's certificate secrets exist and shipping an unsigned build when they do not
+# — the two are the same job, distinguished only by which secrets a run happens to have (see the `dist`
+# step below). Never runs on a pull request: a full NSIS package (the 126 MB write, LZMA compression, the
+# installer script) is minutes of extra windows-latest time per run. `ci.yml`'s `desktop` job now runs
+# `electron-builder --win --dir` on every PR instead (0E T13, after review), which is enough to exercise
+# native-module.spec.ts's and posture.spec.ts's packaged cases at a fraction of the cost. What stays
+# release-only is coverage that specifically needs `latest.yml`/`resources/app-update.yml`, which `--dir`
+# does not produce — and of that, only one half is actually executed anywhere: the updater spec that
+# reads `resources/app-update.yml` runs in the `test:electron` step below. The other half,
+# `tests/regression/legacy-087.test.ts`'s "— 0E" block, runs in no CI job on either workflow: it is
+# reachable only through `turbo run test`, and no step here runs `bun run test`. This job builds the two
+# files that block guards and then never runs it. Adding a step that does would change what a release
+# run executes, which is the owner's decision.
+#
+# 2026-11-15 review (OPS-03/05/06/09, PRD-10, Phase 4): the job now builds **both** installers, stamps the
+# version from the tag, bakes the till's API origin (ADR 0093), installs each installer silently and runs the
+# packaged smoke specs against the installed apps before uploading. A `preview` dispatch builds both with
+# clearly marked `.invalid` placeholders wherever a repository variable is absent, so the installers can be
+# built and smoke-tested before the owner has a backend; a tag build still refuses to run without every real
+# value. Artefacts are kept for three days: the R2 feed, not this store, is where a release lives.
+name: release
+on:
+  workflow_dispatch:
+    inputs:
+      preview:
+        description: "Build both installers with .invalid placeholders for any unset repository variable (never on a tag)"
+        type: boolean
+        default: false
+  # `v[0-9]*`, not `v*`: the latter also matches `vfoo` and `v-scratch`, and this pattern is half of
+  # what scopes the OD-18 signing secrets below — see the comment above the `dist` step.
+  push:
+    tags: ["v[0-9]*"]
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  windows-installer:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      # Fails before spending any build time, and before the alternative: both the backoffice build and
+      # electron-builder's own `dist` step exit 0 with these unset (GitHub renders a missing repository
+      # variable as the empty string, not as absent), producing an artefact rather than an error —
+      # measured on this repo, 2026-09-17: an empty `VITE_API_BASE_URL` bakes into the bundle as `""` and
+      # `apps/backoffice/src/lib/env.ts`'s `readEnv()` only throws when the renderer actually boots, and
+      # an empty `DULJA_UPDATE_FEED` sails past both `macroExpander.js`'s and `PublishManager.js`'s
+      # `== null` checks (`""` is not `null`) straight into the shipped `app-update.yml` as `url: ''`.
+      # Without this guard the first real run of this workflow would succeed and upload a 126 MB
+      # installer that white-screens on launch and can never update itself — see
+      # docs/runbooks/clean-vm-install.md for how that was found and reproduced.
+      #
+      # These six repository variables and no others (the sixth, `DULJA_API_BASE_URL`, is the till's API
+      # origin, ADR 0093). `secrets.SENTRY_DSN` is deliberately NOT checked
+      # here: OD-22 is open and must stay open, so a guard requiring it would block every release, and
+      # a guard that waved an empty one through would be the same empty-string bug in a second place.
+      # The renderer's side of that is closed where it belongs — `apps/backoffice/src/lib/env.ts` now
+      # treats an empty value as absence, so an unset DSN is no DSN rather than an invalid one.
+      #
+      # Values arrive through `env:` rather than interpolated into the script body: `${{ }}` inside
+      # `run:` is textual substitution into the shell source, which is what GitHub's own hardening
+      # guidance names, and this is the job that will hold the signing certificate.
+      - name: Fail fast if the six repository variables this build needs are unset
+        id: config
+        shell: pwsh
+        env:
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          DULJA_UPDATE_FEED: ${{ vars.DULJA_UPDATE_FEED }}
+          DULJA_POS_UPDATE_FEED: ${{ vars.DULJA_POS_UPDATE_FEED }}
+          DULJA_API_BASE_URL: ${{ vars.DULJA_API_BASE_URL }}
+          PREVIEW: ${{ inputs.preview && !startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          # The placeholders a preview build uses for an unset variable. Every one is `.invalid` (RFC 2606):
+          # it can never resolve, so a preview installer is unmistakably not a working release.
+          $placeholders = [ordered]@{
+            VITE_API_BASE_URL = "https://api.invalid"
+            VITE_SUPABASE_URL = "https://project.invalid"
+            VITE_SUPABASE_ANON_KEY = "preview-placeholder"
+            DULJA_UPDATE_FEED = "https://updates.invalid/backoffice/"
+            DULJA_POS_UPDATE_FEED = "https://updates.invalid/pos/"
+            DULJA_API_BASE_URL = "https://api.invalid"
+          }
+          $preview = $env:PREVIEW -eq "true"
+          $missing = @()
+          $used = @()
+          foreach ($name in $placeholders.Keys) {
+            $value = [Environment]::GetEnvironmentVariable($name)
+            if ([string]::IsNullOrWhiteSpace($value)) {
+              if ($preview) { $value = $placeholders[$name]; $used += $name } else { $missing += $name }
+            }
+            "$name=$value" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          }
+          if ($missing.Count -gt 0) {
+            Write-Error "Missing repository variable(s), required before this workflow can produce a working artefact: $($missing -join ', '). Empty rather than set, the backoffice build and electron-builder's dist step both still exit 0 and ship a broken installer -- see docs/runbooks/clean-vm-install.md. To build installers before the backend exists, dispatch with preview: true."
+            exit 1
+          }
+          # The till refuses a non-https origin at startup (ADR 0093); refuse it here, before the build.
+          $api = [Environment]::GetEnvironmentVariable("DULJA_API_BASE_URL")
+          if ([string]::IsNullOrWhiteSpace($api)) { $api = $placeholders["DULJA_API_BASE_URL"] }
+          if (-not $api.StartsWith("https://")) {
+            Write-Error "DULJA_API_BASE_URL must be an https:// origin; a packaged till refuses anything else."
+            exit 1
+          }
+          # OPS-06: the version comes from the tag, so a release is offered as an update and two builds
+          # never share a version and a file name in the feed. Anything else is a preview of package.json's.
+          $base = (Get-Content apps/desktop/package.json -Raw | ConvertFrom-Json).version
+          if ($env:GITHUB_REF -like "refs/tags/*") {
+            $version = $env:GITHUB_REF_NAME -replace '^v', ''
+            if ($version -notmatch '^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$') {
+              Write-Error "Tag $env:GITHUB_REF_NAME is not v<semver>"
+              exit 1
+            }
+          } else {
+            # A prerelease tag is also electron-updater's channel: a preview build reads `preview.yml`,
+            # never a release's `latest.yml`, so it can never be offered (or offer) a production update.
+            $version = "$base-preview.$env:GITHUB_RUN_NUMBER"
+          }
+          "APP_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "## Desktop installers $version" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          if ($used.Count -gt 0) {
+            "**PREVIEW build:** placeholder (.invalid) values for $($used -join ', '). These installers install and open, and reach no backend." | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
+      # SHA-pinned rather than tagged, and only in the two workflows that hold secrets. `oven-sh/setup-bun`
+      # is the only action in this repository GitHub does not own; a tag is a movable ref; and this action
+      # has a `post:` step that runs *after* the `dist` step below — the step that holds the OD-18
+      # certificate — and installs the `bun` binary that step executes. `0c5077e…` is what `v2` resolved
+      # to on 2026-09-17 (`gh api repos/oven-sh/setup-bun/git/ref/tags/v2`); the trailing comment is the
+      # only thing that still records which tag it was, so keep it accurate when the pin is moved.
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with: { bun-version: 1.4.2 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+      - run: bun install --frozen-lockfile
+      # `startsWith(github.ref, 'refs/tags/')` appears twice in this job and means the same thing both
+      # times: a tag push is an actual versioned release, whereas `workflow_dispatch` runs against
+      # whatever branch or tag the actor picks and is an ad-hoc run (e.g. exercising this pipeline before
+      # OD-18's certificate exists).
+      #
+      # Here it picks the Sentry environment label; an ad-hoc run stays `staging`, matching what
+      # `deploy-staging.yml` calls the rest of this environment. The plan's own template hard-coded
+      # `staging` unconditionally, which is only ever right for the second case and would mislabel a real
+      # signed release's Sentry events the day OD-18 and OD-22 both land.
+      # The `VITE_*` values arrive through `GITHUB_ENV`, from the guard above (real, or preview placeholders).
+      - run: bun run --cwd apps/backoffice build
+        env:
+          VITE_SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          VITE_APP_ENV: ${{ startsWith(github.ref, 'refs/tags/') && 'production' || 'staging' }}
+      - run: bun run --cwd apps/desktop build
+      # OPS-06: electron-builder reads the version from package.json, so the stamp goes there, for both
+      # products, before either is packaged. Not committed; the runner's checkout is thrown away.
+      - name: Stamp the app version
+        working-directory: apps/desktop
+        run: npm pkg set "version=$env:APP_VERSION"
+      # OD-18 (spec:92, 2323; contracts §3.11): exactly these two secret names, joined here to
+      # electron-builder's own CSC_LINK/CSC_KEY_PASSWORD variables — the one place the two are joined.
+      # Absent, both env vars are the empty string, not unset; electron-builder's own Windows signing
+      # step (app-builder-lib's WindowsSignToolManager) treats `cscLink === ""` exactly like a missing
+      # certificate and returns no cscInfo, so the build still succeeds and the artefact comes out
+      # unsigned — verified locally on this repo (2026-09-17: `dist` with both vars set to "" exited 0,
+      # and `Get-AuthenticodeSignature` on the resulting .exe reported `NotSigned`). That is the pending
+      # path this task's runbook describes; nothing here waits for the certificate to work.
+      #
+      # No `APP_ENV` here, deliberately: the packaged main process reads it from the real process
+      # environment at launch on the end user's machine (`main.ts`'s `initSentry` call), not at build
+      # time. electron-builder does substitute this step's environment into its own *configuration* —
+      # `DULJA_UPDATE_FEED` above is exactly that, reaching the shipped `app-update.yml` through
+      # `${env.…}` — but nothing carries it into the packaged process's `process.env`, which is what a
+      # runtime read needs. So setting `APP_ENV` on this step would change nothing. See the comment at
+      # that call site; it is OD-22's to close.
+      #
+      # The `startsWith(github.ref, 'refs/tags/')` guard on the two secrets is the second use described
+      # further up, and it composes exactly with the empty-string semantics above: off a tag ref both
+      # variables are `''`, which electron-builder already treats as "no certificate" and ships unsigned.
+      # Be precise about what it buys. It removes the *accidental* path — a `workflow_dispatch` run, which
+      # GitHub lets the actor point at any branch or tag, no longer reaches the certificate. It is not a
+      # boundary: anyone with write access can push a `v[0-9]*` tag at any commit and pass it. On this
+      # plan (private repository, GitHub Free) the collaborator list is the only control over who reaches
+      # the certificate; environment-scoped secrets with required reviewers need Pro, and that is the
+      # owner's call rather than something this file can express.
+      - run: bun run --cwd apps/desktop dist
+        env:
+          CSC_LINK: ${{ startsWith(github.ref, 'refs/tags/') && secrets.WINDOWS_CODE_SIGN_CERT || '' }}
+          CSC_KEY_PASSWORD: ${{ startsWith(github.ref, 'refs/tags/') && secrets.WINDOWS_CODE_SIGN_PASSWORD || '' }}
+      - name: Build POS
+        run: bun run --cwd apps/desktop build:pos
+      # `DULJA_API_BASE_URL` and `DULJA_POS_UPDATE_FEED` arrive through `GITHUB_ENV` from the guard; the
+      # first is baked into `resources/pos-config.json` (ADR 0093), the second into `app-update.yml`.
+      - name: Package unsigned POS (OD-18)
+        run: bun run --cwd apps/desktop dist:pos
+        env:
+          DULJA_API_BASE_URL: ${{ env.DULJA_API_BASE_URL }}
+      # The real installers, installed the way a shop installs them (silent, per-user), then launched from
+      # where they landed. `oneClick: false` NSIS takes `/S`; the per-user default is under
+      # `%LOCALAPPDATA%\Programs`, found by executable name rather than assumed.
+      - name: Install both installers silently
+        id: install
+        shell: pwsh
+        run: |
+          $office = Get-ChildItem apps/desktop/dist-installer/dulja-backoffice-*-windows-x64.exe | Select-Object -First 1
+          $till = Get-ChildItem apps/desktop/dist-installer-pos/dulja-pos-*-windows-x64.exe | Select-Object -First 1
+          if (-not $office -or -not $till) { Write-Error "an installer is missing"; exit 1 }
+          Start-Process -FilePath $office.FullName -ArgumentList "/S" -Wait
+          Start-Process -FilePath $till.FullName -ArgumentList "/S" -Wait
+          $programs = Join-Path $env:LOCALAPPDATA "Programs"
+          $officeExe = Get-ChildItem $programs -Recurse -Filter "Dulja Back Office.exe" | Select-Object -First 1
+          $tillExe = Get-ChildItem $programs -Recurse -Filter "Dulja POS.exe" | Select-Object -First 1
+          if (-not $officeExe -or -not $tillExe) { Get-ChildItem $programs -Recurse -Depth 1 | Format-Table FullName; Write-Error "an installed executable is missing"; exit 1 }
+          "backoffice=$($officeExe.FullName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "pos=$($tillExe.FullName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+      # Proves the installed packages, not just that electron-builder exited 0: the same specs `ci.yml` runs
+      # against its `--dir` trees, here against the installed apps. Window under CSP, sign-in / enrolment
+      # screen, SQLite, the configured backend reached (through a local stub; `DULJA_SMOKE_HOSTS` names this
+      # build's hosts), and an update check that does not crash. A failure here uploads nothing.
+      - name: Smoke-test the installed apps
+        env:
+          DULJA_REQUIRE_PACKAGE: "1"
+          DULJA_REQUIRE_POS_PACKAGE: "1"
+          DULJA_BACKOFFICE_EXE: ${{ steps.install.outputs.backoffice }}
+          DULJA_POS_EXE: ${{ steps.install.outputs.pos }}
+        shell: pwsh
+        run: |
+          $env:DULJA_SMOKE_HOSTS = (@($env:VITE_SUPABASE_URL, $env:VITE_API_BASE_URL) | ForEach-Object { ([Uri]$_).Host }) -join ","
+          bun run --cwd apps/desktop test:electron
+      # Only what the R2 update feed and a verifier need — not `win-unpacked/` and not `builder-debug.yml`
+      # (build diagnostics that name the build machine's own paths). `if-no-files-found: error` because the
+      # default `warn` would turn "no installer" into a green run. Three days: this store is a hand-off, not
+      # where a release lives, and the account's artifact quota is shared (OPS-04).
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backoffice-installer
+          if-no-files-found: error
+          retention-days: 3
+          path: |
+            apps/desktop/dist-installer/dulja-backoffice-*-windows-x64.exe
+            apps/desktop/dist-installer/dulja-backoffice-*-windows-x64.exe.blockmap
+            apps/desktop/dist-installer/latest.yml
+            apps/desktop/dist-installer/preview.yml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pos-installer
+          if-no-files-found: error
+          retention-days: 3
+          path: |
+            apps/desktop/dist-installer-pos/dulja-pos-*-windows-x64.exe
+            apps/desktop/dist-installer-pos/dulja-pos-*-windows-x64.exe.blockmap
+            apps/desktop/dist-installer-pos/latest.yml
+            apps/desktop/dist-installer-pos/preview.yml
+  # The repository's Releases page: the download a shop actually uses. Only on a `v<semver>` tag, and only
+  # after `windows-installer` built, silently installed and smoke-tested both apps — a failure there
+  # publishes nothing. A separate job so `contents: write` never sits beside the OD-18 signing secrets:
+  # this one checks nothing out and runs no repository code; it downloads the two artefacts and attaches
+  # them. Files: `dulja-backoffice-<version>-windows-x64.exe`, `dulja-pos-<version>-windows-x64.exe` and
+  # `SHA256SUMS.txt`. The update feed (R2) stays where electron-updater reads `latest.yml`; the release
+  # carries the installers only, since both apps' `latest.yml` share one name. A tag with a prerelease
+  # part (`v1.2.0-rc.1`) is marked prerelease, so it is never shown as the latest download.
+  github-release:
+    needs: windows-installer
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: backoffice-installer
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: pos-installer
+          path: dist
+      - name: Publish the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          shopt -s nullglob
+          office=(dulja-backoffice-*-windows-x64.exe)
+          till=(dulja-pos-*-windows-x64.exe)
+          if [ "${#office[@]}" -ne 1 ] || [ "${#till[@]}" -ne 1 ]; then
+            echo "::error::expected exactly one installer of each app"; ls -la; exit 1
+          fi
+          sha256sum "${office[0]}" "${till[0]}" > SHA256SUMS.txt
+          version="${GITHUB_REF_NAME#v}"
+          flags=()
+          if [[ "$version" == *-* ]]; then flags+=(--prerelease); fi
+          {
+            echo "Windows 10/11, 64-bit. Download and run the installer; no administrator rights are needed."
+            echo
+            echo "- **Back office**: \`${office[0]}\`"
+            echo "- **POS (till)**: \`${till[0]}\`"
+            echo
+            echo "The installers are not yet code-signed (OD-18), so Windows SmartScreen shows \"Windows protected your PC\": choose **More info → Run anyway**. Check a download against \`SHA256SUMS.txt\` with \`Get-FileHash <file>\`."
+          } > notes.md
+          gh release create "$GITHUB_REF_NAME" "${office[0]}" "${till[0]}" SHA256SUMS.txt \
+            --title "Dulja $version" --notes-file notes.md --verify-tag "${flags[@]}"

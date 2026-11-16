@@ -1,0 +1,123 @@
+{
+  "definitionVersion": 2,
+  "definition": {
+    "version": 1,
+    "code": "pos.sales_by_cashier",
+    "nameEn": "Sales by cashier",
+    "nameAr": "المبيعات حسب أمين الصندوق",
+    "module": "pos",
+    "permission": "pos.report.read",
+    "parameters": [
+      { "name": "fromDate", "kind": "date", "required": true },
+      { "name": "toDate", "kind": "date", "required": true },
+      { "name": "branchId", "kind": "branch", "required": false },
+      { "name": "cashierPrincipalId", "kind": "text", "required": false }
+    ],
+    "dataset": {
+      "source": "shift",
+      "filters": [
+        { "field": "opened_on", "op": "gte", "param": "fromDate" },
+        { "field": "opened_on", "op": "lte", "param": "toDate" },
+        { "field": "branch_id", "op": "eq", "param": "branchId" },
+        { "field": "cashier_principal_id", "op": "eq", "param": "cashierPrincipalId" }
+      ]
+    },
+    "columns": [
+      {
+        "field": "cashier_name",
+        "labelEn": "Cashier",
+        "labelAr": "أمين الصندوق",
+        "format": "text",
+        "align": "start"
+      },
+      {
+        "field": "branch_code",
+        "labelEn": "Branch",
+        "labelAr": "الفرع",
+        "format": "text",
+        "align": "start",
+        "width": 90
+      },
+      {
+        "field": "terminal_code",
+        "labelEn": "Terminal",
+        "labelAr": "الجهاز",
+        "format": "text",
+        "align": "start",
+        "width": 90
+      },
+      {
+        "field": "opened_on",
+        "labelEn": "Shift opened",
+        "labelAr": "بداية الوردية",
+        "format": "date",
+        "align": "start",
+        "width": 110
+      },
+      {
+        "field": "ticket_count",
+        "labelEn": "Tickets",
+        "labelAr": "الفواتير",
+        "format": "integer",
+        "align": "end",
+        "width": 80
+      },
+      {
+        "field": "return_count",
+        "labelEn": "Returns",
+        "labelAr": "المرتجعات",
+        "format": "integer",
+        "align": "end",
+        "width": 80
+      },
+      {
+        "field": "net_sales_base",
+        "labelEn": "Net sales",
+        "labelAr": "صافي المبيعات",
+        "format": "money",
+        "align": "end",
+        "width": 120
+      },
+      {
+        "field": "over_short",
+        "labelEn": "Over / short",
+        "labelAr": "زيادة / عجز",
+        "format": "money",
+        "align": "end",
+        "width": 110
+      },
+      {
+        "field": "cashier_principal_id",
+        "labelEn": "Cashier id",
+        "labelAr": "معرف أمين الصندوق",
+        "format": "text",
+        "align": "start",
+        "width": 8
+      },
+      {
+        "field": "opened_at",
+        "labelEn": "Opened",
+        "labelAr": "فُتح",
+        "format": "text",
+        "align": "start",
+        "width": 8
+      }
+    ],
+    "groups": [{ "field": "cashier_name", "subtotal": true }],
+    "totals": [
+      { "field": "net_sales_base", "fn": "sum" },
+      { "field": "ticket_count", "fn": "sum" }
+    ],
+    "sort": [
+      { "field": "cashier_name", "dir": "asc" },
+      { "field": "opened_at", "dir": "asc" }
+    ],
+    "layout": {
+      "orientation": "landscape",
+      "paper": "A4",
+      "header": "{title} — {fromDate} … {toDate}",
+      "footer": "{rowCount} shifts · {generatedAt}"
+    },
+    "tieOut": { "kind": "ledger_sum" }
+  }
+}

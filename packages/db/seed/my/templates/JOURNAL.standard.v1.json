@@ -1,0 +1,39 @@
+{
+  "documentType": "JOURNAL",
+  "code": "standard",
+  "version": 1,
+  "nameEn": "Journal Voucher",
+  "nameAr": "قيد يومية",
+  "engine": "chromium",
+  "paper": "A4",
+  "labels": {
+    "en": {
+      "documentNo": "Document no.",
+      "date": "Date",
+      "dateHijri": "Hijri date",
+      "currency": "Currency",
+      "line": "#",
+      "description": "Description",
+      "account": "Account",
+      "debit": "Debit",
+      "credit": "Credit",
+      "total": "Total",
+      "notes": "Notes",
+      "status": "Status"
+    },
+    "ar": {
+      "documentNo": "رقم المستند",
+      "date": "التاريخ",
+      "dateHijri": "التاريخ الهجري",
+      "currency": "العملة",
+      "line": "#",
+      "description": "البيان",
+      "account": "الحساب",
+      "debit": "مدين",
+      "credit": "دائن",
+      "total": "الإجمالي",
+      "notes": "ملاحظات",
+      "status": "الحالة"
+    }
+  }
+}

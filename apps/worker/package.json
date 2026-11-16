@@ -1,0 +1,38 @@
+{
+  "name": "@dulja/worker",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./handler": "./src/handler.ts",
+    "./hr-keys": "./src/hr-keys.ts",
+    "./test-support": "./test/support/worker.ts"
+  },
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "jobs:install": "bun run src/install.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node ../../node_modules/vitest/vitest.mjs run && bun run test:bun",
+    "test:bun": "bun test test/health.test.ts"
+  },
+  "dependencies": {
+    "@dulja/contracts": "workspace:*",
+    "@dulja/db": "workspace:*",
+    "@dulja/domain": "workspace:*",
+    "@dulja/i18n": "workspace:*",
+    "@dulja/importer": "workspace:*",
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.222.0",
+    "@opentelemetry/sdk-node": "^0.222.0",
+    "@opentelemetry/sdk-trace-base": "^2.11.0",
+    "@sentry/node": "^10.74.0",
+    "exceljs": "^4.4.0",
+    "pg-boss": "^12.32.0",
+    "playwright": "^1.63.0",
+    "postgres": "^3.4.9",
+    "uuid": "^14.0.2"
+  },
+  "devDependencies": {
+    "bun-types": "^1.4.2"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "period": {
+    "start": "2026-01-01",
+    "end": "2026-01-31",
+    "payDate": "2026-02-05",
+    "prorationRule": "calendar_days"
+  },
+  "kind": "regular",
+  "effectiveDate": "2026-01-31",
+  "schemes": [{ "code": "EPF", "table": "SYNTH" }],
+  "components": [
+    {
+      "code": "OT",
+      "kind": "earning",
+      "accountCode": "5300",
+      "schemeCodes": ["EPF"],
+      "quantityBased": true
+    }
+  ],
+  "employees": [
+    {
+      "employeeNumber": "E-0201",
+      "branchCode": "HQ",
+      "hiredOn": "2020-01-01",
+      "terminatedOn": null,
+      "statutoryProfile": {},
+      "compensation": [{ "componentCode": "OT", "amount": null, "quantity": "8.000000" }]
+    }
+  ]
+}

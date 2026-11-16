@@ -1,0 +1,46 @@
+{
+  "regimeCode": "SYNTH-MY-v1",
+  "regimeVersion": 1,
+  "codes": [
+    {
+      "code": "SYN-OUT-STD",
+      "nameEn": "Standard-rated supply (synthetic)",
+      "nameAr": "توريد بالنسبة القياسية (اختباري)",
+      "rate": "0.11000000",
+      "kind": "output",
+      "roundingMode": "HALF_AWAY_FROM_ZERO",
+      "accountCode": "2300",
+      "effectiveFrom": "2026-01-01"
+    },
+    {
+      "code": "SYN-OUT-ZERO",
+      "nameEn": "Zero-rated supply (synthetic)",
+      "nameAr": "توريد بنسبة صفرية (اختباري)",
+      "rate": "0.00000000",
+      "kind": "zero",
+      "roundingMode": "HALF_AWAY_FROM_ZERO",
+      "accountCode": null,
+      "effectiveFrom": "2026-01-01"
+    },
+    {
+      "code": "SYN-IN-STD",
+      "nameEn": "Taxable purchase (synthetic)",
+      "nameAr": "شراء خاضع للضريبة (اختباري)",
+      "rate": "0.11000000",
+      "kind": "input",
+      "roundingMode": "HALF_AWAY_FROM_ZERO",
+      "accountCode": "1350",
+      "effectiveFrom": "2026-01-01"
+    },
+    {
+      "code": "SYN-EXEMPT",
+      "nameEn": "Exempt supply (synthetic)",
+      "nameAr": "توريد معفى (اختباري)",
+      "rate": "0.00000000",
+      "kind": "exempt",
+      "roundingMode": "HALF_AWAY_FROM_ZERO",
+      "accountCode": null,
+      "effectiveFrom": "2026-01-01"
+    }
+  ]
+}

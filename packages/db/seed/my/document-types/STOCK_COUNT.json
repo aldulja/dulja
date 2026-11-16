@@ -1,0 +1,61 @@
+{
+  "code": "STOCK_COUNT",
+  "nameEn": "Stock Count",
+  "nameAr": "جرد المخزون",
+  "module": "inventory",
+  "policyVersion": 1,
+  "effectiveFrom": "2026-01-01",
+  "policy": {
+    "version": 1,
+    "documentType": "STOCK_COUNT",
+    "direction": "internal",
+    "requires": ["warehouse"],
+    "lines": [
+      {
+        "for": "each_line",
+        "side": "debit",
+        "account": { "from": "item.inventory_account" },
+        "amount": "line.cost",
+        "when": { "line.kind": "item", "line.quantity_sign": "positive" }
+      },
+      {
+        "for": "each_line",
+        "side": "credit",
+        "account": { "code": "5110" },
+        "amount": "line.cost",
+        "when": { "line.kind": "item", "line.quantity_sign": "positive" }
+      },
+      {
+        "for": "each_line",
+        "side": "credit",
+        "account": { "from": "item.inventory_account" },
+        "amount": "line.cost",
+        "when": { "line.kind": "item", "line.quantity_sign": "negative" }
+      },
+      {
+        "for": "each_line",
+        "side": "debit",
+        "account": { "code": "5110" },
+        "amount": "line.cost",
+        "when": { "line.kind": "item", "line.quantity_sign": "negative" }
+      }
+    ],
+    "inventory": {
+      "effect": "receipt",
+      "warehouse": "line.warehouse",
+      "costing": "create_layer",
+      "allowNegative": false
+    },
+    "tax": { "applies": false },
+    "numbering": { "series": "SC", "assignAt": "issue" },
+    "reversal": { "allowed": true, "producesType": "STOCK_COUNT" },
+    "approval": {
+      "required": true,
+      "approve": "inventory.adjustment.approve",
+      "post": "inventory.adjustment.approve",
+      "create": "inventory.count.create"
+    },
+    "fxRoundingAccount": { "from": "company.fx_rounding_account_id" },
+    "dimensions": { "required": ["BRANCH"] }
+  }
+}

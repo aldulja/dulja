@@ -1,0 +1,86 @@
+{
+  "definitionVersion": 1,
+  "definition": {
+    "version": 1,
+    "code": "inventory.promotion_register",
+    "nameEn": "Promotion register",
+    "nameAr": "سجل العروض الترويجية",
+    "module": "inventory",
+    "permission": "inventory.item.read",
+    "parameters": [
+      {
+        "name": "kind",
+        "kind": "enum",
+        "required": false,
+        "options": ["percent_off", "amount_off", "bundle"]
+      }
+    ],
+    "dataset": {
+      "source": "promotion",
+      "filters": [{ "field": "kind", "op": "eq", "param": "kind" }]
+    },
+    "columns": [
+      {
+        "field": "code",
+        "labelEn": "Code",
+        "labelAr": "الرمز",
+        "format": "text",
+        "align": "start",
+        "width": 80
+      },
+      {
+        "field": "name_en",
+        "labelEn": "Name",
+        "labelAr": "الاسم",
+        "format": "text",
+        "align": "start",
+        "width": 180
+      },
+      {
+        "field": "name_ar",
+        "labelEn": "Name (Arabic)",
+        "labelAr": "الاسم بالعربية",
+        "format": "text",
+        "align": "start",
+        "width": 180
+      },
+      {
+        "field": "kind",
+        "labelEn": "Kind",
+        "labelAr": "النوع",
+        "format": "text",
+        "align": "start",
+        "width": 90
+      },
+      {
+        "field": "starts_at",
+        "labelEn": "Starts",
+        "labelAr": "تاريخ البداية",
+        "format": "text",
+        "align": "start",
+        "width": 130
+      },
+      {
+        "field": "ends_at",
+        "labelEn": "Ends",
+        "labelAr": "تاريخ النهاية",
+        "format": "text",
+        "align": "start",
+        "width": 130
+      }
+    ],
+    "groups": [{ "field": "kind", "subtotal": false }],
+    "totals": [],
+    "sort": [
+      { "field": "starts_at", "dir": "asc" },
+      { "field": "code", "dir": "asc" }
+    ],
+    "layout": {
+      "orientation": "landscape",
+      "paper": "A4",
+      "header": "{title}",
+      "footer": "{rowCount} promotions · {generatedAt}"
+    },
+    "tieOut": { "kind": "none" }
+  }
+}

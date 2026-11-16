@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "scheme": "SYNTH",
+  "version": 1,
+  "kind": "banded_contribution",
+  "effective_from": "2026-01-01",
+  "effective_to": null,
+  "source": {
+    "authority": "Dulja test fixture",
+    "publication": "SYNTHETIC-TEST-v1 — invented figures, no authority, never for production",
+    "url": "https://dulja.invalid/test-fixture/synth/v1",
+    "retrieved_on": "2026-01-01",
+    "notes": "Contracts §4.12.4. Three bands with round numbers chosen so a golden fixture's arithmetic is checkable by hand. NOT a Malaysian, or any other jurisdiction's, contribution table."
+  },
+  "verification": {
+    "verified_by": "Dulja test fixture",
+    "verified_on": "2026-01-01",
+    "method": "synthetic_test"
+  },
+  "rounding_mode": "HALF_AWAY_FROM_ZERO",
+  "required_profile_fields": [],
+  "table": {
+    "bands": [
+      { "from": "0.0000", "to": "1000.0000", "employee": "10.0000", "employer": "20.0000" },
+      { "from": "1000.0000", "to": "5000.0000", "employee": "50.0000", "employer": "100.0000" },
+      { "from": "5000.0000", "to": null, "employee": "250.0000", "employer": "500.0000" }
+    ]
+  }
+}

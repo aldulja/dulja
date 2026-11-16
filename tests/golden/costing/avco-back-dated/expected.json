@@ -1,0 +1,307 @@
+{
+  "plans": [
+    {
+      "ledgerLines": [
+        {
+          "lineNo": 1,
+          "accountId": "a1300",
+          "side": "debit",
+          "amount": {
+            "amount": "1000.0000",
+            "currency": "MYR"
+          },
+          "base": {
+            "amount": "1000.0000",
+            "currency": "MYR"
+          },
+          "dimensions": {
+            "BRANCH": "b1"
+          },
+          "sourceLineNo": 1,
+          "role": "policy"
+        },
+        {
+          "lineNo": 2,
+          "accountId": "a5900",
+          "side": "credit",
+          "amount": {
+            "amount": "1000.0000",
+            "currency": "MYR"
+          },
+          "base": {
+            "amount": "1000.0000",
+            "currency": "MYR"
+          },
+          "dimensions": {
+            "BRANCH": "b1"
+          },
+          "sourceLineNo": 1,
+          "role": "policy"
+        }
+      ],
+      "movements": [
+        {
+          "lineNo": 1,
+          "movementNo": 1,
+          "itemId": "i1",
+          "warehouseId": "w1",
+          "lotId": null,
+          "quantity": "100.000000",
+          "effect": "receipt",
+          "value": {
+            "amount": "1000.0000",
+            "currency": "MYR"
+          },
+          "costing": "create_layer"
+        }
+      ],
+      "taxLines": [],
+      "warnings": []
+    },
+    {
+      "ledgerLines": [
+        {
+          "lineNo": 1,
+          "accountId": "a1300",
+          "side": "debit",
+          "amount": {
+            "amount": "3000.0000",
+            "currency": "MYR"
+          },
+          "base": {
+            "amount": "3000.0000",
+            "currency": "MYR"
+          },
+          "dimensions": {
+            "BRANCH": "b1"
+          },
+          "sourceLineNo": 1,
+          "role": "policy"
+        },
+        {
+          "lineNo": 2,
+          "accountId": "a5900",
+          "side": "credit",
+          "amount": {
+            "amount": "3000.0000",
+            "currency": "MYR"
+          },
+          "base": {
+            "amount": "3000.0000",
+            "currency": "MYR"
+          },
+          "dimensions": {
+            "BRANCH": "b1"
+          },
+          "sourceLineNo": 1,
+          "role": "policy"
+        }
+      ],
+      "movements": [
+        {
+          "lineNo": 1,
+          "movementNo": 1,
+          "itemId": "i1",
+          "warehouseId": "w1",
+          "lotId": null,
+          "quantity": "100.000000",
+          "effect": "receipt",
+          "value": {
+            "amount": "3000.0000",
+            "currency": "MYR"
+          },
+          "costing": "create_layer"
+        }
+      ],
+      "taxLines": [],
+      "warnings": []
+    },
+    {
+      "ledgerLines": [
+        {
+          "lineNo": 1,
+          "accountId": "a1300",
+          "side": "debit",
+          "amount": {
+            "amount": "2000.0000",
+            "currency": "MYR"
+          },
+          "base": {
+            "amount": "2000.0000",
+            "currency": "MYR"
+          },
+          "dimensions": {
+            "BRANCH": "b1"
+          },
+          "sourceLineNo": 1,
+          "role": "policy"
+        },
+        {
+          "lineNo": 2,
+          "accountId": "a5900",
+          "side": "credit",
+          "amount": {
+            "amount": "2000.0000",
+            "currency": "MYR"
+          },
+          "base": {
+            "amount": "2000.0000",
+            "currency": "MYR"
+          },
+          "dimensions": {
+            "BRANCH": "b1"
+          },
+          "sourceLineNo": 1,
+          "role": "policy"
+        }
+      ],
+      "movements": [
+        {
+          "lineNo": 1,
+          "movementNo": 1,
+          "itemId": "i1",
+          "warehouseId": "w1",
+          "lotId": null,
+          "quantity": "100.000000",
+          "effect": "receipt",
+          "value": {
+            "amount": "2000.0000",
+            "currency": "MYR"
+          },
+          "costing": "create_layer"
+        }
+      ],
+      "taxLines": [],
+      "warnings": []
+    },
+    {
+      "ledgerLines": [
+        {
+          "lineNo": 1,
+          "accountId": "a5000",
+          "side": "debit",
+          "amount": {
+            "amount": "3000.0000",
+            "currency": "MYR"
+          },
+          "base": {
+            "amount": "3000.0000",
+            "currency": "MYR"
+          },
+          "dimensions": {
+            "BRANCH": "b1"
+          },
+          "sourceLineNo": 1,
+          "role": "cost",
+          "fill": "cost"
+        },
+        {
+          "lineNo": 2,
+          "accountId": "a1300",
+          "side": "credit",
+          "amount": {
+            "amount": "3000.0000",
+            "currency": "MYR"
+          },
+          "base": {
+            "amount": "3000.0000",
+            "currency": "MYR"
+          },
+          "dimensions": {
+            "BRANCH": "b1"
+          },
+          "sourceLineNo": 1,
+          "role": "cost",
+          "fill": "cost"
+        }
+      ],
+      "movements": [
+        {
+          "lineNo": 1,
+          "movementNo": 1,
+          "itemId": "i1",
+          "warehouseId": "w1",
+          "lotId": null,
+          "quantity": "150.000000",
+          "effect": "issue",
+          "value": {
+            "amount": "3000.0000",
+            "currency": "MYR"
+          },
+          "costing": "consume_layers"
+        }
+      ],
+      "taxLines": [],
+      "warnings": []
+    }
+  ],
+  "consumptions": [
+    [],
+    [],
+    [],
+    [
+      {
+        "layerId": "L-mv-1-1",
+        "quantity": "50.000000",
+        "unitCost": {
+          "amount": "20.0000",
+          "currency": "MYR"
+        },
+        "value": {
+          "amount": "1000.0000",
+          "currency": "MYR"
+        }
+      },
+      {
+        "layerId": "L-mv-4-1",
+        "quantity": "50.000000",
+        "unitCost": {
+          "amount": "20.0000",
+          "currency": "MYR"
+        },
+        "value": {
+          "amount": "1000.0000",
+          "currency": "MYR"
+        }
+      },
+      {
+        "layerId": "L-mv-2-1",
+        "quantity": "50.000000",
+        "unitCost": {
+          "amount": "20.0000",
+          "currency": "MYR"
+        },
+        "value": {
+          "amount": "1000.0000",
+          "currency": "MYR"
+        }
+      }
+    ]
+  ],
+  "layersAfter": [
+    {
+      "movementId": "mv-1-1",
+      "qtyIn": "100.000000",
+      "unitCost": "10.0000",
+      "qtyRemaining": "50.000000",
+      "effectiveDate": "2026-01-10",
+      "postingSeq": "1"
+    },
+    {
+      "movementId": "mv-4-1",
+      "qtyIn": "100.000000",
+      "unitCost": "30.0000",
+      "qtyRemaining": "50.000000",
+      "effectiveDate": "2026-02-01",
+      "postingSeq": "4"
+    },
+    {
+      "movementId": "mv-2-1",
+      "qtyIn": "100.000000",
+      "unitCost": "20.0000",
+      "qtyRemaining": "50.000000",
+      "effectiveDate": "2026-02-10",
+      "postingSeq": "2"
+    }
+  ]
+}

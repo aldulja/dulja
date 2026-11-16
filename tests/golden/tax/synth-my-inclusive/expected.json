@@ -1,0 +1,27 @@
+{
+  "boxes": [
+    { "code": "S1", "label": "Standard-rated supplies (value)", "amount": "800.0000" },
+    { "code": "S2", "label": "Tax on standard-rated supplies", "amount": "88.0000" },
+    { "code": "S3", "label": "Zero-rated and exempt supplies (value)", "amount": "450.0000" },
+    { "code": "P1", "label": "Taxable purchases (value)", "amount": "500.0000" },
+    { "code": "P2", "label": "Tax on taxable purchases", "amount": "55.0000" }
+  ],
+  "payload": "{\"boxes\":[{\"amount\":\"800.0000\",\"code\":\"S1\",\"label\":\"Standard-rated supplies (value)\"},{\"amount\":\"88.0000\",\"code\":\"S2\",\"label\":\"Tax on standard-rated supplies\"},{\"amount\":\"450.0000\",\"code\":\"S3\",\"label\":\"Zero-rated and exempt supplies (value)\"},{\"amount\":\"500.0000\",\"code\":\"P1\",\"label\":\"Taxable purchases (value)\"},{\"amount\":\"55.0000\",\"code\":\"P2\",\"label\":\"Tax on taxable purchases\"}],\"currency\":\"MYR\",\"jurisdiction\":\"MY\",\"periodEnd\":\"2026-03-31\",\"periodStart\":\"2026-01-01\",\"regimeCode\":\"SYNTH-MY-v1\",\"regimeVersion\":1}",
+  "payloadSha256": "df0b4de2ec7fc20f1f1fb045447792279cdbc12d2fa7ae7446d0034ee6cdc438",
+  "tieOut": [
+    {
+      "accountCode": "1350",
+      "boxCodes": ["P2"],
+      "boxBase": "55.0000",
+      "ledgerBase": "55.0000",
+      "difference": "0.0000"
+    },
+    {
+      "accountCode": "2300",
+      "boxCodes": ["S2"],
+      "boxBase": "88.0000",
+      "ledgerBase": "88.0000",
+      "difference": "0.0000"
+    }
+  ]
+}

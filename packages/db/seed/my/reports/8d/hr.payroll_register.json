@@ -1,0 +1,127 @@
+{
+  "definitionVersion": 1,
+  "definition": {
+    "version": 1,
+    "code": "hr.payroll_register",
+    "nameEn": "Payroll register",
+    "nameAr": "سجل الرواتب",
+    "module": "hr",
+    "permission": "hr.payroll.read",
+    "parameters": [
+      { "name": "payrollDocumentId", "kind": "text", "required": true },
+      { "name": "branchId", "kind": "branch", "required": false }
+    ],
+    "dataset": {
+      "source": "payroll_line",
+      "filters": [
+        { "field": "payroll_document_id", "op": "eq", "param": "payrollDocumentId" },
+        { "field": "branch_id", "op": "eq", "param": "branchId" }
+      ]
+    },
+    "columns": [
+      {
+        "field": "employee_number",
+        "labelEn": "Number",
+        "labelAr": "الرقم",
+        "format": "text",
+        "align": "start",
+        "width": 70
+      },
+      {
+        "field": "employee_name_en",
+        "labelEn": "Name",
+        "labelAr": "الاسم",
+        "format": "text",
+        "align": "start",
+        "width": 160
+      },
+      {
+        "field": "branch_code",
+        "labelEn": "Branch",
+        "labelAr": "الفرع",
+        "format": "text",
+        "align": "start",
+        "width": 60
+      },
+      {
+        "field": "component_code",
+        "labelEn": "Component",
+        "labelAr": "البند",
+        "format": "text",
+        "align": "start",
+        "width": 100
+      },
+      {
+        "field": "component_kind",
+        "labelEn": "Kind",
+        "labelAr": "النوع",
+        "format": "text",
+        "align": "start",
+        "width": 60
+      },
+      {
+        "field": "scheme_code",
+        "labelEn": "Scheme",
+        "labelAr": "النظام",
+        "format": "text",
+        "align": "start",
+        "width": 60
+      },
+      {
+        "field": "share",
+        "labelEn": "Share",
+        "labelAr": "الحصة",
+        "format": "text",
+        "align": "start",
+        "width": 60
+      },
+      {
+        "field": "rate_table_version",
+        "labelEn": "Table v",
+        "labelAr": "إصدار الجدول",
+        "format": "integer",
+        "align": "end",
+        "width": 50
+      },
+      {
+        "field": "override_reason",
+        "labelEn": "Override reason",
+        "labelAr": "سبب التعديل",
+        "format": "text",
+        "align": "start",
+        "width": 140
+      },
+      {
+        "field": "amount",
+        "labelEn": "Amount",
+        "labelAr": "المبلغ",
+        "format": "money",
+        "align": "end",
+        "width": 80
+      },
+      {
+        "field": "net_contribution",
+        "labelEn": "To net pay",
+        "labelAr": "أثره في الصافي",
+        "format": "money",
+        "align": "end",
+        "width": 80
+      }
+    ],
+    "groups": [{ "field": "employee_number", "subtotal": true }],
+    "totals": [{ "field": "net_contribution", "fn": "sum" }],
+    "sort": [
+      { "field": "employee_number", "dir": "asc" },
+      { "field": "component_code", "dir": "asc" },
+      { "field": "scheme_code", "dir": "asc" },
+      { "field": "share", "dir": "asc" }
+    ],
+    "layout": {
+      "orientation": "landscape",
+      "paper": "A4",
+      "header": "{title} — {generatedAt}",
+      "footer": "Every statutory line names the rate-table version it pinned (LEGACY-013) — كل سطر نظامي يحمل إصدار الجدول المثبت"
+    },
+    "tieOut": { "kind": "ledger_sum", "account": "2400" }
+  }
+}

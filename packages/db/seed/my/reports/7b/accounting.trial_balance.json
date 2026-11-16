@@ -1,0 +1,104 @@
+{
+  "definitionVersion": 2,
+  "definition": {
+    "version": 1,
+    "code": "accounting.trial_balance",
+    "nameEn": "Trial balance",
+    "nameAr": "ميزان المراجعة",
+    "module": "accounting",
+    "permission": "accounting.report.read",
+    "parameters": [
+      { "name": "fiscalPeriodId", "kind": "period", "required": true },
+      { "name": "currency", "kind": "text", "required": false }
+    ],
+    "dataset": {
+      "source": "account_balance",
+      "filters": [
+        { "field": "fiscal_period_id", "op": "eq", "param": "fiscalPeriodId" },
+        { "field": "currency", "op": "eq", "param": "currency" }
+      ]
+    },
+    "columns": [
+      {
+        "field": "account_code",
+        "labelEn": "Account",
+        "labelAr": "الحساب",
+        "format": "text",
+        "align": "start",
+        "width": 70
+      },
+      {
+        "field": "account_name_en",
+        "labelEn": "Account name",
+        "labelAr": "اسم الحساب",
+        "format": "text",
+        "align": "start",
+        "width": 200
+      },
+      {
+        "field": "account_type",
+        "labelEn": "Type",
+        "labelAr": "النوع",
+        "format": "text",
+        "align": "start",
+        "width": 80
+      },
+      {
+        "field": "currency",
+        "labelEn": "Currency",
+        "labelAr": "العملة",
+        "format": "text",
+        "align": "start",
+        "width": 50
+      },
+      {
+        "field": "debit",
+        "labelEn": "Debit",
+        "labelAr": "مدين",
+        "format": "money",
+        "align": "end",
+        "width": 100
+      },
+      {
+        "field": "credit",
+        "labelEn": "Credit",
+        "labelAr": "دائن",
+        "format": "money",
+        "align": "end",
+        "width": 100
+      },
+      {
+        "field": "base_debit",
+        "labelEn": "Base debit",
+        "labelAr": "مدين بالعملة الأساسية",
+        "format": "money",
+        "align": "end",
+        "width": 110
+      },
+      {
+        "field": "base_credit",
+        "labelEn": "Base credit",
+        "labelAr": "دائن بالعملة الأساسية",
+        "format": "money",
+        "align": "end",
+        "width": 110
+      }
+    ],
+    "groups": [{ "field": "account_type", "subtotal": true }],
+    "totals": [
+      { "field": "base_debit", "fn": "sum" },
+      { "field": "base_credit", "fn": "sum" }
+    ],
+    "sort": [
+      { "field": "account_code", "dir": "asc" },
+      { "field": "currency", "dir": "asc" }
+    ],
+    "layout": {
+      "orientation": "portrait",
+      "paper": "A4",
+      "header": "{title} — {fiscalPeriodId}",
+      "footer": "{rowCount} rows · {generatedAt}"
+    },
+    "tieOut": { "kind": "ledger_sum" }
+  }
+}

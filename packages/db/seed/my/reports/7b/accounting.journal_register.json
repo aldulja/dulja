@@ -1,0 +1,161 @@
+{
+  "definitionVersion": 1,
+  "definition": {
+    "version": 1,
+    "code": "accounting.journal_register",
+    "nameEn": "Journal register",
+    "nameAr": "سجل القيود",
+    "module": "accounting",
+    "permission": "accounting.report.read",
+    "parameters": [
+      {
+        "name": "fromDate",
+        "kind": "date",
+        "required": true
+      },
+      {
+        "name": "toDate",
+        "kind": "date",
+        "required": true
+      },
+      {
+        "name": "documentTypeCode",
+        "kind": "text",
+        "required": false
+      }
+    ],
+    "dataset": {
+      "source": "ledger_entry",
+      "filters": [
+        {
+          "field": "effective_date",
+          "op": "gte",
+          "param": "fromDate"
+        },
+        {
+          "field": "effective_date",
+          "op": "lte",
+          "param": "toDate"
+        },
+        {
+          "field": "document_type_code",
+          "op": "eq",
+          "param": "documentTypeCode"
+        }
+      ]
+    },
+    "columns": [
+      {
+        "field": "effective_date",
+        "labelEn": "Date",
+        "labelAr": "التاريخ",
+        "format": "date",
+        "align": "start",
+        "width": 80
+      },
+      {
+        "field": "document_type_code",
+        "labelEn": "Type",
+        "labelAr": "النوع",
+        "format": "text",
+        "align": "start",
+        "width": 90
+      },
+      {
+        "field": "number",
+        "labelEn": "Number",
+        "labelAr": "الرقم",
+        "format": "text",
+        "align": "start",
+        "width": 80
+      },
+      {
+        "field": "line_no",
+        "labelEn": "Line",
+        "labelAr": "السطر",
+        "format": "integer",
+        "align": "end",
+        "width": 40
+      },
+      {
+        "field": "account_code",
+        "labelEn": "Account",
+        "labelAr": "الحساب",
+        "format": "text",
+        "align": "start",
+        "width": 70
+      },
+      {
+        "field": "account_name_en",
+        "labelEn": "Account name",
+        "labelAr": "اسم الحساب",
+        "format": "text",
+        "align": "start",
+        "width": 160
+      },
+      {
+        "field": "posting_seq",
+        "labelEn": "Seq",
+        "labelAr": "التسلسل",
+        "format": "integer",
+        "align": "end",
+        "width": 45
+      },
+      {
+        "field": "base_debit",
+        "labelEn": "Debit",
+        "labelAr": "مدين",
+        "format": "money",
+        "align": "end",
+        "width": 100
+      },
+      {
+        "field": "base_credit",
+        "labelEn": "Credit",
+        "labelAr": "دائن",
+        "format": "money",
+        "align": "end",
+        "width": 100
+      }
+    ],
+    "groups": [
+      {
+        "field": "number",
+        "subtotal": true
+      }
+    ],
+    "totals": [
+      {
+        "field": "base_debit",
+        "fn": "sum"
+      },
+      {
+        "field": "base_credit",
+        "fn": "sum"
+      }
+    ],
+    "sort": [
+      {
+        "field": "effective_date",
+        "dir": "asc"
+      },
+      {
+        "field": "posting_seq",
+        "dir": "asc"
+      },
+      {
+        "field": "line_no",
+        "dir": "asc"
+      }
+    ],
+    "layout": {
+      "orientation": "landscape",
+      "paper": "A4",
+      "header": "{title} — {fromDate} – {toDate}",
+      "footer": "{rowCount} lines · {generatedAt}"
+    },
+    "tieOut": {
+      "kind": "ledger_sum"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+# Line endings are LF in the repository AND in every working tree.
+#
+# Without this file, a Windows clone with core.autocrlf=true (the Git for Windows default)
+# checks every text file out with CRLF while the blobs stay LF. Three things then break on
+# that machine and nowhere else:
+#   - oxfmt --check reports every file as misformatted;
+#   - tests that compare generated output byte-for-byte against a committed file fail
+#     (apps/api/test/openapi.test.ts against packages/contracts/openapi.json);
+#   - infra/entrypoint.sh reaches `docker build` with CRLF, and `#!/bin/sh\r` is not an
+#     interpreter any Linux container can run.
+# The windows-latest CI job added in Plan 0E checks out the same way, so this is not a
+# local-machine concern.
+* text=auto eol=lf
+
+# Binary files git must never touch.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.exe binary
+*.dll binary
+*.node binary
+*.zip binary
+*.gz binary

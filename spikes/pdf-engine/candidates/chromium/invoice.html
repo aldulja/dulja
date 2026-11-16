@@ -1,0 +1,37 @@
+<!doctype html>
+<html><head><meta charset="utf-8" />
+<style>
+  @page { size: A4; margin: 20mm; }
+  body { font-family: "Noto Sans Arabic", "Noto Sans", sans-serif; font-size: 10pt; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border-bottom: 1px solid #888; padding: 4px; text-align: start; }
+  .num { text-align: end; font-variant-numeric: tabular-nums; }
+  .totals { text-align: end; }
+</style></head>
+<body>
+  <h1 id="title"></h1>
+  <p id="meta"></p>
+  <div id="parties"></div>
+  <table><thead><tr id="head"></tr></thead><tbody id="lines"></tbody></table>
+  <div class="totals" id="totals"></div>
+  <script id="fixture" type="application/json"></script>
+  <script>
+    const data = JSON.parse(document.getElementById("fixture").textContent);
+    const rtl = document.documentElement.dir === "rtl";
+    const T = rtl
+      ? { title: "فاتورة ضريبية", desc: "الوصف", qty: "الكمية", price: "السعر", amt: "المبلغ" }
+      : { title: "Tax invoice", desc: "Description", qty: "Quantity", price: "Unit price", amt: "Amount" };
+    document.getElementById("title").textContent = T.title;
+    document.getElementById("meta").textContent = `${data.number} · ${data.issuedOn}`;
+    document.getElementById("parties").textContent =
+      `${rtl ? data.seller.nameAr : data.seller.nameEn} → ${rtl ? data.buyer.nameAr : data.buyer.nameEn}`;
+    document.getElementById("head").innerHTML =
+      `<th>${T.desc}</th><th class="num">${T.qty}</th><th class="num">${T.price}</th><th class="num">${T.amt}</th>`;
+    document.getElementById("lines").innerHTML = data.lines.map((l) =>
+      `<tr><td>${rtl ? l.descriptionAr : l.descriptionEn}</td><td class="num">${l.quantity}</td>` +
+      `<td class="num">${l.unitPrice}</td><td class="num">${l.amount}</td></tr>`).join("");
+    document.getElementById("totals").innerHTML =
+      `${data.subtotal}<br>${rtl ? data.tax.labelAr : data.tax.labelEn}: ${data.tax.amount}` +
+      `<br><strong>${data.total} ${data.currency}</strong>`;
+  </script>
+</body></html>

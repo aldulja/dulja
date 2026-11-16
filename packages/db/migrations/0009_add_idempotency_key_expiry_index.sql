@@ -1,0 +1,19 @@
+-- `app.idempotency_key` gains a row for every mutating request the system ever serves, and loses them only to the
+-- `admin.idempotency_key.purge` job (apps/worker/src/jobs/idempotency-key-purge.ts), which deletes
+-- `where expires_at < now()` inside `withTenant`. Row-level security rewrites that into
+-- `tenant_id = app.current_tenant() and expires_at < now()`, and until now the primary key
+-- `(tenant_id, principal_id, key)` was the table's only index: it can find the tenant and knows nothing about the
+-- expiry, so the purge had to read every key a tenant holds in order to delete the few that had lapsed. A full
+-- scan per tenant per run, on the one table in the schema whose size tracks total request volume.
+--
+-- `(tenant_id, expires_at)`, not `(expires_at)`: the predicate is an equality followed by a range, which is the
+-- shape a b-tree answers in one contiguous scan of the expired head of that tenant's range. `app.current_tenant()`
+-- is declared STABLE in 0001, so the planner resolves it once and treats it as a constant. Leading with
+-- `expires_at` instead would walk every tenant's expired rows and throw all but one tenant's away, and the RLS
+-- predicate would be a filter rather than a key.
+--
+-- Deliberately total, not partial. `where expires_at < now()` is the predicate a partial index would want, and
+-- PostgreSQL refuses it: an index predicate must be IMMUTABLE and `now()` is STABLE, so the index would need
+-- rebuilding as the clock moved. Nor is there a static substitute — no column exempts a row, every key expires, so
+-- a partial index over any fixed cutoff would quietly stop covering rows written after it.
+create index idempotency_key_expiry_idx on app.idempotency_key (tenant_id, expires_at);

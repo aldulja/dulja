@@ -1,0 +1,27 @@
+{
+  "engineVersion": "WI-V2.5.9.27139 Firebird 2.5",
+  "tables": {
+    "POSTICKETS": {
+      "keyColumns": ["PTKID"],
+      "columns": [
+        { "name": "PTKID", "kind": "integer", "scale": 0, "nullable": false },
+        { "name": "PTKNUMBER", "kind": "text", "scale": 0, "nullable": false },
+        { "name": "PTKDATE", "kind": "date", "scale": 0, "nullable": false },
+        { "name": "PTKTERMINAL", "kind": "text", "scale": 0, "nullable": false },
+        { "name": "PTKCASHIER", "kind": "integer", "scale": 0, "nullable": true },
+        { "name": "PTKTOTAL", "kind": "decimal", "scale": 4, "nullable": false },
+        { "name": "PTKTENDER", "kind": "text", "scale": 0, "nullable": false }
+      ]
+    },
+    "POSENTRIES": {
+      "keyColumns": ["PENID"],
+      "columns": [
+        { "name": "PENID", "kind": "integer", "scale": 0, "nullable": false },
+        { "name": "PENTICKET", "kind": "integer", "scale": 0, "nullable": false },
+        { "name": "PENMAT", "kind": "integer", "scale": 0, "nullable": false },
+        { "name": "PENQNT", "kind": "decimal", "scale": 6, "nullable": false },
+        { "name": "PENPRICE", "kind": "decimal", "scale": 4, "nullable": false }
+      ]
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "@dulja/infra",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node ../node_modules/vitest/vitest.mjs run"
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "code": "TRANSFER_RECEIPT",
+  "nameEn": "Stock Transfer (receipt)",
+  "nameAr": "تحويل مخزون (استلام)",
+  "module": "inventory",
+  "policyVersion": 1,
+  "effectiveFrom": "2026-01-01",
+  "policy": {
+    "version": 1,
+    "documentType": "TRANSFER_RECEIPT",
+    "direction": "internal",
+    "requires": ["warehouse", "to_warehouse"],
+    "lines": [
+      {
+        "for": "each_line",
+        "side": "debit",
+        "account": { "from": "item.inventory_account" },
+        "amount": "line.cost",
+        "when": { "line.kind": "item" }
+      },
+      {
+        "for": "each_line",
+        "side": "credit",
+        "account": { "code": "1310" },
+        "amount": "line.cost",
+        "when": { "line.kind": "item" }
+      },
+      {
+        "for": "each_line",
+        "side": "debit",
+        "account": { "code": "5110" },
+        "amount": "line.variance_value",
+        "when": { "line.kind": "item", "line.quantity_sign": "negative" }
+      },
+      {
+        "for": "each_line",
+        "side": "credit",
+        "account": { "code": "1310" },
+        "amount": "line.variance_value",
+        "when": { "line.kind": "item", "line.quantity_sign": "negative" }
+      },
+      {
+        "for": "each_line",
+        "side": "debit",
+        "account": { "code": "1310" },
+        "amount": "line.variance_value",
+        "when": { "line.kind": "item", "line.quantity_sign": "positive" }
+      },
+      {
+        "for": "each_line",
+        "side": "credit",
+        "account": { "code": "5110" },
+        "amount": "line.variance_value",
+        "when": { "line.kind": "item", "line.quantity_sign": "positive" }
+      }
+    ],
+    "inventory": {
+      "effect": "transfer",
+      "warehouse": "line.warehouse",
+      "to_warehouse": "header.to_warehouse",
+      "costing": "consume_layers",
+      "allowNegative": false
+    },
+    "tax": { "applies": false },
+    "numbering": { "series": "TRR", "assignAt": "issue" },
+    "reversal": { "allowed": false, "producesType": null },
+    "approval": {
+      "required": false,
+      "approve": null,
+      "post": "inventory.transfer.post",
+      "create": "inventory.transfer.create"
+    },
+    "fxRoundingAccount": { "from": "company.fx_rounding_account_id" },
+    "dimensions": { "required": ["BRANCH"] }
+  }
+}

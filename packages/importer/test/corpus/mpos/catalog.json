@@ -1,0 +1,22 @@
+{
+  "engineVersion": "WI-V2.5.9.27139 Firebird 2.5",
+  "tables": {
+    "POSTICKETS": {
+      "keyColumns": ["SITE", "ID"],
+      "columns": [
+        { "name": "SITE", "kind": "integer", "scale": 0, "nullable": false },
+        { "name": "ID", "kind": "integer", "scale": 0, "nullable": false },
+        { "name": "DATE", "kind": "timestamp", "scale": 0, "nullable": true },
+        { "name": "TOTAL", "kind": "decimal", "scale": 4, "nullable": true }
+      ]
+    },
+    "POSENTRIES": {
+      "keyColumns": ["SITE", "ID"],
+      "columns": [
+        { "name": "SITE", "kind": "integer", "scale": 0, "nullable": false },
+        { "name": "ID", "kind": "integer", "scale": 0, "nullable": false },
+        { "name": "DATE", "kind": "timestamp", "scale": 0, "nullable": true }
+      ]
+    }
+  }
+}

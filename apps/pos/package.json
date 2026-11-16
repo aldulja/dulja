@@ -1,0 +1,38 @@
+{
+  "name": "@dulja/pos",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "build:main": "bun build src/main/entry.ts --outfile dist-main/pos-main.cjs --target node --format cjs --external better-sqlite3 --external electron --loader .sql:text",
+    "dev": "vite --port 5174 --strictPort",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.main.json",
+    "test": "node ../../node_modules/vitest/vitest.mjs run"
+  },
+  "dependencies": {
+    "@dulja/contracts": "workspace:*",
+    "@dulja/db": "workspace:*",
+    "@dulja/domain": "workspace:*",
+    "@dulja/i18n": "workspace:*",
+    "@dulja/sync": "workspace:*",
+    "@dulja/ui": "workspace:*",
+    "better-sqlite3": "^13.0.3",
+    "i18next": "^26.4.2",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "uuid": "^14.0.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "jsdom": "^30.0.1",
+    "tailwindcss": "^4.3.3",
+    "vite": "^8.3.0"
+  }
+}

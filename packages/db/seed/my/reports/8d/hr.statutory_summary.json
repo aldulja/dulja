@@ -1,0 +1,119 @@
+{
+  "definitionVersion": 1,
+  "definition": {
+    "version": 1,
+    "code": "hr.statutory_summary",
+    "nameEn": "Statutory summary per scheme",
+    "nameAr": "ملخص الاستقطاعات النظامية لكل نظام",
+    "module": "hr",
+    "permission": "hr.payroll.read",
+    "parameters": [
+      { "name": "fromDate", "kind": "date", "required": true },
+      { "name": "toDate", "kind": "date", "required": true },
+      { "name": "schemeCode", "kind": "text", "required": false }
+    ],
+    "dataset": {
+      "source": "statutory_schedule",
+      "filters": [
+        { "field": "period_start", "op": "gte", "param": "fromDate" },
+        { "field": "period_end", "op": "lte", "param": "toDate" },
+        { "field": "scheme_code", "op": "eq", "param": "schemeCode" }
+      ]
+    },
+    "columns": [
+      {
+        "field": "scheme_code",
+        "labelEn": "Scheme",
+        "labelAr": "النظام",
+        "format": "text",
+        "align": "start",
+        "width": 60
+      },
+      {
+        "field": "scheme_name_en",
+        "labelEn": "Name",
+        "labelAr": "الاسم",
+        "format": "text",
+        "align": "start",
+        "width": 160
+      },
+      {
+        "field": "period_start",
+        "labelEn": "From",
+        "labelAr": "من",
+        "format": "date",
+        "align": "start",
+        "width": 70
+      },
+      {
+        "field": "period_end",
+        "labelEn": "To",
+        "labelAr": "إلى",
+        "format": "date",
+        "align": "start",
+        "width": 70
+      },
+      {
+        "field": "payroll_number",
+        "labelEn": "Run",
+        "labelAr": "المسير",
+        "format": "text",
+        "align": "start",
+        "width": 70
+      },
+      {
+        "field": "payable_account_code",
+        "labelEn": "Payable",
+        "labelAr": "حساب الاستحقاق",
+        "format": "text",
+        "align": "start",
+        "width": 60
+      },
+      {
+        "field": "total_employee",
+        "labelEn": "Employee",
+        "labelAr": "حصة الموظف",
+        "format": "money",
+        "align": "end",
+        "width": 80
+      },
+      {
+        "field": "total_employer",
+        "labelEn": "Employer",
+        "labelAr": "حصة صاحب العمل",
+        "format": "money",
+        "align": "end",
+        "width": 80
+      },
+      {
+        "field": "total",
+        "labelEn": "Total",
+        "labelAr": "الإجمالي",
+        "format": "money",
+        "align": "end",
+        "width": 80
+      },
+      {
+        "field": "remitted",
+        "labelEn": "Remitted",
+        "labelAr": "تم السداد",
+        "format": "text",
+        "align": "start",
+        "width": 60
+      }
+    ],
+    "groups": [{ "field": "scheme_code", "subtotal": true }],
+    "totals": [{ "field": "total", "fn": "sum" }],
+    "sort": [
+      { "field": "period_end", "dir": "asc" },
+      { "field": "scheme_code", "dir": "asc" }
+    ],
+    "layout": {
+      "orientation": "portrait",
+      "paper": "A4",
+      "header": "{title} — {fromDate} … {toDate}",
+      "footer": "Generated from POSTED lines only (spec:2083) — من السطور المرحّلة فقط"
+    },
+    "tieOut": { "kind": "projection", "projection": "statutory_schedule" }
+  }
+}

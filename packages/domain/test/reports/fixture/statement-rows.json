@@ -1,0 +1,74 @@
+[
+  {
+    "section": "asset",
+    "account_type": "asset",
+    "account_code": "1000",
+    "account_name_en": "Cash",
+    "account_name_ar": "النقد",
+    "base_debit": "5000.0000",
+    "base_credit": "0.0000",
+    "base_balance": "5000.0000",
+    "branch_code": "HQ",
+    "currency": "MYR"
+  },
+  {
+    "section": "asset",
+    "account_type": "asset",
+    "account_code": "1200",
+    "account_name_en": "Trade receivables",
+    "account_name_ar": "الذمم المدينة",
+    "base_debit": "3000.0000",
+    "base_credit": "0.0000",
+    "base_balance": "3000.0000",
+    "branch_code": "HQ",
+    "currency": "MYR"
+  },
+  {
+    "section": "liability",
+    "account_type": "liability",
+    "account_code": "2100",
+    "account_name_en": "Trade payables",
+    "account_name_ar": "الذمم الدائنة",
+    "base_debit": "0.0000",
+    "base_credit": "2000.0000",
+    "base_balance": "-2000.0000",
+    "branch_code": "HQ",
+    "currency": "MYR"
+  },
+  {
+    "section": "equity",
+    "account_type": "equity",
+    "account_code": "3000",
+    "account_name_en": "Share capital",
+    "account_name_ar": "رأس المال",
+    "base_debit": "0.0000",
+    "base_credit": "4000.0000",
+    "base_balance": "-4000.0000",
+    "branch_code": "HQ",
+    "currency": "MYR"
+  },
+  {
+    "section": "revenue",
+    "account_type": "income",
+    "account_code": "4000",
+    "account_name_en": "Sales",
+    "account_name_ar": "المبيعات",
+    "base_debit": "0.0000",
+    "base_credit": "6000.0000",
+    "base_balance": "-6000.0000",
+    "branch_code": "HQ",
+    "currency": "MYR"
+  },
+  {
+    "section": "expense",
+    "account_type": "expense",
+    "account_code": "5000",
+    "account_name_en": "Cost of goods sold",
+    "account_name_ar": "تكلفة المبيعات",
+    "base_debit": "4000.0000",
+    "base_credit": "0.0000",
+    "base_balance": "4000.0000",
+    "branch_code": "HQ",
+    "currency": "MYR"
+  }
+]

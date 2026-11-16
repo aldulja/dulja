@@ -1,0 +1,44 @@
+[
+  {
+    "code": "BASIC",
+    "nameEn": "Basic salary",
+    "nameAr": "الراتب الأساسي",
+    "kind": "earning",
+    "quantityBased": false
+  },
+  {
+    "code": "ALLOWANCE",
+    "nameEn": "Fixed allowance",
+    "nameAr": "بدل ثابت",
+    "kind": "earning",
+    "quantityBased": false
+  },
+  {
+    "code": "OVERTIME",
+    "nameEn": "Overtime",
+    "nameAr": "العمل الإضافي",
+    "kind": "earning",
+    "quantityBased": false
+  },
+  {
+    "code": "BONUS",
+    "nameEn": "Bonus or commission",
+    "nameAr": "مكافأة أو عمولة",
+    "kind": "earning",
+    "quantityBased": false
+  },
+  {
+    "code": "UNPAID_LEAVE",
+    "nameEn": "Unpaid-leave deduction",
+    "nameAr": "خصم إجازة بدون أجر",
+    "kind": "deduction",
+    "quantityBased": true
+  },
+  {
+    "code": "ADVANCE_RECOVERY",
+    "nameEn": "Advance recovery",
+    "nameAr": "استرداد سلفة",
+    "kind": "deduction",
+    "quantityBased": false
+  }
+]

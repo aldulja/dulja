@@ -1,0 +1,35 @@
+# ADR 0090 — What an audit reader may see
+
+**Status:** Proposed — a security change implemented ahead of the owner's approval, as the review fixes of 2026-11-15 are. The owner's question is at the end.
+**Date:** 2026-11-15
+**Deciders:** owner (pending)
+**Branch:** `claude/fix-audit-log-exposure` — not a slice; ADR number allocated by the 2026-11-15 review's orchestrator. **Migrations:** none.
+**Findings:** DBS-01 = API-02 = HRP-01 (blocker) and API-07 (medium), `docs/review/2026-11-15-full-review.md`.
+**Amends:** ADR 0069 (the export's table registry now also decides the audit route's images) and 0B's `GET /v1/admin/audit-log` contract (`AuditLogEntrySchema` gains `imagesWithheld`).
+
+## Context
+
+`app.audit_row()` copies every audited row whole into `app.audit_log.before/after`, and `audit_log` carries only the tenant policy. `GET /v1/admin/audit-log` (gate `admin.audit_log.read`, `{ company: "any" }`) returned those images unfiltered, for every company of the tenant. So the seeded `auditor` — who holds no `hr.compensation.read`, because spec:2163 gives the auditor "never compensation or sensitive rows" — read every salary with `?tableName=compensation_line`, the statutory-profile fields and payroll lines, past the RESTRICTIVE `compensation_gate` and `sensitive_gate` that hide the same rows at their source; and an auditor assigned in company A read company B's trail. The tenant export already withholds the images (`NEVER_EXPORTED.audit_log`) and 7B's `audit_log` report dataset never serves them; this route was not revisited when Phase 8 added gated tables.
+
+Separately (API-07), `GET …/ledger-entries` and the `accounting.ledger` report served an `hr` document's ledger lines — a PAYROLL's per-employee nets — under `accounting.ledger.read` alone, where the generic document routes, the attachment gate and the export all ask `hr.payroll.read`.
+
+## Decision
+
+1. **Rows.** The route returns an audit row only from a company in which the caller holds `admin.audit_log.read` (`app.actor_has`, company scope). A row's company is the image's `company_id` (or the `company` row's own id, or a system event's `companyId`), else the company of the employee, document, document type, dimension type, item or price list the image names. A row whose company cannot be resolved — the tenant, principals, memberships, roles and their permissions, currencies, statutory rate tables, a system event naming no company — is returned only to a caller who holds the audit read in **every** company of the tenant. There is no tenant-scope role assignment in v1 (every assignment names a company), so "every company" is how tenant scope is expressed.
+2. **Images.** `before`/`after` are served only when the export registry has a rule for the row's table (`AUDIT_IMAGE_RULES`, `packages/db/src/export/tables.ts`, built from `EXPORT_TABLES` and `NEVER_EXPORTED`) and the caller holds that table's export gate in the row's company (in every company, for a row with none). The served image is projected onto the table's registered export columns, so a column the export never carries — `principal.auth_subject`, `pos_cashier.pin_hash`, `employee_sensitive`'s ciphertext — does not leave through the trail either. A table pinned whole in `NEVER_EXPORTED`, or a name nothing registers, never has its images served. The six system-event names (0067, 0105–0121) are listed in `AUDIT_SYSTEM_EVENTS` with the gate their payload's facts sit behind. **One table map now decides both what an export carries and what an audit reader sees**; a table a later migration audits has no images on this route until someone registers it for the export.
+3. **Module rows.** An image that names a document (its own id for `document`; `document_id`, the link, allocation and bank-match document columns; a ledger entry's document; a custom-field value whose entity is a document) needs, for each such document, that the caller can see it and holds its module's `MODULE_ROW_GATES` code (`hr` → `hr.payroll.read`) at its branch. A document the caller cannot see withholds the images.
+4. **Withheld, not hidden.** A row whose images are withheld stays in the trail with `before`/`after` null and `imagesWithheld: true`, so a reader still sees that a change happened, by whom and when.
+5. **Ledger reads (API-07).** `GET …/ledger-entries` and the `accounting.ledger` report leave out the rows of a document whose type's module is in `MODULE_ROW_GATES` unless the caller holds that module's code at the document's branch. The module is read through the entry's `posting_policy_id`, visible to every tenant member, so a document the caller cannot see is judged too (at company scope). The report leaves those rows out of the page and never re-sums: every row shown keeps the ledger's own running balance, and its cursor stays on the last row read.
+6. **Where.** In the route, not a policy. `audit_log` has no company column and the chain verifier (`verifyChain`), the export and 7B's dataset all read it whole as `app_rw`, so a RESTRICTIVE policy keyed on the image would either break chain verification or need a definer path for every one of them; a migration buys nothing the route cannot prove case by case (`apps/api/test/routes/admin/audit-log-gates.test.ts` walks every registered table).
+
+## Consequences
+
+- An auditor assigned in some companies of a multi-company tenant no longer sees the tenant-level trail (role and principal changes); one assigned in every company does.
+- A branch-restricted holder of `admin.audit_log.read` sees no rows, as it reaches no report run (Phase 7's fail-closed rule).
+- The route asks `app.actor_has` once per (company, code) and resolves each scanned row's company by key lookups; a reader with few visible rows in a large trail scans further for a page.
+- The reported running balance of `accounting.ledger` steps over hidden rows. On an account where one hidden document sits between two visible rows, the step is that document's total — the same figure the trial balance already prints.
+- Still open and unchanged: 7A's `document`, `document_line` and `ledger_entry` report **datasets** serve `hr` rows under the accounting codes (an ADR 0065 question); the same render-time module bound would close them.
+
+## Owner question
+
+**What may the auditor see in the audit trail?** Recommended default, as built: the seeded auditor sees every audit row of the companies it is assigned in, and the row images of every table whose export gate it holds there — which today excludes the HR master tables — `employee`, attendance and leave (`hr.employee.read`), `employee_sensitive` (`hr.employee.read_sensitive`), `compensation_line`, `employee_statutory_profile`, `pay_component` and `pay_component_scheme` (`hr.compensation.read`) and the statutory tables (`hr.statutory_table.manage`) — and includes payroll documents and lines under its `hr.payroll.read` (spec:2163's "payroll register, posted lines"). If the owner wants the auditor to see HR change images (for example, that a salary changed and from what), the answer is to grant the auditor the table's read code, which R7 allows for non-mutating codes, not to widen this route.

@@ -1,0 +1,46 @@
+{
+  "code": "myinvois",
+  "version": 1,
+  "jurisdiction": "MY",
+  "source": "ADR-0051 public SDK retrieved 2026-10-02; DRAFT, applicability/mapping/acceptance pending",
+  "baseUrl": "https://preprod-api.myinvois.hasil.gov.my",
+  "timeoutMs": 30000,
+  "auth": {
+    "kind": "oauth2_client_credentials",
+    "header": "Authorization",
+    "tokenUrl": "https://preprod-api.myinvois.hasil.gov.my/connect/token"
+  },
+  "calls": {
+    "submit": {
+      "method": "POST",
+      "pathTemplate": "/api/v1.0/documentsubmissions/",
+      "body": "document",
+      "externalIdPointer": "/submissionUID",
+      "statusPointer": "/acceptedDocuments",
+      "statusMap": {
+        "Submitted": "submitted"
+      }
+    },
+    "poll": {
+      "method": "GET",
+      "pathTemplate": "/api/v1.0/documentsubmissions/{externalId}",
+      "body": "none",
+      "statusPointer": "/documentSummary/0/status",
+      "statusMap": {
+        "Submitted": "submitted",
+        "Valid": "accepted",
+        "Invalid": "rejected",
+        "Cancelled": "cancelled"
+      }
+    },
+    "cancel": {
+      "method": "PUT",
+      "pathTemplate": "/api/v1.0/documents/state/{externalId}/state",
+      "body": "cancellation",
+      "statusPointer": "/status",
+      "statusMap": {
+        "Cancelled": "cancelled"
+      }
+    }
+  }
+}

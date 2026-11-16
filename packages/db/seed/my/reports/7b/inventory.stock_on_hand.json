@@ -1,0 +1,106 @@
+{
+  "definitionVersion": 2,
+  "definition": {
+    "version": 1,
+    "code": "inventory.stock_on_hand",
+    "nameEn": "Stock on hand",
+    "nameAr": "المخزون المتاح",
+    "module": "inventory",
+    "permission": "inventory.stock.read",
+    "parameters": [
+      { "name": "warehouseKinds", "kind": "text", "required": true },
+      { "name": "itemId", "kind": "item", "required": false },
+      { "name": "warehouseId", "kind": "warehouse", "required": false },
+      { "name": "hideQuantity", "kind": "enum", "required": true, "options": ["0"] }
+    ],
+    "dataset": {
+      "source": "stock_on_hand",
+      "filters": [
+        { "field": "warehouse_kind", "op": "in", "param": "warehouseKinds" },
+        { "field": "item_id", "op": "eq", "param": "itemId" },
+        { "field": "warehouse_id", "op": "eq", "param": "warehouseId" },
+        { "field": "quantity", "op": "ne", "param": "hideQuantity" }
+      ]
+    },
+    "columns": [
+      {
+        "field": "item_code",
+        "labelEn": "Item",
+        "labelAr": "الصنف",
+        "format": "text",
+        "align": "start",
+        "width": 90
+      },
+      {
+        "field": "item_name_en",
+        "labelEn": "Item name",
+        "labelAr": "اسم الصنف",
+        "format": "text",
+        "align": "start",
+        "width": 200
+      },
+      {
+        "field": "warehouse_code",
+        "labelEn": "Warehouse",
+        "labelAr": "المستودع",
+        "format": "text",
+        "align": "start",
+        "width": 90
+      },
+      {
+        "field": "warehouse_kind",
+        "labelEn": "Kind",
+        "labelAr": "النوع",
+        "format": "text",
+        "align": "start",
+        "width": 80
+      },
+      {
+        "field": "lot_code",
+        "labelEn": "Lot",
+        "labelAr": "الدفعة",
+        "format": "text",
+        "align": "start",
+        "width": 90
+      },
+      {
+        "field": "expires_on",
+        "labelEn": "Expires",
+        "labelAr": "تاريخ الانتهاء",
+        "format": "date",
+        "align": "start",
+        "width": 90
+      },
+      {
+        "field": "base_unit_code",
+        "labelEn": "Unit",
+        "labelAr": "الوحدة",
+        "format": "text",
+        "align": "start",
+        "width": 50
+      },
+      {
+        "field": "quantity",
+        "labelEn": "Quantity",
+        "labelAr": "الكمية",
+        "format": "quantity",
+        "align": "end",
+        "width": 100
+      }
+    ],
+    "groups": [{ "field": "item_code", "subtotal": true }],
+    "totals": [{ "field": "quantity", "fn": "sum" }],
+    "sort": [
+      { "field": "item_code", "dir": "asc" },
+      { "field": "warehouse_code", "dir": "asc" },
+      { "field": "lot_code", "dir": "asc" }
+    ],
+    "layout": {
+      "orientation": "portrait",
+      "paper": "A4",
+      "header": "{title} — {warehouseKinds}",
+      "footer": "{rowCount} rows · {generatedAt}"
+    },
+    "tieOut": { "kind": "projection", "projection": "stock_on_hand" }
+  }
+}

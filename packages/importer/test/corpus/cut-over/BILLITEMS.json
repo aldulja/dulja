@@ -1,0 +1,38 @@
+[
+  {
+    "BTMID": "1",
+    "BTMMAT": "10",
+    "BTMWAR": "1",
+    "BTMBAT": "9000",
+    "BTMDATE": "2025-06-01",
+    "BTMSEQ": "1",
+    "BTMROW": "1",
+    "BTMIN": "1",
+    "BTMQNT": "10.000000",
+    "BTMVAL": "100.0000"
+  },
+  {
+    "BTMID": "2",
+    "BTMMAT": "10",
+    "BTMWAR": "1",
+    "BTMBAT": "9000",
+    "BTMDATE": "2025-08-01",
+    "BTMSEQ": "2",
+    "BTMROW": "1",
+    "BTMIN": "1",
+    "BTMQNT": "10.000000",
+    "BTMVAL": "140.0000"
+  },
+  {
+    "BTMID": "3",
+    "BTMMAT": "10",
+    "BTMWAR": "1",
+    "BTMBAT": "9000",
+    "BTMDATE": "2025-11-01",
+    "BTMSEQ": "3",
+    "BTMROW": "1",
+    "BTMIN": "0",
+    "BTMQNT": "5.000000",
+    "BTMVAL": null
+  }
+]

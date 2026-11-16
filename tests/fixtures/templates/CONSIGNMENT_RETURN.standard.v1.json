@@ -1,0 +1,39 @@
+{
+  "documentType": "CONSIGNMENT_RETURN",
+  "code": "standard",
+  "version": 1,
+  "nameEn": "Consignment Return",
+  "nameAr": "مرتجع أمانة",
+  "engine": "chromium",
+  "paper": "A4",
+  "labels": {
+    "en": {
+      "documentNo": "Document no.",
+      "date": "Date",
+      "dateHijri": "Hijri date",
+      "currency": "Currency",
+      "line": "#",
+      "description": "Description",
+      "account": "Account",
+      "debit": "Debit",
+      "credit": "Credit",
+      "total": "Total",
+      "status": "Status",
+      "returnedTo": "Returned to"
+    },
+    "ar": {
+      "documentNo": "رقم المستند",
+      "date": "التاريخ",
+      "dateHijri": "التاريخ الهجري",
+      "currency": "العملة",
+      "line": "#",
+      "description": "البيان",
+      "account": "الحساب",
+      "debit": "مدين",
+      "credit": "دائن",
+      "total": "الإجمالي",
+      "status": "الحالة",
+      "returnedTo": "مرتجع إلى"
+    }
+  }
+}

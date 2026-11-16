@@ -1,0 +1,41 @@
+{
+  "generatedFrom": "packages/importer/test/corpus/cut-over (synthetic)",
+  "entries": [
+    {
+      "legacyCode": "1101",
+      "code": "1000",
+      "nameEn": "Cash on hand",
+      "nameAr": "الصندوق",
+      "type": "asset",
+      "treatment": "balance",
+      "note": null
+    },
+    {
+      "legacyCode": "1301",
+      "code": "1200",
+      "nameEn": "Trade receivables (AR control)",
+      "nameAr": null,
+      "type": "asset",
+      "treatment": "ar_control",
+      "note": "supplied by the open-item load, not by the trial-balance opening"
+    },
+    {
+      "legacyCode": "1401",
+      "code": "1300",
+      "nameEn": "Inventory control",
+      "nameAr": null,
+      "type": "asset",
+      "treatment": "inventory_control",
+      "note": "supplied by OPENING_STOCK at recomputed cost (§5.1 #6)"
+    },
+    {
+      "legacyCode": "2101",
+      "code": "2100",
+      "nameEn": "Trade payables (AP control)",
+      "nameAr": null,
+      "type": "liability",
+      "treatment": "ap_control",
+      "note": "supplied by the open-item load"
+    }
+  ]
+}

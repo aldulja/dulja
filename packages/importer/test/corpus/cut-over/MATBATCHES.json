@@ -1,0 +1,10 @@
+[
+  {
+    "BATID": "9000",
+    "BATMAT": "10",
+    "BATCODE": "B-2401",
+    "BATEXPIRY": "2027-03-31",
+    "BATMFG": "2024-04-01"
+  },
+  { "BATID": "9001", "BATMAT": "999", "BATCODE": "B-ORPHAN", "BATEXPIRY": null, "BATMFG": null }
+]

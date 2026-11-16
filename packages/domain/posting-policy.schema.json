@@ -1,0 +1,328 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:dulja:posting-policy:1",
+  "title": "PostingPolicy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "documentType",
+    "direction",
+    "requires",
+    "lines",
+    "inventory",
+    "tax",
+    "numbering",
+    "reversal",
+    "approval",
+    "fxRoundingAccount"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "documentType": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]{1,63}$"
+    },
+    "direction": {
+      "enum": ["inbound", "outbound", "internal", "none"]
+    },
+    "requires": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "party",
+          "warehouse",
+          "to_warehouse",
+          "attributed_to",
+          "client_ref",
+          "reverses_document"
+        ]
+      }
+    },
+    "lines": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/policyLine"
+      }
+    },
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["effect"],
+      "properties": {
+        "effect": {
+          "enum": ["issue", "receipt", "transfer", "none"]
+        },
+        "warehouse": {
+          "enum": ["header.warehouse", "line.warehouse"]
+        },
+        "to_warehouse": {
+          "enum": ["header.to_warehouse", "line.to_warehouse"]
+        },
+        "costing": {
+          "enum": ["consume_layers", "create_layer", "zero", "none"]
+        },
+        "allowNegative": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "if": {
+        "properties": {
+          "effect": {
+            "enum": ["issue", "receipt", "transfer"]
+          }
+        }
+      },
+      "then": {
+        "required": ["warehouse", "costing"]
+      }
+    },
+    "tax": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["applies"],
+      "properties": {
+        "applies": {
+          "type": "boolean"
+        },
+        "inclusive": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "const": "header.tax_inclusive"
+            }
+          ]
+        },
+        "einvoice": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "numbering": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["series", "assignAt"],
+      "properties": {
+        "series": {
+          "type": "string",
+          "pattern": "^[A-Z0-9-]{1,16}$"
+        },
+        "assignAt": {
+          "const": "issue"
+        }
+      }
+    },
+    "reversal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allowed", "producesType"],
+      "properties": {
+        "allowed": {
+          "type": "boolean"
+        },
+        "producesType": {
+          "type": ["string", "null"],
+          "pattern": "^[A-Z][A-Z0-9_]{1,63}$"
+        }
+      }
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "approve", "post"],
+      "properties": {
+        "required": {
+          "type": "boolean"
+        },
+        "approve": {
+          "$ref": "#/$defs/permissionCodeOrNull"
+        },
+        "post": {
+          "$ref": "#/$defs/permissionCode"
+        },
+        "create": {
+          "$ref": "#/$defs/permissionCode"
+        }
+      },
+      "if": {
+        "properties": {
+          "required": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "approve": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "fxRoundingAccount": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from"],
+      "properties": {
+        "from": {
+          "const": "company.fx_rounding_account_id"
+        }
+      }
+    },
+    "dimensions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "required": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{1,31}$"
+          }
+        }
+      },
+      "default": {
+        "required": []
+      }
+    }
+  },
+  "$defs": {
+    "permissionCode": {
+      "type": "string",
+      "pattern": "^(admin|accounting|inventory|hr|pos)\\.[a-z_]+\\.[a-z_]+$"
+    },
+    "permissionCodeOrNull": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/permissionCode"
+        }
+      ]
+    },
+    "accountRef": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["from"],
+          "properties": {
+            "from": {
+              "enum": [
+                "line.account",
+                "party.receivable_account",
+                "party.payable_account",
+                "item.revenue_account",
+                "item.inventory_account",
+                "item.cogs_account",
+                "item.expense_account",
+                "tax_code.output_account",
+                "tax_code.input_account",
+                "line.component.expense_account",
+                "line.scheme.payable_account",
+                "line.scheme.expense_account",
+                "company.fx_rounding_account_id"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code"],
+          "properties": {
+            "code": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "amountRef": {
+      "enum": [
+        "line.debit",
+        "line.credit",
+        "line.amount",
+        "line.total_excl_tax",
+        "line.total_incl_tax",
+        "line.tax_amount",
+        "line.cost",
+        "line.discount",
+        "line.variance_value",
+        "tax.amount",
+        "document.total_excl_tax",
+        "document.total_incl_tax",
+        "document.tax_total"
+      ]
+    },
+    "policyLine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["for", "side", "account", "amount"],
+      "properties": {
+        "for": {
+          "enum": ["each_line", "each_tax", "document"]
+        },
+        "side": {
+          "enum": ["debit", "credit"]
+        },
+        "account": {
+          "$ref": "#/$defs/accountRef"
+        },
+        "amount": {
+          "$ref": "#/$defs/amountRef"
+        },
+        "when": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "line.kind": {
+              "enum": ["account", "item", "tax", "text", "tender", "payroll"]
+            },
+            "line.tender_method": {
+              "enum": ["cash", "card", "transfer", "store_credit"]
+            },
+            "line.component.kind": {
+              "enum": ["earning", "deduction"]
+            },
+            "line.share": {
+              "enum": ["employee", "employer"]
+            },
+            "line.quantity_sign": {
+              "enum": ["positive", "negative"]
+            },
+            "item.kind": {
+              "enum": ["product", "service", "asset"]
+            },
+            "document.kind": {
+              "type": "string"
+            }
+          }
+        },
+        "dimensions": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "from": {
+              "type": "array",
+              "items": {
+                "enum": ["line.dimensions", "document.branch", "line.employee"]
+              },
+              "default": ["line.dimensions", "document.branch"]
+            }
+          }
+        }
+      }
+    }
+  }
+}

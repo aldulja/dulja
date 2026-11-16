@@ -1,0 +1,79 @@
+[
+  { "code": "1", "nameEn": "Assets", "nameAr": "الأصول", "type": "asset", "isGroup": true },
+  {
+    "code": "2",
+    "nameEn": "Liabilities",
+    "nameAr": "الخصوم",
+    "type": "liability",
+    "isGroup": true
+  },
+  { "code": "3", "nameEn": "Equity", "nameAr": "حقوق الملكية", "type": "equity", "isGroup": true },
+  { "code": "4", "nameEn": "Income", "nameAr": "الإيرادات", "type": "income", "isGroup": true },
+  { "code": "5", "nameEn": "Expenses", "nameAr": "المصروفات", "type": "expense", "isGroup": true },
+
+  {
+    "code": "1000",
+    "nameEn": "Cash on hand",
+    "nameAr": "النقد في الصندوق",
+    "type": "asset",
+    "parentCode": "1"
+  },
+  { "code": "1100", "nameEn": "Bank", "nameAr": "البنك", "type": "asset", "parentCode": "1" },
+  {
+    "code": "1200",
+    "nameEn": "Trade receivables (AR control)",
+    "nameAr": "الذمم المدينة التجارية",
+    "type": "asset",
+    "parentCode": "1"
+  },
+  {
+    "code": "1300",
+    "nameEn": "Inventory control",
+    "nameAr": "مراقبة المخزون",
+    "type": "asset",
+    "parentCode": "1"
+  },
+  {
+    "code": "2100",
+    "nameEn": "Trade payables (AP control)",
+    "nameAr": "الذمم الدائنة التجارية",
+    "type": "liability",
+    "parentCode": "2"
+  },
+  { "code": "4000", "nameEn": "Sales", "nameAr": "المبيعات", "type": "income", "parentCode": "4" },
+  {
+    "code": "4900",
+    "nameEn": "Foreign-exchange gain",
+    "nameAr": "أرباح فروق العملة",
+    "type": "income",
+    "parentCode": "4"
+  },
+  {
+    "code": "5000",
+    "nameEn": "Cost of goods sold",
+    "nameAr": "تكلفة البضاعة المباعة",
+    "type": "expense",
+    "parentCode": "5"
+  },
+  {
+    "code": "5900",
+    "nameEn": "Other operating expense",
+    "nameAr": "مصروفات تشغيلية أخرى",
+    "type": "expense",
+    "parentCode": "5"
+  },
+  {
+    "code": "5910",
+    "nameEn": "Foreign-exchange loss",
+    "nameAr": "خسائر فروق العملة",
+    "type": "expense",
+    "parentCode": "5"
+  },
+  {
+    "code": "5920",
+    "nameEn": "FX rounding",
+    "nameAr": "تقريب فروق العملة",
+    "type": "expense",
+    "parentCode": "5"
+  }
+]
