@@ -14,6 +14,9 @@ export default defineConfig({
       // workspace already typechecks `../scripts/lint` (see tsconfig.json), so running it here keeps
       // both halves in one place rather than inventing a thirteenth workspace for one directory.
       "../scripts/lint/**/*.test.ts",
+      // The feature workflow's role guard (AGENTS.md, "Feature Workflow") lives beside the lint rules for the
+      // same reason: `scripts/` is not a workspace, so its tests run here or nowhere.
+      "../scripts/agents/**/*.test.ts",
     ],
     testTimeout: 60000,
     hookTimeout: 180000,
