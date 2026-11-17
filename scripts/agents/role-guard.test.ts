@@ -3,7 +3,14 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { decideBash, decideWrite, runHook, verifyRole, type HookInput } from "./role-guard";
+import {
+  decideBash,
+  decideWrite,
+  roleFromInput,
+  runHook,
+  verifyRole,
+  type HookInput,
+} from "./role-guard";
 
 const created: string[] = [];
 afterEach(() => {
@@ -267,5 +274,65 @@ describe("role-guard — the hooks", () => {
     write(root, "packages/db/src/post.ts", "export const post = 2;\n");
     expect(runHook("build", stop(root), { state }).exit).toBe(0);
     expect(runHook("orchestrator", stop(root), { state }).exit).toBe(0);
+  });
+
+  it("reads the role from the hook input, so one hook in settings serves every agent", () => {
+    expect(roleFromInput({ agent_type: "review" })).toBe("review");
+    expect(roleFromInput({ agent_type: "orchestrator" })).toBe("orchestrator");
+    // The main conversation, and any agent that is not one of the five roles, is not this guard's business.
+    expect(roleFromInput({})).toBeNull();
+    expect(roleFromInput({ agent_type: "Explore" })).toBeNull();
+    expect(roleFromInput({ agent_type: "general-purpose" })).toBeNull();
+  });
+
+  it("takes its baseline when the subagent starts, before the agent has run anything", () => {
+    const { root, state } = repository();
+    const agent = { session_id: "session-1", agent_id: "agent-7", cwd: root };
+    write(root, "apps/api/src/wip.ts", "someone else's work\n");
+    expect(runHook("review", { ...agent, hook_event_name: "SubagentStart" }, { state }).exit).toBe(
+      0,
+    );
+
+    // A shell edit that no write hook sees, then a tool call that must not move the baseline.
+    write(root, "packages/db/src/post.ts", "export const post = 2;\n");
+    runHook(
+      "review",
+      { ...agent, hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command: "ls" } },
+      { state },
+    );
+    const blocked = runHook("review", { ...agent, hook_event_name: "SubagentStop" }, { state });
+    expect(blocked.exit).toBe(2);
+    expect(blocked.message).toContain("packages/db/src/post.ts");
+    expect(blocked.message).not.toContain("apps/api/src/wip.ts");
+  });
+
+  it("tells a spec or review agent at once when a shell command changed a file it may not change", () => {
+    const { root, state } = repository();
+    const agent = { session_id: "session-1", agent_id: "agent-9", cwd: root };
+    const after = (role: "spec" | "review" | "build"): HookInput => ({
+      ...agent,
+      hook_event_name: "PostToolUse",
+      tool_name: "Bash",
+      tool_input: { command: "sed -i s/1/2/ packages/db/src/post.ts" },
+      agent_type: role,
+    });
+    runHook("review", { ...agent, hook_event_name: "SubagentStart" }, { state });
+    expect(runHook("review", after("review"), { state }).exit).toBe(0);
+
+    // A reproduction is allowed while the review runs; a product file is not.
+    write(root, "packages/db/test/x.repro.test.ts", "throwaway\n");
+    expect(runHook("review", after("review"), { state }).exit).toBe(0);
+    write(root, "packages/db/src/post.ts", "export const post = 2;\n");
+    const told = runHook("review", after("review"), { state });
+    expect(told.exit).toBe(2);
+    expect(told.message).toContain("packages/db/src/post.ts");
+    expect(told.message).not.toContain("x.repro.test.ts");
+
+    git(root, "checkout", "--", "packages/db/src/post.ts");
+    expect(runHook("review", after("review"), { state }).exit).toBe(0);
+
+    // A builder's shell may change product code: that is its work.
+    write(root, "packages/db/src/post.ts", "export const post = 3;\n");
+    expect(runHook("build", after("build"), { state }).exit).toBe(0);
   });
 });

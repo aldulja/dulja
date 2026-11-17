@@ -1,13 +1,20 @@
 /**
- * The feature workflow's role guard (AGENTS.md, "Feature Workflow"; briefs in `docs/agents/`).
+ * The feature workflow's role guard (AGENTS.md, "Feature Workflow"; the roles are `.claude/agents/<role>.md`).
  *
- * A brief says what a role must not touch; this file is what holds it to that. It is used three ways:
+ * A brief says what a role must not touch; this file is what holds it to that. It is used two ways:
  *
- *   bun scripts/agents/role-guard.ts hook <role>
- *       A Claude Code hook (`.claude/agents/<role>.md`). Before a file tool runs it refuses a path outside the
+ *   bun scripts/agents/role-guard.ts hook [<role>]
+ *       A Claude Code hook, registered once in `.claude/settings.json`. The role is the `agent_type` of the hook
+ *       input — the agent's name — so one registration serves all five, and a call from the main conversation or
+ *       from any other agent is let through untouched. Before a file tool runs it refuses a path outside the
  *       role's own; before a shell command it refuses a merge or a push to the default branch; and when a spec
  *       or review agent tries to finish it refuses while the tree differs from where the agent started in any
  *       file the role may not leave changed — which is what catches an edit made through the shell.
+ *
+ *       The hooks are in the settings file and not in each agent's frontmatter because Claude Code runs
+ *       frontmatter hooks only in a folder whose trust dialog was accepted, and a cloud or `-p` session never
+ *       shows that dialog: there, an agent's own hooks are silently skipped (seen on 2026-11-17, when a review
+ *       agent wrote a product file unopposed), while a settings file's hooks run.
  *
  *   bun scripts/agents/role-guard.ts verify <role> --base <sha> [--allow <glob>]...
  *       The orchestrator's check after an agent returns, and the one that holds whatever tool ran the agent:
@@ -113,7 +120,7 @@ export function decideWrite(role: Role, path: string): Decision {
     reason:
       `The ${role} role may not write ${file}. It may write: ${rule.write.join(", ")}` +
       (rule.deny.length ? ` — except ${rule.deny.join(", ")}` : "") +
-      `. If the work needs this file, tell the orchestrator (docs/agents/${role}.md).`,
+      `. If the work needs this file, tell the orchestrator (.claude/agents/${role}.md).`,
   };
 }
 
@@ -177,6 +184,8 @@ export interface HookInput {
   hook_event_name?: string;
   session_id?: string;
   agent_id?: string;
+  /** The agent's name: present inside a subagent, and in a session started with `--agent`. */
+  agent_type?: string;
   cwd?: string;
   tool_name?: string;
   tool_input?: Record<string, unknown>;
@@ -247,17 +256,18 @@ export function runHook(role: Role, input: HookInput, options: HookOptions = {})
   const files = ids.map((id) => stateFile(state, id, role));
   const existing = files.find((file) => existsSync(file));
 
+  // The baseline is taken when the subagent starts. A session started with `--agent` has no such event, so
+  // the first guarded tool call takes it instead — still before that call has changed anything.
+  const starting =
+    input.hook_event_name === "SubagentStart" || input.hook_event_name === "PreToolUse";
+  if (starting && rule.leave && !existing) {
+    const head = git(root, ["rev-parse", "HEAD"]).trim();
+    const baseline: Baseline = { head, dirty: hashes(root, changedSince(root, head)), blocks: 0 };
+    mkdirSync(state, { recursive: true });
+    writeFileSync(files[0] ?? stateFile(state, "unknown", role), JSON.stringify(baseline));
+  }
+
   if (input.hook_event_name === "PreToolUse") {
-    if (rule.leave && !existing) {
-      const head = git(root, ["rev-parse", "HEAD"]).trim();
-      const baseline: Baseline = {
-        head,
-        dirty: hashes(root, changedSince(root, head)),
-        blocks: 0,
-      };
-      mkdirSync(state, { recursive: true });
-      writeFileSync(files[0] ?? stateFile(state, "unknown", role), JSON.stringify(baseline));
-    }
     const tool = input.tool_name ?? "";
     if (tool === "Bash") {
       const decision = decideBash(String(input.tool_input?.["command"] ?? ""));
@@ -275,15 +285,39 @@ export function runHook(role: Role, input: HookInput, options: HookOptions = {})
     return pass;
   }
 
+  /** What changed since the baseline, was not already dirty then, and is outside `allow`. */
+  const outside = (baseline: Baseline, allow: readonly string[]): string[] => {
+    const changed = changedSince(root, baseline.head);
+    const now = hashes(root, changed);
+    return changed.filter(
+      (path) => baseline.dirty[path] !== now[path] && !admitted(path, allow, rule.deny),
+    );
+  };
+
+  // Straight after a shell command, while the agent can still repair it. This is the check that reaches the
+  // agent in practice: a refused stop is not always honoured (a subagent that hands back has already finished).
+  if (input.hook_event_name === "PostToolUse") {
+    if (!rule.leave || !existing || input.tool_name !== "Bash") return pass;
+    const baseline = readBaseline(existing);
+    if (!baseline) return pass;
+    const violations = outside(baseline, rule.write);
+    if (!violations.length) return pass;
+    return {
+      exit: 2,
+      message:
+        `That command changed files the ${role} role may not change:\n` +
+        `${violations.map((path) => `  ${path}`).join("\n")}\n` +
+        `Restore each one now (\`git checkout -- <path>\` for a tracked file, delete one you created) ` +
+        `before you do anything else. The orchestrator's \`role-guard.ts verify ${role}\` refuses a tree ` +
+        `that still has them.`,
+    };
+  }
+
   if (input.hook_event_name === "Stop" || input.hook_event_name === "SubagentStop") {
     if (!rule.leave || !existing) return pass;
     const baseline = readBaseline(existing);
     if (!baseline) return pass;
-    const changed = changedSince(root, baseline.head);
-    const now = hashes(root, changed);
-    const violations = changed.filter(
-      (path) => baseline.dirty[path] !== now[path] && !admitted(path, rule.leave ?? [], rule.deny),
-    );
+    const violations = outside(baseline, rule.leave);
     if (!violations.length) {
       rmSync(existing, { force: true });
       return pass;
@@ -314,11 +348,18 @@ export function runHook(role: Role, input: HookInput, options: HookOptions = {})
 const isRole = (value: string | undefined): value is Role =>
   (ROLES as readonly string[]).includes(value ?? "");
 
+/** The role a hook fired in, or `null` for the main conversation and for an agent that is not one of the five. */
+export const roleFromInput = (input: HookInput): Role | null =>
+  isRole(input.agent_type) ? input.agent_type : null;
+
 function main(argv: readonly string[]): number {
-  const [mode, role, ...rest] = argv;
-  if (!isRole(role) || (mode !== "hook" && mode !== "verify")) {
+  const [mode, named, ...rest] = argv;
+  const usable =
+    (mode === "hook" && (named === undefined || isRole(named))) ||
+    (mode === "verify" && isRole(named));
+  if (!usable) {
     process.stderr.write(
-      "usage: role-guard.ts hook <role>   (hook input on stdin)\n" +
+      "usage: role-guard.ts hook [<role>]   (hook input on stdin; the role defaults to its agent_type)\n" +
         "       role-guard.ts verify <role> --base <sha> [--allow <glob>]...\n" +
         `roles: ${ROLES.join(", ")}\n`,
     );
@@ -332,11 +373,15 @@ function main(argv: readonly string[]): number {
       process.stderr.write("role-guard: the hook input was not JSON; nothing was checked\n");
       return 1;
     }
+    const role = isRole(named) ? named : roleFromInput(input);
+    if (!role) return 0; // Not one of the five roles: nothing to guard.
     const projectDir = process.env["CLAUDE_PROJECT_DIR"];
     const result = runHook(role, input, projectDir ? { projectDir } : {});
     if (result.message) process.stderr.write(`${result.message}\n`);
     return result.exit;
   }
+  if (!isRole(named)) return 64;
+  const role = named;
   let base: string | undefined;
   const allow: string[] = [];
   for (let index = 0; index < rest.length; index += 1) {

@@ -10,6 +10,7 @@ coverage/
 # Local Claude Code settings stay untracked; the shared agent definitions are committed (ADR 0088, amended).
 .claude/*
 !.claude/agents/
+!.claude/settings.json
 .DS_Store
 Thumbs.db
 .wrangler/

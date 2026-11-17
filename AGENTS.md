@@ -54,7 +54,7 @@ Keep this file short. A new standing record — a defect left unfixed, a gate, a
 - The legacy-system dossier (`sahlisoft-accounting-analysis.md`) is kept out of this public repository; where a document cites it, read the rebuild specification instead. It was evidence about the legacy system, never authority for Dulja's target architecture.
 - `docs/review/2026-09-04-dulja-docs-review.md` records the review history and why earlier specification corrections were made.
 - `CONTRIBUTING.md` carries the spec's §0.2 and §3.9 verbatim for human contributors.
-- `docs/status/current-state.md` and `docs/status/phase-history.md` hold the standing records and the per-phase history this file summarises (ADR 0088, amended 2026-11-17). `docs/agents/` holds the role briefs of the feature workflow below.
+- `docs/status/current-state.md` and `docs/status/phase-history.md` hold the standing records and the per-phase history this file summarises (ADR 0088, amended 2026-11-17). `.claude/agents/` holds the role briefs of the feature workflow below; `docs/agents/` holds its templates and the guard's rules.
 - This file is the single agent instruction file. It takes the entry-point role spec §5.2 gives a root `CLAUDE.md`, which ADR 0088 retired; Claude Code reads `AGENTS.md` directly when no `CLAUDE.md` exists (v2.1.277 or later), so do not add one back; if an older Claude Code ever needs one, it holds only an `@AGENTS.md` import (ADR 0088).
 
 Use the `docs/spec/` paths above; do not maintain duplicate copies. When documents disagree, preserve settled decisions in the spec and frozen shared contracts in the plan-contract document. Stop and propose an ADR or contract amendment instead of silently choosing a third interpretation.
@@ -72,7 +72,7 @@ Do not execute all plans at once. Work in phase order; only the parallel branche
 
 ## Feature Workflow
 
-A new feature is worked by an **orchestrator** and four roles — **spec, build, review, fix** — each a separate agent with a fresh context and its own brief in `docs/agents/`. This is the shape the 2026-11-15 full review used (an orchestrator, ten reviewers, 27 fix sessions).
+A new feature is worked by an **orchestrator** and four roles — **spec, build, review, fix** — each a separate agent with a fresh context and its own brief, `.claude/agents/<role>.md`. This is the shape the 2026-11-15 full review used (an orchestrator, ten reviewers, 27 fix sessions).
 
 ```text
 owner request → orchestrator → spec → OWNER APPROVES → build → review ⇄ fix → orchestrator verifies → owner merges
@@ -80,13 +80,13 @@ owner request → orchestrator → spec → OWNER APPROVES → build → review 
 
 **Size it first.** A small fix — one workspace, no migration, no ADR, no route, permission or contract change, no screen — is one agent working test-first and checking its own diff; it does not use this chain. Anything else, or anything unsure, is a feature.
 
-| Role         | Does                                                                                                       | Never                                                             | Brief                         |
-| ------------ | ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | ----------------------------- |
-| Orchestrator | Runs the stages and their gates, gives each agent its branch, files and numbers, keeps the ledger          | Writes product code, merges, or decides an owner gate             | `docs/agents/orchestrator.md` |
-| Spec         | Writes the plan: spec sections, owner gates, tasks with their tests, the definition of done, ADR drafts    | Changes anything outside the feature folder                       | `docs/agents/spec.md`         |
-| Build        | Executes the approved plan one task at a time, test-first                                                  | Leaves its files, takes a number it was not given, edits the plan | `docs/agents/build.md`        |
-| Review       | Reads the change with fresh eyes and reports findings, each with `file:line`, a failure scenario, severity | Changes product code, or reports a recorded known defect as new   | `docs/agents/review.md`       |
-| Fix          | For each finding: a test that fails for the stated reason, then the fix                                    | Skips or weakens a test, or fixes what waits on the owner         | `docs/agents/fix.md`          |
+| Role         | Does                                                                                                       | Never                                                             | Brief                            |
+| ------------ | ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | -------------------------------- |
+| Orchestrator | Runs the stages and their gates, gives each agent its branch, files and numbers, keeps the ledger          | Writes product code, merges, or decides an owner gate             | `.claude/agents/orchestrator.md` |
+| Spec         | Writes the plan: spec sections, owner gates, tasks with their tests, the definition of done, ADR drafts    | Changes anything outside the feature folder                       | `.claude/agents/spec.md`         |
+| Build        | Executes the approved plan one task at a time, test-first                                                  | Leaves its files, takes a number it was not given, edits the plan | `.claude/agents/build.md`        |
+| Review       | Reads the change with fresh eyes and reports findings, each with `file:line`, a failure scenario, severity | Changes product code, or reports a recorded known defect as new   | `.claude/agents/review.md`       |
+| Fix          | For each finding: a test that fails for the stated reason, then the fix                                    | Skips or weakens a test, or fixes what waits on the owner         | `.claude/agents/fix.md`          |
 
 Each feature has one folder, `docs/features/<YYYY-MM-DD>-<slug>/`: `ledger.md` and `approval.md` (orchestrator), `plan.md` and `adr/` drafts (spec), `findings/` (review). Agents share nothing else, so what is not written there is lost between them. Templates are in `docs/agents/templates/`.
 
@@ -113,7 +113,14 @@ Rules that hold for every role:
 - **Nothing is reported done from reading alone.** Each role records what it ran and what it could not run, in the terms of Change Discipline below.
 - **Use the fewest agents the work needs.**
 
-**The limits are enforced, not only written.** `scripts/agents/role-guard.ts` holds each role to its paths (`RULES` there; the table is in `docs/agents/README.md`). The orchestrator runs `bun scripts/agents/role-guard.ts verify <role> --base <sha> [--allow <glob>]…` after every agent returns: every path changed since `<sha>` must be one the role may leave changed, and for build and fix `--allow` is the files the agent was given. That check works whatever tool ran the agent. In Claude Code the roles are also registered in `.claude/agents/<role>.md` (`claude --agent orchestrator` starts a feature), where the same guard runs as a hook: it refuses a write outside the role's paths, a merge, and a push to the default branch, and will not let a spec or review agent finish with any other file changed. Those files hold no instructions of their own — **the brief in `docs/agents/` is the only copy**; change the brief, never the pointer. No role may edit `.claude/` or `scripts/agents/`.
+**One file per role.** `.claude/agents/<role>.md` is the role's tool list and its whole brief — there is no second copy. `claude --agent orchestrator` starts a feature and the orchestrator starts the others by name; any other tool reads the same file as a plain document.
+
+**The limits are enforced, not only written.** `scripts/agents/role-guard.ts` holds each role to its paths (`RULES` there; the table is in `docs/agents/README.md`), in two ways:
+
+- **As a hook**, registered once in `.claude/settings.json` and keyed on the agent's name. It refuses a role a write outside its paths, a merge, and a push to the default branch, and tells a spec or review agent straight after any shell command that changed another file. It sits in the settings file because Claude Code skips hooks written in an agent's own file in a cloud or `-p` session.
+- **As the orchestrator's check** after every agent returns: `bun scripts/agents/role-guard.ts verify <role> --base <sha> [--allow <glob>]…`. Every path changed since `<sha>` must be one the role may leave changed, and for build and fix `--allow` is the files the agent was given. It needs no hook and holds whatever tool ran the agent, so it is the check that counts.
+
+No role may edit `.claude/` or `scripts/agents/`.
 
 ## Commands
 
