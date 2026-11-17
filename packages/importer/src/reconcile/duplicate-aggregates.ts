@@ -23,7 +23,12 @@ const RACE = [
  * is what the trigger's WHERE clause *meant*; the table has no unique index enforcing it, which is the defect.
  */
 export const DUPLICATE_TARGETS: readonly DuplicateTarget[] = [
-  { table: "MATOBJECTS", naturalKey: ["MATERIAL", "WAREHOUSE"], why: RACE, legacyDefects: ["LEGACY-049"] },
+  {
+    table: "MATOBJECTS",
+    naturalKey: ["MATERIAL", "WAREHOUSE"],
+    why: RACE,
+    legacyDefects: ["LEGACY-049"],
+  },
   {
     table: "MATQUANTITY",
     naturalKey: ["MATERIAL", "WAREHOUSE", "BATCH"],

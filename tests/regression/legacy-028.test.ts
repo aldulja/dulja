@@ -263,52 +263,60 @@ fullRegression("LEGACY-028", "No rate limiting or lockout on failed attempts —
 // `packages/importer/test/load/registry.test.ts`'s.
 import { loaders } from "@dulja/importer";
 import { InviteUserBody } from "@dulja/contracts/admin/user";
-fullRegression("LEGACY-028", "Passwords are stored and compared in cleartext — 9B, the import path", {
-  "registers no loader whose source table is USERS": async ({ expect }) => {
-    expect(loaders.length).toBeGreaterThan(0);
-    expect(loaders.map((l) => l.sourceTable)).not.toContain("USERS");
-  },
-
-  "declares no source column named PASSWORD or PIN, in any loader (OD-26 default)": async ({
-    expect,
-  }) => {
-    const declared = loaders.flatMap((l) =>
-      l.sourceColumns.map((c) => [l.sourceTable, c.name].join(".")),
-    );
-    expect(declared.length).toBeGreaterThan(0);
-    expect(declared.filter((n) => /PASSWORD|PASSWD|\bPIN\b/i.test(n))).toEqual([]);
-  },
-
-  "no importer source names a legacy credential column, and the loaders never name a password or a PIN":
-    async ({ expect }) => {
-      const importer = syncCredentialSources(["packages/importer/src"]);
-      expect(importer.length).toBeGreaterThan(0);
-      expect(
-        importer
-          .filter((f) => /\bUSERPASSWORD\b|\bUSRPASSWORD\b|\bUSRPIN\b|\bUSERPIN\b/i.test(f.text))
-          .map((f) => f.path),
-      ).toEqual([]);
-      // The loaders, their scalars and the registry: not one mention, in code or in a comment.
-      const load = importer.filter((f) => f.path.startsWith("packages/importer/src/load/"));
-      expect(load.length).toBeGreaterThan(0);
-      expect(
-        load.filter((f) => /PASSWORD|PASSWD|\bPIN\b/i.test(f.text)).map((f) => f.path),
-      ).toEqual([]);
+fullRegression(
+  "LEGACY-028",
+  "Passwords are stored and compared in cleartext — 9B, the import path",
+  {
+    "registers no loader whose source table is USERS": async ({ expect }) => {
+      expect(loaders.length).toBeGreaterThan(0);
+      expect(loaders.map((l) => l.sourceTable)).not.toContain("USERS");
     },
 
-  "users are INVITED, never migrated: the invite carries no password field to put one into":
-    async ({ api, a, expect }) => {
-      // The structural half of "cannot be migrated" (spec:2338): the wire body has exactly two members.
-      expect(Object.keys(InviteUserBody.shape).toSorted()).toEqual(["displayName", "email"]);
-      const res = await api.request({
-        method: "POST",
-        path: "/v1/admin/users",
-        as: a.human,
-        body: { email: "legacy028-9b@example.test", displayName: "LEGACY-028 9B", password: "hunter2" },
-      });
-      // The extra member is dropped by the schema, not stored: the 0B block above proves the principal's subject is
-      // server-obtained. Here, nothing in the answer carries it either.
-      expect(res.status).toBe(201);
-      expect(await res.text()).not.toContain("hunter2");
+    "declares no source column named PASSWORD or PIN, in any loader (OD-26 default)": async ({
+      expect,
+    }) => {
+      const declared = loaders.flatMap((l) =>
+        l.sourceColumns.map((c) => [l.sourceTable, c.name].join(".")),
+      );
+      expect(declared.length).toBeGreaterThan(0);
+      expect(declared.filter((n) => /PASSWORD|PASSWD|\bPIN\b/i.test(n))).toEqual([]);
     },
-});
+
+    "no importer source names a legacy credential column, and the loaders never name a password or a PIN":
+      async ({ expect }) => {
+        const importer = syncCredentialSources(["packages/importer/src"]);
+        expect(importer.length).toBeGreaterThan(0);
+        expect(
+          importer
+            .filter((f) => /\bUSERPASSWORD\b|\bUSRPASSWORD\b|\bUSRPIN\b|\bUSERPIN\b/i.test(f.text))
+            .map((f) => f.path),
+        ).toEqual([]);
+        // The loaders, their scalars and the registry: not one mention, in code or in a comment.
+        const load = importer.filter((f) => f.path.startsWith("packages/importer/src/load/"));
+        expect(load.length).toBeGreaterThan(0);
+        expect(
+          load.filter((f) => /PASSWORD|PASSWD|\bPIN\b/i.test(f.text)).map((f) => f.path),
+        ).toEqual([]);
+      },
+
+    "users are INVITED, never migrated: the invite carries no password field to put one into":
+      async ({ api, a, expect }) => {
+        // The structural half of "cannot be migrated" (spec:2338): the wire body has exactly two members.
+        expect(Object.keys(InviteUserBody.shape).toSorted()).toEqual(["displayName", "email"]);
+        const res = await api.request({
+          method: "POST",
+          path: "/v1/admin/users",
+          as: a.human,
+          body: {
+            email: "legacy028-9b@example.test",
+            displayName: "LEGACY-028 9B",
+            password: "hunter2",
+          },
+        });
+        // The extra member is dropped by the schema, not stored: the 0B block above proves the principal's subject is
+        // server-obtained. Here, nothing in the answer carries it either.
+        expect(res.status).toBe(201);
+        expect(await res.text()).not.toContain("hunter2");
+      },
+  },
+);

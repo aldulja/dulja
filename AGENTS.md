@@ -23,7 +23,7 @@ What stands between each phase and its exit, as its own record states it:
 | 6 POS                 | `docs/reports/phase-6.md`                | OD-11, OD-12, OD-18; ADRs 0054–0064; the Windows packaged run; staging                                        |
 | 7 Reporting           | `docs/reports/phase-7.md`                | ADRs 0065–0070 and contracts A2/A11; OD-24 parity, OD-27; staging                                             |
 | 8 HR and payroll      | `docs/reports/phase-8.md`                | OD-23 (the parallel run — the first DoD clause is unmet), OD-14, OD-28, OD-24 parity; ADRs 0071–0080; staging |
-| 9 Migration           | `docs/reports/phase-9.md`                | OD-17 (no live legacy byte has been read), OD-16, OD-25, OD-26, OD-27, OD-23; ADRs 0081–0086; staging      |
+| 9 Migration           | `docs/reports/phase-9.md`                | OD-17 (no live legacy byte has been read), OD-16, OD-25, OD-26, OD-27, OD-23; ADRs 0081–0086; staging         |
 | Full review           | `docs/review/2026-11-15-full-review.md`  | CI on `main` (BASE-02); ADRs 0089–0097; OPS-01, ORCH-01                                                       |
 
 Every owner-gated half is verified against its local equivalent only — Testcontainers, the container image, `wrangler dev`, synthetic corpora and fixture values — and never against a deployed system, a real payroll, the live legacy database or real statutory rates.
@@ -219,6 +219,7 @@ Always:
 - Record reusable decisions in `docs/adr/`; amend Plan Contracts before changing a frozen cross-slice contract.
 - A branch that is not a slice — a remediation, a review fix, a security patch — has **no migration or ADR range of its own**, and the register's rules are all written for slices. Plan Contracts §3.4.1 now carries a ⚠️ **proposal** for how such a branch allocates a number, and §3.9 applies the same rule to ADRs; it is the owner's to approve or replace, not settled text. Until it is settled: amend the register in the same PR before taking any number, and never take one a slice has marked _reserved_. The phase-0 review branch took 0C's and 0E's reserved `0009` and `0010` plus ADR `0020`, and §3.4.1's "never renumbers" means that cannot now be repaired — the register records the occupants instead.
 - Re-pin a golden fixture only through `GOLDEN_WRITE=1` (`tests/package.json`'s `golden:costing`), then review the diff line by line: every changed figure must be an intended formula change (spec:2264, `tests/golden/costing.test.ts`). Never regenerate a fixture to make it pass.
+- **Do not name the legacy vendor or product in this repository** (the owner's direction, 2026-11-17; `docs/decisions/2026-11-17-legacy-naming.md`). Write "the legacy system"; its defects are `LEGACY-###` (spec Part I), each tested in `tests/regression/legacy-NNN.test.ts`. The legacy database's own table and column names stay, because the importer reads them.
 - Never report a phase complete from document review alone. Completion requires the implementation, its stated tests, and the phase gate to pass in the workspace/CI.
 
 ## Phase Execution Rule

@@ -396,7 +396,10 @@ describe("LEGACY-049 Duplicate aggregate rows in the legacy source — 9B", () =
         conflicts: 0,
       });
       expect(report.skips.map((s) => [s.sourceKey, s.reason])).toEqual([
-        ["1", "the source holds this key twice with identical data; it was loaded once (LEGACY-049)"],
+        [
+          "1",
+          "the source holds this key twice with identical data; it was loaded once (LEGACY-049)",
+        ],
       ]);
       const rows = await withTenant(
         rw,

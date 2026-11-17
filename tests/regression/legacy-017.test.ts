@@ -293,7 +293,10 @@ describe("LEGACY-017 The over-fulfilment bound follows the reversal chain â€” co
     const f = await arApFixture(db, s);
     const receiptType = await seedTypeFromPack(db, s, "GOODS_RECEIPT");
     const returnType = await seedTypeFromPack(db, s, "PURCHASE_RETURN");
-    const { itemId, baseUnitId } = await seedItem(db, s, { code: "LEGACY017-CR3", trackLots: false });
+    const { itemId, baseUnitId } = await seedItem(db, s, {
+      code: "LEGACY017-CR3",
+      trackLots: false,
+    });
     const warehouseId = await seedWarehouse(db, s, { code: "LEGACY017-CR3" });
     const c = { tenantId: s.tenant, actorId: s.human, requestId: await uuidv7(db.admin) };
     const drafted = (
@@ -381,7 +384,10 @@ describe("LEGACY-017 A reinstated return is bounded by its source's status too â
     const f = await arApFixture(db, s);
     const receiptType = await seedTypeFromPack(db, s, "GOODS_RECEIPT");
     const returnType = await seedTypeFromPack(db, s, "PURCHASE_RETURN");
-    const { itemId, baseUnitId } = await seedItem(db, s, { code: "LEGACY017-CR4", trackLots: false });
+    const { itemId, baseUnitId } = await seedItem(db, s, {
+      code: "LEGACY017-CR4",
+      trackLots: false,
+    });
     const warehouseId = await seedWarehouse(db, s, { code: "LEGACY017-CR4" });
     const c = { tenantId: s.tenant, actorId: s.human, requestId: await uuidv7(db.admin) };
     // FIFO consumes the older GR2, keeping the linked GR1 untouched for its full cancellation.

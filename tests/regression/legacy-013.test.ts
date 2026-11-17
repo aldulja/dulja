@@ -116,7 +116,11 @@ sliceRegression(
     });
 
     const { reversalDocumentId } = await withTenant(rw, ctx, (tx) =>
-      reverseDocument(tx, ctx, { documentId: doc, effectiveDate: "2026-01-25", reason: "legacy-013" }),
+      reverseDocument(tx, ctx, {
+        documentId: doc,
+        effectiveDate: "2026-01-25",
+        reason: "legacy-013",
+      }),
     );
     expect(reversalDocumentId).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}$/,
