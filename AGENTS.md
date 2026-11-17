@@ -78,24 +78,42 @@ A new feature is worked by an **orchestrator** and four roles — **spec, build,
 owner request → orchestrator → spec → OWNER APPROVES → build → review ⇄ fix → orchestrator verifies → owner merges
 ```
 
-| Role         | Does                                                                                                       | Never                                                                    | Brief                         |
-| ------------ | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ----------------------------- |
-| Orchestrator | Splits the work, gives each agent its branch, files and numbers, keeps the ledger, reports to the owner    | Writes product code, merges, or decides an owner gate                    | `docs/agents/orchestrator.md` |
-| Spec         | Writes the plan: spec sections, owner gates, tasks with their tests, the definition of done, ADR proposals | Writes product code or invents a UI workflow                             | `docs/agents/spec.md`         |
-| Build        | Executes the approved plan one task at a time, test-first                                                  | Leaves its files, takes a number it was not given, or reviews its own PR | `docs/agents/build.md`        |
-| Review       | Reads the change with fresh eyes and reports findings, each with `file:line`, a failure scenario, severity | Changes product code, or reports a recorded known defect as new          | `docs/agents/review.md`       |
-| Fix          | For each finding: a test that fails for the stated reason, then the fix                                    | Skips or weakens a test, or fixes what waits on the owner                | `docs/agents/fix.md`          |
+**Size it first.** A small fix — one workspace, no migration, no ADR, no route, permission or contract change, no screen — is one agent working test-first and checking its own diff; it does not use this chain. Anything else, or anything unsure, is a feature.
 
-Claude Code picks each role up from `.claude/agents/<role>.md` — start a feature with `claude --agent orchestrator`, or ask for a role by name. Those files hold only the role's name, when to use it, its tool limits (spec cannot run commands; review has no edit tool) and a pointer to its brief. **The brief in `docs/agents/` is the only copy of the instructions**; change the brief, never the pointer.
+| Role         | Does                                                                                                       | Never                                                             | Brief                         |
+| ------------ | ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | ----------------------------- |
+| Orchestrator | Runs the stages and their gates, gives each agent its branch, files and numbers, keeps the ledger          | Writes product code, merges, or decides an owner gate             | `docs/agents/orchestrator.md` |
+| Spec         | Writes the plan: spec sections, owner gates, tasks with their tests, the definition of done, ADR drafts    | Changes anything outside the feature folder                       | `docs/agents/spec.md`         |
+| Build        | Executes the approved plan one task at a time, test-first                                                  | Leaves its files, takes a number it was not given, edits the plan | `docs/agents/build.md`        |
+| Review       | Reads the change with fresh eyes and reports findings, each with `file:line`, a failure scenario, severity | Changes product code, or reports a recorded known defect as new   | `docs/agents/review.md`       |
+| Fix          | For each finding: a test that fails for the stated reason, then the fix                                    | Skips or weakens a test, or fixes what waits on the owner         | `docs/agents/fix.md`          |
+
+Each feature has one folder, `docs/features/<YYYY-MM-DD>-<slug>/`: `ledger.md` and `approval.md` (orchestrator), `plan.md` and `adr/` drafts (spec), `findings/` (review). Agents share nothing else, so what is not written there is lost between them. Templates are in `docs/agents/templates/`.
+
+A stage starts only when the gate before it is recorded in the ledger:
+
+| Stage             | Gate that ends it                                                                                                    |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------- |
+| 1. Intake         | The ledger states the request, the size and the owner gates it meets; a request blocked by an open gate stops here   |
+| 2. Spec           | `plan.md` is complete; every money, security, data-model or sync decision has an ADR draft; every question is listed |
+| 3. Owner approval | `approval.md` quotes the owner approving the plan — **no build without it**                                          |
+| 4. Allocate       | Migration and ADR numbers are in the registers; each builder's branch, tasks and file globs are in the ledger        |
+| 5. Build          | Every task has failing-first evidence; the checks are recorded; the work is committed and pushed                     |
+| 6. Review         | A findings file exists, with what could not be checked; the orchestrator has confirmed each blocker and high         |
+| 7. Fix            | No blocker or high finding is open — **three review rounds at most**, then the owner decides                         |
+| 8. Close          | Every definition-of-done clause has a passing test; the combined tree passes the checks; what is unverified is said  |
 
 Rules that hold for every role:
 
 - **The owner approves the plan before any build starts.** Anything touching money semantics, security, the data model or the sync protocol is an ADR proposal the owner answers first; an `OD-##`, `⚠️`, "Confirm" or "Decide" item is never decided by an agent.
-- **The reviewer is never the builder.** A review by the agent that wrote the code, or by one handed the builder's conclusions, does not count.
-- **Only the orchestrator edits the shared registers:** Plan Contracts §3.4.1 and §3.9 (migration and ADR numbers), `AGENTS.md` and `docs/status/`. It allocates numbers before a builder or fixer starts, and two agents never own the same file at once.
-- **Review and fix repeat** until no blocker or high finding remains. A medium or low finding is fixed or recorded under "Known defects and limits" in `docs/status/current-state.md`, never dropped.
+- **The reviewer is never the builder,** and is never handed the builder's account of what is correct.
+- **Only the orchestrator edits the shared records:** Plan Contracts §3.4.1 and §3.9 (migration and ADR numbers), `AGENTS.md`, `docs/status/`, and a feature's `approval.md` and `ledger.md`. Two agents never own the same file at once; parallel builders each work in their own checkout and branch.
+- **A wrong or silent plan goes back to spec,** never around it: the builder stops that task, the plan is amended, and the owner approves again if the scope, a gate or a money, security, data-model or sync decision changed.
+- **A medium or low finding is fixed or recorded** under "Known defects and limits" in `docs/status/current-state.md`, never dropped.
 - **Nothing is reported done from reading alone.** Each role records what it ran and what it could not run, in the terms of Change Discipline below.
-- **Use the fewest agents the work needs.** A small fix — one workspace, no migration, no ADR, no contract change — is one agent working test-first and checking its own diff; it does not need this chain. Parallel builders or fixers are for work whose files do not overlap.
+- **Use the fewest agents the work needs.**
+
+**The limits are enforced, not only written.** `scripts/agents/role-guard.ts` holds each role to its paths (`RULES` there; the table is in `docs/agents/README.md`). The orchestrator runs `bun scripts/agents/role-guard.ts verify <role> --base <sha> [--allow <glob>]…` after every agent returns: every path changed since `<sha>` must be one the role may leave changed, and for build and fix `--allow` is the files the agent was given. That check works whatever tool ran the agent. In Claude Code the roles are also registered in `.claude/agents/<role>.md` (`claude --agent orchestrator` starts a feature), where the same guard runs as a hook: it refuses a write outside the role's paths, a merge, and a push to the default branch, and will not let a spec or review agent finish with any other file changed. Those files hold no instructions of their own — **the brief in `docs/agents/` is the only copy**; change the brief, never the pointer. No role may edit `.claude/` or `scripts/agents/`.
 
 ## Commands
 

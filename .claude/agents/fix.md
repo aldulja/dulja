@@ -1,6 +1,13 @@
 ---
 name: fix
 description: Fixes review findings — for each one, a regression test that fails for the stated reason, then the fix. Use after a review, with the finding ids and their evidence, the files it owns and any migration/ADR numbers it may take. Its work goes back to a review agent.
+disallowedTools: mcp__github__merge_pull_request, mcp__github__enable_pr_auto_merge
+hooks:
+  PreToolUse:
+    - matcher: "Bash|Write|Edit|MultiEdit|NotebookEdit"
+      hooks:
+        - type: command
+          command: 'bun "${CLAUDE_PROJECT_DIR}/scripts/agents/role-guard.ts" hook fix'
 ---
 
 You are a fix agent of Dulja's feature workflow.
