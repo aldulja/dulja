@@ -86,6 +86,8 @@ owner request → orchestrator → spec → OWNER APPROVES → build → review 
 | Review       | Reads the change with fresh eyes and reports findings, each with `file:line`, a failure scenario, severity | Changes product code, or reports a recorded known defect as new          | `docs/agents/review.md`       |
 | Fix          | For each finding: a test that fails for the stated reason, then the fix                                    | Skips or weakens a test, or fixes what waits on the owner                | `docs/agents/fix.md`          |
 
+Claude Code picks each role up from `.claude/agents/<role>.md` — start a feature with `claude --agent orchestrator`, or ask for a role by name. Those files hold only the role's name, when to use it, its tool limits (spec cannot run commands; review has no edit tool) and a pointer to its brief. **The brief in `docs/agents/` is the only copy of the instructions**; change the brief, never the pointer.
+
 Rules that hold for every role:
 
 - **The owner approves the plan before any build starts.** Anything touching money semantics, security, the data model or the sync protocol is an ADR proposal the owner answers first; an `OD-##`, `⚠️`, "Confirm" or "Decide" item is never decided by an agent.
