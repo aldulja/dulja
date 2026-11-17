@@ -24,3 +24,20 @@ Claude Code reads `AGENTS.md` as project instructions when no `CLAUDE.md` is pre
 - A Claude Code older than v2.1.277 loads no project instructions in this repository.
 - A `CLAUDE.md` added later would take precedence over `AGENTS.md` for Claude Code. If one is ever needed, it holds only an `@AGENTS.md` import and no content of its own, so there is still one copy.
 - Historical records — `docs/reports/`, `docs/review/`, the executed plans and accepted ADRs — keep their `CLAUDE.md` references, because they describe what was true when they were written.
+
+## Amendment — 2026-11-17: the standing records move to `docs/status/`, and a feature workflow is added
+
+**Status:** implemented at the owner's direction of 2026-11-17 ("slim it down and also write the workflow"). The layout below is the implementer's choice of how to do that, for the owner to confirm or replace at merge. It touches no money semantics, security, data model or sync protocol. **Branch:** `claude/peaceful-gates-dwnalz` — not a slice; it takes no migration or ADR number.
+
+**Why.** By Phase 9 `AGENTS.md` was about 90 KB, nearly all of it in "Current phase" and "Current State". Every agent session loads the whole file, so every session paid for ten phases of history to reach one page of rules.
+
+**What changes in decision 2.**
+
+1. `AGENTS.md` keeps both sections under their names — "Current phase" and "Current State" — so Plan Contracts §3.8's rewrite step, the pull-request template and the code comments that cite them still have their targets. Each now holds a short form: the phase table and the latest work; the open owner gates by id, and where to read the rest.
+2. The full text of each phase's status is `docs/status/phase-history.md`, moved unchanged. A slice that closes a phase rewrites the short status in `AGENTS.md` **and** that phase's entry there.
+3. The records that outlive a phase — owner gates, ADRs awaiting the owner and the widenings of security controls, known defects, the tree inventory — are `docs/status/current-state.md`, moved unchanged and split under headings. `AGENTS.md` declares that file part of "Current State" and as binding, and says which heading to read before which kind of work. Where a document or code comment says "`AGENTS.md`'s recorded defect" or "`AGENTS.md` 'In the tree'", read that file.
+4. There is still one copy of everything: nothing in `docs/status/` is repeated in `AGENTS.md` beyond the short form.
+
+**Also added.** `AGENTS.md` gains a "Feature Workflow" section: an orchestrator and four roles (spec, build, review, fix), each with a brief under `docs/agents/`. It generalises the 2026-11-15 full review's orchestrator, reviewer brief and fix brief. Its rules restate existing ones — owner approval before a build, ADR proposals, failing-first tests — and add three: the reviewer is never the builder, only the orchestrator edits the shared registers and `AGENTS.md`, and a small fix does not use the chain.
+
+**Consequences.** An agent no longer has the known-defects list in its context by default; it must open `docs/status/current-state.md`, and `AGENTS.md` says when. `docs/status/current-state.md` was moved as it stood on 2026-11-16 and does not yet carry the 2026-11-15/16 review's additions (migrations `0124`–`0129`, ADRs `0089`–`0097`); its header says so and points at the review ledger.
