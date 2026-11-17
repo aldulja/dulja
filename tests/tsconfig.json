@@ -8,6 +8,7 @@
     "staging",
     "vitest.config.ts",
     "../scripts/lint",
+    "../scripts/agents",
     "../apps/worker/src/handlers/**/*.ts",
     "../apps/pos/src/main/**/*.ts",
     "../packages/db/seed/roles.ts"
