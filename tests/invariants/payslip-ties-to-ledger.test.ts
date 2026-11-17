@@ -116,7 +116,7 @@ describe("acceptance test 30 — payslip ties to the ledger (spec:2448)", () => 
         payrollDocumentId: f.payrollDocumentId,
       }),
     );
-    // String equality, never toBeCloseTo: two figures that round differently are two figures (SAH-019).
+    // String equality, never toBeCloseTo: two figures that round differently are two figures (LEGACY-019).
     expect(schedule!.totalEmployee.add(schedule!.totalEmployer).toString()).toBe(
       await movementOnRun(payableAccountId),
     );

@@ -1,4 +1,4 @@
--- 0065_create_pos_cashier.sql — the till credential (§4.6.3; spec:1324, 2097; SAH-025, 026, 028).
+-- 0065_create_pos_cashier.sql — the till credential (§4.6.3; spec:1324, 2097; LEGACY-025, 026, 028).
 -- The PIN is the ONLY credential this application hashes and it is NEVER a login: no route compares one,
 -- and verification happens at the till against the down-synced mirror.
 
@@ -26,7 +26,7 @@ comment on column app.pos_cashier.snapshot is
 
 call app_meta.enable_tenant_rls('app.pos_cashier');
 -- No attach_audit: AUDIT_EXEMPT (§3.5.3). An audited before/after image of pin_hash is a second copy of a
--- credential sitting in a table with a different read gate, and the snapshot is derived data (SAH-028).
+-- credential sitting in a table with a different read gate, and the snapshot is derived data (LEGACY-028).
 
 -- ── 2. catalogue revision — the row is a down-synced stream (§4.10.2, 6A's trigger) ──────────────────
 create trigger catalogue_revision before insert or update on app.pos_cashier

@@ -1,4 +1,4 @@
--- ── 0077. Report-filter indexes (SAH-070 "index coverage is thin on exactly the columns reports filter by";
+-- ── 0077. Report-filter indexes (LEGACY-070 "index coverage is thin on exactly the columns reports filter by";
 --          contracts §2.8's 7B card, round 14 amendments A7 and A17) ──────────────────────────────────────
 -- Indexes only — no column, constraint, function, grant or row — so this is an EXPAND step (§3.4.7) that can
 -- deploy under load. Not `create index concurrently`: §3.4.3 runs each migration file whole in one transaction.
@@ -10,7 +10,7 @@
 -- carry `archived_at is null` / `invalidated_at is null`, and a ReportDefinition filter cannot express
 -- "is null"). Every table here belongs to a spent range (0A, 1B, 2B, 3A, 3B), which is why they live in 7B's
 -- own number (A7). Low-selectivity enumerations (document status, event kind, audit action, account type,
--- warehouse kind, promotion kind) are deliberately NOT indexed — SAH-070's own table names that class as one
+-- warehouse kind, promotion kind) are deliberately NOT indexed — LEGACY-070's own table names that class as one
 -- an index does not help — and are the gate's closed RESIDUAL list.
 
 -- accounting.document_register and inventory.count_register: the register's REQUIRED date range across every

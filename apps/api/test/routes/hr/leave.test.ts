@@ -114,7 +114,7 @@ describe("/v1/companies/{companyId}/leave-records — ⚠️ OD-13; test 31's le
     });
   });
 
-  it("a decision body naming a decider is refused — approvedBy is never the caller's (SAH-044)", async () => {
+  it("a decision body naming a decider is refused — approvedBy is never the caller's (LEGACY-044)", async () => {
     const created = (await (await request(otherEmployeeId, "2026-05-11", "2026-05-12")).json()) as {
       id: string;
     };

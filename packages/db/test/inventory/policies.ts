@@ -94,7 +94,7 @@ export const GRN_POLICY = {
  * says. Net effect on 1310 across all four: a credit of |issue.value| — the exact figure the dispatch
  * debited — so the corridor clears to zero on every receipt, short or over. That is the arithmetic the
  * definition-of-done clause's second half rests on, and it is why `variance_value` needs no column
- * (SAH-018).
+ * (LEGACY-018).
  */
 export const TRANSFER_RECEIPT_POLICY = {
   version: 1,

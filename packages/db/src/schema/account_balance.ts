@@ -21,7 +21,7 @@ export const accountBalance = app.table(
     primaryKey({
       columns: [table.companyId, table.accountId, table.fiscalPeriodId, table.currency],
     }),
-    // 1B, migration 0016 (SAH-070) — accounting.trial_balance filters (company_id, fiscal_period_id
+    // 1B, migration 0016 (LEGACY-070) — accounting.trial_balance filters (company_id, fiscal_period_id
     // [, currency]); the primary key above puts account_id between the two filtered columns.
     index("account_balance_company_period_idx").on(
       table.companyId,

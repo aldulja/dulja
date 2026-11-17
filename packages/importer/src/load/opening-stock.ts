@@ -69,7 +69,7 @@ const COLUMNS: readonly SourceColumn[] = [
     name: "BTMVAL",
     required: false,
     confidence: "hypothesis",
-    note: "the line's value on a RECEIPT; never read on an issue, which the engine costs. A NULL on a receipt is refused, never zeroed (SAH-011)",
+    note: "the line's value on a RECEIPT; never read on an issue, which the engine costs. A NULL on a receipt is refused, never zeroed (LEGACY-011)",
   },
 ];
 
@@ -136,7 +136,7 @@ export const openingStockLoader: Loader<LegacyRow, LegacyMovement> = {
       lineNo: Number(ordinalOf(row, "BTMROW", site)),
       direction: inbound ? "in" : "out",
       quantity: quantityOf(row, "BTMQNT", site),
-      // A NULL receipt value passes through as `null` so the replay refuses it with SAH-011's own message; an
+      // A NULL receipt value passes through as `null` so the replay refuses it with LEGACY-011's own message; an
       // issue's stored value is never read (§5.1 #6).
       value:
         inbound && optionalText(row, "BTMVAL") !== null
@@ -147,14 +147,14 @@ export const openingStockLoader: Loader<LegacyRow, LegacyMovement> = {
 
   /** Called EXACTLY ONCE with every mapped `BILLITEMS` row no earlier run recorded (C13), in one transaction. */
   async load(tx: Sql, ctx: LoadContext, rows: LegacyMovement[]) {
-    // Part VII #7 / SAH-022 (OD-27, 9B T15), asked of the run's own source before anything is computed: a legacy
+    // Part VII #7 / LEGACY-022 (OD-27, 9B T15), asked of the run's own source before anything is computed: a legacy
     // opening stock partitioned by job would be merged here into positions that were never one position — a valuation
     // that ties to the ledger and is still wrong, the worst outcome a cut-over can have. Fail closed.
     const partition = await assertNoJobPartition(loadSource().reader);
     if (partition)
       throw new LoadError(
         "ERR_IMPORT_SOURCE_UNREADABLE",
-        `${partition.table}.${partition.column} has ${partition.distinctNonZero} distinct non-zero values (for example ${partition.sample.join(", ")}); the legacy opening stock is partitioned by job and this loader would merge positions that were never one position. Answer Part VII #7 with the customer and decide how a job maps to a Dulja warehouse before loading opening stock (SAH-022, OD-27)`,
+        `${partition.table}.${partition.column} has ${partition.distinctNonZero} distinct non-zero values (for example ${partition.sample.join(", ")}); the legacy opening stock is partitioned by job and this loader would merge positions that were never one position. Answer Part VII #7 with the customer and decide how a job maps to a Dulja warehouse before loading opening stock (LEGACY-022, OD-27)`,
       );
     await refuseUnsafeOpening(tx, ctx, rows);
 
@@ -305,7 +305,7 @@ async function resolvePositions(
     if (!itemId || !warehouseId || (position.lotKey !== null && !lotId)) {
       report(
         position,
-        `the opening position for legacy material ${position.itemKey} in warehouse ${position.warehouseKey}${position.lotKey === null ? "" : ` batch ${position.lotKey}`} references an item, warehouse or lot that did not import; the position is reported, never opened against a guessed parent (§5.1 #3, SAH-073)`,
+        `the opening position for legacy material ${position.itemKey} in warehouse ${position.warehouseKey}${position.lotKey === null ? "" : ` batch ${position.lotKey}`} references an item, warehouse or lot that did not import; the position is reported, never opened against a guessed parent (§5.1 #3, LEGACY-073)`,
       );
       continue;
     }

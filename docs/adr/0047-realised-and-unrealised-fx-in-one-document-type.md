@@ -97,7 +97,7 @@ credit is in base, so a foreign bill would leave a permanent non-base balance on
 revalued every month. The carried base of each (account, currency) includes any unrealised revaluation
 still outstanding on it, so a period whose predecessor was never reversed is revalued by the increment.
 The one conversion is `toBase` (round(value × rate, 4), HALF_AWAY_FROM_ZERO); a missing `app.rate_for` row
-is `ERR_RATE_NOT_FOUND` naming the pair, never 1 (SAH-012, SAH-014). One revaluation per company per
+is `ERR_RATE_NOT_FOUND` naming the pair, never 1 (LEGACY-012, LEGACY-014). One revaluation per company per
 period (the guard counts `posted` and `reversed`), dated `ends_on`, tagged to the `HQ` branch by code.
 
 **8. Only the unrealised document is reversed at period start** (`reverseRevaluation`, through 1A's

@@ -106,7 +106,7 @@ describe("migration 0004 — the pgboss schema (contracts §4.2.6; spec §3.2.2)
   });
 });
 
-describe("transactional enqueue — spec §5.0 row 0.11, §3.2.2 (SAH-005)", () => {
+describe("transactional enqueue — spec §5.0 row 0.11, §3.2.2 (LEGACY-005)", () => {
   let db: Db;
   let boss: PgBoss;
   let jobs: JobClient;

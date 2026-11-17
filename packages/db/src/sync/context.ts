@@ -22,7 +22,7 @@ export interface TerminalRow {
  * Resolves a terminal id to the context every later statement runs under. Two steps, and the order matters:
  * `app.resolve_principal` runs with NO tenant (it is the SECURITY DEFINER door), and only then can the
  * `pos_terminal` row be read under RLS as the terminal itself. Reading the row first, as a superuser or with
- * a guessed tenant, would be SAH-026 with extra steps.
+ * a guessed tenant, would be LEGACY-026 with extra steps.
  *
  * `revoked_at` is returned rather than thrown on, because the two callers answer differently: `terminalAuth`
  * raises `ERR_TERMINAL_REVOKED` (403), and the `pos.sync.apply` handler abandons the batch to needs-attention.

@@ -28,7 +28,7 @@ export const TERMINAL_TOKEN_HEADER = "X-Terminal-Token";
 const TERMINAL_JWT_ISSUER = "urn:dulja:terminal";
 
 /** The ONE canonical string lives in `@dulja/sync`, beside the till's signer, so signer and verifier cannot
- *  drift (SAH-046). Re-exported, never re-spelt: a second copy here is the drift that sentence forbids. */
+ *  drift (LEGACY-046). Re-exported, never re-spelt: a second copy here is the drift that sentence forbids. */
 export { canonicalSyncRequest };
 
 function bad(detail: string): never {
@@ -130,7 +130,7 @@ export function terminalAuth(deps: { db: Sql; signingKey: Uint8Array }): Middlew
         throw e;
       }));
     // Re-checked on EVERY request, token path included: a JWT that outlived its terminal would be exactly the
-    // "one variable disables every control" of SAH-027, moved into a signed envelope.
+    // "one variable disables every control" of LEGACY-027, moved into a signed envelope.
     if (terminal.revokedAt !== null)
       throw new AppError("ERR_TERMINAL_REVOKED", `terminal ${terminalId} was revoked`);
     // Only a message that verified is ever recorded, so nobody without the device key can spend a slot. Its own

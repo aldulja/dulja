@@ -12,7 +12,7 @@ const ctx = (seed: Seed) => ({
   requestId: "req-issue",
 });
 
-describe("issueDocument — contracts §4.3.6 (SAH-051, spec:2222)", () => {
+describe("issueDocument — contracts §4.3.6 (LEGACY-051, spec:2222)", () => {
   let db: Db;
   let a: Seed;
 

@@ -177,7 +177,7 @@ export async function lintSchema(sql: Sql): Promise<Violation[]> {
         violations.push({
           table: name,
           rule: "sensitive_gate",
-          detail: `no RESTRICTIVE policy named ${gate} (spec:2076 — a permission gate is OR-ed away when permissive, SAH-033)`,
+          detail: `no RESTRICTIVE policy named ${gate} (spec:2076 — a permission gate is OR-ed away when permissive, LEGACY-033)`,
         });
     }
     const branchKey = cols.has("branch_id")
@@ -203,7 +203,7 @@ export async function lintSchema(sql: Sql): Promise<Violation[]> {
           table: name,
           rule: "branch_isolation_policy",
           detail:
-            "branch_isolation is PERMISSIVE — permissive policies OR together and the gate is voided by tenant_isolation (SAH-033)",
+            "branch_isolation is PERMISSIVE — permissive policies OR together and the gate is voided by tenant_isolation (LEGACY-033)",
         });
     }
     if (name === "document_line") {

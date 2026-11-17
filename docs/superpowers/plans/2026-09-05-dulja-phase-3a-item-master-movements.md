@@ -4,11 +4,11 @@
 
 **Goal.** Give the posting service something to move. Concretely: the item master (`app.item`, `app.unit_of_measure`, `app.unit_conversion` with exact rationals), the places stock lives (`app.warehouse` as a tree with an `in_transit` kind, `app.lot` with expiry, `app.variant`), what stock is sold at (`app.price_list`, `app.price_list_line`, `app.promotion`), and the two tables that make a quantity real — the immutable `app.inventory_movement` and the synchronous `app.stock_on_hand` projection it is `MERGE`d into inside the posting transaction. Around those: the movement-planning half of `evaluatePolicy` that 2A deliberately left returning `[]`; the `applyMovements` hook `postDocument` step 9 calls, in its provisional 3A form; negative-stock rejection in the **data layer** (`app.assert_stock_available`), overridable only by a second principal's `document_event`; FEFO picking; a near-expiry alert job; lot attachments; and the item, unit, warehouse, price and stock APIs. At the end of this slice a document type whose policy declares `inventory.effect: "issue"` posts, writes signed movements, updates stock on hand to the microgram, refuses to go negative through the API, through a job and through raw `app_rw` SQL alike, and `app.pick_lots_fefo` returns the earliest-expiring lot.
 
-**Architecture.** Three layers, no shortcuts across them. **SQL** owns the invariants: `assert_stock_available` is a BEFORE INSERT trigger on `inventory_movement` (so no write path escapes it), `item_sentinel_lot` is an AFTER INSERT trigger on `item` (so `stock_on_hand`'s `lot_id` primary-key column is never NULL — SAH-050), `warehouse_no_cycle` is a recursive-CTE guard written once (SAH-071), and `pick_lots_fefo` is a stable SQL function over the projection rather than a replay of history (SAH-067). **`packages/domain`** owns the pure half: `planMovements` inside `evaluatePolicy` turns `policy.inventory` plus the line snapshots into `PlannedMovement[]` with `movementNo` assigned in emission order, and `applyConversion` turns an entered `(unit, unit_quantity)` pair into an exact base quantity (SAH-066). **`packages/db/src/costing/apply-movements.ts`** owns the I/O half: it is the only writer of `app.inventory_movement`, it resolves the sentinel lot and the base unit, it fills `value` on the plan and `cost` on `document_line`, and 3B replaces its body without touching its signature. Nothing in `apps/api` or `apps/worker` writes a movement.
+**Architecture.** Three layers, no shortcuts across them. **SQL** owns the invariants: `assert_stock_available` is a BEFORE INSERT trigger on `inventory_movement` (so no write path escapes it), `item_sentinel_lot` is an AFTER INSERT trigger on `item` (so `stock_on_hand`'s `lot_id` primary-key column is never NULL — LEGACY-050), `warehouse_no_cycle` is a recursive-CTE guard written once (LEGACY-071), and `pick_lots_fefo` is a stable SQL function over the projection rather than a replay of history (LEGACY-067). **`packages/domain`** owns the pure half: `planMovements` inside `evaluatePolicy` turns `policy.inventory` plus the line snapshots into `PlannedMovement[]` with `movementNo` assigned in emission order, and `applyConversion` turns an entered `(unit, unit_quantity)` pair into an exact base quantity (LEGACY-066). **`packages/db/src/costing/apply-movements.ts`** owns the I/O half: it is the only writer of `app.inventory_movement`, it resolves the sentinel lot and the base unit, it fills `value` on the plan and `cost` on `document_line`, and 3B replaces its body without touching its signature. Nothing in `apps/api` or `apps/worker` writes a movement.
 
 **Tech Stack.** PostgreSQL 18 (`numeric(19,4)` money, `numeric(19,6)` quantities, `bigint` rational parts, `uuidv7()` keys, RLS forced on every table, `MERGE` for the projection); `postgres.js` tagged templates for every posting/movement write; Drizzle mirrors as the migration diff source (ADR-0002); TypeScript strict, Bun for everything except tests; Vitest + Testcontainers (`postgres:18`) under Node 24; Hono + `@hono/zod-openapi` for routes; Zod contracts in `packages/contracts`; pg-boss for the expiry-alert job; `decimal.js` behind `Money`/`Quantity`/`Rational` in `packages/domain`.
 
-**Spec:** `C:/Users/Edres101/Desktop/dulja/rebuild-spec.md` (v1.2). Sections this slice argues from: §0.2 (the never/always lists), §0.4 glossary (spec:158–162 Material/Warehouse/Batch/MatUnits/Prices), §3.0.3 (spec:1021–1025 Batch/lot, Multi-branch stock, Multi-unit items, Price lists; spec:1032 the "probably not needed" list), §3.0.4 (spec:1048 Inventory core — this slice's owned row; spec:1062 the POS selling row's promotions half; spec:1067 the attachment row's lot link), §3.3 (spec:1178–1183, 1198), §3.4 (spec:1212, 1225–1226), §3.7.3 (spec:1308–1310), §3.7.5 (spec:1312), §3.8 (spec:1370, 1979–1993), §3.9 (spec:2043, 2047), §4.2.1 (spec:2148, 2159), §4.2.2 R8 (spec:2179), §4.11 (spec:2264), Part V Phase 3 (spec:2289, 2404), Part VI tests 17 and 18 (spec:2435–2436), Part I SAH-048, 050, 052, 056, 057, 063, 064, 066, 067, 071, 073, 074.
+**Spec:** `C:/Users/Edres101/Desktop/dulja/rebuild-spec.md` (v1.2). Sections this slice argues from: §0.2 (the never/always lists), §0.4 glossary (spec:158–162 Material/Warehouse/Batch/MatUnits/Prices), §3.0.3 (spec:1021–1025 Batch/lot, Multi-branch stock, Multi-unit items, Price lists; spec:1032 the "probably not needed" list), §3.0.4 (spec:1048 Inventory core — this slice's owned row; spec:1062 the POS selling row's promotions half; spec:1067 the attachment row's lot link), §3.3 (spec:1178–1183, 1198), §3.4 (spec:1212, 1225–1226), §3.7.3 (spec:1308–1310), §3.7.5 (spec:1312), §3.8 (spec:1370, 1979–1993), §3.9 (spec:2043, 2047), §4.2.1 (spec:2148, 2159), §4.2.2 R8 (spec:2179), §4.11 (spec:2264), Part V Phase 3 (spec:2289, 2404), Part VI tests 17 and 18 (spec:2435–2436), Part I LEGACY-048, 050, 052, 056, 057, 063, 064, 066, 067, 071, 073, 074.
 
 **Contracts:** `C:/Users/Edres101/Desktop/dulja/docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md` — the authority for every shared name. Where it gives code, this plan repeats it verbatim.
 
@@ -16,11 +16,11 @@
 
 - **Slice:** 3A — Item master, units, warehouses, lots, prices, movements, stock on hand. **Phase:** 3. **Phase gate:** this plan starts only when 2A, 2B and 2C are merged and the Phase 2 definition of done is green in CI (spec:87) — a tenant-defined document type numbers, posts, prints, reports and reverses with zero code; the state machine, `document_event`, R1/R2 and gapless numbering are proven.
 - **Depends on (merged):** 2A (`evaluatePolicy` over the full §4.4.1 schema, `loadSnapshot`, `app.party`, the ten `document_line` columns, `document_type.module`, `requireDocumentPermission`, `seedParty`, `seedDocumentType`, amendment A5's fail-closed guard in `postDocument`), 2B (`app.document_event`, `app.principal_has`, `app.assert_override_authorised`, `document_event_override_guard`, `recordOverride`, `OverrideCode`, `OverrideBody`, `POST …/documents/{id}/overrides`, `grantCodes`, `app.effective_policy`, `app.series_gaps`, `SERIES_GAP_CHECK`), 2C (`app.attachment`, `MODULE_READ_CODE`, `requireAttachmentRead`, `readableModules`, `listAttachments`, `ObjectStore`, `objectKeyFor`, `AttachmentSchema`, `UploadAttachmentBody`, `AttachmentQuery`, `AttachmentList`, `pdfText`, `SubPack` with `"templates"`), 1A (`postDocument`, `loadSnapshot`, `resolvePolicy`, `issueDocument`, `insertLedger`, `PostingError`, `posting-policy.schema.json`, `document.posting_seq`, `app.posting_seq`, `seedAccount`, `seedTenantV2`, `seedJournalPolicy`, `JOURNAL_POLICY_V1`, `documentTypesLoader`), 1B (`registerProjectionCheck`, `projectionChecks`, `ProjectionCheck`, `ProjectionMismatch`, `IntegrityReport`, `runIntegrityCheck`, `recordIntegrityIncident`, and `tests/invariants/projection-rebuild.test.ts` itself, which Task 8 Step 8 extends — **not** `postJournal`, which drafts a JOURNAL and cannot carry an item line), 0D (`Money`, `Quantity`, `Rational`, `rational`, `round`, `toBase`, `UNIT_RATE`, `MONEY_SCALE`, `QUANTITY_SCALE`, `JOBS`, `JobEnvelope`, `JobClient`, `JobPayload`, `eachTenant`, `JOB_PROBES`, `registerHandler`, `runJob`, `startWorker`, `seedBranch`, `seedCurrency`, `seedRate`), 0C (`0c-base.json` — the account codes `1300`, `4000`, `5000`, `5900` this slice resolves and never re-seeds; the seed CLI, `PackLoader`, `SUB_PACKS`), 0B (`withTenant`, `createDb`, `TenantContext`, `systemContext`, `AppError`, `ERRORS`, `fromDatabaseError`, `PERMISSION`, `PERMISSIONS`, `requirePermission`, `assertRouteGates`, `buildRoutes`, `RouteModule`, `ROUTES`, `PROBES`, `IsolationProbe`, `IdempotencyHeader`, `createApp`, `startApi`, `grantAdmin`, `problemOf`, `sharedDb`, `thinRegression`, `sourceFiles`, `ListEnvelope`, `ListQuery`, `UuidSchema`, `DateSchema`, `QuantitySchema`, `MoneySchema`, `encodeCursor`, `decodeCursor`, the generalised reversibility test of §3.4.6), and the Plan 0A surface by exact name: `startDb`, `Db`, `withTenant` (the 4-argument test helper), `uuidv7`, `seedTenant`, `Seed`, `draftDocument`, `schemaFingerprint`, `lintSchema`, `AUDIT_EXEMPT`, `IMMUTABLE`, `up`, `down`, `listApplied`, `discover`, `app_meta.enable_tenant_rls`, `app_meta.attach_audit`, `app_meta.attach_stamp`, `app.actor_has`, `app.current_tenant`, `app.current_actor`, `app.forbid_change`.
-- **Migration numbers:** 0028–0033 (contracts §3.4.1) — `0028_create_item_unit.sql`, `0029_create_warehouse_lot_variant.sql`, `0030_create_price_list_promotion.sql`, `0031_create_movement_stock_on_hand_and_warehouse_lot_links.sql`, `0032_alter_document_line_add_inventory_columns.sql`, `0033_seed_permission_phase3a.sql`, each with its hand-written `NNNN.down.sql`. **ADR numbers:** 0034–0036 — **0034** the sentinel lot and `inventory_movement.lot_id NOT NULL` (SAH-050), **0035** movement planning belongs to the evaluator and the provisional 3A value rule, **0036** exact unit conversion at line write plus FEFO over the synchronous projection (SAH-066, SAH-067).
+- **Migration numbers:** 0028–0033 (contracts §3.4.1) — `0028_create_item_unit.sql`, `0029_create_warehouse_lot_variant.sql`, `0030_create_price_list_promotion.sql`, `0031_create_movement_stock_on_hand_and_warehouse_lot_links.sql`, `0032_alter_document_line_add_inventory_columns.sql`, `0033_seed_permission_phase3a.sql`, each with its hand-written `NNNN.down.sql`. **ADR numbers:** 0034–0036 — **0034** the sentinel lot and `inventory_movement.lot_id NOT NULL` (LEGACY-050), **0035** movement planning belongs to the evaluator and the provisional 3A value rule, **0036** exact unit conversion at line write plus FEFO over the synchronous projection (LEGACY-066, LEGACY-067).
 - **Interfaces consumed:** §4.1 (the whole Plan 0A surface), §4.2.1 (`Money`, `Quantity`, `Rational`, `round`, `toBase`), §4.2.2 (`withTenant`, `TenantContext`, `systemContext`), §4.2.3 (`AppEnv`, `Logger`, the middleware order), §4.2.4 (the error envelope, `AppError`, `ERRORS`, `fromDatabaseError`, `PostingError`), §4.2.5 (`PERMISSIONS`, `PERMISSION`, `requirePermission`, `RoleSeed`, `ROLES`), §4.2.6 (`JOBS`, `JobPayload`, `JobEnvelope`, `JobHandler`, `registerHandler`, `JOB_PROBES`, the audit `table_name` sentinels — **`eachTenant` is not consumed**: the one job this slice registers fans out over companies inside one tenant's context, which `runJob` has already resolved; Task 10 Step 5 says so at the import line), §4.2.7 (`RouteModule`, `buildRoutes`, `PROBES`, `IdempotencyHeader`), §4.2.8 (the Zod naming convention, `ListEnvelope`, `ListQuery`, the cursor codec, the `filter[<field>][<op>]` grammar), §4.2.12 (`startApi`, `StartedApi`), §4.3.1 (`postDocument`, `loadSnapshot`, `recordOverride`, `OverrideCode`), §4.3.2 (the fixed algorithm — steps 6, 8, **9**, 9b, 10, 12), §4.3.3 (the `account_balance` MERGE, as the shape the stock MERGE mirrors), §4.3.4 (`document_line` and the 3A row of its additions; the `document` header additions), §4.3.5 (`document.posting_seq` and the four-element chronological key), §4.4.1 (the `inventory` block of the policy schema), §4.4.2 (`DocumentSnapshot`, `LineSnapshot`, `ItemRef`, `PlannedMovement`, `PostingPlan`, `PolicyEvaluationError`, and **amendment A9's sign normalisation**), §4.5.3 (the override door), §4.5.6 (Form A″ and Form C, which 6C attaches — this slice creates the tables branch-ready and attaches nothing), §4.5.8 (`app.attachment` and the download map), §4.6.1 (the register rows for all nine of this slice's master tables), §4.7.2 (`applyMovements`), §4.7.3 (`inventory_movement`, `stock_on_hand` and the MERGE, verbatim), §4.15 (the account-code register), §4.16.3 (`registerProjectionCheck`, `ProjectionCheck`), §4.17 and §4.17.1 (the fixture registers).
 - **Interfaces produced:** §4.6.1's nine 3A rows verbatim (`item`, `unit_of_measure`, `unit_conversion`, `warehouse`, `lot`, `variant`, `price_list`, `price_list_line`, `promotion`); §4.7.3's `inventory_movement`, `stock_on_hand` and the `stock_on_hand` MERGE verbatim; `app.assert_stock_available()` (§4.7.3's comment, as executable PL/pgSQL); `app.pick_lots_fefo(item_id, warehouse_id, quantity)` (the 3A card); §4.7.2's `applyMovements(tx, ctx, plan, snapshot)` in its **provisional 3A form** — the signature is frozen here and never changes; §4.3.4's 3A `document_line` row (`warehouse_id`, `lot_id`, `unit_id`, `unit_quantity` and the `item_id` FK) and the `document` header's `warehouse_id`/`to_warehouse_id`; `attachment.lot_id` and the `inventory` row of §4.5.8's download map plus the lot rule; §4.4.2's `PlannedMovement` emission (the movement half of `evaluatePolicy`, which 2A left as `[]`); §3.6.2's five `inventory.*` codes and §3.6.4's role rows for them; §4.2.6's `inventory.lot.expiry_warning` handler; §4.16.3's registry extended with `stock_on_hand`; §4.17's `seedUnit`, `seedItem`, `seedWarehouse`, `seedLot`, `seedPriceList`.
 - **Owner decisions:** **OD-05** (confirmation of every ⚠️ §3.0.3/§3.0.4 row — spec:38, 1014, 1036, 2404) → **cited in Tasks 1, 2, 4 and 10**, which build the four §3.0.3 rows this slice owns (Multi-unit items spec:1024, Batch/lot with expiry spec:1022, Price lists per customer type spec:1025, Multi-branch stock spec:1023) at the spec text as written; those rows *are* the slice and are not droppable, so OD-05 is a **header citation with a stated per-task consequence** rather than a sixteenth task — see assumption 12. **OD-07** (serial numbers — spec:92, 1032, 1310, 2435) → **Task 13** only, isolated; default: not built. **OD-08** (manufacturing/BOM, consignment stock, dealer commissions, project/job costing — spec:1032) → **Task 14** only, isolated; default: not built, names reserved, no DDL. **OD-24** (screenshots and a two-minute operator description before any screen — spec:79, 108, 2408) → **Task 15** only, isolated; default: the screen task is blocked, not the slice. This plan decides none of them (contracts §2.12) and re-opens none of D1–D27.
-- **Part VI tests owned / re-run:** owns **18** (stock availability — rejected by the data layer regardless of session flags, user attributes or write path; overrides explicit and audited; Task 9). Re-runs **2** (deterministic projections, for `stock_on_hand`; Task 8), **13** (audit completeness, for lot attachments; Task 10), **12** and **36** (tenant isolation and role-catalogue integrity, for every new table and route; Tasks 1, 2, 4, 5, 11, 12), **1** (the ledger invariant, through the posting path a movement now travels; Task 8). **§3.0.4 rows owned:** spec:1048 (Inventory core — items, exact-rational units, warehouses (tree), lots with expiry, FEFO picking, price lists per customer type, stock-on-hand projection; the *valuation* projection is 3B's). Contributes the lot link to spec:1067. **Regression files created:** `sah-048`, `sah-063`, `sah-064`, `sah-066`, `sah-067`; ⚠️ `sah-052`, `sah-056`, `sah-057` **only if OD-07 = yes** (3A is their named creator — contracts §3.7.3). **Appends to:** `sah-050` (dimension NOT NULL on movements), `sah-071` (warehouse tree), `sah-073`, `sah-074`.
+- **Part VI tests owned / re-run:** owns **18** (stock availability — rejected by the data layer regardless of session flags, user attributes or write path; overrides explicit and audited; Task 9). Re-runs **2** (deterministic projections, for `stock_on_hand`; Task 8), **13** (audit completeness, for lot attachments; Task 10), **12** and **36** (tenant isolation and role-catalogue integrity, for every new table and route; Tasks 1, 2, 4, 5, 11, 12), **1** (the ledger invariant, through the posting path a movement now travels; Task 8). **§3.0.4 rows owned:** spec:1048 (Inventory core — items, exact-rational units, warehouses (tree), lots with expiry, FEFO picking, price lists per customer type, stock-on-hand projection; the *valuation* projection is 3B's). Contributes the lot link to spec:1067. **Regression files created:** `legacy-048`, `legacy-063`, `legacy-064`, `legacy-066`, `legacy-067`; ⚠️ `legacy-052`, `legacy-056`, `legacy-057` **only if OD-07 = yes** (3A is their named creator — contracts §3.7.3). **Appends to:** `legacy-050` (dimension NOT NULL on movements), `legacy-071` (warehouse tree), `legacy-073`, `legacy-074`.
 - **Shared namespaces this slice writes into:** **Document-type codes (§4.14)** — no packaged code. **Four** **test-only** codes, registered as contract additions and never written to `packages/db/seed/`: `STOCK_ISSUE_TEST` (series `SIT`), `STOCK_RECEIPT_TEST` (series `SRT`), `STOCK_TRANSFER_TEST` (series `STT`) and `COST_LINE_TEST` (series `CLT`) — all module `inventory`, each configured through `seedDocumentType` inside a Testcontainers database, each with `approval: { required: false, approve: null, post: "accounting.journal.post" }` because that is the only posting code in the catalogue at 3A (`inventory.receipt.post` is 3C's and `inventory.transfer.post` is 3D's). The **first three** address their ledger accounts as `{ from: "line.account" }` with `line.debit`/`line.credit` on `kind = 'account'` lines, so hazard 33 does not engage and amendment A5's step-9b guard never fires. **`COST_LINE_TEST` is the deliberate opposite** (Task 8's last case): it addresses `amount: "line.cost"` against `{ code: "5000" }` and `{ code: "1300" }` precisely so the 9b guard *does* fire, which is the only way to prove the guard is still standing at 3A. It therefore engages hazard 33 by design, and Task 8's `beforeAll` seeds `1300`, `5000` and `5900` so the resolution it depends on is real rather than assumed. **Account codes (§4.15)** — **none seeded**: this slice seeds no chart file and adds no register row. It **consumes four codes 0C seeds** — `1300` inventory control, `4000` sales, `5000` cost of goods sold, `5900` other operating expense — as the per-item defaults of §4.6.1, and Task 1 Step 1 asserts they resolve before anything depends on them (hazard 33). **Report codes (§4.16.1)** — **none**: `inventory.stock_on_hand`, `inventory.valuation` and `inventory.sales_by_item` are **3D's** minimal set, and the `GET …/stock-on-hand` list route of Task 12 is an ordinary list endpoint, not a `ReportCode`. `DatasetId` members (§4.16.2) — **none**: 7A creates `packages/db/src/reports/datasets.ts` and its ≤ 0058 set already names `item`, `lot`, `warehouse`, `price_list_line`, `promotion`, `inventory_movement` and `stock_on_hand`; this slice does not create or edit that file. **`fixtures.ts` helpers (§4.17)** — exactly the five §4.17 assigns 3A: `seedUnit`, `seedItem`, `seedWarehouse`, `seedLot`, `seedPriceList`. **Shared test helpers (§4.17.1)** — **none added, and none needed**: Tasks 8 and 9 consume 0B's `sharedDb`/`thinRegression` and write their own document-posting helper inline in each suite, because §4.17 assigns this slice no such row and §4.17.1 binds a slice to "only the rows this table assigns it". `postJournal` (1B) is **not** used anywhere in this slice — it drafts a JOURNAL, and every document this slice posts is a §4.14 inventory test type with item lines.
 - **Never re-decide:** D1–D27 (spec:114–142); every name in the contracts document is frozen — a needed change goes to that document first.
 - **Contracts version:** 2026-09-07.
@@ -29,10 +29,10 @@
 
 Every task's requirements implicitly include this section. Values are copied verbatim from the spec.
 
-- **Never, at any phase, for any reason** (spec:97–104): write to a ledger or movement table outside the posting service; represent money as a float, anywhere, including in TypeScript; build SQL by string concatenation (SAH-036/037/069); issue DDL from application code (SAH-053); disable an invariant, constraint or trigger "temporarily" (SAH-027, 041, 053); gate an audit write on any flag (SAH-030); hard-code a package version into a source file — the lockfile owns versions.
+- **Never, at any phase, for any reason** (spec:97–104): write to a ledger or movement table outside the posting service; represent money as a float, anywhere, including in TypeScript; build SQL by string concatenation (LEGACY-036/037/069); issue DDL from application code (LEGACY-053); disable an invariant, constraint or trigger "temporarily" (LEGACY-027, 041, 053); gate an audit write on any flag (LEGACY-030); hard-code a package version into a source file — the lockfile owns versions.
 - **Always, for every new table** (spec:106): `tenant_id`, an RLS policy, `created_at`, a migration, and a test that a second tenant cannot see it. **For every new endpoint:** Zod schema, OpenAPI entry, idempotency on unsafe methods, and a tenant-isolation test. **For every UI screen:** verified in both text directions before merge.
 - **Money** (spec:2041): `numeric(19,4)` in Postgres; `Money` in TypeScript; no `number` ever holds a monetary value — the `no-number-money` lint enforces it. Base conversion is `round(value × rate, 4)` `HALF_AWAY_FROM_ZERO` (hazard 23).
-- **Quantities** (spec:2043): `numeric(19,6)`. Unit conversions are exact rationals `(numerator bigint, denominator bigint)`, never floats (SAH-066). Quantity is stored once, **in the item's base unit**; the entered unit and quantity are kept for display.
+- **Quantities** (spec:2043): `numeric(19,6)`. Unit conversions are exact rationals `(numerator bigint, denominator bigint)`, never floats (LEGACY-066). Quantity is stored once, **in the item's base unit**; the entered unit and quantity are kept for display.
 - **Time** (spec:2039): all timestamps `timestamptz` in UTC; `effective_date` is a `date` entered by the user and is the accounting date, never derived from `posted_at`.
 - **Naming** (spec:2045): `snake_case`, **singular** table names; `name_en`/`name_ar` on master data, never a JSON blob; TypeScript `camelCase`, types `PascalCase`.
 - **Enumerations** (spec:2047): new closed vocabularies are `text` + `CHECK`, never a new Postgres enum (§3.4.4 — a label cannot be used in the migration that adds it). This slice adds no enum label.
@@ -40,7 +40,7 @@ Every task's requirements implicitly include this section. Values are copied ver
 - **Database access** (spec:2053): every query, reads included, runs inside `withTenant`; the `no-bare-db` lint forbids bare `db.` calls; only `tx` may tag SQL.
 - **API** (spec:2055): `/v1/…`; cursor pagination; `Idempotency-Key` required on POST/PUT/PATCH/DELETE; `application/problem+json` errors; OpenAPI generated from Zod, committed, diffed in CI.
 - **Error codes** (spec:2051): `ERR_<DOMAIN>_<REASON>` in the one file `packages/contracts/src/errors.ts`; a code no code raises fails the build. DB-raised tokens use `errcode = 'check_violation'` and the message form `TOKEN: text` (plan0A:1130–1141).
-- **Migrations** (spec:2057, §3.4.3): one migration per PR; each file is one transaction, so no `create index concurrently`; every statement carries a comment naming the SAH/spec reference it serves; keywords lowercase; section banners `-- ── N. title ───`; a hand-written `NNNN.down.sql` with a drop for everything the up creates, in reverse dependency order.
+- **Migrations** (spec:2057, §3.4.3): one migration per PR; each file is one transaction, so no `create index concurrently`; every statement carries a comment naming the LEGACY/spec reference it serves; keywords lowercase; section banners `-- ── N. title ───`; a hand-written `NNNN.down.sql` with a drop for everything the up creates, in reverse dependency order.
 - **Commits** (§3.8): conventional commits, subject `<type>(<scope>): <summary> [3A T<n>]`, every message ending with the trailer `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`.
 - **Hazards** (§5): no real statutory rate anywhere; no invented MyInvois or LHDN detail; `fixtures.ts` extended additively and only with §4.17's assigned helpers; per-tenant rows are seed-pack data, never migration data (only `app.permission` is global); migration and ADR numbers are never renumbered or borrowed; jobs run as the tenant's system principal; nothing outside `packages/db/src/posting/**` and `packages/db/src/costing/**` writes a movement or a projection; test 18's "gone negative" is produced only through `inventory.negative_stock.override` recorded as an `override` `document_event` by a second principal (hazard 17); every route needs a `PROBES` entry keyed by its `RouteModule.path`; no plan invents a literal in a shared namespace.
 
@@ -81,7 +81,7 @@ Each needs a one-line amendment to the contracts document. Nothing below changes
 - **Migration 0031's file name is longer than the card's guess**, per §3.4.2's settled rule that "a file whose name understates what it does is renamed, not left". §4.3.4 assigns `document.warehouse_id`/`to_warehouse_id` to **0031** and 2C assigns `attachment.lot_id` to **0031**, so that file creates two tables *and* adds three link columns to two existing ones. The name is `0031_create_movement_stock_on_hand_and_warehouse_lot_links.sql`. The card's `0031_create_inventory_movement_stock_on_hand.sql` is superseded exactly as 2A's `0018_…` and 2B's `0023_…` superseded theirs. **The amendment is not yet landed and it is not one line:** §3.4.1's 3A row still lists the old name, §4.18's round 3 folded in four other 3A rows and not this one, and **one downstream plan still greps for a file name that will not exist** — see the table above for the exact three edits.
 - **New error code:** `ERR_WAREHOUSE_TREE_CYCLE` (409), raised by `app.warehouse_no_cycle()` (Task 2). §4.2.4's table needs the row, and **grepping the contracts document for the name returns zero hits today** — §4.18's round 3 did not fold it in. §4.2.4 says "A slice that needs a code absent from this table amends this table first", and hazard 32 makes an unregistered `ERR_*` literal a review-blocking finding, so **the row lands before Task 2's commit**; Task 2 Step 9 carries the grep that proves it. It is not `ERR_VALIDATION_FAILED`: the request is well-formed and the refusal is a state conflict, and `fromDatabaseError` maps the token to `ERRORS[token]`, so a wrong code would give a 400 for a 409.
 - **New names, with their files:** `app.item_sentinel_lot()` and `SENTINEL_LOT_CODE = "NONE"` (Task 2, ADR 0034); `app.warehouse_no_cycle()` (Task 2); `app.pick_lots_fefo`'s return shape `table (lot_id uuid, quantity numeric(19,6))` and its TypeScript wrapper `pickLotsFefo(tx, params): Promise<FefoPick[]>` with `FefoPick { lotId; quantity }` (Task 10); `applyConversion(unitQuantity: Quantity, conversion: Rational): Quantity` and `resolveUnitConversion(tx, { itemId, unitId }): Promise<Rational>` (Task 6); `planMovements(policy, snapshot): PlannedMovement[]` (Task 7); `loadSentinelLots(tx, itemIds)` (Task 8, **exported** from `packages/db/src/costing/index.ts`); `insertMovements` and `writeLineCosts` (Task 8, **module-private** to `apply-movements.ts` — `export` appears on neither, and the barrel exports neither; they are named here only so 3B replaces the body *around* them without renaming them, and the same is true of that file's other two private helpers `provisionalValue` and `readPostingSeq`); `mergeStockOnHand(tx, input)` and `lockStockKeys(tx, companyId, keys)` (Task 8, `packages/db/src/costing/stock-on-hand.ts`); `checkStockOnHandProjection` and `STOCK_ON_HAND_CHECK: ProjectionCheck` (Task 8, `packages/db/src/integrity/stock.ts`); `listNearExpiryLots`, `NearExpiryLot`, `recordExpiryWarning`, `EXPIRY_HORIZON_DAYS = 30` (Task 10); `INVENTORY_PERMISSION` (Task 3, `apps/api/src/routes/inventory/permissions.ts`); `itemRoutes`, `unitRoutes`, `warehouseRoutes`, `priceListRoutes`, `promotionRoutes`, `stockRoutes` and their six `RouteModule.path` strings (Tasks 11, 12).
-- **`applyConversion` is deliberately *not* a second spelling of `Quantity.convert`, and the difference is the rounding mode.** §4.2.1 fixes `Quantity.convert(conversion)` as "exact; rounded **HALF_EVEN** to 6 dp only at the end", while migration 0032's `document_line_base_quantity()` derives the same figure with Postgres `round(new.unit_quantity * num::numeric / den::numeric, 6)`, which is **half away from zero**. The two disagree at a tie — `1.000000 × 1/2000000` is `0.000000` under HALF_EVEN and `0.000001` under the trigger — and because the trigger *raises* rather than overwrites when a supplied `quantity` disagrees (Task 6), a caller that computed `quantity` with the wrong mode would get `ERR_VALIDATION_FAILED` on a legitimate line. `applyConversion` is therefore **`Quantity.convert`'s body with one token changed** — `times(numerator).div(denominator)` on the cloned precision-40 `D`, rounded once with `round(exact, QUANTITY_SCALE, "HALF_AWAY_FROM_ZERO")` — and is the read-side twin of the trigger *because* of that mode, not despite it. It is **not** `Quantity.multiply(conversion, "HALF_AWAY_FROM_ZERO")`, which is the shorter-looking route and the wrong one: 0D implements `multiply` as `new D(numerator).div(new D(denominator))` first and `times` afterwards, so it divides before it multiplies, which is the per-step shape 0D's own `convert` docstring calls "the SAH-066 defect" — and the trigger multiplies first too (`new.unit_quantity * num::numeric / den::numeric`). Same order as the SQL, same mode as the SQL; both are asserted at a tie on both sides. The amendment §4.2.1 needs is one sentence: "a conversion whose result must agree with the 0032 `document_line` trigger goes through 3A's `applyConversion`, which is `convert`'s arithmetic at `HALF_AWAY_FROM_ZERO`; `convert`'s own HALF_EVEN is for display-side conversion only." `IDENTITY_CONVERSION` is a plain addition — the registry has no spelling of `1/1`.
+- **`applyConversion` is deliberately *not* a second spelling of `Quantity.convert`, and the difference is the rounding mode.** §4.2.1 fixes `Quantity.convert(conversion)` as "exact; rounded **HALF_EVEN** to 6 dp only at the end", while migration 0032's `document_line_base_quantity()` derives the same figure with Postgres `round(new.unit_quantity * num::numeric / den::numeric, 6)`, which is **half away from zero**. The two disagree at a tie — `1.000000 × 1/2000000` is `0.000000` under HALF_EVEN and `0.000001` under the trigger — and because the trigger *raises* rather than overwrites when a supplied `quantity` disagrees (Task 6), a caller that computed `quantity` with the wrong mode would get `ERR_VALIDATION_FAILED` on a legitimate line. `applyConversion` is therefore **`Quantity.convert`'s body with one token changed** — `times(numerator).div(denominator)` on the cloned precision-40 `D`, rounded once with `round(exact, QUANTITY_SCALE, "HALF_AWAY_FROM_ZERO")` — and is the read-side twin of the trigger *because* of that mode, not despite it. It is **not** `Quantity.multiply(conversion, "HALF_AWAY_FROM_ZERO")`, which is the shorter-looking route and the wrong one: 0D implements `multiply` as `new D(numerator).div(new D(denominator))` first and `times` afterwards, so it divides before it multiplies, which is the per-step shape 0D's own `convert` docstring calls "the LEGACY-066 defect" — and the trigger multiplies first too (`new.unit_quantity * num::numeric / den::numeric`). Same order as the SQL, same mode as the SQL; both are asserted at a tie on both sides. The amendment §4.2.1 needs is one sentence: "a conversion whose result must agree with the 0032 `document_line` trigger goes through 3A's `applyConversion`, which is `convert`'s arithmetic at `HALF_AWAY_FROM_ZERO`; `convert`'s own HALF_EVEN is for display-side conversion only." `IDENTITY_CONVERSION` is a plain addition — the registry has no spelling of `1/1`.
 - **§4.2.4's `ERR_VALIDATION_FAILED` row gains two DB raisers** — `app.pick_lots_fefo` (Task 5) and `app.document_line_base_quantity()` (Task 6), which raises it three times — both as `check_violation` tokens in the `TOKEN: text` form, reaching the wire through `fromDatabaseError`. The registry's "Raised by" cell reads "Zod body/query failure" and needs the two names appended. **No `errors[]` array accompanies them**, which the optional member already permits (§4.2.4 pins `errors[]` to `ERR_VALIDATION_FAILED` and `ERR_POLICY_INVALID` and says "No third code gains it" — it does not require the array to be present, and a DB-raised token has no JSON Pointer to report). Neither raise is a new code; both are a new raiser for a shipped one, recorded here so a reader of that row is not surprised by a 400 with no `errors[]`.
 - **§4.2.6 audit `table_name` sentinel:** `lot_expiry_warning` — the third allocated sentinel after 1B's `integrity_incident` and `month_end_ready`. The near-expiry job has no row of its own (`needs_attention` is 6A's), so it records one audit row per company per run.
 - **§4.2.6 `JobPayload` entry:** `"inventory.lot.expiry_warning": { companyId?: string; horizonDays?: number }`. `horizonDays` defaults to 30 — a reporting horizon, not a statutory figure (hazard 1 does not engage).
@@ -140,7 +140,7 @@ packages/db/src/index.ts             MODIFY  the inventory / costing / integrity
 packages/db/seed/roles.ts            MODIFY  five role arrays gain the two read codes                           T3
 
 packages/domain/src/posting/evaluate.ts   MODIFY  planMovements; evaluatePolicy returns it                      T7
-packages/domain/src/quantity/convert.ts   NEW     applyConversion (exact rational, SAH-066)                     T6
+packages/domain/src/quantity/convert.ts   NEW     applyConversion (exact rational, LEGACY-066)                     T6
 packages/contracts/permissions.ts         MODIFY  five PermissionDef entries, phase "3A"                        T3
 packages/contracts/src/errors.ts          MODIFY  + ERR_STOCK_INSUFFICIENT, ERR_WAREHOUSE_TREE_CYCLE        T5, T2
 packages/contracts/src/inventory/         NEW     item.ts unit.ts warehouse.ts lot.ts
@@ -189,9 +189,9 @@ tests/invariants/stock-availability.test.ts   test 18: API, job, two concurrent 
 tests/invariants/projection-rebuild.test.ts   MODIFY  + stock_on_hand (test 2 re-run)                           T8
 tests/invariants/audit-chain.test.ts          MODIFY  projections.checked gains stock_on_hand                   T8
 apps/worker/test/handlers/integrity-check.test.ts MODIFY  the same array                                        T8
-tests/regression/sah-048.test.ts · 063 · 064 · 066 · 067        CREATE                          T9, T1, T1, T6, T8
-tests/regression/sah-050.test.ts · 071 · 073 · 074              APPEND                              T5, T2, T5, T5
-tests/regression/sah-052.test.ts · 056 · 057                    CREATE only if OD-07 = yes                     T13
+tests/regression/legacy-048.test.ts · 063 · 064 · 066 · 067        CREATE                          T9, T1, T1, T6, T8
+tests/regression/legacy-050.test.ts · 071 · 073 · 074              APPEND                              T5, T2, T5, T5
+tests/regression/legacy-052.test.ts · 056 · 057                    CREATE only if OD-07 = yes                     T13
 tests/e2e/inventory-screens.spec.ts            both text directions — test 23 re-run                           T15
 docs/adr/0034-sentinel-lot-and-not-null-lot-id.md                                                               T2
 docs/adr/0035-movement-planning-in-the-evaluator.md                                                             T7
@@ -202,15 +202,15 @@ docs/adr/0036-exact-unit-conversion-and-fefo-over-the-projection.md             
 
 ### Task 1: Migration 0028 — `app.item`, `app.unit_of_measure`, `app.unit_conversion`
 
-The item master and the exact-rational unit conversion SAH-066 says the old system defined in the schema and applied nowhere. Three tables, one migration file, and the two `fixtures.ts` helpers §4.17 assigns 3A for them. This task also discharges hazard 33 for the whole slice: `app.item`'s four account columns default to the §4.15 codes `4000`, `1300`, `5000` and `5900`, all four seeded by **0C** in `packages/db/seed/my/chart-of-accounts/0c-base.json`, and Step 1's first assertion is that they resolve. `seedTenant` ships only `1000 Cash` and `4000 Sales` (§4.1), so every test that needs the other three creates them with 1A's `seedAccount`.
+The item master and the exact-rational unit conversion LEGACY-066 says the old system defined in the schema and applied nowhere. Three tables, one migration file, and the two `fixtures.ts` helpers §4.17 assigns 3A for them. This task also discharges hazard 33 for the whole slice: `app.item`'s four account columns default to the §4.15 codes `4000`, `1300`, `5000` and `5900`, all four seeded by **0C** in `packages/db/seed/my/chart-of-accounts/0c-base.json`, and Step 1's first assertion is that they resolve. `seedTenant` ships only `1000 Cash` and `4000 Sales` (§4.1), so every test that needs the other three creates them with 1A's `seedAccount`.
 
-**⚠️ OD-05 — the §3.0.3 "Multi-unit items" row (spec:1024).** This task builds it at the spec text as written: "Carton / inner / piece, with exact conversion — sold in different units at different levels of trade". **If the owner rejects the row:** drop `app.unit_conversion` from this migration (and its mirror, its `unique (item_id, unit_id)` and Step 9's `sah-063` file), keep `item.base_unit_id` and `app.unit_of_measure` — a quantity still needs a unit — and drop the conversion half of Task 6. Nothing else in the slice moves.
+**⚠️ OD-05 — the §3.0.3 "Multi-unit items" row (spec:1024).** This task builds it at the spec text as written: "Carton / inner / piece, with exact conversion — sold in different units at different levels of trade". **If the owner rejects the row:** drop `app.unit_conversion` from this migration (and its mirror, its `unique (item_id, unit_id)` and Step 9's `legacy-063` file), keep `item.base_unit_id` and `app.unit_of_measure` — a quantity still needs a unit — and drop the conversion half of Task 6. Nothing else in the slice moves.
 
 **Files:**
 - Create: `packages/db/migrations/0028_create_item_unit.sql`, `packages/db/migrations/0028.down.sql`
 - Create: `packages/db/src/schema/unit_of_measure.ts`, `packages/db/src/schema/item.ts`, `packages/db/src/schema/unit_conversion.ts`
 - Create: `packages/db/src/inventory/errors.ts`, `packages/db/src/inventory/items.ts`, `packages/db/src/inventory/units.ts`
-- Create: `tests/regression/sah-063.test.ts`, `tests/regression/sah-064.test.ts`
+- Create: `tests/regression/legacy-063.test.ts`, `tests/regression/legacy-064.test.ts`
 - Modify: `packages/db/src/index.ts` (the inventory re-exports), `packages/db/test/fixtures.ts` (`seedUnit`, `seedItem`)
 - Test: `packages/db/test/inventory/item.test.ts`
 
@@ -280,7 +280,7 @@ describe("app.item / app.unit_of_measure / app.unit_conversion — migration 002
     expect(accounts.expenseAccountId).not.toBeNull();
   });
 
-  it("a missing default code is named, never silently nulled (hazard 33, SAH-064)", async () => {
+  it("a missing default code is named, never silently nulled (hazard 33, LEGACY-064)", async () => {
     // Tenant B has no 1300/5000/5900 rows.
     await expect(withTenant(db.rw, b.tenant, b.human, (tx) =>
       resolveItemAccounts(tx, { companyId: b.company, kind: "product" })))
@@ -306,7 +306,7 @@ describe("app.item / app.unit_of_measure / app.unit_conversion — migration 002
     expect(row.archivedAt).toBeNull();
   });
 
-  it("unit_conversion refuses a zero denominator and a non-positive numerator (spec:2043, SAH-063)", async () => {
+  it("unit_conversion refuses a zero denominator and a non-positive numerator (spec:2043, LEGACY-063)", async () => {
     const { itemId, unitId } = await withTenant(db.rw, a.tenant, a.human, async (tx) => {
       const unit = await createUnit(tx, { companyId: a.company, code: "CTN", nameEn: "Carton" });
       const [item] = await tx<{ id: string }[]>`select id from app.item where company_id = ${a.company} and code = 'RICE-5KG'`;
@@ -380,7 +380,7 @@ Expected: **FAIL** at collection — `Cannot find module '../../src/inventory/it
 ```sql
 -- ── 0028 · app.unit_of_measure, app.item, app.unit_conversion ──────────────────────────────────
 -- spec:1178–1181 (§3.3 Item / UnitOfMeasure / conversions), spec:1048 (§3.0.4 Inventory core),
--- spec:2043 (§3.9 Quantities: conversions are exact rationals, never floats — SAH-066),
+-- spec:2043 (§3.9 Quantities: conversions are exact rationals, never floats — LEGACY-066),
 -- spec:158–160 (§0.4 Material → Item, MatUnits.Exchange → UnitConversion).
 -- Contracts §4.6.1 fixes every column below.
 
@@ -404,7 +404,7 @@ create table app.unit_of_measure (
 -- The four account columns are the policy paths item.revenue_account / inventory_account /
 -- cogs_account / expense_account (§4.4.1). They are filled from the §4.15 codes 4000 / 1300 / 5000 /
 -- 5900 by resolveItemAccounts at create — there is no DDL default, because a default cannot look a
--- code up in this company's chart, and a wrong account is SAH-064 in a new costume.
+-- code up in this company's chart, and a wrong account is LEGACY-064 in a new costume.
 create table app.item (
   id                   uuid primary key default uuidv7(),
   tenant_id            uuid not null references app.tenant(id),
@@ -420,7 +420,7 @@ create table app.item (
   cogs_account_id      uuid,
   expense_account_id   uuid,
   track_lots           boolean not null default true,               -- spec:1022 food is batch-tracked
-  shelf_life_days      int check (shelf_life_days > 0),             -- SAH-063: a guarded divisor-shaped value
+  shelf_life_days      int check (shelf_life_days > 0),             -- LEGACY-063: a guarded divisor-shaped value
   archived_at          timestamptz,                                 -- spec:2049 master data is archived, never deleted
   created_at           timestamptz not null default now(),
   unique (company_id, code),
@@ -435,7 +435,7 @@ create table app.item (
 -- the till and the back office both scan; a partial index keeps it out of the way of items with none.
 create index item_barcode_idx on app.item (company_id, barcode) where barcode is not null;
 
--- ── 3. exact-rational unit conversion (SAH-066) ─────────────────────────────────────────────────
+-- ── 3. exact-rational unit conversion (LEGACY-066) ─────────────────────────────────────────────────
 -- "1 <unit> = numerator / denominator base units". bigint parts, never a float: MatUnits.Exchange was
 -- `double precision` against `numeric(18,4)` quantities, so 10 boxes → 30 units → 9.9999… boxes.
 -- The denominator CHECK is contracts §4.6.1 verbatim (`<> 0`); the numerator CHECK is added here
@@ -552,7 +552,7 @@ export const unitConversion = app.table(
     tenantId: uuid("tenant_id").notNull(),
     itemId: uuid("item_id").notNull(),
     unitId: uuid("unit_id").notNull(),
-    // `mode: "bigint"` and not "number": a conversion factor is exact and must never round (SAH-066).
+    // `mode: "bigint"` and not "number": a conversion factor is exact and must never round (LEGACY-066).
     numerator: bigint("numerator", { mode: "bigint" }).notNull(),
     denominator: bigint("denominator", { mode: "bigint" }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
@@ -583,7 +583,7 @@ export class ItemAccountUnresolvedError extends Error {
 }
 
 /**
- * Raised when a line names a unit that has no conversion to the item's base unit (SAH-066). Declared HERE and
+ * Raised when a line names a unit that has no conversion to the item's base unit (LEGACY-066). Declared HERE and
  * nowhere else: Task 6 raises it from `inventory/units.ts` and **imports** it from this module. One class, one
  * barrel line — a second `export class` of the same name re-exported from `packages/db/src/index.ts` is TS2308
  * at `bun run typecheck`.
@@ -688,7 +688,7 @@ export interface ItemAccountOverrides {
  * NULL and only revenue and expense are resolved (§4.15's `5900` row: "item.expense_account_id default
  * for kind ∈ service | asset"). An explicit override wins — including an explicit `null`, which means
  * "this item deliberately has no such account". A default code the company's chart does not contain is
- * an `ItemAccountUnresolvedError` naming the code, never a silent NULL: SAH-064 is exactly a guard that
+ * an `ItemAccountUnresolvedError` naming the code, never a silent NULL: LEGACY-064 is exactly a guard that
  * looked like it defaulted a value and did not, and a NULL `inventory_account_id` would surface much
  * later as `ERR_POLICY_REQUIRES_MISSING` at post, in the slice that did not write it.
  */
@@ -755,7 +755,7 @@ const toItem = (r: DbItem): ItemRow => ({
 });
 
 /** `ctx` is taken for the log/enqueue envelope symmetry every §4.3.1 writer has; the acting principal
- *  is always `app.current_actor()` from the session, never a parameter (SAH-044). */
+ *  is always `app.current_actor()` from the session, never a parameter (LEGACY-044). */
 export async function createItem(tx: Sql, ctx: TenantContext, input: NewItem): Promise<ItemRow> {
   const accounts = await resolveItemAccounts(tx, {
     companyId: input.companyId, kind: input.kind, overrides: input.accounts,
@@ -787,7 +787,7 @@ export async function getItem(tx: Sql, itemId: string): Promise<ItemRow | null> 
 /**
  * `code` and `kind` are immutable after create: `code` is the natural key a price list, a legacy_ref
  * and every import batch point at, and `kind` decides whether the item holds stock at all — changing
- * it under existing movements is SAH-007's shape. A rename is `name_en`/`name_ar`.
+ * it under existing movements is LEGACY-007's shape. A rename is `name_en`/`name_ar`.
  */
 export async function updateItem(
   tx: Sql,
@@ -946,7 +946,7 @@ Expected: **PASS**, 10 tests. If the account-resolution test fails with `column 
 
 - [ ] **Step 10: Write the two regression files this task creates**
 
-`tests/regression/sah-063.test.ts` — 3A is the creator (contracts §3.7.3; the defect is untouched before this slice):
+`tests/regression/legacy-063.test.ts` — 3A is the creator (contracts §3.7.3; the defect is untouched before this slice):
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -954,11 +954,11 @@ import { withTenant } from "@dulja/db";
 import { seedItem, seedUnit } from "@dulja/db/test";
 import { sharedDb } from "../support/regression";
 
-describe("SAH-063 Unguarded division by BtmSize in six of eight places — 3A", () => {
+describe("LEGACY-063 Unguarded division by BtmSize in six of eight places — 3A", () => {
   it("a zero or negative conversion divisor cannot be stored at all", async () => {
     const { db, rw, a } = await sharedDb();
-    const { itemId } = await seedItem(db, a, { code: "SAH063" });
-    const unitId = await seedUnit(db, a, { code: "SAH063-CTN" });
+    const { itemId } = await seedItem(db, a, { code: "LEGACY063" });
+    const unitId = await seedUnit(db, a, { code: "LEGACY063-CTN" });
     // The old system divided by BtmSize in six of eight sites with no zero/NULL guard. Here the
     // divisor cannot reach the code: the column is NOT NULL and the CHECK refuses 0.
     for (const [numerator, denominator, constraintName] of [
@@ -966,7 +966,7 @@ describe("SAH-063 Unguarded division by BtmSize in six of eight places — 3A", 
       [0, 1, "unit_conversion_numerator_check"],
       [-12, 1, "unit_conversion_numerator_check"],
     ] as const) {
-      await expect(withTenant(rw, { tenantId: a.tenant, actorId: a.human, requestId: "sah-063" }, (tx) => tx`
+      await expect(withTenant(rw, { tenantId: a.tenant, actorId: a.human, requestId: "legacy-063" }, (tx) => tx`
         insert into app.unit_conversion (tenant_id, item_id, unit_id, numerator, denominator)
         values (${a.tenant}, ${itemId}, ${unitId}, ${numerator}, ${denominator})`))
         .rejects.toThrow(new RegExp(constraintName));
@@ -975,16 +975,16 @@ describe("SAH-063 Unguarded division by BtmSize in six of eight places — 3A", 
 
   it("shelf_life_days, the other divisor-shaped column, is guarded the same way", async () => {
     const { db, rw, a } = await sharedDb();
-    const unitId = await seedUnit(db, a, { code: "SAH063-U2" });
-    await expect(withTenant(rw, { tenantId: a.tenant, actorId: a.human, requestId: "sah-063" }, (tx) => tx`
+    const unitId = await seedUnit(db, a, { code: "LEGACY063-U2" });
+    await expect(withTenant(rw, { tenantId: a.tenant, actorId: a.human, requestId: "legacy-063" }, (tx) => tx`
       insert into app.item (tenant_id, company_id, code, name_en, kind, base_unit_id, shelf_life_days)
-      values (${a.tenant}, ${a.company}, 'SAH063-ZERO', 'Zero shelf life', 'product', ${unitId}, 0)`))
+      values (${a.tenant}, ${a.company}, 'LEGACY063-ZERO', 'Zero shelf life', 'product', ${unitId}, 0)`))
       .rejects.toThrow(/item_shelf_life_days_check/);
   });
 });
 ```
 
-`tests/regression/sah-064.test.ts`:
+`tests/regression/legacy-064.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -992,24 +992,24 @@ import { resolveItemAccounts, withTenant, ItemAccountUnresolvedError } from "@du
 import { seedUnit } from "@dulja/db/test";
 import { sharedDb } from "../support/regression";
 
-describe("SAH-064 Copy-paste dead NULL guard; BuyCur never defaulted — 3A", () => {
+describe("LEGACY-064 Copy-paste dead NULL guard; BuyCur never defaulted — 3A", () => {
   it("an unresolvable account default raises and names the code; it is never written back as NULL", async () => {
     const { rw, b } = await sharedDb();
     // Tenant B's chart has 1000 and 4000 only, exactly as seedTenant leaves it (contracts §4.1).
     // The old system's third test re-checked a value line 63 had just forced non-null, so it never
     // fired, and a NULL CstBuyCur was written back anyway. Here the failure is loud and named.
-    await expect(withTenant(rw, { tenantId: b.tenant, actorId: b.human, requestId: "sah-064" }, (tx) =>
+    await expect(withTenant(rw, { tenantId: b.tenant, actorId: b.human, requestId: "legacy-064" }, (tx) =>
       resolveItemAccounts(tx, { companyId: b.company, kind: "product" })))
       .rejects.toThrow(ItemAccountUnresolvedError);
-    const [n] = await withTenant(rw, { tenantId: b.tenant, actorId: b.human, requestId: "sah-064" }, (tx) =>
+    const [n] = await withTenant(rw, { tenantId: b.tenant, actorId: b.human, requestId: "legacy-064" }, (tx) =>
       tx<{ n: number }[]>`select count(*)::int as n from app.item where inventory_account_id is null`);
     expect(n!.n).toBe(0);
   });
 
   it("an explicit null override is honoured, so 'no account' and 'unresolved' are different answers", async () => {
     const { db, rw, a } = await sharedDb();
-    const unitId = await seedUnit(db, a, { code: "SAH064-U" });
-    const accounts = await withTenant(rw, { tenantId: a.tenant, actorId: a.human, requestId: "sah-064" }, (tx) =>
+    const unitId = await seedUnit(db, a, { code: "LEGACY064-U" });
+    const accounts = await withTenant(rw, { tenantId: a.tenant, actorId: a.human, requestId: "legacy-064" }, (tx) =>
       resolveItemAccounts(tx, {
         companyId: a.company, kind: "product", overrides: { inventoryAccountId: null },
       }));
@@ -1026,7 +1026,7 @@ Both files import `seedItem` and `seedUnit` from `@dulja/db/test`, **`withTenant
 
 - [ ] **Step 11: Run the whole suite, the linter and the type checker**
 
-Run: `bun run --cwd packages/db test && bun run --cwd tests test -- regression/sah-063.test.ts regression/sah-064.test.ts && bun run typecheck && bun run lint && bun run lint:rules`
+Run: `bun run --cwd packages/db test && bun run --cwd tests test -- regression/legacy-063.test.ts regression/legacy-064.test.ts && bun run typecheck && bun run lint && bun run lint:rules`
 Expected: **PASS**, with zero `lint:rules` violations. `packages/db/test/privileges.test.ts`'s up → down → up fingerprint test (§3.4.6) is the one to watch: it fails if `0028.down.sql` forgets a table, and it must pass here.
 
 - [ ] **Step 12: Commit**
@@ -1036,18 +1036,18 @@ git add packages/db/migrations/0028_create_item_unit.sql packages/db/migrations/
         packages/db/src/schema/item.ts packages/db/src/schema/unit_of_measure.ts \
         packages/db/src/schema/unit_conversion.ts packages/db/src/inventory packages/db/src/index.ts \
         packages/db/test/fixtures.ts packages/db/test/inventory/item.test.ts \
-        tests/regression/sah-063.test.ts tests/regression/sah-064.test.ts
+        tests/regression/legacy-063.test.ts tests/regression/legacy-064.test.ts
 git commit -m "$(cat <<'EOF'
 feat(db): item master, units and exact-rational unit conversion [3A T1]
 
 Migration 0028 creates app.unit_of_measure, app.item and app.unit_conversion at
 contracts §4.6.1's columns. Conversion factors are bigint numerator/denominator
-pairs with both parts constrained — SAH-066 defined the factor as a float and
-applied it nowhere, and SAH-063 divided by it unguarded in six of eight places.
+pairs with both parts constrained — LEGACY-066 defined the factor as a float and
+applied it nowhere, and LEGACY-063 divided by it unguarded in six of eight places.
 
 app.item's four account columns are filled at create by resolveItemAccounts from
 the §4.15 codes 4000/1300/5000/5900, all seeded by 0C. An absent code raises
-ItemAccountUnresolvedError naming it; nothing is written back as NULL (SAH-064).
+ItemAccountUnresolvedError naming it; nothing is written back as NULL (LEGACY-064).
 
 fixtures.ts gains seedUnit and seedItem, the two helpers §4.17 assigns 3A.
 
@@ -1060,7 +1060,7 @@ EOF
 
 ### Task 2: Migration 0029 — `app.warehouse` (tree), `app.lot`, `app.variant`, and the per-item sentinel lot
 
-Where stock lives, what batch it belongs to, and the one row that makes `stock_on_hand`'s primary key safe. The warehouse tree gets a cycle guard written **once** as a recursive CTE (SAH-071 — the old system walked the ancestor chain with a recursive procedure call per row, in at least three modules). `app.lot` carries expiry, which is what FEFO and the near-expiry alert of Task 10 read. And every `app.item` insert gets a companion lot with code `NONE` by trigger, so `inventory_movement.lot_id` and `stock_on_hand.lot_id` can both be NOT NULL — the structural answer to SAH-050, where a NULL dimension made every increment insert a fresh orphan row and every decrement match nothing at all. That reasoning is **ADR 0034**.
+Where stock lives, what batch it belongs to, and the one row that makes `stock_on_hand`'s primary key safe. The warehouse tree gets a cycle guard written **once** as a recursive CTE (LEGACY-071 — the old system walked the ancestor chain with a recursive procedure call per row, in at least three modules). `app.lot` carries expiry, which is what FEFO and the near-expiry alert of Task 10 read. And every `app.item` insert gets a companion lot with code `NONE` by trigger, so `inventory_movement.lot_id` and `stock_on_hand.lot_id` can both be NOT NULL — the structural answer to LEGACY-050, where a NULL dimension made every increment insert a fresh orphan row and every decrement match nothing at all. That reasoning is **ADR 0034**.
 
 **⚠️ OD-05 — two §3.0.3 rows.** "Batch / lot with expiry" (spec:1022 — "Food. Requires batch on every movement, FEFO picking, expiry reporting and near-expiry alerts") and "Multi-branch stock" (spec:1023 — "Warehouse per branch, transfers between them, stock and margin visible per branch"). Built at the spec text as written. **If the owner rejects Batch/lot:** `app.lot` stays, reduced to the per-item sentinel the primary key needs; `expires_on`, `manufactured_on`, `lot_expiry_idx` and the `POST …/items/{itemId}/lots` route go, and Task 10's FEFO and expiry-alert work is dropped. **If the owner rejects Multi-branch stock:** `warehouse.branch_id` becomes nullable and `parent_id` unused; §4.5.6's Form A″ and Form C become dead in 6C. Nothing else in the slice moves.
 
@@ -1069,7 +1069,7 @@ Where stock lives, what batch it belongs to, and the one row that makes `stock_o
 - Create: `packages/db/src/schema/warehouse.ts`, `packages/db/src/schema/lot.ts`, `packages/db/src/schema/variant.ts`
 - Create: `packages/db/src/inventory/warehouses.ts`, `packages/db/src/inventory/lots.ts`
 - Create: `docs/adr/0034-sentinel-lot-and-not-null-lot-id.md`
-- Modify: `packages/db/src/index.ts`, `packages/contracts/src/errors.ts` (`ERR_WAREHOUSE_TREE_CYCLE`), `packages/db/test/fixtures.ts` (`seedWarehouse`, `seedLot`), `tests/regression/sah-071.test.ts` (append)
+- Modify: `packages/db/src/index.ts`, `packages/contracts/src/errors.ts` (`ERR_WAREHOUSE_TREE_CYCLE`), `packages/db/test/fixtures.ts` (`seedWarehouse`, `seedLot`), `tests/regression/legacy-071.test.ts` (append)
 - Test: `packages/db/test/inventory/warehouse.test.ts`, `packages/db/test/inventory/lot.test.ts`
 
 **Interfaces:**
@@ -1101,7 +1101,7 @@ import { createWarehouse, updateWarehouse, warehouseTree } from "../../src/inven
 import { seedBranch, seedTenant, type Seed } from "../fixtures";
 import { startDb, withTenant, type Db } from "../harness";
 
-describe("app.warehouse — migration 0029 (contracts §4.6.1, SAH-071)", () => {
+describe("app.warehouse — migration 0029 (contracts §4.6.1, LEGACY-071)", () => {
   let db: Db;
   let a: Seed;
   let b: Seed;
@@ -1121,7 +1121,7 @@ describe("app.warehouse — migration 0029 (contracts §4.6.1, SAH-071)", () => 
     expect(row.parentId).toBeNull();
   });
 
-  it("branch_id is NOT NULL, so no warehouse can be branch-less (spec:1023, SAH-050 in the other direction)", async () => {
+  it("branch_id is NOT NULL, so no warehouse can be branch-less (spec:1023, LEGACY-050 in the other direction)", async () => {
     await expect(withTenant(db.rw, a.tenant, a.human, (tx) => tx`
       insert into app.warehouse (tenant_id, company_id, code, name_en, branch_id)
       values (${a.tenant}, ${a.company}, 'NO-BRANCH', 'No branch', null)`))
@@ -1135,7 +1135,7 @@ describe("app.warehouse — migration 0029 (contracts §4.6.1, SAH-071)", () => 
       .rejects.toThrow(/warehouse_kind_check/);
   });
 
-  it("a cycle in the tree is refused in ONE indexed check, not a procedure per row (SAH-071)", async () => {
+  it("a cycle in the tree is refused in ONE indexed check, not a procedure per row (LEGACY-071)", async () => {
     const { parent, child } = await withTenant(db.rw, a.tenant, a.human, async (tx) => {
       const p = await createWarehouse(tx, { companyId: a.company, code: "T-P", nameEn: "Parent", branchId: a.hq });
       const c = await createWarehouse(tx, {
@@ -1187,7 +1187,7 @@ import { SENTINEL_LOT_CODE, createLot, listLots, sentinelLotId } from "../../src
 import { seedItem, seedTenant, type Seed } from "../fixtures";
 import { startDb, withTenant, type Db } from "../harness";
 
-describe("app.lot and the per-item sentinel — migration 0029 (SAH-050, ADR 0034)", () => {
+describe("app.lot and the per-item sentinel — migration 0029 (LEGACY-050, ADR 0034)", () => {
   let db: Db;
   let a: Seed;
   let itemId: string;
@@ -1212,7 +1212,7 @@ describe("app.lot and the per-item sentinel — migration 0029 (SAH-050, ADR 003
     // migration with no tenant set sees zero rows and could never insert one (§3.4.8 — only app.permission
     // is migration data). The guarantee is the AFTER INSERT trigger, and this is where it is checked, inside
     // `withTenant` where there are rows to check. `stock_on_hand`'s primary key contains `lot_id`, so an
-    // item without a sentinel would fail the step-12 MERGE much later (SAH-050).
+    // item without a sentinel would fail the step-12 MERGE much later (LEGACY-050).
     const [gap] = await withTenant(db.rw, a.tenant, a.human, (tx) => tx<{ n: number }[]>`
       select count(*)::int as n from app.item i
        where not exists (select 1 from app.lot l where l.item_id = i.id and l.code = ${SENTINEL_LOT_CODE})`);
@@ -1260,8 +1260,8 @@ Expected: **FAIL** — `relation "app.warehouse" does not exist` on the first `i
 -- ── 0029 · app.warehouse, app.lot, app.variant, and the per-item sentinel lot ──────────────────
 -- spec:1182 (§3.3 Warehouse tree ── StockBalance), spec:1022–1023 (§3.0.3 Batch/lot with expiry;
 -- Multi-branch stock), spec:161 (§0.4 Batch → Lot), spec:1048 (§3.0.4 Inventory core).
--- SAH-071: the tree check is ONE recursive CTE in ONE function, not a recursive procedure called per
--- row in three modules. SAH-050: every item gets a sentinel lot so the stock_on_hand primary key,
+-- LEGACY-071: the tree check is ONE recursive CTE in ONE function, not a recursive procedure called per
+-- row in three modules. LEGACY-050: every item gets a sentinel lot so the stock_on_hand primary key,
 -- which contains lot_id, never holds NULL (ADR 0034).
 
 -- ── 1. warehouses, as a tree, one branch each ───────────────────────────────────────────────────
@@ -1290,7 +1290,7 @@ create table app.warehouse (
 create index warehouse_parent_idx on app.warehouse (parent_id) where parent_id is not null;
 create index warehouse_branch_idx on app.warehouse (company_id, branch_id);
 
--- SAH-071: cycle detection as one recursive CTE walking UP from the proposed parent. The old system
+-- LEGACY-071: cycle detection as one recursive CTE walking UP from the proposed parent. The old system
 -- called a recursive procedure per row inside a trigger, duplicated in at least three modules, and
 -- RecursiveRecord was the most-raised exception in the corpus. This is the only such check in Dulja.
 create function app.warehouse_no_cycle() returns trigger language plpgsql as $$
@@ -1346,7 +1346,7 @@ create index lot_expiry_idx on app.lot (company_id, expires_on)
   where expires_on is not null and archived_at is null;
 create index lot_item_idx on app.lot (item_id);
 
--- SAH-050 / ADR 0034: one sentinel lot per item, created with the item, code 'NONE'. stock_on_hand's
+-- LEGACY-050 / ADR 0034: one sentinel lot per item, created with the item, code 'NONE'. stock_on_hand's
 -- primary key contains lot_id (§4.7.3), and a NULL there is exactly the old defect: MtoJob = NULL is
 -- unknown, so the increment matched nothing and inserted an orphan, and the decrement matched nothing
 -- and left the row. applyMovements resolves a line's null lot to this row before insert.
@@ -1555,7 +1555,7 @@ export async function getWarehouse(tx: Sql, warehouseId: string): Promise<Wareho
 }
 
 /** `code`, `kind` and `branch_id` are immutable: movements already written are keyed by this row, and
- *  moving a warehouse to another branch would silently re-scope every historical figure (SAH-045). */
+ *  moving a warehouse to another branch would silently re-scope every historical figure (LEGACY-045). */
 export async function updateWarehouse(
   tx: Sql,
   warehouseId: string,
@@ -1599,7 +1599,7 @@ export async function listWarehouses(
   return rows.map(toWarehouse);
 }
 
-/** SAH-071's positive form: one recursive CTE, top-down, returning depth and the code path. */
+/** LEGACY-071's positive form: one recursive CTE, top-down, returning depth and the code path. */
 export async function warehouseTree(tx: Sql, companyId: string): Promise<WarehouseNode[]> {
   const rows = await tx<(DbWarehouse & { depth: number; path: string[] })[]>`
     with recursive node as (
@@ -1772,12 +1772,12 @@ export async function seedLot(
 Run: `bun run --cwd packages/db test -- test/inventory/warehouse.test.ts test/inventory/lot.test.ts`
 Expected: **PASS**, 7 + 6 tests. If the cycle test's second case passes without raising, the trigger is missing `or update of parent_id` — a BEFORE INSERT-only trigger never sees a re-parenting.
 
-- [ ] **Step 12: Append this slice's block to `tests/regression/sah-071.test.ts`**
+- [ ] **Step 12: Append this slice's block to `tests/regression/legacy-071.test.ts`**
 
 0B created the file (§3.7.3's list of Plan 0A-proven defects includes 071 — the recursive-CTE `account` tree). This slice **appends** and never edits 0B's block.
 
 ```ts
-describe("SAH-071 Tree-integrity checks run a recursive procedure per row inside triggers — 3A", () => {
+describe("LEGACY-071 Tree-integrity checks run a recursive procedure per row inside triggers — 3A", () => {
   it("the warehouse tree's cycle check is one CTE in one function, and app.warehouse is its only caller", async () => {
     const { db, a } = await sharedDb();
     const [fn] = await db.admin<{ src: string }[]>`
@@ -1804,7 +1804,7 @@ describe("SAH-071 Tree-integrity checks run a recursive procedure per row inside
 - **Status:** accepted
 - **Date:** 2026-09-05
 - **Slice:** 3A
-- **Supersedes:** nothing. **Related:** contracts §4.7.3, spec:1022, SAH-050.
+- **Supersedes:** nothing. **Related:** contracts §4.7.3, spec:1022, LEGACY-050.
 
 ## Context
 
@@ -1813,7 +1813,7 @@ describe("SAH-071 Tree-integrity checks run a recursive procedure per row inside
 `document_line.lot_id` is deliberately nullable, and a great many lines — services, non-food goods,
 a quick counter sale — legitimately carry none.
 
-SAH-050 is what happens when the aggregate key admits NULL. `MtoJob = NULL` is unknown, so the old
+LEGACY-050 is what happens when the aggregate key admits NULL. `MtoJob = NULL` is unknown, so the old
 system's increment matched no row, reported `ROW_COUNT = 0` and inserted a fresh one; the decrement
 matched no row either and there was **no `ROW_COUNT = 0` fallback on the decrement**, so the row
 stayed. Every NULL-job line accumulated one orphan, and the repair procedure grouped by the same
@@ -1845,7 +1845,7 @@ when no dated lot can satisfy the quantity.
 
 - [ ] **Step 14: Run the whole suite, the linter and the type checker**
 
-Run: `bun run --cwd packages/db test && bun run --cwd tests test -- regression/sah-071.test.ts && bun run typecheck && bun run lint && bun run lint:rules`
+Run: `bun run --cwd packages/db test && bun run --cwd tests test -- regression/legacy-071.test.ts && bun run typecheck && bun run lint && bun run lint:rules`
 Expected: **PASS**, zero `lint:rules` violations. `packages/db/test/inventory/item.test.ts` from Task 1 is still green: the sentinel-lot trigger adds a row per item and that file counts items, not lots.
 
 - [ ] **Step 15: Commit**
@@ -1856,7 +1856,7 @@ git add packages/db/migrations/0029_create_warehouse_lot_variant.sql packages/db
         packages/db/src/inventory/warehouses.ts packages/db/src/inventory/lots.ts packages/db/src/index.ts \
         packages/contracts/src/errors.ts packages/db/test/fixtures.ts \
         packages/db/test/inventory/warehouse.test.ts packages/db/test/inventory/lot.test.ts \
-        tests/regression/sah-071.test.ts docs/adr/0034-sentinel-lot-and-not-null-lot-id.md
+        tests/regression/legacy-071.test.ts docs/adr/0034-sentinel-lot-and-not-null-lot-id.md
 git commit -m "$(cat <<'EOF'
 feat(db): warehouses as a tree, lots with expiry, and the sentinel lot [3A T2]
 
@@ -1865,13 +1865,13 @@ parent tree), app.lot (expiry, manufacture, one-per-(item, code)) and
 app.variant at contracts §4.6.1's columns.
 
 Cycle detection is one recursive CTE in app.warehouse_no_cycle(), the only such
-check in the codebase — SAH-071 called a recursive procedure per row inside
+check in the codebase — LEGACY-071 called a recursive procedure per row inside
 triggers, duplicated across three modules.
 
 Every item gets a companion lot coded NONE by trigger, which is what lets
 inventory_movement.lot_id and stock_on_hand.lot_id both be NOT NULL and the
 step-12 MERGE always match a full key. That is ADR 0034 and the structural
-answer to SAH-050.
+answer to LEGACY-050.
 
 ERR_WAREHOUSE_TREE_CYCLE joins the ERRORS registry; the token is raised in SQL,
 so error-codes sees its evidence in the migration text.
@@ -2269,7 +2269,7 @@ describe("app.price_list / price_list_line / promotion — migration 0030 (contr
       .rejects.toThrow(/price_list_line_price_list_id_item_id_unit_id_min_quantity_key/);
   });
 
-  it("a negative unit price is refused (SAH-073's shape, applied to a price)", async () => {
+  it("a negative unit price is refused (LEGACY-073's shape, applied to a price)", async () => {
     const [pl] = await withTenant(db.rw, a.tenant, a.human, (tx) =>
       tx<{ id: string }[]>`select id from app.price_list where company_id = ${a.company} and code = 'WHOLESALE'`);
     await expect(withTenant(db.rw, a.tenant, a.human, (tx) => tx`
@@ -2957,7 +2957,7 @@ The two tables that make a quantity real, and the trigger that makes test 18 tru
 - Create: `packages/db/src/schema/inventory_movement.ts`, `packages/db/src/schema/stock_on_hand.ts`
 - Create: `packages/db/test/inventory/movement.test.ts`, `packages/db/test/inventory/fefo.test.ts`
 - Modify: `packages/db/src/lint-schema.ts` (`stock_on_hand` into `NO_ID_TABLES` and `AUDIT_EXEMPT`), `packages/contracts/src/errors.ts` (`ERR_STOCK_INSUFFICIENT`), `packages/db/src/schema/document.ts` (+ `warehouseId`, `toWarehouseId`), `packages/db/src/schema/attachment.ts` (+ `lotId`)
-- Modify: `tests/regression/sah-050.test.ts`, `tests/regression/sah-073.test.ts`, `tests/regression/sah-074.test.ts` (append one `describe` each; 0B created all three)
+- Modify: `tests/regression/legacy-050.test.ts`, `tests/regression/legacy-073.test.ts`, `tests/regression/legacy-074.test.ts` (append one `describe` each; 0B created all three)
 
 **Interfaces:**
 - Consumes: `app.item`, `app.unit_of_measure` (Task 1), `app.warehouse`, `app.lot` (Task 2), `app.company`, `app.document`, `app.principal`, `app.attachment` (0001 / 2C), `app.document_event` and its `override_code` column (2B, §4.5.2), `app.posting_seq` (1A, 0013), `app.forbid_change()` (§4.1), `app_meta.enable_tenant_rls`, `app_meta.attach_stamp` (§4.1); `AUDIT_EXEMPT`, `IMMUTABLE`, `lintSchema` (§4.1); `ERRORS`, `ErrorDef` (§4.2.4); `grantCodes` (2B, §4.17), `recordOverride`, `OverrideCode` (§4.3.1); `seedItem`, `seedWarehouse`, `seedLot`, `draftDocument` (Tasks 1–2, §4.1).
@@ -3037,7 +3037,7 @@ describe("app.inventory_movement / app.stock_on_hand — migration 0031 (contrac
       .rejects.toThrow(/inventory_movement_document_id_movement_no_key/);
   });
 
-  it("movement_no must be positive, and lot_id is NOT NULL (SAH-050, ADR 0034)", async () => {
+  it("movement_no must be positive, and lot_id is NOT NULL (LEGACY-050, ADR 0034)", async () => {
     const doc = await draftDocument(db, a);
     await expect(withTenant(db.rw, a.tenant, a.human, (tx) =>
       insertMovement(tx, a, { documentId: doc, movementNo: 0, itemId, warehouseId, lotId, unitId, quantity: "1.000000" })))
@@ -3051,7 +3051,7 @@ describe("app.inventory_movement / app.stock_on_hand — migration 0031 (contrac
       .rejects.toThrow(/lot_id/);
   });
 
-  it("value is mandatory — a movement without one is rejected at write time (SAH-007)", async () => {
+  it("value is mandatory — a movement without one is rejected at write time (LEGACY-007)", async () => {
     const doc = await draftDocument(db, a);
     await expect(withTenant(db.rw, a.tenant, a.human, (tx) => tx`
       insert into app.inventory_movement
@@ -3077,7 +3077,7 @@ describe("app.inventory_movement / app.stock_on_hand — migration 0031 (contrac
     expect(AUDIT_EXEMPT.has("inventory_movement")).toBe(true);
   });
 
-  it("an issue beyond available stock is refused with ERR_STOCK_INSUFFICIENT (test 18, SAH-048)", async () => {
+  it("an issue beyond available stock is refused with ERR_STOCK_INSUFFICIENT (test 18, LEGACY-048)", async () => {
     const wh = await seedWarehouse(db, a, { code: "SHORT" });
     const doc = await draftDocument(db, a);
     await withTenant(db.rw, a.tenant, a.human, (tx) =>
@@ -3218,7 +3218,7 @@ import { createLot, sentinelLotId } from "../../src/inventory/lots";
 import { seedItem, seedTenant, seedWarehouse, type Seed } from "../fixtures";
 import { startDb, withTenant, type Db } from "../harness";
 
-describe("app.pick_lots_fefo — migration 0031 (the 3A card, SAH-067, ADR 0036)", () => {
+describe("app.pick_lots_fefo — migration 0031 (the 3A card, LEGACY-067, ADR 0036)", () => {
   let db: Db;
   let a: Seed;
   let itemId: string;
@@ -3283,7 +3283,7 @@ describe("app.pick_lots_fefo — migration 0031 (the 3A card, SAH-067, ADR 0036)
       .rejects.toThrow(/ERR_VALIDATION_FAILED: pick_lots_fefo needs a positive quantity/);
   });
 
-  it("the ordering is total, so two identical calls return identical rows (SAH-067)", async () => {
+  it("the ordering is total, so two identical calls return identical rows (LEGACY-067)", async () => {
     const once = await withTenant(db.rw, a.tenant, a.human, (tx) =>
       tx<{ lot_id: string; quantity: string }[]>`select lot_id, quantity::text from app.pick_lots_fefo(${itemId}, ${warehouseId}, 60.0)`);
     const twice = await withTenant(db.rw, a.tenant, a.human, (tx) =>
@@ -3327,10 +3327,10 @@ create table app.inventory_movement (                        -- IMMUTABLE, audit
                                                              -- MERGE at runtime. Every item has one sentinel lot
                                                              -- coded 'NONE' created with it (migration 0029);
                                                              -- applyMovements resolves a line's null lot_id to it
-                                                             -- before insert (SAH-050, ADR 0034).
+                                                             -- before insert (LEGACY-050, ADR 0034).
   unit_id         uuid not null,
   quantity        numeric(19,6) not null check (quantity <> 0),   -- base unit; + receipt, − issue (spec:2043)
-  value           numeric(19,4) not null,                    -- mandatory (SAH-007); base currency; sign follows quantity
+  value           numeric(19,4) not null,                    -- mandatory (LEGACY-007); base currency; sign follows quantity
   effective_date  date not null,                             -- the accounting date, never derived from posted_at (spec:2039)
   posting_seq     bigint not null,                           -- document.posting_seq, assigned at step 8 (§4.3.5)
   posted_at       timestamptz not null default now(),        -- the posting instant (spec:1370's ledger_entry pattern)
@@ -3346,7 +3346,7 @@ create table app.inventory_movement (                        -- IMMUTABLE, audit
   foreign key (tenant_id, lot_id)       references app.lot(tenant_id, id),
   foreign key (tenant_id, unit_id)      references app.unit_of_measure(tenant_id, id)
 );
--- The total chronological key of spec:1225 and §4.3.5, as an index and not as a plan hint (SAH-067).
+-- The total chronological key of spec:1225 and §4.3.5, as an index and not as a plan hint (LEGACY-067).
 create index inventory_movement_chrono_idx on app.inventory_movement
   (company_id, item_id, warehouse_id, effective_date, posting_seq, line_no, movement_no);
 call app_meta.enable_tenant_rls('app.inventory_movement');
@@ -3357,7 +3357,7 @@ create trigger inventory_movement_immutable before update or delete on app.inven
   for each row execute function app.forbid_change();
 revoke update, delete on app.inventory_movement from app_rw;
 
--- ── 2. assert_stock_available — §4.7.3's comment, as code (test 18, SAH-048, spec:2436) ───────────────
+-- ── 2. assert_stock_available — §4.7.3's comment, as code (test 18, LEGACY-048, spec:2436) ───────────────
 -- Availability is summed from THIS table, which already includes the current transaction's earlier rows, and
 -- NEVER from stock_on_hand, which is MERGEd only at step 12. The one door is an override document_event
 -- recorded by a second principal (§4.5.3): document_event_override_guard is what proves the second principal
@@ -3419,13 +3419,13 @@ create table app.stock_on_hand (
 -- No `id` and no unique (tenant_id, id): the natural key IS the key, which is why the table joins NO_ID_TABLES
 -- in lint-schema.ts in this same PR (§3.5.3). No attach_audit either — it is derived (AUDIT_EXEMPT).
 -- `lot_id` is NOT NULL on both sides: every item has one sentinel lot coded 'NONE' and applyMovements resolves
--- a line's null lot to it, so the primary key never contains NULL (SAH-050). document_line.lot_id stays
+-- a line's null lot to it, so the primary key never contains NULL (LEGACY-050). document_line.lot_id stays
 -- nullable — the user need not enter a lot; the posting service is what resolves the sentinel.
 call app_meta.enable_tenant_rls('app.stock_on_hand');
 
--- ── 4. pick_lots_fefo — FEFO over the projection, not over a replay of history (SAH-067, ADR 0036) ────
+-- ── 4. pick_lots_fefo — FEFO over the projection, not over a replay of history (LEGACY-067, ADR 0036) ────
 -- Reads the SYNCHRONOUS projection, so outside a posting transaction it is current to the last commit. The
--- ordering is total — expiry, then lot code, then lot id — so two identical calls cannot disagree; SAH-067's
+-- ordering is total — expiry, then lot code, then lot id — so two identical calls cannot disagree; LEGACY-067's
 -- root cause was an answer that depended on which index the planner chose.
 -- Returns fewer rows than asked when the warehouse cannot satisfy the quantity: refusing is
 -- assert_stock_available's job, and a picker that raised would hide a partial pick a user may legitimately want.
@@ -3616,10 +3616,10 @@ export const AUDIT_EXEMPT = new Set([
 
 - [ ] **Step 8: Append to the three regression files**
 
-`tests/regression/sah-050.test.ts` — append (0B created the file; do not edit its block):
+`tests/regression/legacy-050.test.ts` — append (0B created the file; do not edit its block):
 
 ```ts
-describe("SAH-050 NULL dimension values make aggregates accumulate orphans and lose all decrements — 3A", () => {
+describe("LEGACY-050 NULL dimension values make aggregates accumulate orphans and lose all decrements — 3A", () => {
   it("every stock key column is NOT NULL on both the movement and the projection", async () => {
     const { db } = await sharedDb();
     const nullable = await db.admin<{ table_name: string; column_name: string }[]>`
@@ -3637,10 +3637,10 @@ describe("SAH-050 NULL dimension values make aggregates accumulate orphans and l
 });
 ```
 
-`tests/regression/sah-073.test.ts` — append:
+`tests/regression/legacy-073.test.ts` — append:
 
 ```ts
-describe("SAH-073 Referential integrity enforced inconsistently for the same logical relationship — 3A", () => {
+describe("LEGACY-073 Referential integrity enforced inconsistently for the same logical relationship — 3A", () => {
   it("every tenant-scoped parent of a movement is reached by a COMPOSITE (tenant_id, x) foreign key", async () => {
     const { db } = await sharedDb();
     const fks = await db.admin<{ ref: string; cols: string[] }[]>`
@@ -3665,10 +3665,10 @@ describe("SAH-073 Referential integrity enforced inconsistently for the same log
 });
 ```
 
-`tests/regression/sah-074.test.ts` — append:
+`tests/regression/legacy-074.test.ts` — append:
 
 ```ts
-describe("SAH-074 42 of 460 tables have no primary key — 3A", () => {
+describe("LEGACY-074 42 of 460 tables have no primary key — 3A", () => {
   it("both tables this slice's posting path writes have a primary key", async () => {
     const { db } = await sharedDb();
     const pks = await db.admin<{ relname: string; n: number }[]>`
@@ -3696,7 +3696,7 @@ Expected: `0 violations`. Without Step 6 the linter reports two: `stock_on_hand 
 Run: `bun run --cwd packages/db test -- test/privileges.test.ts`
 Expected: **PASS**. The pinned DELETE list is untouched — this slice grants none (§3.5.4) — and the `revoke update, delete` on `inventory_movement` is what the `immutable_privileges` rule and this test both check for.
 
-Run: `bun run --cwd tests test -- regression/sah-050.test.ts regression/sah-073.test.ts regression/sah-074.test.ts`
+Run: `bun run --cwd tests test -- regression/legacy-050.test.ts regression/legacy-073.test.ts regression/legacy-074.test.ts`
 Expected: **PASS**, with each file now carrying its earlier blocks plus one 3A block.
 
 Run: `bun run lint:rules`
@@ -3710,8 +3710,8 @@ git add packages/db/migrations/0031_create_movement_stock_on_hand_and_warehouse_
         packages/db/src/schema/stock_on_hand.ts packages/db/src/schema/document.ts \
         packages/db/src/schema/attachment.ts packages/db/src/lint-schema.ts \
         packages/contracts/src/errors.ts packages/db/test/inventory/movement.test.ts \
-        packages/db/test/inventory/fefo.test.ts tests/regression/sah-050.test.ts \
-        tests/regression/sah-073.test.ts tests/regression/sah-074.test.ts
+        packages/db/test/inventory/fefo.test.ts tests/regression/legacy-050.test.ts \
+        tests/regression/legacy-073.test.ts tests/regression/legacy-074.test.ts
 git commit -m "$(cat <<'EOF'
 feat(db): the movement ledger, stock on hand, and the negative-stock refusal [3A T5]
 
@@ -3730,7 +3730,7 @@ policy.inventory.allowNegative is one.
 
 app.pick_lots_fefo reads the synchronous projection with a total ordering —
 expiry, lot code, lot id — so the answer never depends on a chosen plan
-(SAH-067). A NULL expiry sorts last, which keeps the sentinel lot behind every
+(LEGACY-067). A NULL expiry sorts last, which keeps the sentinel lot behind every
 dated batch.
 
 attachment gains attachment_owner_check (exactly one of document_id, lot_id) —
@@ -3752,16 +3752,16 @@ EOF
 
 ### Task 6: Migration 0032 — the `document_line` inventory columns, the `item_id` key, and exact unit conversion applied by the data layer
 
-SAH-066 is one sentence long: "Unit conversion is defined in the schema and applied nowhere." Task 1 defined it; this task applies it, and applies it in **SQL** so that no write path — API, importer, POS sync apply, a hand-typed `app_rw` insert — can enter a carton quantity and have it counted as pieces. `app.document_line_base_quantity()` is a BEFORE INSERT OR UPDATE trigger that derives `quantity` (always the item's base unit — spec:2043) from the entered `(unit_id, unit_quantity)` pair, and raises when a supplied `quantity` disagrees with what the conversion says.
+LEGACY-066 is one sentence long: "Unit conversion is defined in the schema and applied nowhere." Task 1 defined it; this task applies it, and applies it in **SQL** so that no write path — API, importer, POS sync apply, a hand-typed `app_rw` insert — can enter a carton quantity and have it counted as pieces. `app.document_line_base_quantity()` is a BEFORE INSERT OR UPDATE trigger that derives `quantity` (always the item's base unit — spec:2043) from the entered `(unit_id, unit_quantity)` pair, and raises when a supplied `quantity` disagrees with what the conversion says.
 
 The same migration closes 2A's `item_id` FK slot (§4.3.4: "3A's 0032 adds `(tenant_id, item_id) → app.item` … and adds its field to `DocumentLineInput` in the same PR as its key, never before"), which breaks three 2A tests that write arbitrary uuids into that column. Step 3 fixes all three; assumption 10 predicted it.
 
-**⚠️ OD-05 — the §3.0.3 "Multi-unit items" row (spec:1024), continued from Task 1.** **If the owner rejects the row:** keep migration 0032's four columns (`document_line.unit_id` and `unit_quantity` still record what the user typed, and a base-unit-only system types the base unit), drop the trigger, the two `packages/domain` conversion exports, `resolveUnitConversion`/`convertToBase`/`replaceUnitConversions`, `sah-066.test.ts` and the `POST …/items/{itemId}/unit-conversions` route of Task 11. `applyConversion`'s callers reduce to the identity, and nothing else in the slice moves.
+**⚠️ OD-05 — the §3.0.3 "Multi-unit items" row (spec:1024), continued from Task 1.** **If the owner rejects the row:** keep migration 0032's four columns (`document_line.unit_id` and `unit_quantity` still record what the user typed, and a base-unit-only system types the base unit), drop the trigger, the two `packages/domain` conversion exports, `resolveUnitConversion`/`convertToBase`/`replaceUnitConversions`, `legacy-066.test.ts` and the `POST …/items/{itemId}/unit-conversions` route of Task 11. `applyConversion`'s callers reduce to the identity, and nothing else in the slice moves.
 
 **Files:**
 - Create: `packages/db/migrations/0032_alter_document_line_add_inventory_columns.sql`, `packages/db/migrations/0032.down.sql`
 - Create: `packages/domain/src/quantity/convert.ts`, `packages/domain/test/quantity/convert.test.ts`
-- Create: `packages/db/test/inventory/unit-conversion.test.ts`, `tests/regression/sah-066.test.ts`
+- Create: `packages/db/test/inventory/unit-conversion.test.ts`, `tests/regression/legacy-066.test.ts`
 - Create: `docs/adr/0036-exact-unit-conversion-and-fefo-over-the-projection.md`
 - Modify: `packages/db/src/schema/document_line.ts`, `packages/db/src/inventory/units.ts`, `packages/db/src/posting/load.ts`, `packages/db/src/posting/reverse.ts`, `packages/domain/src/index.ts`, `packages/contracts/src/accounting/document.ts`
 - Modify (fix, assumption 10): `packages/db/test/document-line-generalised.test.ts`, `packages/db/test/posting/load.test.ts`, `packages/db/test/posting/reverse.test.ts`
@@ -3787,7 +3787,7 @@ The same migration closes 2A's `item_id` FK slot (§4.3.4: "3A's 0032 adds `(ten
 import { describe, expect, it } from "vitest";
 import { IDENTITY_CONVERSION, Quantity, applyConversion, rational } from "../../src";
 
-describe("applyConversion — exact rational unit conversion (spec:2043, SAH-066)", () => {
+describe("applyConversion — exact rational unit conversion (spec:2043, LEGACY-066)", () => {
   it("1 carton of 12 pieces is 12 base units", () => {
     expect(applyConversion(Quantity.of("1.000000"), rational(12n, 1n)).toString()).toBe("12.000000");
     expect(applyConversion(Quantity.of("3.500000"), rational(12n, 1n)).toString()).toBe("42.000000");
@@ -3817,7 +3817,7 @@ describe("applyConversion — exact rational unit conversion (spec:2043, SAH-066
     // 3 × 1/2000000 = 0.0000015, another tie. This case pins the ORDER as well as the mode: multiply by the
     // numerator, THEN divide by the denominator, then round once — the order 0D's `convert` uses and the
     // order the SQL trigger uses (`unit_quantity * num / den`). Collapsing the rational to a Decimal first,
-    // which is what `Quantity.multiply(rational, mode)` does, is the per-step rounding shape SAH-066 is.
+    // which is what `Quantity.multiply(rational, mode)` does, is the per-step rounding shape LEGACY-066 is.
     expect(applyConversion(Quantity.of("3.000000"), tie).toString()).toBe("0.000002");
   });
 
@@ -3832,7 +3832,7 @@ describe("applyConversion — exact rational unit conversion (spec:2043, SAH-066
     expect(negative.toString()).toBe(positive.negate().toString());
   });
 
-  it("a zero denominator is refused by rational() before it reaches here (SAH-063)", () => {
+  it("a zero denominator is refused by rational() before it reaches here (LEGACY-063)", () => {
     expect(() => rational(12n, 0n)).toThrow(/ERR_RATIONAL_ZERO_DENOMINATOR/);
   });
 });
@@ -3856,7 +3856,7 @@ export const IDENTITY_CONVERSION: Rational = { numerator: 1n, denominator: 1n };
 
 /**
  * Converts a quantity entered in some unit to the item's BASE unit, exactly (spec:2043 — "exact rationals
- * (numerator bigint, denominator bigint), never floats"; SAH-066).
+ * (numerator bigint, denominator bigint), never floats"; LEGACY-066).
  *
  * **This is NOT `Quantity.convert`, and the difference is the rounding mode — read this before "simplifying"
  * the body to a delegation.** §4.2.1 fixes `Quantity.convert(conversion)` as "exact; rounded HALF_EVEN to
@@ -3865,18 +3865,18 @@ export const IDENTITY_CONVERSION: Rational = { numerator: 1n, denominator: 1n };
  * FROM ZERO. The two disagree at a tie: `1.000000 × 1/2000000` is `0.000000` under HALF_EVEN and `0.000001`
  * under the trigger. The trigger *raises* rather than overwrites when a supplied `quantity` disagrees with
  * the entered pair, so an API caller that computed `quantity` with HALF_EVEN and posted both values would
- * get ERR_VALIDATION_FAILED on a perfectly legitimate line — a defect indistinguishable from SAH-066 to the
+ * get ERR_VALIDATION_FAILED on a perfectly legitimate line — a defect indistinguishable from LEGACY-066 to the
  * user who hits it.
  *
  * **The body below is `Quantity.convert`'s body with one token changed — the mode — and it must stay that
  * way.** 0D's `convert` is `this.value.times(numerator).div(denominator)` at the cloned constructor's
- * precision 40, rounded ONCE at the end, with the docstring "Rounding per step is the SAH-066 defect". This
+ * precision 40, rounded ONCE at the end, with the docstring "Rounding per step is the LEGACY-066 defect". This
  * function repeats that exact order and rounds `HALF_AWAY_FROM_ZERO` instead. **It is deliberately NOT
  * `Quantity.multiply(conversion, "HALF_AWAY_FROM_ZERO")`**, which looks like the shorter route and is not:
  * `multiply` collapses a `Rational` to a `Decimal` FIRST (`new D(numerator).div(new D(denominator))`) and
  * multiplies afterwards, so it divides before it multiplies — the per-step rounding shape 0D wrote `convert`
  * to avoid. At precision 40 the two agree on every plausible package factor, but "agrees in practice" is not
- * the standard SAH-066 sets, and the trigger multiplies before it divides
+ * the standard LEGACY-066 sets, and the trigger multiplies before it divides
  * (`new.unit_quantity * num::numeric / den::numeric`). Same order as the SQL, same mode as the SQL.
  *
  * What is named here is the **mode contract**: every conversion whose result has to agree with a
@@ -3885,7 +3885,7 @@ export const IDENTITY_CONVERSION: Rational = { numerator: 1n, denominator: 1n };
  * to a stored row.
  *
  * `rational()` has already refused a zero denominator (ERR_RATIONAL_ZERO_DENOMINATOR), so there is no divisor
- * guard here: SAH-063's defect was six unguarded divisions, and the guard belongs at construction, once.
+ * guard here: LEGACY-063's defect was six unguarded divisions, and the guard belongs at construction, once.
  */
 export function applyConversion(unitQuantity: Quantity, conversion: Rational): Quantity {
   const exact = new D(unitQuantity.toDecimal())
@@ -3916,7 +3916,7 @@ import { UnitConversionMissingError } from "../../src/inventory/errors";   // Ta
 import { draftDocument, seedItem, seedTenant, seedUnit, type Seed } from "../fixtures";
 import { startDb, uuidv7, withTenant, type Db } from "../harness";
 
-describe("unit conversion applied by the data layer — migration 0032 (SAH-066, ADR 0036)", () => {
+describe("unit conversion applied by the data layer — migration 0032 (LEGACY-066, ADR 0036)", () => {
   let db: Db;
   let a: Seed;
   let itemId: string;
@@ -4005,7 +4005,7 @@ describe("unit conversion applied by the data layer — migration 0032 (SAH-066,
     }
   });
 
-  it("the TRIGGER derives document_line.quantity from the entered pair — every write path (SAH-066)", async () => {
+  it("the TRIGGER derives document_line.quantity from the entered pair — every write path (LEGACY-066)", async () => {
     const doc = await draftDocument(db, a);
     const [line] = await withTenant(db.rw, a.tenant, a.human, (tx) => tx<{ quantity: string }[]>`
       insert into app.document_line
@@ -4080,7 +4080,7 @@ Expected: **FAIL** at import — `Cannot find module`'s `resolveUnitConversion` 
 -- (spec:2057) and no live row needs a backfill.
 -- spec:2043: "Quantity is stored once, in the item's base unit; the entered unit and quantity are kept for
 -- display." unit_id/unit_quantity are that display pair, and the trigger below is what makes the sentence true
--- on every write path rather than in the one handler that remembers (SAH-066).
+-- on every write path rather than in the one handler that remembers (LEGACY-066).
 
 -- ── 1. the four columns ───────────────────────────────────────────────────────────────────────────────
 alter table app.document_line add column warehouse_id  uuid;
@@ -4089,7 +4089,7 @@ alter table app.document_line add column lot_id        uuid;           -- NULLAB
 alter table app.document_line add column unit_id       uuid;
 alter table app.document_line add column unit_quantity numeric(19,6);
 
--- ── 2. the five foreign keys, all composite (tenant_id, x) (spec:106, SAH-073) ────────────────────────
+-- ── 2. the five foreign keys, all composite (tenant_id, x) (spec:106, LEGACY-073) ────────────────────────
 alter table app.document_line add constraint document_line_item_fk
   foreign key (tenant_id, item_id)      references app.item(tenant_id, id);
 alter table app.document_line add constraint document_line_warehouse_fk
@@ -4102,7 +4102,7 @@ create index document_line_warehouse_idx on app.document_line (warehouse_id) whe
 -- No branch_isolation policy on this table, now or ever: §3.5.1 step 7 and §4.5.6 both say a warehouse_id
 -- alone does not qualify, and document_line is isolated through its parent document.
 
--- ── 3. the base quantity, derived in SQL so no write path can skip it (SAH-066) ───────────────────────
+-- ── 3. the base quantity, derived in SQL so no write path can skip it (LEGACY-066) ───────────────────────
 -- Behaviour, in three branches:
 --   * no entered pair (unit_id or unit_quantity null) → quantity is left exactly as written. A JOURNAL line
 --     has neither, and a line typed directly in base units has neither.
@@ -4240,7 +4240,7 @@ export async function listUnitConversions(tx: Sql, itemId: string): Promise<Unit
 /**
  * The rational for one (item, unit). The item's own base unit needs no row and resolves to IDENTITY_CONVERSION;
  * anything else must be configured, and an unconfigured unit raises rather than defaulting to 1/1 — a silent
- * identity is exactly SAH-066's failure mode with a different sign.
+ * identity is exactly LEGACY-066's failure mode with a different sign.
  */
 export async function resolveUnitConversion(
   tx: Sql, params: { itemId: string; unitId: string },
@@ -4400,7 +4400,7 @@ adding `seedItem` to the file's `../fixtures` (or `../../fixtures`) import. In `
   });
 ```
 
-- [ ] **Step 12: Write `tests/regression/sah-066.test.ts`**
+- [ ] **Step 12: Write `tests/regression/legacy-066.test.ts`**
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -4457,11 +4457,11 @@ thinRegression(
 Two decisions in one record, because they share a root cause: the legacy system computed an answer at each
 call site instead of once, and the answer therefore depended on which call site ran.
 
-**SAH-066** — `MatUnits.Exchange` held a conversion factor per (material, unit) and no code multiplied by it.
+**LEGACY-066** — `MatUnits.Exchange` held a conversion factor per (material, unit) and no code multiplied by it.
 Quantities were entered in cartons and stored as if they were pieces. The factor existed as data and as
 documentation and as nothing else.
 
-**SAH-067** — stock on hand was computed by replaying the entire movement history under a hinted
+**LEGACY-067** — stock on hand was computed by replaying the entire movement history under a hinted
 index-navigation plan. Two consequences: it was slow in proportion to history rather than to stock, and the
 row order — and so the answer to "which batch do I pick?" — was a property of the chosen plan rather than of
 the data.
@@ -4484,7 +4484,7 @@ would then refuse a legitimate line. Same scale by `QUANTITY_SCALE`, same mode b
 same *order*: numerator first, denominator second, one rounding at the end, matching
 `unit_quantity * num::numeric / den::numeric`. `Quantity.multiply(rational, mode)` is not used, because 0D
 implements it by collapsing the rational to a decimal before multiplying, and rounding before multiplying is
-the SAH-066 shape.
+the LEGACY-066 shape.
 
 **2. FEFO reads `app.stock_on_hand`, and its ordering is total.**
 `app.pick_lots_fefo(item_id, warehouse_id, quantity)` (migration 0031) walks the synchronous projection
@@ -4530,7 +4530,7 @@ Expected: **PASS**, eleven assertions. Two failures to recognise in the tie case
 Run: `bun run --cwd packages/db test`
 Expected: **PASS** across 1A's, 2A's and 2B's suites. If `document-line-generalised.test.ts`, `posting/load.test.ts` or `posting/reverse.test.ts` fails with `23503`, Step 11 missed a call site — re-run the `grep`.
 
-Run: `bun run --cwd tests test -- regression/sah-066.test.ts`
+Run: `bun run --cwd tests test -- regression/legacy-066.test.ts`
 Expected: **PASS**, two assertions.
 
 Run: `bun run --cwd packages/contracts openapi:generate && git diff --exit-code packages/contracts/openapi.json`
@@ -4550,7 +4550,7 @@ git add packages/db/migrations/0032_alter_document_line_add_inventory_columns.sq
         packages/domain/test/quantity/convert.test.ts packages/contracts/src/accounting/document.ts \
         packages/contracts/openapi.json packages/db/test/inventory/unit-conversion.test.ts \
         packages/db/test/document-line-generalised.test.ts packages/db/test/posting/load.test.ts \
-        packages/db/test/posting/reverse.test.ts tests/regression/sah-066.test.ts \
+        packages/db/test/posting/reverse.test.ts tests/regression/legacy-066.test.ts \
         docs/adr/0036-exact-unit-conversion-and-fefo-over-the-projection.md
 git commit -m "$(cat <<'EOF'
 feat(db): document_line inventory columns, the item_id key, and conversion applied in SQL [3A T6]
@@ -4559,7 +4559,7 @@ Migration 0032 adds warehouse_id, lot_id, unit_id and unit_quantity to
 document_line with five composite FKs, closing the item_id slot 2A left open,
 and ships app.document_line_base_quantity() — the trigger that derives the base
 quantity from the entered (unit_id, unit_quantity) pair on every write path.
-That is SAH-066: the factor existed in MatUnits.Exchange and nothing multiplied
+That is LEGACY-066: the factor existed in MatUnits.Exchange and nothing multiplied
 by it. A supplied quantity that disagrees is refused rather than overwritten.
 
 loadSnapshot fills the four fields §4.3.1's stub list assigns 3A —
@@ -4585,7 +4585,7 @@ derived quantity against convertToBase's in packages/db.
 
 ADR 0036 records all three: conversion at line write, the one rounding mode on
 both sides of it, and FEFO over the synchronous projection with a total
-ordering (SAH-067).
+ordering (LEGACY-067).
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 EOF
@@ -5191,7 +5191,7 @@ The task that makes a document move stock. `applyMovements` is `postDocument` st
 **Files:**
 - Create: `packages/db/src/costing/apply-movements.ts`, `packages/db/src/costing/stock-on-hand.ts`, `packages/db/src/costing/index.ts`
 - Create: `packages/db/src/integrity/stock.ts`
-- Create: `packages/db/test/costing/apply-movements.test.ts`, `packages/db/test/inventory/stock-on-hand.test.ts`, `tests/regression/sah-067.test.ts`
+- Create: `packages/db/test/costing/apply-movements.test.ts`, `packages/db/test/inventory/stock-on-hand.test.ts`, `tests/regression/legacy-067.test.ts`
 - Modify: `packages/db/src/posting/post.ts` (step 9, step 12, `movementIds`), `packages/db/src/integrity/index.ts` (register), `packages/db/src/index.ts` (the costing barrel)
 - Modify: `tests/invariants/projection-rebuild.test.ts`, `tests/invariants/audit-chain.test.ts`, `apps/worker/test/handlers/integrity-check.test.ts`
 
@@ -5416,7 +5416,7 @@ describe("applyMovements — postDocument step 9 (contracts §4.7.2, provisional
     expect(mv!.value).toBe("0.0000");
   });
 
-  it("a line with no lot resolves the item's NONE sentinel, not a NULL (SAH-050, ADR 0034)", async () => {
+  it("a line with no lot resolves the item's NONE sentinel, not a NULL (LEGACY-050, ADR 0034)", async () => {
     const [mv] = await withTenant(db.rw, a.tenant, a.human, (tx) => tx<{ code: string }[]>`
       select l.code from app.inventory_movement m
         join app.lot l on l.id = m.lot_id
@@ -5758,7 +5758,7 @@ export async function applyMovements(
 }
 ```
 
-`tenant_id` is written as `app.current_tenant()`, the form Tasks 1, 2 and 4 use, rather than from `ctx.tenantId`: the session already carries the tenant and reading it back from the database is what makes a cross-tenant value impossible to smuggle through a parameter (SAH-044's shape applied to the tenant).
+`tenant_id` is written as `app.current_tenant()`, the form Tasks 1, 2 and 4 use, rather than from `ctx.tenantId`: the session already carries the tenant and reading it back from the database is what makes a cross-tenant value impossible to smuggle through a parameter (LEGACY-044's shape applied to the tenant).
 
 `ctx` is unused in the body and stays in the signature: §4.7.2 freezes it, and 3B's body needs it for `invalidateFrom`'s enqueue. The `void ctx;` on the function's first line above is what silences the unused-parameter lint Step 10 requires to report `0 violations`; it is there rather than a renamed parameter because a renamed parameter is a signature change in every reader's diff.
 
@@ -6123,7 +6123,7 @@ import {
     expect(report.projections.checked).toEqual(["account_balance", "document_series", "stock_on_hand"]);
 ```
 
-- [ ] **Step 9: Write `tests/regression/sah-067.test.ts`**
+- [ ] **Step 9: Write `tests/regression/legacy-067.test.ts`**
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -6178,7 +6178,7 @@ Expected: **PASS** — eleven assertions in the first, five in the second.
 Run: `bun run --cwd packages/db test`
 Expected: **PASS**. 1A's, 1B's, 2A's and 2B's posting suites are unaffected: every one of their policies declares `inventory: { effect: "none" }`, so `plan.movements` is empty, step 9 is skipped and step 12's stock half is skipped.
 
-Run: `bun run --cwd tests test -- invariants/projection-rebuild.test.ts invariants/audit-chain.test.ts regression/sah-067.test.ts`
+Run: `bun run --cwd tests test -- invariants/projection-rebuild.test.ts invariants/audit-chain.test.ts regression/legacy-067.test.ts`
 Expected: **PASS**.
 
 Run: `bun run --cwd apps/worker test -- test/handlers/integrity-check.test.ts`
@@ -6194,7 +6194,7 @@ git add packages/db/src/costing packages/db/src/integrity/stock.ts packages/db/s
         packages/db/src/posting/post.ts packages/db/src/index.ts \
         packages/db/test/costing/apply-movements.test.ts packages/db/test/inventory/stock-on-hand.test.ts \
         tests/invariants/projection-rebuild.test.ts tests/invariants/audit-chain.test.ts \
-        tests/regression/sah-067.test.ts apps/worker/test/handlers/integrity-check.test.ts
+        tests/regression/legacy-067.test.ts apps/worker/test/handlers/integrity-check.test.ts
 git commit -m "$(cat <<'EOF'
 feat(db): applyMovements, the stock_on_hand MERGE, and posting steps 9 and 12 [3A T8]
 
@@ -6244,7 +6244,7 @@ EOF
 
 ### Task 9: Acceptance test 18 — stock availability refused by the data layer, by every write path
 
-**Part VI test 18** (spec:2436): "Negative stock is rejected by the data layer regardless of session flags, user attributes, or write path. Overrides are explicit and audited." SAH-048 is the defect: "Negative-stock and overcost controls are opt-in per user and have four bypasses." This task is the proof, and it is written as an **invariant suite** rather than a unit test because the claim is about the *system*, not about a function.
+**Part VI test 18** (spec:2436): "Negative stock is rejected by the data layer regardless of session flags, user attributes, or write path. Overrides are explicit and audited." LEGACY-048 is the defect: "Negative-stock and overcost controls are opt-in per user and have four bypasses." This task is the proof, and it is written as an **invariant suite** rather than a unit test because the claim is about the *system*, not about a function.
 
 **The write paths, and what each one means here.**
 
@@ -6255,10 +6255,10 @@ EOF
 | **Two jobs at once** | two `postDocument` transactions on two documents issuing the same `(company, item, warehouse, lot)`, interleaved deterministically | "Regardless of … write path" includes two of the same path concurrently, and this is the only clause of test 18 that a *correct-looking* implementation fails. §4.3.2 step 1's `for update` locks one **document**, so without Task 8's `lockStockKeys` both transactions read the same committed movement sum, both satisfy the trigger and both commit. The refusal must survive concurrency or it is a refusal only of the careless. |
 | **Raw `app_rw` SQL** | a direct `insert into app.inventory_movement` inside `withTenant`, bypassing `postDocument` entirely | The database is the last line, and `assert_stock_available` is a BEFORE INSERT trigger, so nothing that can write the table can miss it. Legal in `tests/` only: `scripts/lint/run.ts`'s `ROOTS` are `["apps", "packages", "scripts"]` and `tests/` is deliberately outside them (§3.7.5). |
 
-**And the two "attributes" clauses, which are the half SAH-048 is really about.** The legacy control was a per-user flag with four bypasses, so the test must show that no attribute of the session or of the configuration changes the answer: a `set_config('app.allow_negative_stock', 'true', true)` session GUC, and a policy whose `inventory.allowNegative` is `true` (assumption 4).
+**And the two "attributes" clauses, which are the half LEGACY-048 is really about.** The legacy control was a per-user flag with four bypasses, so the test must show that no attribute of the session or of the configuration changes the answer: a `set_config('app.allow_negative_stock', 'true', true)` session GUC, and a policy whose `inventory.allowNegative` is `true` (assumption 4).
 
 **Files:**
-- Create: `tests/invariants/stock-availability.test.ts`, `tests/regression/sah-048.test.ts`
+- Create: `tests/invariants/stock-availability.test.ts`, `tests/regression/legacy-048.test.ts`
 
 **Interfaces:**
 - Consumes: `sharedApi`, `grantAdmin`, `FullContext`, `problemOf` and `sharedDb`, `thinRegression` (0B, §4.17.1); `withTenant` (production, §4.2.2) and `systemContext` (§4.2.2); `postDocument`, `recordOverride` (§4.3.1); `seedDocumentType` (2A), `grantCodes` (2B), `seedItem`, `seedWarehouse`, `seedAccount`, `seedTenantV2` (Tasks 1–2, 1A); `listDocumentEvents` and `DocumentEventRow`'s `id`/`occurredAt` members (2B); `lockStockKeys` indirectly, through the two posting paths (Task 8). **Not `app.audit_log`:** `app.document_event` is AUDIT_EXEMPT (§3.5.3) and no `attach_audit` ever runs on it, so this suite proves "audited" from the immutable, actor-stamped event row instead.
@@ -6283,7 +6283,7 @@ import type { StartedApi } from "../../apps/api/test/support/app";
 
 /**
  * Part VI test 18 (spec:2436) — "Negative stock is rejected by the data layer regardless of session flags,
- * user attributes, or write path. Overrides are explicit and audited." SAH-048.
+ * user attributes, or write path. Overrides are explicit and audited." LEGACY-048.
  *
  * The control is app.assert_stock_available, a BEFORE INSERT trigger on app.inventory_movement (migration
  * 0031). Nothing below reaches around it, because there is nothing to reach around: the check is not in a
@@ -6503,7 +6503,7 @@ describe("test 18 — stock availability is refused by the data layer, by every 
     expect(soh!.quantity).toBe("-5.000000");
   });
 
-  it("a session flag changes nothing — there is no flag to set (SAH-048's four bypasses)", async () => {
+  it("a session flag changes nothing — there is no flag to set (LEGACY-048's four bypasses)", async () => {
     const id = await draftIssue("5.000000");
     await expect(withTenant(db.rw, ctx(), async (tx) => {
       await tx`select set_config('app.allow_negative_stock', 'true', true)`;
@@ -6624,7 +6624,7 @@ Expected: **FAIL** on `PATH 1` with `expected 200 to be 422` — Task 8 wired st
 
 If the suite is written **before** Task 8 has merged, PATH 1 fails with `expected 200 to be 422` because no movement is written at all — which is the correct known-red state and the reason this task follows Task 8.
 
-- [ ] **Step 3: Write `tests/regression/sah-048.test.ts`**
+- [ ] **Step 3: Write `tests/regression/legacy-048.test.ts`**
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -6687,7 +6687,7 @@ thinRegression(
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `bun run --cwd tests test -- invariants/stock-availability.test.ts regression/sah-048.test.ts`
+Run: `bun run --cwd tests test -- invariants/stock-availability.test.ts regression/legacy-048.test.ts`
 Expected: **PASS** — eleven assertions in the suite, four in the regression file. **Test 18 is green from this commit.**
 
 If **PATH 2b** is the one that fails — `expected [] to have length 1`, i.e. *both* concurrent posts succeeded — the `lockStockKeys` call at the top of `applyMovements` is missing or was placed after `insertMovements`. That is the failure the case exists to catch, and Task 8 Step 4 is where it is fixed, not here.
@@ -6698,7 +6698,7 @@ Expected: PASS across the whole invariants and regression tier.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add tests/invariants/stock-availability.test.ts tests/regression/sah-048.test.ts
+git add tests/invariants/stock-availability.test.ts tests/regression/legacy-048.test.ts
 git commit -m "$(cat <<'EOF'
 test(invariants): acceptance test 18 — stock availability by every write path [3A T9]
 
@@ -6709,7 +6709,7 @@ authority at all would admit it, and it is refused. The raw app_rw path inserts
 straight into app.inventory_movement with no posting service and the BEFORE
 INSERT trigger refuses that too.
 
-The two attribute clauses are the half SAH-048 is really about: a session GUC
+The two attribute clauses are the half LEGACY-048 is really about: a session GUC
 changes nothing because no SQL in the repository reads one, and a policy with
 inventory.allowNegative: true changes nothing because no code reads that either
 (assumption 4) — spec:2436 wants the refusal regardless of user attributes and a
@@ -6721,7 +6721,7 @@ is AUDIT_EXEMPT, so the event row IS the record and no audit_log row exists), sc
 to ONE document (the next one is refused again), refused for the creator by 2B's
 guard, and refused for a principal without the code.
 
-sah-048 asserts the shape rather than the behaviour: a BEFORE INSERT trigger, no
+legacy-048 asserts the shape rather than the behaviour: a BEFORE INSERT trigger, no
 per-user column or GUC anywhere in schema app, an availability sum that reads
 the movement ledger and never the projection, and no source file reading a
 bypass flag.
@@ -7175,7 +7175,7 @@ describe("attachments on a lot — spec:1067's \"3 (lot link)\", §4.5.8's inven
     const body = await res.json();
     expect(body.lotId).toBe(lotId);
     expect(body.documentId).toBeNull();
-    expect(body.objectKey).toBe(`${s.tenant}/${body.id}`);       // server-generated (SAH-038)
+    expect(body.objectKey).toBe(`${s.tenant}/${body.id}`);       // server-generated (LEGACY-038)
   });
 
   it("refuses an upload naming both a document and a lot, and one naming neither", async () => {
@@ -7638,7 +7638,7 @@ export const ReplaceUnitConversionsBody = z.object({
 export const UnitConversionList = ListEnvelope(UnitConversionSchema).openapi("UnitConversionList");
 ```
 
-The two regexes are what make `denominator: "0"` a 400 rather than a 500 from `unit_conversion_denominator_check` — SAH-063 answered at the wire as well as in the schema.
+The two regexes are what make `denominator: "0"` a 400 rather than a 500 from `unit_conversion_denominator_check` — LEGACY-063 answered at the wire as well as in the schema.
 
 `warehouse.ts` adds `WarehouseKindSchema` (`z.enum(["stock", "in_transit"])`), `WarehouseSchema`, `CreateWarehouseBody` (with a required `branchId`), `UpdateWarehouseBody` (`nameEn`, `nameAr`, `parentId`), `WarehouseQuery`, `WarehouseList`, and
 
@@ -7861,7 +7861,7 @@ point COGS at a revenue account.
 
 The unit-conversion numerator and denominator are digit-string regexes on the
 wire, so denominator "0" is a 400 with a JSON Pointer instead of a 500 from a
-check_violation — SAH-063 answered at the wire as well as in the schema.
+check_violation — LEGACY-063 answered at the wire as well as in the schema.
 
 No DELETE route exists anywhere in the three: master data is archived
 (spec:2049), and this slice adds no app_rw DELETE grant. GET …/warehouses/tree
@@ -8281,10 +8281,10 @@ describe("app.serial_unit — ⚠️ OD-07, default NOT BUILT (spec:1032, 1310)"
     // one assertion. `dependency-rule` lints `import` statements, so reading the tree by path needs no
     // allowance and no tsconfig `include` entry.
     const files = readdirSync(resolve(import.meta.dirname, "../../../../tests/regression"));
-    // 3A is the NAMED creator of sah-052, 056 and 057 (§3.7.3), so their absence is this slice's statement
+    // 3A is the NAMED creator of legacy-052, 056 and 057 (§3.7.3), so their absence is this slice's statement
     // that the decision has not landed — not an oversight by a later slice. 6A appends to 052 when it does.
-    for (const sah of ["sah-052", "sah-056", "sah-057"]) {
-      expect(files.some((f) => f.startsWith(sah)), sah).toBe(false);
+    for (const legacyDefect of ["legacy-052", "legacy-056", "legacy-057"]) {
+      expect(files.some((f) => f.startsWith(legacyDefect)), legacyDefect).toBe(false);
     }
   });
 });
@@ -8300,7 +8300,7 @@ test(db): OD-07 is unanswered, so app.serial_unit is not built [3A T13]
 §3.0.3's "probably not needed" list and spec:1310 both put serial tracking
 outside a food distributor's scope, and §2.12's default for OD-07 is "not
 built". This asserts the absence rather than leaving it unstated, and asserts
-that sah-052, 056 and 057 do not exist — 3A is their named creator (§3.7.3), so
+that legacy-052, 056 and 057 do not exist — 3A is their named creator (§3.7.3), so
 their absence is a statement and not an omission.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
@@ -8316,9 +8316,9 @@ Append to `0029_create_warehouse_lot_variant.sql`, after `app.variant`:
 
 ```sql
 -- ── 5. serial_unit ⚠️ — appended by the OD-07 task, only after the owner confirmed serials are in scope.
--- spec:1181: "SerialUnit is a ROW, unique, not a range." SAH-052 was a serial that could be sold twice
--- because the uniqueness check had no callers; SAH-056 looked a serial up by length and prefix, which is
--- non-sargable and silently wrong; SAH-057 expanded serial blocks unit-by-unit with a full scan per unit.
+-- spec:1181: "SerialUnit is a ROW, unique, not a range." LEGACY-052 was a serial that could be sold twice
+-- because the uniqueness check had no callers; LEGACY-056 looked a serial up by length and prefix, which is
+-- non-sargable and silently wrong; LEGACY-057 expanded serial blocks unit-by-unit with a full scan per unit.
 -- One row per physical unit and one partial unique index answer all three.
 create table app.serial_unit (
   id           uuid primary key default uuidv7(),
@@ -8340,9 +8340,9 @@ create table app.serial_unit (
 -- The uniqueness that matters: one IN-STOCK unit per (item, serial). A sold unit may be re-serialled by a
 -- supplier and a returned one is still that serial, so a total unique index would refuse legitimate history.
 -- It is a UNIQUE INDEX and not a check, so two terminals racing on one serial contend on the index and
--- exactly one wins (acceptance test 17, which is 6A's) — the answer SAH-052's callerless check never gave.
+-- exactly one wins (acceptance test 17, which is 6A's) — the answer LEGACY-052's callerless check never gave.
 create unique index serial_unit_in_stock_key on app.serial_unit (item_id, serial) where status = 'in_stock';
--- Exact-match only. SAH-056's lookup was `where left(serial, n) = ...` over a computed length, which no index
+-- Exact-match only. LEGACY-056's lookup was `where left(serial, n) = ...` over a computed length, which no index
 -- can serve; this index is what makes `where item_id = $1 and serial = $2` a single-row probe.
 create index serial_unit_lookup_idx on app.serial_unit (company_id, serial);
 call app_meta.enable_tenant_rls('app.serial_unit');
@@ -8357,7 +8357,7 @@ drop index if exists app.serial_unit_in_stock_key;
 drop table if exists app.serial_unit;
 ```
 
-Then: add `"serial_unit"` to **no** linter set (§3.5.3's row is all dashes — it is an ordinary audited table); add the Drizzle mirror `packages/db/src/schema/serial_unit.ts`; flip `serial-unit.test.ts`'s two expectations and extend it with the exact-match probe and the in-stock-uniqueness race; and create `tests/regression/sah-052.test.ts`, `sah-056.test.ts` and `sah-057.test.ts` with `thinRegression(52 | 56 | 57, …)` blocks asserting, respectively: the partial unique index exists and a second `in_stock` insert of one `(item, serial)` is a 23505; `serial_unit_lookup_idx` exists and no source file matches `/left\s*\(\s*serial|substring\s*\(\s*serial/`; and that a serial enquiry is one indexed query, asserted by `explain (format json)` showing an `Index Scan` and no `Seq Scan` on `app.serial_unit`.
+Then: add `"serial_unit"` to **no** linter set (§3.5.3's row is all dashes — it is an ordinary audited table); add the Drizzle mirror `packages/db/src/schema/serial_unit.ts`; flip `serial-unit.test.ts`'s two expectations and extend it with the exact-match probe and the in-stock-uniqueness race; and create `tests/regression/legacy-052.test.ts`, `legacy-056.test.ts` and `legacy-057.test.ts` with `thinRegression(52 | 56 | 57, …)` blocks asserting, respectively: the partial unique index exists and a second `in_stock` insert of one `(item, serial)` is a 23505; `serial_unit_lookup_idx` exists and no source file matches `/left\s*\(\s*serial|substring\s*\(\s*serial/`; and that a serial enquiry is one indexed query, asserted by `explain (format json)` showing an `Index Scan` and no `Seq Scan` on `app.serial_unit`.
 
 **What 6A then owns and this task does not:** acceptance **test 17** (two terminals racing on one serial, §6.1) and the `pos.ticket.sell` path that allocates a serial. This task creates the table and the index the race contends on; 6A writes the race.
 
@@ -8369,7 +8369,7 @@ Expected: clean both ways, and `packages/db/test/privileges.test.ts`'s up → do
 Run: `bun run --cwd packages/db db:lint && bun run --cwd packages/db test -- test/inventory/serial-unit.test.ts`
 Expected: **PASS**, `0 violations`, four assertions (Step 1's two, now flipped to expect the table, plus the exact-match probe and the in-stock-uniqueness race).
 
-Run: `bun run --cwd tests test -- regression/sah-052.test.ts regression/sah-056.test.ts regression/sah-057.test.ts`
+Run: `bun run --cwd tests test -- regression/legacy-052.test.ts regression/legacy-056.test.ts regression/legacy-057.test.ts`
 Expected: **PASS**, three files.
 
 Commit:
@@ -8377,19 +8377,19 @@ Commit:
 ```bash
 git add packages/db/migrations/0029_create_warehouse_lot_variant.sql \
         packages/db/migrations/0029.down.sql packages/db/src/schema/serial_unit.ts \
-        packages/db/test/inventory/serial-unit.test.ts tests/regression/sah-052.test.ts \
-        tests/regression/sah-056.test.ts tests/regression/sah-057.test.ts
+        packages/db/test/inventory/serial-unit.test.ts tests/regression/legacy-052.test.ts \
+        tests/regression/legacy-056.test.ts tests/regression/legacy-057.test.ts
 git commit -m "$(cat <<'EOF'
 feat(inventory): serial_unit and the exact-match index [3A T13]
 
 OD-07 came back YES and this is the branch that answer opens. app.serial_unit is
 one ROW per physical unit (spec:1181 "SerialUnit is a ROW, unique, not a
 range"), with a PARTIAL unique index on (item_id, serial) where status =
-'in_stock' — SAH-052's uniqueness check had no callers, and an index is a
+'in_stock' — LEGACY-052's uniqueness check had no callers, and an index is a
 control rather than a convention: two terminals racing on one serial contend on
 it and exactly one wins. serial_unit_lookup_idx makes (company_id, serial) an
-exact-match probe, which is SAH-056's non-sargable left(serial, n) lookup made
-impossible. One row per unit is also SAH-057's per-unit full scan removed.
+exact-match probe, which is LEGACY-056's non-sargable left(serial, n) lookup made
+impossible. One row per unit is also LEGACY-057's per-unit full scan removed.
 
 The DDL is APPENDED to 0029 because §4.6.1 assigns it there and 0028-0033 has no
 spare number (0033 is the permission seed). That means an environment which
@@ -8400,7 +8400,7 @@ a tenant has transacted, this step is replaced by a new migration in the then
 current slice's range, and that is an amendment to §4.6.1.
 
 serial_unit joins NO linter set (§3.5.3's row is all dashes — an ordinary
-audited table), gains its Drizzle mirror, and brings sah-052, 056 and 057 into
+audited table), gains its Drizzle mirror, and brings legacy-052, 056 and 057 into
 existence; 3A is their named creator (§3.7.3). Acceptance test 17 stays 6A's:
 this commit creates the table and the index its race contends on.
 
@@ -9007,7 +9007,7 @@ Written against the writing-plans skill and the contracts document, and everythi
 2. **The stock advisory locks were taken only at step 12, which made the step-9 trigger racy.** §4.3.2 step 1's `for update` locks one *document*, so two documents issuing the same `(company, item, warehouse, lot)` both read the same committed movement sum, both satisfied `assert_stock_available` and both committed. Test 18's invariant was defeatable by concurrency alone, with no bypass and no override event. The loop is now `lockStockKeys` in `stock-on-hand.ts`, called by `applyMovements` **before** `insertMovements` and still by `mergeStockOnHand`; re-locking a held key is a no-op, so the second call is free. T9 gained PATH 2b, which is deterministic (T1 signals after its own post returns, then T2 starts) and goes red without the fix. Assumption 16 now names the READ COMMITTED property both lock sites rest on.
 3. **T9's PATH 1 asserted `status === "issued"` after a 422.** `postDocument` is one transaction and §4.5.4 routes `to: "posted"` straight into it, so the step-7 issue rolls back with the step-9 refusal: the document is a `draft` and its `number` is null. Both are now asserted, and the null number is the visible proof that a refused post costs no series number.
 4. **T9's "audited" case counted `app.audit_log` rows for `document_event`.** That table is AUDIT_EXEMPT (§3.5.3, §4.5.2, and T5's own quoted set), so no `attach_audit` runs on it and the count is always 0 — an assertion that could only fail. "Audited" is now proved from the artefact that exists: the immutable, actor-stamped event row, plus a refused `update` under both `app_rw` (privilege, `permission denied`) and `app_migrator` (the `document_event_immutable` trigger, `ERR_TABLE_IMMUTABLE`).
-5. **`applyConversion` rounded HALF_EVEN while the 0032 trigger rounds half away from zero.** `Quantity.convert` is HALF_EVEN by §4.2.1; Postgres `round()` is not. At a tie the trigger would then *refuse* a caller that computed `quantity` correctly — `ERR_VALIDATION_FAILED` on a legitimate line. `applyConversion` is now `Quantity.convert`'s body with the mode swapped — `times(numerator).div(denominator)` on the precision-40 `D`, one `round(…, QUANTITY_SCALE, "HALF_AWAY_FROM_ZERO")` at the end — and **not** `Quantity.multiply(conversion, …)`, which was the first candidate and is wrong: 0D implements `multiply` by collapsing the `Rational` to a `Decimal` before multiplying, so it divides first, which is the per-step shape 0D's own `convert` docstring names as the SAH-066 defect. The tie is asserted on both sides and at two entered quantities — `1 → 0.000001` pins the mode, `3 → 0.000002` pins the order — in the pure test and again against the trigger's derived `quantity`. The docstring, ADR 0036, the header bullet and the DoD failure hint all say *not `Quantity.convert`*, *not `Quantity.multiply`*, and why. This also answers the separate finding that `applyConversion` was a redundant spelling of a frozen method: it is a different operation, and the difference is now the point.
+5. **`applyConversion` rounded HALF_EVEN while the 0032 trigger rounds half away from zero.** `Quantity.convert` is HALF_EVEN by §4.2.1; Postgres `round()` is not. At a tie the trigger would then *refuse* a caller that computed `quantity` correctly — `ERR_VALIDATION_FAILED` on a legitimate line. `applyConversion` is now `Quantity.convert`'s body with the mode swapped — `times(numerator).div(denominator)` on the precision-40 `D`, one `round(…, QUANTITY_SCALE, "HALF_AWAY_FROM_ZERO")` at the end — and **not** `Quantity.multiply(conversion, …)`, which was the first candidate and is wrong: 0D implements `multiply` by collapsing the `Rational` to a `Decimal` before multiplying, so it divides first, which is the per-step shape 0D's own `convert` docstring names as the LEGACY-066 defect. The tie is asserted on both sides and at two entered quantities — `1 → 0.000001` pins the mode, `3 → 0.000002` pins the order — in the pure test and again against the trigger's derived `quantity`. The docstring, ADR 0036, the header bullet and the DoD failure hint all say *not `Quantity.convert`*, *not `Quantity.multiply`*, and why. This also answers the separate finding that `applyConversion` was a redundant spelling of a frozen method: it is a different operation, and the difference is now the point.
 6. **T10's handler block imported `eachTenant` and `systemContext` and used neither**, with prose underneath instructing the reader to undo the block. Both are gone from the import line, and the prose now explains why neither belongs (the fan-out is over companies; `ctx` *is* the system context) instead of contradicting the code above it.
 7. **`planMovements` gave a reversed non-transfer movement the *declared* costing.** A reversal of an `issue` policy emitted `{ effect: "receipt", costing: "consume_layers" }` — a receipt telling 3B to consume layers, frozen into the array 3B, 3D, 6A and 9B all read. The transfer branch had the opposite bug: it overrode a legitimate `costing: "zero"`, deleting the free-of-charge marker §4.7.1 reads. One helper, `costingFor`, now serves all three emission sites: costing follows the emitted effect, and `"zero"` passes through. Rule 9, two test cases and an ADR-0035 consequence bullet.
 8. **Migration 0029 carried a per-tenant back-fill `insert`.** §3.4.8 restricts migration data to `app.permission` because FORCE RLS binds `app_migrator`, so the statement could never insert a row — including in the local `up`-in-stages case it was written for, which also runs with no tenant set. Deleted, and replaced by an assertion in `lot.test.ts` that no `app.item` row lacks a `NONE` lot — which runs with a tenant set and therefore checks something.
@@ -9048,7 +9048,7 @@ Written against the writing-plans skill and the contracts document, and everythi
 15. **`sharedApi()` is not a `StartedApi`, and three suites used it as one.** 0B declares `sharedApi(): Promise<{ api: StartedApi; a: Seed; b: Seed }>` (0b:5700), so `api = await sharedApi(); api.db` was a type error four ways over. T9's `tests/invariants/stock-availability.test.ts` now destructures `({ api } = await sharedApi())` and — per §4.18 round 3, which states that consumers of the memoised instance must not stop it — no longer calls `api.stop()`. The three **`apps/api` route suites** (T10, T11, T12) do what 2C's and 3C's route suites do instead: `startApi()` for their own instance, with `grantAdmin`/`problemOf` still imported from `tests/support/api` five levels up. That is also the shape that makes their `afterAll(() => api.stop())` correct.
 16. **Three suites handed `grantCodes` and `as` a bare `crypto.randomUUID()` as a principal.** This is exactly the defect reviewer-round finding 3 fixed in T5 and it survived in three more places — T10's `reader`, T11's `readOnly`, T12's `priceOnly`. `app.role_assignment.principal_id` has a foreign key to `app.principal`, so `grantCodes` would have been a 23503; and had it not, `request({ as })` signs the id as its own subject, which resolves to no membership (§4.2.12's orphan-token case) and answers 401 rather than the 200/403 each case asserts. All three now create a real principal in 2B's `secondPrincipal` shape (plan0A:837 — the principal insert with no `returning`, the membership in the same transaction), written out in each file.
 17. **`sharedDb()` was used with three mutually incompatible shapes.** T1 and T2 wrote `const { rw, a } = await sharedDb()` and then `rw.db` and `rw.db.rw`; Tasks 5, 6, 8 and 9 wrote `sharedDb().admin` and `sharedDb().rw` with no `await` at all. §4.17.1 declares one `Db` + `rw` + two `Seed`s, and both 1A (1a:5440) and 2B (2b:3951) spell the same shape out: `{ db: Db; rw: Sql; a: Seed; b: Seed }`, awaited. That shape is now stated once, under T1 Step 10, and used at all **sixteen** sites — `db` for a `fixtures.ts` seeder and for `db.admin` catalogue queries, `rw` for the production `withTenant`. §4.18's round-2 open item 5 is cited there as what this plan is choosing *between*, not as licence to leave both.
-18. **The four-argument test `withTenant` appeared inside the root `tests/` tree.** Hazard 15 is one sentence — "Root `tests/` use the production one" — and §4.2.12 repeats it. `sah-063.test.ts`, `sah-064.test.ts` and T10's `JOB_PROBES` entry all called `withTenant(sql, tenantId, actorId, fn)`, and the prose under T1 Step 10 told the reader to import it from `@dulja/db/test`, which is where hazard 15 confines it. All four now use `withTenant(rw, { tenantId, actorId, requestId }, tx => …)` from `@dulja/db`, and the prose says so. T8's `apply-movements.test.ts` had it right all along (`withTenant as prodWithTenant`), which made the inconsistency internal as well as contractual.
+18. **The four-argument test `withTenant` appeared inside the root `tests/` tree.** Hazard 15 is one sentence — "Root `tests/` use the production one" — and §4.2.12 repeats it. `legacy-063.test.ts`, `legacy-064.test.ts` and T10's `JOB_PROBES` entry all called `withTenant(sql, tenantId, actorId, fn)`, and the prose under T1 Step 10 told the reader to import it from `@dulja/db/test`, which is where hazard 15 confines it. All four now use `withTenant(rw, { tenantId, actorId, requestId }, tx => …)` from `@dulja/db`, and the prose says so. T8's `apply-movements.test.ts` had it right all along (`withTenant as prodWithTenant`), which made the inconsistency internal as well as contractual.
 19. **`applyConversion` imported `D` from the wrong 0D module.** `packages/domain/src/money/rounding.ts` exports `round`, the four `*_SCALE` constants and `RoundingMode`; the cloned precision-40 `D` is `money/decimal.ts` (0d:355, barrelled at 0d:439). One import line became two. This is the file the whole HALF_AWAY_FROM_ZERO argument of ADR 0036 lives in, so it not resolving would have taken the slice's most-argued decision with it.
 20. **`UnitConversionMissingError` was declared twice and exported from the barrel twice.** T1 created it in `inventory/errors.ts` and added it to `packages/db/src/index.ts`; T6 declared the same class again in `inventory/units.ts`, with a different message, and added a second barrel line. That is TS2308 at the `bun run typecheck` T6 Step 14 requires to pass. T1 keeps the class and the barrel line; T6 imports it from `./errors`; and T1's message text is now the one T6's test asserts, so the two cannot drift.
 21. **T8 Step 8 rested on a `stockScenario()` helper nothing defined.** The case that discharges definition-of-done item 7 read `const { s, itemId, warehouseId } = await stockScenario()`, used an undefined `ctx()`, and asserted a hard-coded `"6.000000"` against a scenario that did not exist — while the header said "Shared test helpers (§4.17.1) — none added". The case is now written out in full against the file it actually appends to: 1B's `projection-rebuild.test.ts` opens its own `startDb()` and holds `db`, `a`, `b` and `ctxFor(s)` (1b:797–806), so the new case reuses those, seeds its own tenant and the three §4.14 test types with the same policy text T8 Step 1 uses, posts a receipt, an issue and a transfer, and **derives** the two expected quantities from the three posted ones in exact `numeric` rather than stating a literal. Step 8 also now carries the edit to 1B's registry assertion, which the old text described and did not write.
@@ -9076,7 +9076,7 @@ Written against the writing-plans skill and the contracts document, and everythi
 
 ## Execution handoff
 
-**Read before starting.** Contracts §2's 3A card, all of §3, §4.1, §4.2, §4.3, §4.4, §4.5.3, §4.5.6, §4.5.8, §4.6.1, §4.7, §4.17, §4.18 and §5; spec §0.2, §3.0.3 (spec:1021–1025, 1032), §3.0.4 (spec:1048, 1062, 1067), §3.3, §3.4, §3.7.3, §3.7.5, §3.8, §3.9, §4.2.1, §4.2.2, Part VI tests 17 and 18, Part I SAH-048, 050, 052, 056, 057, 063, 064, 066, 067, 071, 073, 074. Then this plan's header and its two assumption blocks, end to end, before Task 1.
+**Read before starting.** Contracts §2's 3A card, all of §3, §4.1, §4.2, §4.3, §4.4, §4.5.3, §4.5.6, §4.5.8, §4.6.1, §4.7, §4.17, §4.18 and §5; spec §0.2, §3.0.3 (spec:1021–1025, 1032), §3.0.4 (spec:1048, 1062, 1067), §3.3, §3.4, §3.7.3, §3.7.5, §3.8, §3.9, §4.2.1, §4.2.2, Part VI tests 17 and 18, Part I LEGACY-048, 050, 052, 056, 057, 063, 064, 066, 067, 071, 073, 074. Then this plan's header and its two assumption blocks, end to end, before Task 1.
 
 **Phase gate.** Do not start until 2A, 2B and 2C are merged and the Phase 2 definition of done is green in CI: a tenant-defined document type numbers, posts, prints, reports and reverses with zero code, and the state machine, `document_event`, R1/R2 and gapless numbering are proven.
 

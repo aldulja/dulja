@@ -1,11 +1,11 @@
-# Dulja — Building the Replacement for Sahlisoft Accounting
+# Dulja — Building the Replacement for a Legacy Accounting System
 ## Defect register, root-cause analysis, and a SaaS-grade target specification
 
-**Audience:** the engineering agent/team implementing **Dulja**, the product that replaces Sahlisoft Accounting.
+**Audience:** the engineering agent/team implementing **Dulja**, the product that replaces a legacy accounting system.
 **Document version:** 1.2 · 2026-09-05 · **Status: ready for implementation** (see §0.2 for how to begin). Changelog at the end of this header block.
 **Evidence standard:** every defect in Part I cites the source file and line it was read from; every settled decision is logged in §0.3.
 **Review status:** two independent adversarial review passes (56 findings raised, all resolved); reference schema in §3.8 reviewed for Postgres 18 correctness including concurrency of the audit chain, RLS on identity resolution, and cross-tenant FK hardening. A third pass (v1.1, this version) found that the identity-resolution path could not work as written under `FORCE ROW LEVEL SECURITY`, and that the bootstrap could not insert its first principal; both are corrected and listed in the changelog below. A fourth pass (v1.2, 2026-09-05) brought **HR & Payroll into v1** and added a **named role catalogue** on the owner's instruction; three independent design proposals (minimal, compliance-first, operator-first) were compared and judged before the synthesis in §3.10 and §4.2.1–4.2.2.
-**Companion document:** `sahlisoft-accounting-analysis.md` (architecture & data-model dossier — the *what it is*; kept out of the public repository). This document is the *what is wrong with it and what to build instead*.
+**Companion document:** `legacy-system-analysis.md` (architecture & data-model dossier — the *what it is*; kept out of the public repository). This document is the *what is wrong with it and what to build instead*.
 
 **Changes in 1.1 (2026-09-04)** — rows marked *Confirm* or *Decide* need the owner's sign-off before task 0.2 (§5.3).
 
@@ -52,7 +52,7 @@
 
 **If you are the implementing agent, read in this order:** §0.2 (how to work) → §0.3 (what is already decided) → §0.4 (glossary) → Part II (why the old system failed) → Part III (what to build, including the reference schema in §3.8, conventions in §3.9 and the HR & payroll design in §3.10) → §5.0 (your first sixteen tasks). Then use Part I and Part VI as the acceptance bar throughout.
 
-Read Part I as a **regression suite for a system that does not exist yet**. Every defect (`SAH-###`) is written so it can be turned directly into a failing test against Dulja. If Dulja can reproduce the failure scenario, it has inherited the defect.
+Read Part I as a **regression suite for a system that does not exist yet**. Every defect (`LEGACY-###`) is written so it can be turned directly into a failing test against Dulja. If Dulja can reproduce the failure scenario, it has inherited the defect.
 
 Read Part II before designing anything. Six structural causes generate almost all 87 defects. Fixing symptoms without fixing causes reproduces them.
 
@@ -78,7 +78,7 @@ Part III is the target architecture and settled stack. Part IV is the SaaS stand
 
 2. **The UI is not specified here.** Screen-level behaviour, keyboard shortcuts and data-entry ergonomics must be sourced separately (screenshots, a recorded walkthrough, or operator interviews) before UI work begins. Existing users are fast keyboard operators; regressing that will fail adoption regardless of architecture. **Do not invent the UI from this document.**
 
-Six of the highest-impact findings (SAH-001, 002, 010, 021, 032, 049) were re-verified line-by-line against source after the audit. Findings marked ⚠️ *unverified* depend on DDL constraints or client code not available; treat them as hypotheses to confirm, not facts.
+Six of the highest-impact findings (LEGACY-001, 002, 010, 021, 032, 049) were re-verified line-by-line against source after the audit. Findings marked ⚠️ *unverified* depend on DDL constraints or client code not available; treat them as hypotheses to confirm, not facts.
 
 ## 0.2 Operating brief for the implementing agent
 
@@ -86,7 +86,7 @@ You are **implementing**, not re-deciding. The rules below are the contract.
 
 **Work in the phase order of Part V.** A phase begins only when the previous phase's *definition of done* passes in CI. Do not start Phase 3 with Phase 1's integrity checker still red.
 
-**Part I is your regression suite.** Before closing any phase, write a test for every `SAH-###` that phase touches (the Appendix A index maps each defect to a root cause; §3.9 says where the test files live). If you can reproduce a Part I failure scenario against Dulja, the phase is not done.
+**Part I is your regression suite.** Before closing any phase, write a test for every `LEGACY-###` that phase touches (the Appendix A index maps each defect to a root cause; §3.9 says where the test files live). If you can reproduce a Part I failure scenario against Dulja, the phase is not done.
 
 **On `⚠️` markers, two kinds.**
 - **Owner decides — stop and ask:** LHDN MyInvois specifics (§4.7); whether serials are needed and every row of §3.0.3; whether historical POS data must migrate (Part VII #10); the v1 costing method (§3.4 recommends weighted average — confirm); the code-signing certificate (§5.0 task 0.13); the v1.1 and v1.2 changelog rows marked *Confirm* or *Decide* (header of this document); the nine role names (§4.2.1); the ⚠️ rows in §3.0.4 and §3.10.1.
@@ -97,15 +97,15 @@ You are **implementing**, not re-deciding. The rules below are the contract.
 **Never**, at any phase, for any reason:
 - write to a ledger or movement table outside the posting service;
 - represent money as a float, anywhere, including in TypeScript;
-- build SQL by string concatenation (SAH-036/037/069);
-- issue DDL from application code (SAH-053);
-- disable an invariant, constraint or trigger "temporarily" (SAH-027, 041, 053);
-- gate an audit write on any flag (SAH-030);
+- build SQL by string concatenation (LEGACY-036/037/069);
+- issue DDL from application code (LEGACY-053);
+- disable an invariant, constraint or trigger "temporarily" (LEGACY-027, 041, 053);
+- gate an audit write on any flag (LEGACY-030);
 - hard-code a package version into a source file — the lockfile owns versions.
 
 **Always**, for every new table: `tenant_id`, an RLS policy, `created_at`, a migration, and a test that a second tenant cannot see it. For every new endpoint: Zod schema, OpenAPI entry, idempotency on unsafe methods, and a tenant-isolation test. For every UI screen: verified in both text directions before merge.
 
-**The UI is not specified here.** Before beginning any screen, request from the owner: screenshots of the equivalent Sahlisoft screen, and a two-minute description of how a fast operator uses it. Design the new screen to be *at least as fast by keyboard*. Do not invent workflows from this document.
+**The UI is not specified here.** Before beginning any screen, request from the owner: screenshots of the equivalent legacy screen, and a two-minute description of how a fast operator uses it. Design the new screen to be *at least as fast by keyboard*. Do not invent workflows from this document.
 
 **Report per phase**, in writing, against the definition of done — what passes, what does not, what you decided under ADR, what you are asking. Short.
 
@@ -138,14 +138,14 @@ You are **implementing**, not re-deciding. The rules below are the contract.
 | D23 | Architecture shape | Modular monolith + worker process | microservices | §3.2.3 |
 | D24 | Product name | **Dulja** | — | title |
 | D25 | HR & Payroll | In v1 as Phase 8: employee master as a Party extension, effective-dated compensation, statutory schemes (EPF, SOCSO, EIS, PCB/MTD) as versioned **verified** rate tables, PAYROLL as a document type through the posting service, POS clock-in as attendance events; a leave register only if the owner confirms; rosters, clock-file import, incident/penalty engines, gratuity accrual, staff self-service and e-filing connectors deferred | rebuilding the legacy 36-table Salaries module; deferring HR entirely | §3.10 |
-| D26 | Roles and permissions | Nine seeded system roles; `<module>.<resource>.<action>` codes in five modules; branch scope through `role_assignment_branch`; one predicate `app.actor_has()`; segregation of duties enforced by data-layer triggers reading `document_event` | flat admin/user; permissions as a blob (SAH-078); UI-only enforcement | §4.2.1, §4.2.2 |
+| D26 | Roles and permissions | Nine seeded system roles; `<module>.<resource>.<action>` codes in five modules; branch scope through `role_assignment_branch`; one predicate `app.actor_has()`; segregation of duties enforced by data-layer triggers reading `document_event` | flat admin/user; permissions as a blob (LEGACY-078); UI-only enforcement | §4.2.1, §4.2.2 |
 | D27 | Module coverage for the first customer | Bank reconciliation, goods receipt + GRNI, import-shipment document, delivery order, stock count, two-step transfer, expiry write-off and till cash lifecycle added to Phases 3, 4 and 6 | discover them in production | §3.0.4 |
 
-## 0.4 Glossary — Sahlisoft term → new term
+## 0.4 Glossary — legacy term → new term
 
 Part I quotes the old system's names. Read them through this table.
 
-| Sahlisoft | Meaning there | New system | Notes |
+| Legacy system | Meaning there | New system | Notes |
 |---|---|---|---|
 | `Site` | company / branch / fiscal container; part of every PK | **Company** (under a **Tenant**) + **Branch** as a dimension | Tenant is new; Site conflated company and branch |
 | `Job` | project / contract / sometimes fiscal year | **Project** dimension; fiscal year is **FiscalPeriod** | Separate the two concepts |
@@ -193,7 +193,7 @@ Legend — **C** Critical (silently wrong money, or full compromise) · **H** Hi
 
 These are the most dangerous class: no exception, no log, no user-visible symptom. The books are simply wrong.
 
-### SAH-001 · **C** · Denormalised currency balances are updated without the tenant key
+### LEGACY-001 · **C** · Denormalised currency balances are updated without the tenant key
 `standard/OnVouItemsAIUD.sql:40–60` updates `AccCurTotals` with:
 ```sql
 where ("AcrtAccount"=old."ItmAccount" and "AcrtCur" = old."ItmCur");
@@ -205,7 +205,7 @@ No `AcrtSite`. But the INSERT at `:63–73` supplies `new."ItmSite"`, and the re
 **New system:** aggregate read, write and rebuild paths must use an identical key, mechanically. Prefer deriving balances from the ledger; if a projection is materialised, generate all three paths from one key definition.
 **Test:** two tenants, same account and currency, post concurrently; assert each tenant's balance equals its own postings and nothing else.
 
-### SAH-002 · **C** · The upsert never fires on UPDATE, so re-keying a posting destroys the amount
+### LEGACY-002 · **C** · The upsert never fires on UPDATE, so re-keying a posting destroys the amount
 `standard/OnVouItemsAIUD.sql:24–26`, `:61`, `OnVouItemsAIUD_Objects.sql:33–64`:
 ```sql
 if (not deleting) then
@@ -220,7 +220,7 @@ The create-missing-row branch is gated on the DML verb, not on `ROW_COUNT` alone
 **New system:** never condition a create-missing-row branch on the DML verb. Use a real upsert on the full key, applied symmetrically to reversal and application.
 **Test:** post to A, re-key the line to a never-used account B, assert `sum(all balances) == sum(all postings)`.
 
-### SAH-003 · **C** · Nothing enforces that debits equal credits
+### LEGACY-003 · **C** · Nothing enforces that debits equal credits
 There is **no trigger on `Vouchers` at all**. Grep for `sum("ItmDebit")`, `Unbalance`, `IsBalanced` across all 913 objects returns zero hits. `OnVouItemsBIU.sql:7–13` is the entire before-insert validation of a ledger line — it defaults currency and copies local amounts. No check that debit and credit are not both non-zero on one line, no sign check, no per-document balance check at any point.
 
 **Failure:** a single-sided journal entry commits successfully. `AccTotals`/`AccObjects` move. The trial balance is permanently out, and **no repair procedure can detect it** — `procFixTotals` faithfully re-sums the same unbalanced rows and reports agreement.
@@ -228,7 +228,7 @@ There is **no trigger on `Vouchers` at all**. Grep for `sum("ItmDebit")`, `Unbal
 **New system:** balance is a deferred constraint enforced at commit, per document and per currency, on base-currency amounts. Ledger tables are not directly writable by application roles; the only write path is a posting service.
 **Test:** attempt a single-sided entry through every write path including bulk import; all must reject.
 
-### SAH-004 · **C** · Weighted-average cost is advanced on INSERT but never recomputed on UPDATE or DELETE, and nothing can rebuild it
+### LEGACY-004 · **C** · Weighted-average cost is advanced on INSERT but never recomputed on UPDATE or DELETE, and nothing can rebuild it
 Cost is computed only inside `if (inserting)` — `standard/OnBillItemsAIUD.sql:87–89`:
 ```sql
 CstCost = ((CstCost * CstBalance + CurTotal)) / CurBalance;
@@ -239,7 +239,7 @@ On delete (`:145–157`) and update (`:159–173`) only quantities move and a di
 
 **New system:** cost is a derived function of an immutable ordered movement ledger, recomputed forward from any affected point. Never a mutable running scalar.
 
-### SAH-005 · **C** · `MatCosts.Changed` is never set on INSERT, so back-dated documents are never recosted
+### LEGACY-005 · **C** · `MatCosts.Changed` is never set on INSERT, so back-dated documents are never recosted
 `CstChanged = 1` is written in exactly two places — the DELETE branch (`OnBillItemsAIUD.sql:152`) and the UPDATE branch (`:168`). The INSERT branch (`:40–142`) never sets it. Meanwhile the incremental update orders by document **ID** (`:91–93`, `if (new."BtmMaster" > Master)`) while the batch replay orders by **date** (`procCalcCosts.sql:89`), and the batch replay only visits dirty materials (`:72–74`, `inner join "MatCosts" ... "CstChanged" = 1`).
 
 **Failure:** on 30 September a clerk enters a goods receipt dated 1 September — routine in this domain. The new row has the highest ID, so the trigger folds September's price in as if it were the newest transaction, *after* all of September's sales. `CstChanged` stays 0. The nightly `procCalcCosts(vForce=0)` skips the material entirely and **never corrects it**. All of September's sales stay mis-costed until somebody happens to edit an unrelated line of that material.
@@ -248,7 +248,7 @@ On delete (`:145–157`) and update (`:159–173`) only quantities move and a di
 
 **New system:** maintain a per-item *costing watermark* (earliest date needing recompute). Any insert/update/delete with an effective date earlier than the watermark moves it back automatically. Invalidation must be structural, not a boolean set from three of four code paths.
 
-### SAH-006 · **C** · Editing a bill line's material, job, batch, site or warehouse permanently desynchronises cost aggregates
+### LEGACY-006 · **C** · Editing a bill line's material, job, batch, site or warehouse permanently desynchronises cost aggregates
 `OnBillItemsAIUD.sql:163–171` (and identically `OnBtmJobCosts.sql:171–180`, `OnBtmBatchCosts.sql:176–186`) uses a single combined statement keyed on the **OLD** key:
 ```sql
 update "MatCosts" set
@@ -261,7 +261,7 @@ where "CstSite" = old."BtmSite" and "CstMaterial" = old."BtmMaterial";
 
 **New system:** an edit is a full reversal on the old key plus a fresh application on the new key, as two statements, uniformly across every derived table. Better: append-only movements, no in-place aggregate maintenance.
 
-### SAH-007 · **C** · Production/repackaging writes value-less movements that NULL-poison a material's cost for all history
+### LEGACY-007 · **C** · Production/repackaging writes value-less movements that NULL-poison a material's cost for all history
 `standard/procProducePackage.sql:61–81` inserts both the consuming and producing lines with **no `BtmPrice`, `BtmLocalPrice`, `BtmTotal`, `BtmPureTotal`, `BtmLocalCost`, `BtmSite` or `BtmJob`**. `BtmPureTotal` is therefore NULL, and both costing engines consume it directly (`OnBillItemsAIUD.sql:38,89`; `procCalcCosts.sql:195`).
 
 **Failure:** one packaging run on a material with cost 42.00 and 500 on hand → `CstCost = (42*500 + NULL)/500` = **NULL**. The next sale coalesces NULL to 0, so cost becomes **0.00**. A full recompute does not fix it — `procCalcCosts` hits the same NULL, `Cost` becomes NULL and propagates to every remaining row of that material. COGS goes to zero; gross margin reports 100% on every subsequent sale.
@@ -270,7 +270,7 @@ Note there is **no BOM cost roll-up anywhere in the corpus** — `procProducePac
 
 **New system:** value is a mandatory non-null attribute of every stock movement, rejected at write time if absent. Manufacturing values output from summed valued inputs via an explicit BOM roll-up.
 
-### SAH-008 · **C** · Weighted-average cost can go negative, explode by 10,000×, or be wiped to zero
+### LEGACY-008 · **C** · Weighted-average cost can go negative, explode by 10,000×, or be wiped to zero
 `procCalcCosts.sql:158–209`. Three reachable failure modes:
 
 **(a) Negative cost.** On hand 5 @ 10 (`aCostQnt = 5`); return 6 to supplier at 5 (`aQnt = −6`, `aTotal = −30`). `aCurrentQnt = −1`. `Cost = (10·5 − 30)/(−1) = **−20.00**`. Every later sale books *negative* COGS, inflating gross profit.
@@ -283,7 +283,7 @@ Also: the **opening balance is loaded then mathematically discarded** (`:99–10
 
 **New system:** clamp the divisor to a minimum meaningful quantity; refuse rather than absorb issues exceeding stock; make negative computed cost a hard error, not a stored value; seed the running balance from opening quantity *and* opening cost.
 
-### SAH-009 · **C** · Three different weighted-average formulas exist, so cost and profit reports cannot reconcile
+### LEGACY-009 · **C** · Three different weighted-average formulas exist, so cost and profit reports cannot reconcile
 `procCalcCosts`, `procSumBillItems` and the `OnBillItemsAIUD` trigger are three independent implementations. Divergences:
 
 | | trigger | `procCalcCosts` | `procSumBillItems` |
@@ -299,7 +299,7 @@ Worked example, prior balance −10, cost 5, receiving 4 units for 40: trigger �
 
 **New system:** exactly one costing implementation, called by everything, with transfer/reject/negative-stock policy stated once and covered by golden-file tests.
 
-### SAH-010 · **C** · `procCalcJobCosts` cannot compute per-job cost, and its incremental mode cannot execute at all
+### LEGACY-010 · **C** · `procCalcJobCosts` cannot compute per-job cost, and its incremental mode cannot execute at all
 A copy-paste clone of `procCalcCosts`. The job dimension was added to the SELECT list and the write targets but **not to the ordering or the group-break** — `:92` orders by `"BtmMaterial","BtmDate","BtmMaster"`; `:109` breaks on `if ("Material" <> "aMaterial")`. `aJob` appears only in write targets.
 
 Separately, the incremental mode joins `MatCosts` (`:75`) but emits a `PLAN` naming `MatJobCosts` (`:87`) — a table not in the FROM clause. Firebird rejects the plan at runtime, so `MjcChanged` is **never cleared** and every job-costed material stays permanently dirty.
@@ -308,7 +308,7 @@ Separately, the incremental mode joins `MatCosts` (`:75`) but emits a `PLAN` nam
 
 **New system:** per-job cost requires `(item, job)` in both sort and group key. Never build a `PLAN` clause and a `FROM` clause from independent code paths.
 
-### SAH-011 · **C** · NULL arithmetic irreversibly nulls balances and tax boxes
+### LEGACY-011 · **C** · NULL arithmetic irreversibly nulls balances and tax boxes
 No aggregate update uses `coalesce`. `OnVouItemsAIUD.sql:22–23`: `"ActAdminDebit" = "ActAdminDebit" + new."ItmLocalDebit"`. `OnVouItemsBIU.sql:9–13` only populates `ItmLocalDebit/Credit` when `ItmCur = 1`; for foreign currency the client supplies them and nothing rejects NULL.
 
 **Failure (ledger):** one foreign-currency line with NULL `ItmLocalDebit` makes `AccTotals.ActAdminDebit` become NULL. Every later posting computes `NULL + amount = NULL`. The balance is permanently NULL, renders as blank or zero, and only a full table rebuild recovers it.
@@ -317,7 +317,7 @@ No aggregate update uses `coalesce`. `OnVouItemsAIUD.sql:22–23`: `"ActAdminDeb
 
 **New system:** `NOT NULL DEFAULT 0` on every monetary column; coalesce at every accumulation boundary; a check that a return's base and tax are both present or both absent.
 
-### SAH-012 · **C** · Base-currency amounts are never derived from value × rate, and the rate is never validated
+### LEGACY-012 · **C** · Base-currency amounts are never derived from value × rate, and the rate is never validated
 The identity is asserted only in a *repair* procedure — and incorrectly. `standard/procFixValues.sql:4–9`:
 ```sql
 "ItmLocalDebit" = case when ("ItmEqu"=1) then "ItmLocalDebit" else "ItmDebit" * "ItmEqu" end
@@ -330,35 +330,35 @@ When `ItmEqu = 1` it leaves the stored value **unchanged**, so base-currency inc
 
 **New system:** store rate and both amounts; enforce `base = round(value × rate, scale)` as a check constraint at post time with documented rounding and tolerance; capture rate source and timestamp; reject rates a rate-source cannot justify.
 
-### SAH-013 · **H** · Reversal reads *current* document-type flags instead of what was originally applied
+### LEGACY-013 · **H** · Reversal reads *current* document-type flags instead of what was originally applied
 `OnVouItemsAIUD_Objects.sql:7–16` resolves `MunIsOpen` from the live `Muniments` row at trigger time and uses it for **both** the subtract (`:27`) and the add (`:42`). Same in `OnBillItemsAIUD.sql:30–33` for `IsTrans`/`IsOpen`.
 
 **Failure:** muniment 7 has `IsOpen=1`; a line posts 10,000 to `AcoOpenDebit`. An admin later clears `IsOpen` (nothing prevents this). The user deletes the line: the reversal evaluates `IsOpen = 0` and subtracts **0**. `AcoOpenDebit` retains 10,000 for a line that no longer exists. `procFixObjects` then rebuilds using *current* flags, producing a third figure matching neither.
 
 **New system:** store the classification on the posted row, immutable at post time. Document-type definitions are versioned and non-editable once used.
 
-### SAH-014 · **H** · `procSumVouItems` silently discards the caller's exchange rate
+### LEGACY-014 · **H** · `procSumVouItems` silently discards the caller's exchange rate
 `procSumVouItems.sql:108–119`: when the caller supplies a non-zero `vEqu` — the only reason to pass it — the `else` branch overwrites it with `1`.
 
 **Failure:** a report requests balances in currency 2 at contractual rate 1500. `vEqu` becomes 1, and the computation at `:220` divides by 1 — the report prints base-currency figures under a foreign-currency heading, **1500× too large**, with no error.
 
 Related: `:188–193` relies on Firebird leaving a singleton `SELECT ... INTO` target unchanged when no row matches; inside the loop at `:200–205` there is no reset, so a row predating the first `CurHistory` entry silently reuses the previous row's rate. ⚠️ *Version-dependent — confirm behaviour on the target engine.*
 
-### SAH-015 · **H** · `procSumBillItems` computes its date window with a predicate that can never be satisfied
+### LEGACY-015 · **H** · `procSumBillItems` computes its date window with a predicate that can never be satisfied
 `:90–91` coalesces `vJob` to 0; `:101–103` then tests `where (:"vJob" is null) or ("BtmJob"=:"vJob")` — always false, so always `BtmJob = 0`. The result drives the time-weighted average at `:201–205`.
 
 **Failure:** a contracting installation posts every line against a project. `min/max` over `BtmJob = 0` returns NULL. `Average` becomes NULL for every material and all average-stock and stock-turn figures are blank, with no error. On a mixed installation the time-weighting denominator is simply wrong.
 
 **New system:** compute the window from the same filtered set as the body; never coalesce a parameter before a path tests it for NULL.
 
-### SAH-016 · **H** · `MatStatus` min/max prices ratchet permanently and are maintained only on INSERT
+### LEGACY-016 · **H** · `MatStatus` min/max prices ratchet permanently and are maintained only on INSERT
 `OnMatStatusBU.sql:6–10` refuses to raise `MtcMin` or lower `MtcMax`. The only maintainer, `OnBillItemsStatusAI.sql:1–2`, is **after insert only** — no update or delete trigger.
 
-**Failure:** a clerk fat-fingers 0.01 instead of 1.00, saves, notices, deletes the line. `MtcMin` is now 0.01 and cannot be raised. The "lowest price ever sold" figure used for floor-price checks is permanently wrong. `procFixMatStatus` does not rescue it (see SAH-060).
+**Failure:** a clerk fat-fingers 0.01 instead of 1.00, saves, notices, deletes the line. `MtcMin` is now 0.01 and cannot be raised. The "lowest price ever sold" figure used for floor-price checks is permanently wrong. `procFixMatStatus` does not rescue it (see LEGACY-060).
 
 Also: `:6` tests `if (new."BtmSize" <> 0)` — unknown when NULL, so the whole update is silently skipped; `MtcLatest` is written unconditionally while `MtcPrice`/`MtcDate` are date-guarded, so a back-dated invoice sets "latest price" to the *older* price while "price" keeps the newer one.
 
-### SAH-017 · **H** · Order-delivery tracking double-adds bonus on edit and never reverses on re-pointing
+### LEGACY-017 · **H** · Order-delivery tracking double-adds bonus on edit and never reverses on re-pointing
 `Orders/EvnOnBillItemsAI.sql:30`:
 ```sql
 "OdtTransferredBonus" = "OdtTransferredBonus" + old."BtmBonus" + new."BtmBonus"
@@ -371,21 +371,21 @@ This is the concrete answer to whether the `Qnt`/`Size`/`Bonus` → `Debit`/`Cre
 
 **New system:** define delivered-quantity once; derive every consumer from it.
 
-### SAH-018 · **H** · Deleting a return line never decrements; editing one double-counts
+### LEGACY-018 · **H** · Deleting a return line never decrements; editing one double-counts
 `OnBillItemsAIUD.sql:290–322`. The enclosing `if` at `:293` dereferences `new."BtmReferenceID"` — NULL during DELETE, so `NULL <> 0` is unknown, the branch is false, and the delete path at `:313` is **unreachable**. Separately `:295` lumps `updating` with `inserting` and only adds.
 
 **Failure:** customer returns 10 of 10 against invoice #500 (`BdtQnt` = 10). Clerk deletes the line — `BdtQnt` stays 10, so no further return is possible against that invoice. Correcting 10 → 4 gives `BdtQnt` = 14: more returned than ever shipped.
 
 **New system:** never gate a delete path on a `NEW` value. Delta from `OLD` on delete, `NEW − OLD` on update, as explicit separate branches.
 
-### SAH-019 · **H** · Rounding is configured everywhere, applied nowhere, and the one rounding function is wrong
+### LEGACY-019 · **H** · Rounding is configured everywhere, applied nowhere, and the one rounding function is wrong
 `Currencies` carries eight rounding columns and `TaxCodes` two more. Grep for `CurRoundBase`, `CurTaxRoundBase`, `CurBillRoundBase`, `TxcRoundBase`, `TxcRoundMode` across all 913 objects: **zero references**. `system/RoundTo.sql` is never called by anything.
 
 And it is incorrect (`:9–28`): `m` is `integer` so `vAmount / vRoundBase` is **rounded, not truncated**; there is no `vMode < 0` branch, so rounding 8 *down* to base 5 returns **10**; behaviour is asymmetric across sign (+6 → 10, −6 → −5, leaving a permanent 5-unit imbalance per rounded credit note); `vRoundBase is NULL` bypasses the `= 0` guard and returns **NULL**, silently nulling the amount; `m integer` overflows for large amounts against small bases.
 
 **New system:** one rounding function with explicit mode (half-up / half-even / ceiling / floor / away-from-zero), symmetric across sign, applied server-side at persist time, with the rule recorded per currency and per tax code and covered by property-based tests.
 
-### SAH-020 · **H** · The GST return hardcodes a rate, uses an ambiguous date literal, and shares an enum with an incompatible meaning
+### LEGACY-020 · **H** · The GST return hardcodes a rate, uses an ambiguous date literal, and shares an enum with an incompatible meaning
 `procCalculateGSTReturn.sql:92–97`:
 ```sql
 "IS_Tax_Value" = "IS_Tax_Value" + (:"aTotal" * 0.06);--:"aTaxValue";
@@ -400,7 +400,7 @@ Rate hardcoded at 6%; the actual per-transaction tax is commented out. At `:72` 
 
 **New system:** versioned tax-regime definitions with rate-effective-date tables; never hardcode a rate; unambiguous date literals; every tax code declares its regime and a mismatched return refuses to run.
 
-### SAH-021 · **H** · Accounts can be deleted with posted entries; the ID generator then rewinds and reuses their IDs
+### LEGACY-021 · **H** · Accounts can be deleted with posted entries; the ID generator then rewinds and reuses their IDs
 `OnAccountsAD.sql:6–22` checks only for child accounts and `AccFinal` links — not for `VouItems`. There is **no foreign key from `VouItems.ItmAccount`**. Aggregates are not deleted either.
 
 `procFixGenerators.sql:7–11` sets `GenAccID` to `max("AccID")` — **moving it backwards** if the highest-numbered accounts were deleted. Same for `GenMatID` and `GenMunID`. Notably the author defended against exactly this for `GenJournal` (`:25–35` uses `max(max(JurID), max(AdtID))`, using audit tombstones as a high-water mark) — proving the failure mode was known and simply not generalised.
@@ -409,7 +409,7 @@ Rate hardcoded at 6%; the actual per-transaction tax is commented out. At `:72` 
 
 **New system:** FK from every posting line to its account; deactivate rather than delete; **never reuse identifiers; never rewind a sequence.**
 
-### SAH-022 · **H** · A `SELECT ... INTO` ignores a key column and will hard-fail on any multi-job opening balance
+### LEGACY-022 · **H** · A `SELECT ... INTO` ignores a key column and will hard-fail on any multi-job opening balance
 `MatOpens` PK is `(Site, Material, Job)`. Every read omits `Job` — `procCalcCosts.sql:99–101`, `procCalcJobCosts.sql:102`, `procSumBillItems.sql:190–193` (with the intent visibly commented out: `--and "MopJob" = :"Job"`), `:243`, and seven `tcbReports` procedures.
 
 Firebird raises `multiple rows in singleton select` (−811). The codebase uses `select first 1` elsewhere precisely to avoid this, so the hazard was known and not applied here.
@@ -417,12 +417,12 @@ Firebird raises `multiple rows in singleton select` (−811). The codebase uses 
 **Failure:** an implementer enters opening stock split across two projects. From that moment costing and every profit report throw −811 **for the whole site**, with an error pointing at a SELECT rather than at the data.
 ⚠️ *Depends on production data having `MopJob <> 0`; the schema permits it and nothing prevents it.*
 
-### SAH-023 · **M** · Audit sequence numbers are renumbered retroactively and collide across document classes
+### LEGACY-023 · **M** · Audit sequence numbers are renumbered retroactively and collide across document classes
 `procVouAuditID.sql:7–17` and `procBilAuditID.sql` both restart at 1 and both feed `Journal.JurAuditID` and `Audits.AdtAuditID`. Running either rewrites the audit sequence of every already-issued document; the two counters produce colliding values between bills and vouchers in the same tables. Inserting a back-dated voucher and re-running shifts every later document's audit number.
 
 **New system:** an audit sequence is issued once at posting, from a single counter across all document classes, and is never rewritten.
 
-### SAH-024 · **L** · Account codes are allocated with `max()` on a string, without locking
+### LEGACY-024 · **L** · Account codes are allocated with `max()` on a string, without locking
 `procNewCode.sql:15–17` takes `max("AccCode")` where `Code` is a string — lexicographic, so for children `'1'…'9','10'` the max is `'9'` and the next code collides. No locking, so concurrent creates derive the same code. `OnAccounts_DUP.sql` (the likely duplicate check) is marked `inactive`.
 ⚠️ *`IncCodeNumber` is an external UDF not in the corpus; it may zero-pad and avoid this. Confirm before rating.*
 
@@ -432,7 +432,7 @@ Firebird raises `multiple rows in singleton select` (−811). The codebase uses 
 
 The structural finding: **the database has no notion of an authenticated caller.** `procLogin` is an application-level ceremony that writes plaintext-verified attributes into `RDB$SET_CONTEXT` — a namespace every client can write directly — and five triggers consult those attributes, each behind a client-writable off-switch.
 
-### SAH-025 · **C** · `procQuickLogin` grants a full administrator session with no credentials
+### LEGACY-025 · **C** · `procQuickLogin` grants a full administrator session with no credentials
 `system/procQuickLogin.sql:1–17` takes **no parameters**:
 ```sql
 select first 1 "UsrName", "UsrPassword" from "Users" where "UsrIsAdmin" = 1
@@ -445,7 +445,7 @@ It reads the first admin's cleartext password and logs in as them — `IsAdmin=1
 
 **New system:** never derive an identity from stored credentials. Maintenance elevation is an explicitly-granted service principal with its own audited identity.
 
-### SAH-026 · **C** · Session identity is unauthenticated, client-writable context
+### LEGACY-026 · **C** · Session identity is unauthenticated, client-writable context
 `procLogin.sql:130–152` *writes* identity into `RDB$SET_CONTEXT('USER_SESSION', …)`; `procGetSession.sql:21–39` *reads it back*. That namespace is writable by any connected user. A client can skip `procLogin` entirely:
 ```sql
 select RDB$SET_CONTEXT('USER_SESSION','UserID',1),
@@ -457,7 +457,7 @@ Every consumer then believes it — the sign check (`OnAuditsBIUD.sql:18–19`),
 
 **New system:** identity derives from a server-side authenticated session the client cannot write — a validated signed token, or a real per-user database principal. Authorisation decisions read that principal, never mutable connection state.
 
-### SAH-027 · **C** · One client-settable variable disables every write-time control
+### LEGACY-027 · **C** · One client-settable variable disables every write-time control
 All four guard triggers open identically — `OnAuditsBIUD.sql:16`, `OnAuditsActvitiesBIUD.sql:13`, `IsManualTriggerBUD.sql:8`, `OnJournalAU.sql:7`:
 ```sql
 if (coalesce(RDB$GET_CONTEXT('USER_TRANSACTION', 'Internal'), '') = '') then
@@ -468,63 +468,63 @@ Worse, a callable procedure sets it and **never clears it** — `hospitals/procF
 
 **New system:** the channel carrying user data must never carry an enforcement-bypass flag. System operations skip user-facing checks by virtue of an authenticated service principal, checked server-side.
 
-### SAH-028 · **C** · Passwords are stored and compared in cleartext
+### LEGACY-028 · **C** · Passwords are stored and compared in cleartext
 `procLogin.sql:33–40`: `"UsrPassword"=:"UserPassword"`. `procInitDatabase.sql:13–15` inserts it verbatim. Domain is `NAME` — plain varchar. Across the whole corpus `UsrPassword` appears three times; there is no hash, salt, or work factor among the 54 UDF declarations. `procQuickLogin` proves a plain `SELECT` of the column is unrestricted.
 
 Secondary: Firebird `=` on VARCHAR ignores trailing blanks (`'secret'` and `'secret   '` both authenticate); there is no failed-attempt counter, so this is an unthrottled online oracle.
 
 **New system:** per-user salted hash from a memory-hard KDF (Argon2id), constant-time comparison in the application tier, hash column never exposed to application queries, rate limiting and lockout on failed attempts.
 
-### SAH-029 · **C** · The audit trail records no actor and is a freely writable table
+### LEGACY-029 · **C** · The audit trail records no actor and is a freely writable table
 `Logs` has a `User` column. **No insert anywhere in the corpus populates `LogUser` or `LogDate`** — `procLogElement.sql:17–34`, `OnJournalLogAIUD.sql:35–60` and `:62–87`, `OnAuditsLogAU.sql:18–41`, `hospitals/procLoghhElement.sql:20–43`, `archives/procRcvLogElement.sql:18–37` all omit both. There is **no trigger on `Logs` at all**, so nothing prevents `UPDATE`/`DELETE` on it. No hash chain, no sequence-gap detection, no append-only constraint.
 
 **New system:** audit records written from a server-controlled identity into append-only storage the application role cannot modify, with a monotonic sequence and per-record chained hash so gaps and edits are detectable.
 
-### SAH-030 · **C** · A login parameter switches the audit trail off
+### LEGACY-030 · **C** · A login parameter switches the audit trail off
 `procLogin.sql:6, 133–134` accepts a caller-supplied `Silent` argument and writes it to session context. Every logging trigger then no-ops (`OnLogNameBIUDTrigger.sql:6–18`, `OnJournalAuditAIUD.sql:7–8`, `types/RevisionTrigger.sql:7`). It can also be set mid-session via `RDB$SET_CONTEXT`.
 
 **Failure:** an authenticated session performs real writes and leaves **no audit records** — and because the session log line is written before the gate matters, nothing distinguishes a silent session from a normal one.
 
 **New system:** audit emission is non-optional and not addressable from the request path. Bulk operations log one summarising record — never nothing.
 
-### SAH-031 · **C** · Period locks live on a sibling table, are per-privilege-tier, and do not reach the line items
+### LEGACY-031 · **C** · Period locks live on a sibling table, are per-privilege-tier, and do not reach the line items
 `OnAuditsBIUD.sql:32–34`:
 ```sql
 select first 1 max("SgnLockDate") from "Signs" where "SgnID" >= :"UserSign" into "LockDate";
 ```
 The lock applied to you is the maximum over signs **at or above your own** — so holders of a high sign are exempt from every lower-tier lock *by construction*. If `UserSign` is NULL the query matches nothing and there is **no lock at all**.
 
-The lock lives only on the `Audits` header, and the `Audits` row exists only because `OnJournalAuditAIUD` writes it — which is inside the `Silent` gate (SAH-030). Checking every trigger on `VouItems` (`OnVouItemsBIU`, `OnVouItemsAIUD`, `OnVouItemsBI_Admin`, `OnVouItemsAIUD_Objects`, `fkItmMaster`), **none** references `Audits`, `Signs`, `SgnLockDate` or `Journal`.
+The lock lives only on the `Audits` header, and the `Audits` row exists only because `OnJournalAuditAIUD` writes it — which is inside the `Silent` gate (LEGACY-030). Checking every trigger on `VouItems` (`OnVouItemsBIU`, `OnVouItemsAIUD`, `OnVouItemsBI_Admin`, `OnVouItemsAIUD_Objects`, `fkItmMaster`), **none** references `Audits`, `Signs`, `SgnLockDate` or `Journal`.
 
 **Failure:** a direct `UPDATE "VouItems" SET "ItmDebit" = …` on a signed, locked, closed-period voucher changes the amount and silently rewrites `AccTotals` to match — no exception, and under `Silent`, no log.
 
 **New system:** period close is a uniform property of the *period*, not a per-role threshold; reopening is separately authorised and audited; immutability is enforced on the whole document aggregate (header + lines + projections) in one transactional boundary.
 
-### SAH-032 · **H** · A user can raise a document's approval level above their own
+### LEGACY-032 · **H** · A user can raise a document's approval level above their own
 `OnAuditsBIUD.sql:37–43` checks only `old."AdtSign" > "UserSign"`. There is **no check that `new."AdtSign" <= "UserSign"`**. A user at sign 1 can set `AdtSign = 9` on any document at sign ≤ 1, and the trigger obligingly stamps `AdtSignDate = current_timestamp` to make it look like a genuine approval — which then locks the document against that same user, making the forgery look more authentic.
 
 A side door exists that does not touch `Audits` at all: `Orders/OnOrderInfoAIU.sql:7–22` promotes a document to the muniment's activation sign when a boolean is flipped, with no check of the actor's own sign.
 
 **New system:** approval is a state transition authorised against the **actor's** authority (`new_state <= actor.authority`), recorded as an immutable approval event with actor, timestamp and prior state — never a mutable integer on the document its own editor can raise.
 
-### SAH-033 · **H** · Confidentiality levels are a read-time display filter with a caller-supplied off switch
+### LEGACY-033 · **H** · Confidentiality levels are a read-time display filter with a caller-supplied off switch
 Level is only ever *stamped*, never *checked* on write — and `system/OnLevelBIUTrigger.sql:4–7`, the model that would have applied a level check, is **entirely commented out**. The only consumers are report procedures, and they take an override: `tcbReports/procInitArrTier.sql:68` — `(((:"aIsAdmin"<>0) or (:"vFullEntries"=1)) or ("AccLevel"<=:"aLevel"))`, where `vFullEntries` is an ordinary input parameter. Passing `vFullEntries=1` disables the confidentiality filter for a non-admin.
 
 **New system:** enforce confidentiality at the data-access layer as a mandatory predicate the query cannot opt out of (row-level security), on read *and* write, from the authenticated principal — never from a query parameter.
 
-### SAH-034 · **H** · `Grants` — the document-level permission table — is never read by any code
+### LEGACY-034 · **H** · `Grants` — the document-level permission table — is never read by any code
 The table is captioned "permissions at document level". Grep across all 913 objects for `"Grants"`, `GrntUser`, `GrntForID`, `GrntValue` returns exactly one hit: a foreign key definition. **`GrntUser` is never read by any procedure, trigger, view or function.**
 
 **New system:** if per-document ACLs exist they are evaluated on every read and write. A permission table no code consults is worse than none — it creates a documented, auditable belief that access is controlled when it is not.
 
-### SAH-035 · **H** · Tenant (Site) scoping is a client convention
+### LEGACY-035 · **H** · Tenant (Site) scoping is a client convention
 The only site-related write logic is a *default*, not a check — `system/OnSiteBIUTrigger.sql:1–7` fills `Site` when null or zero, and accepts any non-zero value the client supplies. There is no `if (new.Site <> session_site) then exception` anywhere. Read-side, site is a parameter that merely falls back to the session: `procSumVouItems.sql:52–53, 75–79, 128` — passing `vSite = 3` reads site 3's ledger regardless of session. Same shape in `procSumBillItems`, `procCalcCosts`, `Payments/procSumAccPayments`, `Additions/procBdgCheckSite` and the `tcbReports` profit procedures.
 
 Compounding: `procLogin.sql:59–60` accepts `UserSite = '*'`, which blanks the site, skips the `SiteID is null` exception, and establishes a session with `SiteID = NULL`. The only compensating control is `IsReadOnly = 1` — and `IsReadOnly` is written to context at `:138` and **never read by anything** (grep confirms one hit, the write). The `'.'` variant resolves the site from the `Options` table, which has no protective trigger and is writable by any user.
 
 **New system:** tenant scope is a non-negotiable server-side predicate on every query and write; a write whose tenant column disagrees with the session is rejected; cross-tenant sessions do not exist (a genuine cross-tenant role is a distinct, separately-audited principal).
 
-### SAH-036 · **H** · Six procedures accept a raw SQL predicate as a parameter
+### LEGACY-036 · **H** · Six procedures accept a raw SQL predicate as a parameter
 ```
 Payments/procSumPayments.sql:106        ' and (' || :"vMunimentsStr" || ')'
 Payments/procSumAccPayments.sql:83      ' and (' || :"vMunimentsStr" || ')'
@@ -537,12 +537,12 @@ The client presumably binds these as parameters — but the procedure *unbinds* 
 
 **New system:** never accept SQL text across an API boundary. Filters cross as typed structured values; queries are assembled server-side from an allow-list of columns and operators, values always bound.
 
-### SAH-037 · **H** · Four procedures interpolate unescaped user strings into SQL literals
+### LEGACY-037 · **H** · Four procedures interpolate unescaped user strings into SQL literals
 `procSerCheck.sql:34,40`, `procGetSerials.sql:84,86,88`, `procSerInventory.sql:70`, `tcbReports/procSelectDescTier.sql:16`. These are genuinely user-controlled — serial numbers are keyed, barcode-scanned and bulk-imported; `Value` feeds a descriptor `LIKE` search box. One apostrophe breaks the query; a crafted value rewrites the predicate. `procSelectDescTier` returns account IDs, so an injected sub-select leaks arbitrary values through the return channel.
 
-**Precision note for the rebuild team:** the remaining ~262 interpolation sites splice **integers only** into `INTEGER`/`SMALLINT` parameters and are **not injectable** (the engine rejects non-numeric input at the procedure boundary). A further ~54 splice `DATE`-typed parameters — also not injectable, but locale-fragile (SAH-069). Do not over-report the injection surface: it is 10 sites, not 320.
+**Precision note for the rebuild team:** the remaining ~262 interpolation sites splice **integers only** into `INTEGER`/`SMALLINT` parameters and are **not injectable** (the engine rejects non-numeric input at the procedure boundary). A further ~54 splice `DATE`-typed parameters — also not injectable, but locale-fragile (LEGACY-069). Do not over-report the injection surface: it is 10 sites, not 320.
 
-### SAH-038 · **H** · Path traversal to arbitrary file write on the database server
+### LEGACY-038 · **H** · Path traversal to arbitrary file write on the database server
 `archives/ProcCopyExternalFile.sql:1–27` concatenates a caller-supplied `vDstID` into a filesystem path with no canonicalisation and passes it to the native UDF `BlobToFile` with caller-supplied content:
 ```sql
 "DstFileName" = :"FolderName" || '\' || :"vDstID";
@@ -552,28 +552,28 @@ BlobToFile(:"vSrcBlob", :"DstFileName", :"vDstVersion");
 
 **New system:** blobs in object storage or the database, addressed by opaque server-generated identifiers. Never build a filesystem path from client input; if files must live on disk, resolve the final path and assert it is inside the storage root before any I/O.
 
-### SAH-039 · **H** · `procInitDatabase` creates an administrator, unauthenticated, with no already-initialised guard
+### LEGACY-039 · **H** · `procInitDatabase` creates an administrator, unauthenticated, with no already-initialised guard
 `system/procInitDatabase.sql:1–28` has no authentication, no admin check, and **no test for whether the database is already initialised**. A live production database will accept a second call, minting a new admin with `UsrIsAdmin = 1` and a caller-chosen password, plus a new `Sites` row marked primary.
 
 **New system:** bootstrap is a one-time offline operation guarded by an initialisation sentinel, never a callable procedure on a running system; passwords never arrive as plain procedure arguments.
 
-### SAH-040 · **H** · Deletions are logged less reliably than inserts, and can erase the document header
+### LEGACY-040 · **H** · Deletions are logged less reliably than inserts, and can erase the document header
 `OnJournalAuditAIUD.sql:56–71` places the *soft-delete tombstone* inside the `Silent` gate. With `Silent` set, deleting a `Journal` row leaves the `Audits` header neither marked deleted nor removed — a stale header pointing at a vanished transaction.
 
 `IsManualTriggerAD.sql:10–17` shows the soft-delete was deliberately commented out in favour of a hard `delete from "Journal"`. In the archive module, `ProcDeleteDocument.sql:8–9` and `ProcDeleteAttachment.sql:7–9` issue raw `DELETE`s with **no logging call at all** — and the first is an unqualified `delete from "RcvDeletedAttachments"` which also flushes another user's pending file-deletion queue, deleting their files from disk via `rcvDeleteFile`.
 
 **New system:** delete is the *most* strongly audited operation — before-images logged, never gated on any flag, soft-delete with retained tombstone for financial records.
 
-### SAH-041 · **H** · Documents are hard-deleted and the anti-tampering controls are shipped disabled
+### LEGACY-041 · **H** · Documents are hard-deleted and the anti-tampering controls are shipped disabled
 `IsManualTriggerAD.sql:8–18` hard-deletes; `fkVouMaster`/`fkBilMaster` cascade to all lines. Meanwhile the fiscalisation controls are shipped **inactive**:
 - `OnJournalTaxAI.sql:2` — `inactive after insert`. This is what would create the `JurTaxInfo` row carrying `Guid`, `Token`, `Hash`, `QRCode` for a taxable document.
 - `OnJournalTaxBUD.sql:2` — `inactive before update or delete`, containing the only guard against editing or deleting a taxable document (`exception "JournalIsTaxable"`).
 
-**Failure:** an invoice issued to a customer and reported on a VAT return is deleted. All rows vanish, stock reverses, cost corrupts (SAH-004), the number becomes a permanent gap — and re-running the VAT return for that period produces a different figure from the one filed, with nothing explaining the difference.
+**Failure:** an invoice issued to a customer and reported on a VAT return is deleted. All rows vanish, stock reverses, cost corrupts (LEGACY-004), the number becomes a permanent gap — and re-running the VAT return for that period produces a different figure from the one filed, with nothing explaining the difference.
 
 **New system:** issued financial documents are immutable. Corrections are reversing entries. Deletion of a posted document is not available at any privilege level.
 
-### SAH-042 · **M** · Ownership and paid-record checks fail open when the user row is missing
+### LEGACY-042 · **M** · Ownership and paid-record checks fail open when the user row is missing
 `IsManualTriggerBUD.sql:8–19`, `OnJournalAU.sql:12–17`, `OnVouItemsBIU.sql:15–21`, `OnBillItemsBIU.sql:30`, `OnMatObjectsBIU.sql:9`, `OnAccObjectsBIU.sql:11`, `OnMatQuantityBIU.sql:12`, `Orders/procCheckAccBalanceLimits.sql:15` all follow:
 ```sql
 select first 1 "UsrIsChangeOnlyOwned" from "Users" where "UsrID" = RDB$GET_CONTEXT(...) into :X;
@@ -583,41 +583,41 @@ If no row matches — no session, or a forged non-existent `UserID` — `X` is N
 
 **New system:** default deny. An absent or unresolvable identity is a hard failure. Three-valued logic handled explicitly at every authorisation branch.
 
-### SAH-043 · **M** · Failed authentication returns a row instead of raising
+### LEGACY-043 · **M** · Failed authentication returns a row instead of raising
 `procLogin.sql:100–161`: on a wrong password the user `SELECT` returns nothing, `UserID` stays NULL, the site lookup has *already* succeeded, so the `SiteID is null` exception is not raised, and the procedure `suspend`s a row carrying a populated `SiteName` and `SiteGuid` with a NULL `UserID`. A caller checking "did I get a row?" — the natural idiom for a selectable procedure — treats a failed login as success.
 
 Also: `SessionID = CURRENT_CONNECTION` (`:109`) is a small, reused integer, not an unpredictable token. And `procLogout.sql:1–12` writes a log line but **clears no context** — session variables survive logout for the life of the connection, so a pooled or reused connection retains the previous user's identity and privileges.
 
 **New system:** authentication fails with an unambiguous error and no partial data; session tokens are unpredictable with explicit expiry; all session state is destroyed on logout and on connection return-to-pool.
 
-### SAH-044 · **M** · Session records are caller-controlled and attributable to the wrong user
+### LEGACY-044 · **M** · Session records are caller-controlled and attributable to the wrong user
 `procRegisterCarrier.sql:14–51` — every discriminator (`CarrierSite`, `CarrierName`, `CarrierGuid`) and the timestamp are caller-supplied. On the match path it returns an existing carrier row **whose `CarUser` may be a different user**, and subsequent writes are stamped to that other user's session. `DeleteOld = 1` lets a caller destroy an existing session record. Same forged-actor pattern at `archives/ProcRecycleDocument.sql:29–33`, where the deleting user is a parameter.
 
 **New system:** actor and timestamp for every provenance field come from the server; session records are server-owned and immutable to clients.
 
-### SAH-045 · **M** · Department scoping is a report parameter, not an access control
+### LEGACY-045 · **M** · Department scoping is a report parameter, not an access control
 The only write-side use is a stamp (`OnAuditsDepBI.sql:6–13`), which additionally only fires when `AdtUser` is not null. Read-side, `tcbReports/procFilterDeptAccounts.sql` takes the department as a plain parameter with no comparison against the session. `UseDepartmentForJobs`, `…ForWarehouses`, `…ForCostCentres`, `…ForSubAccounts` are **never referenced in SQL at all**.
 
 **New system:** scope resolves from the authenticated principal server-side; a client-supplied scope may only *narrow* what the principal is entitled to, never widen it.
 
-### SAH-046 · **M** · Site protection triggers are bypassable, and two different flags share one name
+### LEGACY-046 · **M** · Site protection triggers are bypassable, and two different flags share one name
 `OnSiteBI.sql:5–15` and `OnSiteBU.sql:6–10` — which prevent a replication branch inventing or editing sites, the core of the multi-site model — are both disabled by `RDB$SET_CONTEXT('USER_TRANSACTION','Silent',1)`.
 
 Note this is a *different namespace* from the `USER_SESSION.'Silent'` used by logging: the codebase has two independent flags with the same name. `hospitals/OnVisitBookAD.sql:8,35` shows the resulting confusion — it reads `Silent` but writes `Internal`, and into `USER_SESSION` while every consumer of `Internal` reads `USER_TRANSACTION`. The suppression it intends is completely inert.
 
 **New system:** operation mode (user action / replication apply / maintenance) is typed, server-authenticated request metadata with one canonical name per concept, checked in one place.
 
-### SAH-047 · **M** · Only 7 of ~55 permission flags are ever read by the database
+### LEGACY-047 · **M** · Only 7 of ~55 permission flags are ever read by the database
 Column-frequency count across the whole corpus: `UsrIsAdmin` (7 uses), `UsrIsCheckJob` (2), `UsrIsAccNoOverload` (2), `UsrIsChangeOnlyOwned` (1), `UsrIsNoUpdateAfterPaid` (1), `UsrIsCheckWarehouse` (1), `UsrIsMatNoOvercost` (1). **`UsrPermissions`, `UsrIsFullAccess`, `UsrIsRestricted`, `UsrIsViewOnlyOwned`, `UsrIsGuest`, `UsrIsAllowReject`, `UsrIsViewCosts`, `UsrCanNotChangePassword`: zero uses.** The entire authorisation surface of the database is five files.
 
 **New system:** every permission is evaluated in one authorisation service. A permission that no code reads fails the build.
 
-### SAH-048 · **H** · Negative-stock and overcost controls are opt-in per user and have four bypasses
+### LEGACY-048 · **H** · Negative-stock and overcost controls are opt-in per user and have four bypasses
 `OnMatObjectsBIU.sql:7–17` and `OnMatQuantityBIU.sql:10–31` are the only `NotEnough` sites; there is one `MatOvercost` site.
 1. `RDB$SET_CONTEXT('USER_TRANSACTION','IgnoreMatExceptions','1')` — one statement disables overdraw checking for the transaction.
-2. No session `UserID` (direct ODBC, import tool, replication apply, POS terminal that forgets) → NULL flag → check skipped (SAH-042).
+2. No session `UserID` (direct ODBC, import tool, replication apply, POS terminal that forgets) → NULL flag → check skipped (LEGACY-042).
 3. The flag is per-user and defaults **off**.
-4. The `MatOvercost` check no-ops when `BtmActualCost` is NULL — so a new material, or one poisoned by SAH-007, silently never triggers "don't sell below cost".
+4. The `MatOvercost` check no-ops when `BtmActualCost` is NULL — so a new material, or one poisoned by LEGACY-007, silently never triggers "don't sell below cost".
 
 Additionally, the quantity check applies **only** to materials flagged batched/category/variety (`:24`).
 
@@ -627,7 +627,7 @@ Additionally, the quantity check applies **only** to materials flagged batched/c
 
 ## C. Concurrency and consistency
 
-### SAH-049 · **C** · Aggregate tables have no unique key, so the upsert race creates duplicates that are then double-updated forever
+### LEGACY-049 · **C** · Aggregate tables have no unique key, so the upsert race creates duplicates that are then double-updated forever
 `MatObjects` and `MatQuantity` have **no key columns**, while `AccObjects` and `AccTotals` do. They are maintained by the classic non-atomic upsert (`OnBillItemsAIUD.sql:231–261`, `:275–285`): `UPDATE`; `if (ROW_COUNT = 0) then INSERT`.
 
 **Interleaving:** two users post the first-ever line for the same (material, warehouse, job, site). Both UPDATEs return 0 rows (neither sees the other's uncommitted insert). Both INSERT. Both commit. Nothing rejects either.
@@ -637,14 +637,14 @@ Now **two rows** exist for one key. Every subsequent posting updates both (the W
 Contrast `AccTotals` and `Numbers`, where the same race produces a loud primary-key violation. **The unkeyed tables fail silently, which is worse.**
 ⚠️ *Absence of the key is inferred from the schema dump's `*` convention; confirm against `RDB$RELATION_CONSTRAINTS`.*
 
-### SAH-050 · **H** · NULL dimension values make aggregates accumulate orphans and lose all decrements
+### LEGACY-050 · **H** · NULL dimension values make aggregates accumulate orphans and lose all decrements
 `OnBillItemsAIUD.sql:227`/`:242–245` match `MtoJob`/`MtoWarehouse` on raw equality; `MatQuantity` (`:270`,`:279`) coalesces Batch/Variety/Category but **not** Job/Warehouse. `procProducePackage` is a live producer of NULL-job rows.
 
 **Failure:** a line saves with `BtmJob` NULL. `MtoJob = NULL` is unknown, so the increment matches nothing, `ROW_COUNT = 0`, and a fresh row is inserted. Delete the line: the decrement also matches nothing, and **there is no `ROW_COUNT = 0` fallback on the decrement** — the row stays. Each NULL-job line accumulates one orphan row. Repair does not stick either: `procFixObjects.sql:44` groups by `BtmJob`, and SQL `GROUP BY` folds all NULLs into one row with `MtoJob` NULL — which the trigger then never finds again.
 
 **New system:** primary key on every aggregate table; dimension columns `NOT NULL` with a sentinel; `MERGE`/`UPDATE OR INSERT` against that key.
 
-### SAH-051 · **H** · Document numbering races on first use, has no uniqueness constraint, and cannot be gapless
+### LEGACY-051 · **H** · Document numbering races on first use, has no uniqueness constraint, and cannot be gapless
 `procGetNewNumber.sql:15–39`. `for update with lock` locks nothing when no row matches, so two transactions creating the first document of a new muniment both read NULL and both insert → primary-key violation on the very first document of every new document type.
 
 Once the row exists, `with lock` serialises all concurrent creation of that document type (a throughput ceiling, plus deadlock risk when a transaction numbers two muniments in different orders).
@@ -657,7 +657,7 @@ Once the row exists, `with lock` serialises all concurrent creation of that docu
 
 **New system:** assign the legal number at **issue** time in a dedicated short transaction against a per-(series, period) counter; unique constraint on `(series, period, number)`; deletion of issued documents forbidden; voided numbers recorded explicitly so the sequence is provably unbroken.
 
-### SAH-052 · **C** · Serial numbers can be sold twice
+### LEGACY-052 · **C** · Serial numbers can be sold twice
 `procSerCheck` — the availability check — has **no callers anywhere in the database** (grep returns only its own `CREATE`). Serial availability is checked, if at all, entirely in the Delphi client, so every other write path bypasses it. And there is no fallback: the `Serials` table has **no primary key**.
 
 The procedure is also wrong on its own terms: it answers a *range* question with a single boolean (`break` on the first match at `:48–55`), so selling SN1000–SN1099 where 99 are already sold and one is in stock reports the whole range available.
@@ -666,12 +666,12 @@ The procedure is also wrong on its own terms: it answers a *range* question with
 
 **New system:** serial units are rows with a unique constraint on (serial, in-stock state), so double-issue is impossible at the storage layer, not the query layer.
 
-### SAH-053 · **M** · Runtime DDL disables integrity machinery mid-transaction
+### LEGACY-053 · **M** · Runtime DDL disables integrity machinery mid-transaction
 `Payments/FixPaymentValues.sql` issues `'alter trigger "OnPaymentsAU" inactive'`, bulk-updates, then `'alter trigger "OnPaymentsAU" active'`. **If it fails between those points the trigger stays inactive** and the database silently stops maintaining payment values, with no alarm. `tcbReports/procFixStatistics.sql:12` iterates every index in `RDB$INDICES` issuing DDL, holding metadata locks across the whole database. `procRenumberTier.sql:18` resets a generator after renumbering every voucher — a concurrent insert in that window produces a duplicate audit ID. `procFixAccad.sql:6` creates an index that then becomes a silent prerequisite.
 
 **New system:** schema changes only through the migration system, never from application code; never disable integrity machinery as part of a data fix.
 
-### SAH-054 · **H** · A full recost aborts on the first historical below-cost sale
+### LEGACY-054 · **H** · A full recost aborts on the first historical below-cost sale
 `procCalcCosts.sql:214–220` writes `BtmActualCost` back row by row. That `UPDATE` fires `OnBillItemsBIU` (BEFORE INSERT **OR UPDATE**), whose guard at `:36–40` compares the historical unit price against **the value being written** and raises `MatOvercost`.
 
 **Failure:** a manager with `UsrIsMatNoOvercost = 1` runs a recost after a supplier price rise. The replay reaches a sale priced below the *newly computed* cost, raises, and the whole transaction rolls back — **including every material already processed**. The only way to complete a recost is to log in as a user without the flag, which silently disables the overcost control for that session's normal data entry.
@@ -684,56 +684,56 @@ This is a mutual-recursion defect: an *entry-time data-quality guard* applied to
 
 ## D. Plain logic bugs
 
-### SAH-055 · **M** · `procMatStorage` (FIFO stock ageing) is non-functional
+### LEGACY-055 · **M** · `procMatStorage` (FIFO stock ageing) is non-functional
 `tcbReports/procMatStorage.sql:39`:
 ```sql
 if (("Material" is not null) or ("Material"<>"aMat")) then "aRemain" = 0;
 ```
-`OR` where `AND` is meant. From the second row onward `Material` is always non-null, so the condition is true on every iteration and `aRemain` resets each row — **the FIFO carry-forward never happens**. Additionally `aCount` (`:21`) is declared but never initialised, then used as `select skip (:"aCount")` — NULL on first use, and `"aCount" = "aCount" + 1` stays NULL forever. Also `create or alter procedure "%Name%"` — the deployment template placeholder was never substituted (see SAH-075).
+`OR` where `AND` is meant. From the second row onward `Material` is always non-null, so the condition is true on every iteration and `aRemain` resets each row — **the FIFO carry-forward never happens**. Additionally `aCount` (`:21`) is declared but never initialised, then used as `select skip (:"aCount")` — NULL on first use, and `"aCount" = "aCount" + 1` stays NULL forever. Also `create or alter procedure "%Name%"` — the deployment template placeholder was never substituted (see LEGACY-075).
 
-### SAH-056 · **H** · Serial lookup is length-and-prefix based, non-sargable, and silently wrong
+### LEGACY-056 · **H** · Serial lookup is length-and-prefix based, non-sargable, and silently wrong
 `procGetSerials.sql:84–88` and `procSerLookupSerial.sql:24–28` gate on `STRLEN(col) = STRLEN(literal)`. `StrLen` is a UDF, so this **cannot use an index** — every serial lookup is a full table scan.
 
 **Failure:** a block recorded as `SN0001`–`SN0500` (6 chars); an operator scans a label printed `SN1` (3 chars). The length guard fails, no row returns, and the serial reports as **not in stock** — so it can be received again, creating a duplicate. Conversely a 6-char serial from a different block can satisfy the range and match the wrong material; `procSerLookupSerial` takes `first 1` of an **unordered** result.
 
 Range semantics are lexicographic too: `"Serial" >= 'SN100' and "Serial" <= 'SN99'` matches nothing, because `'SN9'` sorts after `'SN100'`. Any non-zero-padded numbering scheme gives wrong ranges silently.
 
-### SAH-057 · **H** · Serial enquiry expands blocks unit-by-unit with a full scan per unit
+### LEGACY-057 · **H** · Serial enquiry expands blocks unit-by-unit with a full scan per unit
 `procGetSerials.sql:117–132` loops `SerCount` times, calling `procSerStateCount` per unit — each a `COUNT(*)` over `SerActivateItems` with a non-sargable two-sided range predicate.
 
 **Failure:** 10,000 handsets received as one block; a stock enquiry produces 10,000 rows each triggering a full scan. With 200,000 activation rows that is ~2×10⁹ row comparisons **for one screen**. `procSerInventory` then loops those 10,000 rows calling `procSerGetStates` again per serial.
 
 Auxiliary: `procSerStateCount.sql:8` declares `smallint` for a `count(*)` (overflows past 32,767); `procSerGetStates.sql:7,24` builds `varchar(40)` by unbounded concatenation (raises string truncation at nine or more states); `procGetSerials.sql:117` — if `SerCount` is NULL the loop never runs and **the entire block silently disappears from the result**.
 
-### SAH-058 · **M** · `procGetTaxItems` applies contradictory filters to the two halves of its union
+### LEGACY-058 · **M** · `procGetTaxItems` applies contradictory filters to the two halves of its union
 Same parameter, different meaning per side. `vTaxCode = -1` ("uncoded"): the bill half (`:63–69`) adds `BtmTaxCode is null`; the voucher half (`:103–109`) adds `ItmTaxCode is null` — but the voucher seed at `:97` **already contains `and ("ItmTaxCode" is not null)`**, a contradiction that always returns zero voucher rows. `vTaxCode = 0` filters bills but leaves vouchers unfiltered. `vDirection` maps differently on each side. `vMaterial` and `vWithZeroPrice` apply to bills only.
 
 **Failure:** an "all uncoded transactions" reconciliation reports uncoded bill lines but **never uncoded voucher lines** — so a manual journal posted without a tax code is invisible to the reconciliation *and* excluded from the VAT return. Untaxed manual journals disappear entirely.
 
-### SAH-059 · **H** · `procGetTaxItems` overflows its declared buffer on a normal VAT return
+### LEGACY-059 · **H** · `procGetTaxItems` overflows its declared buffer on a normal VAT return
 `:37–39` declares `varchar(1000)` for `aVouQry`. The seed literal is ~891 characters, leaving ~109. The appended predicates at `:98–119` total ≈148 characters, and a VAT return **always** supplies both dates.
 
 **Failure:** either the engine raises string truncation (the good case — the return fails visibly) or it truncates. Losing the tail at a clause boundary yields a **valid query with the period filter missing**, and the VAT return silently reports every voucher ever posted instead of the quarter. That is a filed-return-level error with no visible symptom.
 
-### SAH-060 · **M** · `procFixMatStatus` uses two different sort orders and drops columns it rebuilds
+### LEGACY-060 · **M** · `procFixMatStatus` uses two different sort orders and drops columns it rebuilds
 `:33` primes the group key with `order by "BtmSite","BtmMuniment","BtmMaterial",…` while the main loop at `:42` uses `order by "BtmSite","BtmMaterial","BtmMuniment",…` — so **the first emitted group is attributed to the wrong key**. The procedure also `delete from "MatStatus"` at `:23` then omits `MtcCurPrice`/`MtcCur` from both INSERT lists (`:53`, `:83`) — **running the repair wipes all foreign-currency purchase prices**. And `:68` unconditionally overwrites `"Date"` before `:69` tests it, making the date guard dead code.
 
-### SAH-061 · **M** · `procUpdateMatCosts` resets every material's cost to its opening value, permanently
+### LEGACY-061 · **M** · `procUpdateMatCosts` resets every material's cost to its opening value, permanently
 `:20–22` does `update or insert … matching ("CstSite","CstMaterial")` with the *opening* cost. It does not set `CstChanged`, so the subsequent `vForce=0` recompute skips them all and **the reset is permanent**.
 
-### SAH-062 · **L** · `procCalcCosts` writes the wrong watermark document at every group break
+### LEGACY-062 · **L** · `procCalcCosts` writes the wrong watermark document at every group break
 `:112` (`"CstMaster" = :"aMaster"`) executes *after* `aMaster` has been fetched for the first row of the **next** material. So `MatCosts.CstMaster` — which `OnBillItemsAIUD.sql:93` uses as the "already costed past this document" watermark — points at a bill belonging to a different material. Only the final group gets the right value.
 
-### SAH-063 · **L** · Unguarded division by `BtmSize` in six of eight places
+### LEGACY-063 · **L** · Unguarded division by `BtmSize` in six of eight places
 `procCalcCosts.sql:169,171`, `OnBillItemsAIUD.sql:78,79,83`, `OnBtmJobCosts.sql:82,83,87` divide by `BtmSize` with no zero/NULL check. `OnBillItemsStatusAI.sql:6` and `procFixMatStatus.sql:40` **do** guard it — the same hazard handled in two of eight places.
 
-### SAH-064 · **L** · Copy-paste dead NULL guard
+### LEGACY-064 · **L** · Copy-paste dead NULL guard
 `OnBillItemsAIUD.sql:62–68` — the third test re-checks `CurBuyPrice`, which line 63 has just forced non-null, so it never fires. `BuyCur` is never defaulted and a NULL `CstBuyCur` is written back at `:102`. Identical bug at `OnBtmJobCosts.sql:66–72` and in `OnBtmBatchCosts`.
 
-### SAH-065 · **L** · Unreachable dead code in the audit trigger
+### LEGACY-065 · **L** · Unreachable dead code in the audit trigger
 `OnJournalAuditAIUD.sql:59` tests `if (RDB$GET_CONTEXT('USER_SESSION','Silent') is not null)` inside a block only reachable when `Silent` **is** null (guard at `:8`). Lines 61–63 can never execute.
 
-### SAH-066 · **L** · Unit conversion is defined in the schema and applied nowhere
+### LEGACY-066 · **L** · Unit conversion is defined in the schema and applied nowhere
 Exhaustive grep for `MntExchange`: three hits, none of which convert anything. `tcbReports/procGetMatByUnits.sql:13–30` has the entire conversion body **commented out** and returns `ByUnits = ''` unconditionally.
 
 Consequences provable from the SQL: the base-unit quantity (`Debit`/`Credit`) and the entry quantity (`Qnt` × `Size`) are two independently-stored values with **no constraint tying them**; `MatUnits.Exchange` is `double precision` while quantities are `numeric(18,4)`, so a three-per-box factor stored as 0.333333… does not round-trip (10 boxes → 30 units → 9.9999… boxes); nothing rejects `Exchange = 0` or NULL.
@@ -744,26 +744,26 @@ Consequences provable from the SQL: the base-unit quantity (`Debit`/`Credit`) an
 
 ## E. Performance and scalability
 
-### SAH-067 · **H** · Stock-on-hand replays the entire movement history under a forced index-navigation plan
+### LEGACY-067 · **H** · Stock-on-hand replays the entire movement history under a forced index-navigation plan
 `procSumMaterials.sql:19–37` aggregates all of `BillItems` with `PLAN ("BillItems" ORDER "IdxInventory")`. The same directive appears in 10 places.
 
 Three problems: (a) `ORDER <index>` forces one random data-page fetch per row for a query that aggregates the whole table — the optimiser's natural sequential-scan-plus-sort is *disallowed*; at 500k rows this is minutes, at 5M rows unusable; **and it ignores `MatObjects`/`MatQuantity`, which exist precisely to answer this question**. (b) The index names are baked into string literals in ten procedures — rename or drop one and all ten fail at runtime with no fallback. (c) The `PLAN` and the `ORDER BY` are assembled independently, so the correctness of the chronological replay rests on `IdxInventory` being exactly `(BtmMaterial, BtmDate, BtmMaster)` — an assumption living only in DDL that is not version-controlled with this code. **Change that index and costing silently produces wrong numbers rather than failing.**
 
 There is also **no tie-break within a day**: same-day documents order by insert order, so back-dated same-day corrections re-order the replay.
 
-### SAH-068 · **H** · 23 hardcoded query plans, two pinning implicitly-generated index names
+### LEGACY-068 · **H** · 23 hardcoded query plans, two pinning implicitly-generated index names
 `procSelectLogDates.sql:19` pins `"IdxLogDate"` and `"fkLogElement"`, which appear **nowhere** in any schema source as declared objects — they exist only because `Logs.Date` carries `Indexed = True` and `Logs.Element` carries a `ForeignTable`, and the generator derives the names. **Unticking one checkbox in the schema designer silently deletes an index that a hand-written plan hundreds of lines away depends on.** No tooling can catch this.
 
 `procInitArrTier.sql:87` forces `plan ("Accounts" natural)` — a full table scan, forever. And the plan in `procSelectLogDates` orders by an index whose second segment is not filtered, so it is **worse than what the optimiser would choose**.
 
-### SAH-069 · **M** · Every report query is rebuilt, re-parsed and re-planned on each call, into fixed-size buffers
+### LEGACY-069 · **M** · Every report query is rebuilt, re-parsed and re-planned on each call, into fixed-size buffers
 61 `execute statement` sites across 48 objects. `procSerInventory` appends up to **24 fragments** into `varchar(600)`, including a 60-character user serial. Prepared-statement caching never hits. Overflow raises at runtime only under the specific filter combination that makes the query long enough — combinatorially hard to reach in testing, guaranteed to be found by a customer.
 
 Concatenation is also written without separator spaces (`from "BillItems"inner join`, `"MunID"where`). **This currently parses** because a closing quote terminates the identifier — it is not a live bug, but it is one edit away from being one.
 
 ~54 sites interpolate `DATE` parameters as text, relying on the connection's date-literal parsing. `Appointments/procAppointment.sql:175–176` carries a `--{review for compatibilty to firebird4}` marker where a cast was replaced — the team already hit engine-version date fragility.
 
-### SAH-070 · **M** · Index coverage is thin on exactly the columns reports filter by
+### LEGACY-070 · **M** · Index coverage is thin on exactly the columns reports filter by
 Cross-referencing every index definition against filter predicates across the corpus:
 
 | Table | Column | Filter sites | Status |
@@ -778,11 +778,11 @@ Cross-referencing every index definition against filter predicates across the co
 
 `Journal` — the general ledger header, the most reporting-critical table in the product — has exactly **one** declared index, and it is not on date.
 
-**This is the causal link to SAH-067/068: the hardcoded plans exist because the indexes are wrong.** Pinning a plan was the workaround for missing coverage.
+**This is the causal link to LEGACY-067/068: the hardcoded plans exist because the indexes are wrong.** Pinning a plan was the workaround for missing coverage.
 
 **Note on a common miscount:** the "155 indexes" figure counts only explicitly-declared index objects. There are also 589 field-level `Indexed = True` flags plus automatic indexes for every PK/unique/FK (997 FK fields) — total on the order of 750+. **The problem is placement, not count.**
 
-### SAH-071 · **L** · Tree-integrity checks run a recursive procedure per row inside triggers
+### LEGACY-071 · **L** · Tree-integrity checks run a recursive procedure per row inside triggers
 `standard.sub.hscript:1858–1875` and the same pattern in `hospitals` and `services`: every insert/update on a tree table walks the ancestor chain via a recursive procedure call — O(depth) queries per row. `RecursiveRecord` is the most-raised exception in the corpus (20 of 151 raise sites), confirming the pattern is replicated widely. The check is duplicated in at least three modules rather than shared.
 
 **New system:** recursive CTE or a materialised path / closure table, so cycle detection is one indexed lookup. Implemented once.
@@ -791,7 +791,7 @@ Cross-referencing every index definition against filter predicates across the co
 
 ## F. Integrity, maintainability, operability, quality
 
-### SAH-072 · **H** · Zero CHECK constraints across 460 tables, and 544 boolean columns encoding mutually exclusive states
+### LEGACY-072 · **H** · Zero CHECK constraints across 460 tables, and 544 boolean columns encoding mutually exclusive states
 `grep -oE '\bcheck\b *\('` across all schema sources → **0**. Of 5,136 columns, 1,846 are `NOT NULL` (36%) and **544 are boolean**.
 
 | Table | Columns | Boolean flags | Nominal state space |
@@ -808,7 +808,7 @@ Cross-referencing every index definition against filter predicates across the co
 
 **New system:** replace mutually-exclusive flag clusters with a single enumerated discriminator; keep booleans only for genuinely independent facts; enforce every remaining rule as a `CHECK` or a state-machine table so the legal state set is finite, declared, and enumerable by a test generator.
 
-### SAH-073 · **H** · Referential integrity is enforced inconsistently for the same logical relationship
+### LEGACY-073 · **H** · Referential integrity is enforced inconsistently for the same logical relationship
 The schema is *not* free of FKs — 997 fields carry a foreign table, 795 with an explicit delete action. The defect is inconsistency:
 
 | Column | Declared FK | **No constraint** | % unconstrained |
@@ -828,17 +828,17 @@ Confirmed at field level: `VouItems.Job` has FK `Jobs`; `BillItems.Job` has **no
 
 Corroborating: the shipped `fixes/fix-finals.sql` and `fixes/fix-Jobs.sql` do exactly this — drop the NOT NULL flag via direct `RDB$RELATION_FIELDS` manipulation, then `update … set "ItmJob" = null where "ItmJob" not in (select "JobID" from "Jobs")`. **Editing system tables directly to null out orphans is the shipped remediation.**
 
-### SAH-074 · **M** · 42 of 460 tables have no primary key
+### LEGACY-074 · **M** · 42 of 460 tables have no primary key
 9.1%, and the significant ones carry transactional data: `posEntryItems` (30 cols), `AttendItems` (23), `PayDetails` (14), `Enrolls` (14), `SerActivateItems` (14), `MatObjects` (14), `OrderInfo` (13), `JurTaxInfo` (13), `BillInfo` (12), `hspCostPaid` (12), `PayCommissions` (11), `Serials` (10), `CntSerials` (10), `Allotments` (8).
 
 Without a key there is no unique row identity: duplicates cannot be detected or prevented, a row cannot be individually corrected or audited, replication has nothing to reconcile on, and no other table can ever reference these rows.
 
-### SAH-075 · **M** · Deployment template placeholders were never substituted in shipped objects
+### LEGACY-075 · **M** · Deployment template placeholders were never substituted in shipped objects
 `standard/procFixMatStatus.sql:1`, `tcbReports/procMatStorage.sql:1`, `tcbReports/procSplitBtmQnt.sql:1` begin `create or alter procedure "%Name%"`; `standard/NumberTrigger.sql:1` uses `"%Table%"`. As shipped these create objects literally named `%Name%`.
 
-More broadly, **141 of 913 objects (15.4%) declare themselves as `"%Name%"`** — the deployed name comes from schema metadata at generation time. This is how two procedures came to be **byte-identical** (SAH-076). A procedure's source does not state its own identity, so grepping for a name finds call sites but not the definition.
+More broadly, **141 of 913 objects (15.4%) declare themselves as `"%Name%"`** — the deployed name comes from schema metadata at generation time. This is how two procedures came to be **byte-identical** (LEGACY-076). A procedure's source does not state its own identity, so grepping for a name finds call sites but not the definition.
 
-### SAH-076 · **M** · 9% of the corpus is duplicate or near-duplicate code
+### LEGACY-076 · **M** · 9% of the corpus is duplicate or near-duplicate code
 Jaccard similarity on normalised statement sets: **68 pairs ≥ 0.60, 15 pairs ≥ 0.80, 82 distinct objects (9.0%)**.
 ```
 1.00  procViewBillVisits ≡ procViewSerials          (byte-identical)
@@ -846,30 +846,30 @@ Jaccard similarity on normalised statement sets: **68 pairs ≥ 0.60, 15 pairs �
 0.92  Academy/procAddStudent ~ hospitals/procAddPatient
 0.91  standard/procSumVouItems ~ tcbReports/procSumVouItems3
 0.90  procSelectAccountVouchers ~ …Vouchers1
-0.77  procCalcCosts ~ procCalcJobCosts              (source of SAH-010)
+0.77  procCalcCosts ~ procCalcJobCosts              (source of LEGACY-010)
 ```
 The "append a digit to clone it" pattern is systemic: `procSumVouItems`/`2`/`3`, `procAccBalances`/`1`/`11`, `procAccLastPaid`/`1`, `procInitMatArray`/`1`, `procFixMatStatus`/`2`, `ProcChamFix1`/`2`.
 
-**Why it matters:** every costing or profit rule change must be applied in 2–3 places nothing links together. The 0.93-similar profit pair and the 0.77-similar costing pair are exactly where a missed edit produces **figures that disagree between two reports over the same data** — the hardest class of accounting defect to diagnose. SAH-009 is this defect realised.
+**Why it matters:** every costing or profit rule change must be applied in 2–3 places nothing links together. The 0.93-similar profit pair and the 0.77-similar costing pair are exactly where a missed edit produces **figures that disagree between two reports over the same data** — the hardest class of accounting defect to diagnose. LEGACY-009 is this defect realised.
 
-### SAH-077 · **M** · The call graph is unresolvable, so dead code cannot be identified
+### LEGACY-077 · **M** · The call graph is unresolvable, so dead code cannot be identified
 92 of 372 procedures (24.7%) appear ≤2 times across the entire corpus — essentially only their own definition. **They cannot be concluded dead**, because report definitions are stored as `MEMO` blobs in the `Reports` table inside customer databases, not as files.
 
 **That is itself the finding:** because report definitions live as blobs in customer databases, **no static analysis can ever determine whether a procedure is live.** A maintainer facing `procAccProfits` and `procAccMonthProfits` (93% identical) cannot establish whether either is still called without inspecting every blob in every customer database. This is a permanent structural obstacle to deleting anything — and precisely why near-duplicates accumulate instead of being consolidated.
 
 Explicitly-marked dead code ships too: 9 objects carry abandonment suffixes (`OnTeachersAI_Canceled`, `OnStudentEnrollsTaxBUD_Disabled`, `procTestArray`, …) and 16 carry `Enabled = False`.
 
-### SAH-078 · **M** · Behaviour-governing configuration lives in opaque blobs
+### LEGACY-078 · **M** · Behaviour-governing configuration lives in opaque blobs
 38 `MEMO` columns hold serialised structure: `Reports.Value` (report definitions), `Muniments.Options` (document-type behaviour, hex-encoded XML), `Points.Options`/`Setting`, `Users.Permissions`, `Fixes.Value`, `Qualifies`, `TerminalOptions`, `Tokens`, `Dimensions`, `Sections`, `Serials`.
 
 Configuration that determines system behaviour is undiffable, unreviewable, untestable and unmigratable. Two customers reporting different behaviour cannot be compared. A schema change affecting an option's meaning has no mechanism to rewrite the blobs. `Permissions:MEMO` in particular means the authorisation model is not queryable — you cannot answer "who can do X?" in SQL.
 
-### SAH-079 · **M** · 44 repair objects, two parallel idempotency ledgers, and one provably broken guard
+### LEGACY-079 · **M** · 44 repair objects, two parallel idempotency ledgers, and one provably broken guard
 44 of 913 objects (4.8%) exist to repair data the system corrupted — 8 upgrade hooks and 36 `procFix*` procedures. Idempotency is tracked in two unrelated places: a `Fixes` table and rows in the generic `Options` table keyed `OptSection='Fixes'`.
 
 **A concrete defect in that ledger:** `FixNumbers` reads `OptName='FixNumbers'` but writes `OptName='NcsIsManual'`. `'FixNumbers'` is never written anywhere in the tree, so the guard is permanently null and **the block re-runs on every rebuild** — and it collides with `FixNcsIsManual`, which owns that key. The object carries `Enabled = False`, which is presumably how this was contained.
 
-### SAH-080 · **H** · Schema upgrade is a full database dump-and-repump driven by 6,251 uncoordinated version integers
+### LEGACY-080 · **H** · Schema upgrade is a full database dump-and-repump driven by 6,251 uncoordinated version integers
 There is no single schema version: **6,251 independent `Version` integers** (min 1, max 49,367, median 5), one per object. Module versions are unrelated to each other (`standard`=1101, `tcbReports`=215, `system`=1). Upgrade runs via 28 lifecycle hooks around a "pump" — unload and reload the entire database.
 
 The UI confirms it is destructive and manual:
@@ -882,7 +882,7 @@ The UI confirms it is destructive and manual:
 
 **This is root cause RC-6: upgrade is expensive enough that data drift gets patched by repair scripts instead of fixed at source.**
 
-### SAH-081 · **M** · Backup and restore are manual, whole-file and destructive
+### LEGACY-081 · **M** · Backup and restore are manual, whole-file and destructive
 ```
 "When you restore you will lose all new data writen and not backuped, so make backup before restore."
 "This operatrion is very serious" / "The data will be deleted before recovery"
@@ -891,15 +891,15 @@ The UI confirms it is destructive and manual:
 ```
 Recovery granularity is the whole database at the last operator-initiated backup — restoring to fix one bad batch discards every transaction since. Restore cannot run over the network. Backup depends on a human remembering. **RPO is undefined and in practice is "since whenever someone last clicked it."** Floppy-disk export paths are still live UI in a shipping build.
 
-### SAH-082 · **M** · Licensing is pinned to a hardcoded private IP address
-`resource/setting.config`, shipped: `<GuardServer>192.168.1.14</GuardServer>` and `<WorkPath>C:\My Data\Sahlisoft SQL\</WorkPath>`. Any customer whose LAN is not `192.168.1.0/24`, or whose licence host moves or changes DHCP lease, has a licensing failure with no diagnostic. A licensing check that must reach a single fixed IP is a single point of failure for the entire product by construction.
+### LEGACY-082 · **M** · Licensing is pinned to a hardcoded private IP address
+`resource/setting.config`, shipped: `<GuardServer>192.168.1.14</GuardServer>` and `<WorkPath>C:\My Data\Legacy SQL\</WorkPath>`. Any customer whose LAN is not `192.168.1.0/24`, or whose licence host moves or changes DHCP lease, has a licensing failure with no diagnostic. A licensing check that must reach a single fixed IP is a single point of failure for the entire product by construction.
 
-### SAH-083 · **H** · One error handler in 33,179 lines, and it swallows the error
+### LEGACY-083 · **H** · One error handler in 33,179 lines, and it swallows the error
 Across all 913 objects there is exactly **one** `when` handler — `Appointments/procAppointment.sql:177`: `when any do vMaxDay = vMaxDay -1;` — using exceptions as month-length control flow, which masks genuine failures.
 
 With 151 exception raise sites and 318 triggers and no compensating logic anywhere, every failure propagates raw to the client: the user sees Firebird engine text (`violation of FOREIGN KEY constraint "fkBtmMaster"`), and every partial multi-step operation unwinds only if the client's transaction happens to be scoped correctly.
 
-### SAH-084 · **M** · Error messages are not actionable and the code convention is broken
+### LEGACY-084 · **M** · Error messages are not actionable and the code convention is broken
 All 56 exception definitions:
 ```
 MatOvercost         'MatOvercost #@1'              ← identifier + placeholder, no message
@@ -911,22 +911,22 @@ CanNotDelete        'Can not delete record'
 ```
 The `(x):` prefix looks like a searchable code but is not unique — **seven hospital exceptions all share `(d)`**, `Additions` reuses `(e)` for two different exceptions, and one is missing its colon and misspells "Patient". Messages state a refusal without a remedy: *which* object, *which* record, *which* value is never named. 5 of 56 exceptions are defined but never raised.
 
-### SAH-085 · **M** · The English build was never proofread
+### LEGACY-085 · **M** · The English build was never proofread
 Over 13,778 `msgstr` entries: **61 untranslated Arabic strings**, **122 empty translations**, **452 distinct misspellings** (575 occurrences), 232 with trailing whitespace.
 
 Arabic reaching English users includes two *dialogs*: `هل تريد حفظ التعديلات ؟` ("Do you want to save changes?") and `حدث خطأ عند توليد الملف` ("An error occurred generating the file") — an English-locale user is asked to confirm an unsaved-changes prompt they cannot read.
 
-Representative misspellings: `"Attend Entiers"` (×12, for "Entries"), `"Bill dosn't exist"` (×7), `"Calulating Profits"` (×6), `"Ignor New Debits"` (×5), `"Restor"` (×4), `"pay/recieve"`, `"This operatrion is very serious"` (**the restore confirmation dialog**), `"Realted pyamnet, can't be deleted."`, `"Admistrator"`, `"SunAccount"`, `"Sahi soft"` (the product's own name), and `"TBXToolbar3"` — a raw Delphi component name shipped as UI text, proving strings were extracted mechanically and never reviewed.
+Representative misspellings: `"Attend Entiers"` (×12, for "Entries"), `"Bill dosn't exist"` (×7), `"Calulating Profits"` (×6), `"Ignor New Debits"` (×5), `"Restor"` (×4), `"pay/recieve"`, `"This operatrion is very serious"` (**the restore confirmation dialog**), `"Realted pyamnet, can't be deleted."`, `"Admistrator"`, `"SunAccount"`, the product's own name, misspelt, and `"TBXToolbar3"` — a raw Delphi component name shipped as UI text, proving strings were extracted mechanically and never reviewed.
 
 Note the metadata itself uses `Futures` throughout where **`Features`** is meant.
 
-### SAH-086 · **L** · A vendor hardware config with mojibake and duplicate keys ships to every customer
+### LEGACY-086 · **L** · A vendor hardware config with mojibake and duplicate keys ships to every customer
 `bin/Initial.xml` — the only file of its kind — is a cash-drawer/watchdog config for one OEM board (`PS6509LF`) containing raw Super-I/O port programming (`0x4E`/`0x4F`). `Cash_Drawer2_Action4/5/6` are each defined **three times** with differing values; comments are mojibake (Big5 read as Latin-1); `//` comments make it invalid XML. Direct port I/O requires kernel access and is blocked on modern Windows without a signed driver.
 
 **New system:** peripherals through OS/vendor APIs (OPOS/JavaPOS or a vendor SDK), never raw port I/O; device profiles are schema-validated data.
 
-### SAH-087 · **L** · Hardcoded developer build paths in shipped metadata
-`types.hscript` and every module carry absolute paths from the original developer's machine: `W:\Work\delphi\jobs\sahlisoft_sql\source\core\tcbTypesConsts.pas`. The build is machine-bound.
+### LEGACY-087 · **L** · Hardcoded developer build paths in shipped metadata
+`types.hscript` and every module carry absolute paths from the original developer's machine: `W:\Work\delphi\jobs\legacy_sql\source\core\tcbTypesConsts.pas`. The build is machine-bound.
 
 ---
 
@@ -935,32 +935,32 @@ Note the metadata itself uses `Futures` throughout where **`Features`** is meant
 Six structural decisions generate almost all 87 defects. Fix these and most of Part I becomes unreachable by construction. Fix only the symptoms and they will regrow.
 
 ### RC-1 · The database has no notion of an authenticated caller
-Identity is written by the client into a namespace the client can write (`RDB$SET_CONTEXT`), read back by five triggers, each behind a client-settable off-switch. Consequence: **authorisation is advisory**. Generates SAH-025, 026, 027, 028, 029, 030, 031, 032, 033, 035, 038, 039, 040, 041, 042, 043, 044, 045, 046, 047, 048, 052.
+Identity is written by the client into a namespace the client can write (`RDB$SET_CONTEXT`), read back by five triggers, each behind a client-settable off-switch. Consequence: **authorisation is advisory**. Generates LEGACY-025, 026, 027, 028, 029, 030, 031, 032, 033, 035, 038, 039, 040, 041, 042, 043, 044, 045, 046, 047, 048, 052.
 
 **Fix:** identity is established server-side and is not addressable from the request path. Every authorisation decision reads an authenticated principal. Tenancy and confidentiality are mandatory query predicates (row-level security) that no parameter can widen.
 
 ### RC-2 · Derived state is stored and hand-maintained instead of derived
-Balances, quantities and costs live in ~12 aggregate tables maintained by 318 triggers with hand-written `−old + new` arithmetic. Every one of those triggers is an opportunity to miss the DELETE case, miss a key column, or introduce NULL. Generates SAH-001, 002, 003, 004, 005, 006, 007, 008, 011, 012, 016, 017, 018, 021, 023, 024, 049, 050, 051, 054, 062 — and is the reason all 44 repair objects exist (SAH-079, filed under RC-6).
+Balances, quantities and costs live in ~12 aggregate tables maintained by 318 triggers with hand-written `−old + new` arithmetic. Every one of those triggers is an opportunity to miss the DELETE case, miss a key column, or introduce NULL. Generates LEGACY-001, 002, 003, 004, 005, 006, 007, 008, 011, 012, 016, 017, 018, 021, 023, 024, 049, 050, 051, 054, 062 — and is the reason all 44 repair objects exist (LEGACY-079, filed under RC-6).
 
 **Fix:** an immutable append-only ledger is the only financial truth. Aggregates are projections that can be dropped and rebuilt bit-identically, with a continuous reconciliation job. If a number cannot be recomputed from the ledger, it is not allowed to exist.
 
 ### RC-3 · Behaviour is encoded as boolean flags rather than types
-544 boolean columns; `Users` 40, `Muniments` 32, `AccTypes` 30. Zero CHECK constraints. **Nothing declares which combinations are legal**, so the rules exist only in client code and trigger branches — unenumerable, untestable, unreasonable-about. Generates SAH-013, 020, 072 directly, and the untestability that lets everything else hide.
+544 boolean columns; `Users` 40, `Muniments` 32, `AccTypes` 30. Zero CHECK constraints. **Nothing declares which combinations are legal**, so the rules exist only in client code and trigger branches — unenumerable, untestable, unreasonable-about. Generates LEGACY-013, 020, 072 directly, and the untestability that lets everything else hide.
 
 **Fix:** one enumerated discriminator per concept; booleans only for genuinely independent facts; every remaining rule a CHECK or an explicit state machine, so the legal state set is finite and a test generator can enumerate it.
 
 ### RC-4 · Business logic is written as dynamically-concatenated SQL strings
-61 `execute statement` sites building queries by `||` into fixed-size buffers, with hardcoded optimiser plans assembled from independent code paths. No compile-time checking, no plan caching, silent truncation. Generates SAH-010, 014, 015, 022, 036, 037, 055, 056, 057, 058, 059, 063, 067, 068, 069, 071.
+61 `execute statement` sites building queries by `||` into fixed-size buffers, with hardcoded optimiser plans assembled from independent code paths. No compile-time checking, no plan caching, silent truncation. Generates LEGACY-010, 014, 015, 022, 036, 037, 055, 056, 057, 058, 059, 063, 067, 068, 069, 071.
 
 **Fix:** parameterised static SQL or a typed query builder that binds values. Filters cross API boundaries as structured values, never as SQL text. Never pin a query plan — a need for a hint is a schema defect to fix, not to freeze.
 
 ### RC-5 · Behaviour-governing artefacts live as blobs inside customer databases
-Report definitions, document-type options, permissions and terminal settings are `MEMO` blobs. Consequence: **the system is statically un-analysable.** The call graph cannot be resolved, so dead code cannot be identified, so duplication accumulates instead of being consolidated. Generates SAH-009, 019, 034, 064, 065, 066, 075, 076, 077, 078, 083, 084, 085, 086.
+Report definitions, document-type options, permissions and terminal settings are `MEMO` blobs. Consequence: **the system is statically un-analysable.** The call graph cannot be resolved, so dead code cannot be identified, so duplication accumulates instead of being consolidated. Generates LEGACY-009, 019, 034, 064, 065, 066, 075, 076, 077, 078, 083, 084, 085, 086.
 
 **Fix:** everything that governs behaviour is version-controlled text — migrations, report definitions, permission catalogues, document-type definitions — reviewed and tested like code, deployed like code.
 
 ### RC-6 · Schema change is a whole-database rebuild
-6,251 uncoordinated version integers, upgrade = unload/reload, console-only, no rollback but restore. Because a schema correction is expensive and risky, **drift gets patched by repair scripts rather than fixed at source** — which is why 4.8% of the corpus is `procFix*`. Generates SAH-053, 060, 061, 070, 073, 074, 079, 080, 081, 082, 087.
+6,251 uncoordinated version integers, upgrade = unload/reload, console-only, no rollback but restore. Because a schema correction is expensive and risky, **drift gets patched by repair scripts rather than fixed at source** — which is why 4.8% of the corpus is `procFix*`. Generates LEGACY-053, 060, 061, 070, 073, 074, 079, 080, 081, 082, 087.
 
 **Fix:** ordered forward-only migrations with one monotonic schema version, running online, idempotent, individually reversible, duration proportional to the change and not to the data. Then fixing a defect at source is cheap enough that nobody writes a repair script.
 
@@ -1021,7 +1021,7 @@ The first customer is a **Malaysia-based importer and distributor of food produc
 | **Batch / lot with expiry** | Food. Requires batch on every movement, FEFO picking, expiry reporting and near-expiry alerts | `Batches`, `MatBatches`, `Materials.ExpiredThrough`/`ExpiredBy`/`Age` |
 | **Multi-branch stock** | Warehouse per branch, transfers between them, stock and margin visible per branch | `Warehouses` (tree), `MunIsTrans` |
 | **Purchase in foreign currency** | Importing means supplier invoices in USD/AED/EUR against MYR books, with FX difference on settlement | `CurHistory`, `CurReconciles` |
-| **Multi-unit items** | Carton / inner / piece, with exact conversion — sold in different units at different levels of trade | `MatUnits.Exchange` (defined but never applied — SAH-066) |
+| **Multi-unit items** | Carton / inner / piece, with exact conversion — sold in different units at different levels of trade | `MatUnits.Exchange` (defined but never applied — LEGACY-066) |
 | **Price lists per customer type** | Wholesale, retail, branch transfer pricing | `Prices`, `PriceGroups`, `AccPrices` |
 | **Customer credit control** | Distribution runs on credit; needs limits, ageing, and a block on over-limit sales | `Accounts.MaxLimit`, `DebtAge` |
 | **Malaysian tax + e-invoicing** | ⚠️ Verify current LHDN MyInvois requirements against the authority's own documentation — thresholds and schema versions change | `procCalculateGSTReturn`, `GstListingReport` |
@@ -1064,7 +1064,7 @@ The owner's instruction (2026-09-05): Dulja must include **accounting, inventory
 | | Cashier authority offline: permission codes and discount/override limits travel with the catalogue; sync apply re-verifies the cashier's authority and any supervisor override server-side | 6 | Test 37 |
 | **Cross-cutting** | Tenancy + RLS, identity, RBAC with nine roles, branch scoping, segregation of duties, audit log, idempotent API | 0, 2 | Tests 4, 10–14, 36 |
 | | BRANCH dimension **mandatory** on every revenue, COGS and staff-cost ledger line (a posting-policy `requires`), so branch P&L has no unallocated lines | 2 | Test 28 (a PAYROLL line without BRANCH is refused) |
-| | **Attachments** — object storage (R2) addressed by opaque server-generated ids (SAH-038), SHA-256 recorded per file, linked to a document or a lot, download gated by the owning module's read permission, included in tenant data export | 2 (service + document link), 3 (lot link) | Test 13 (every upload audited) |
+| | **Attachments** — object storage (R2) addressed by opaque server-generated ids (LEGACY-038), SHA-256 recorded per file, linked to a document or a lot, download gated by the owning module's read permission, included in tenant data export | 2 (service + document link), 3 (lot link) | Test 13 (every upload audited) |
 
 **Still deferred (Phase 10):** fixed assets and depreciation (depreciation is a manual JOURNAL until then), service contracts and maintenance, purchase-requisition/PO approval workflow, and — very likely never — the clinic, school and aviation modules.
 
@@ -1072,7 +1072,7 @@ The owner's instruction (2026-09-05): Dulja must include **accounting, inventory
 
 1. **The ledger is immutable and append-only.** Corrections are reversing entries, never updates. Every stored balance is a projection rebuildable bit-identically from the ledger.
 2. **API-first.** The back-office app, the POS and every integration use the same documented API. No private back door, no direct database access from any client.
-3. **Document types are data; posting rules are versioned policy objects** — declarative, validated, tested, and *pinned to each posted document* so history is never re-interpreted (the fix for SAH-013).
+3. **Document types are data; posting rules are versioned policy objects** — declarative, validated, tested, and *pinned to each posted document* so history is never re-interpreted (the fix for LEGACY-013).
 4. **Every write is attributable**: who, when, from where, under which policy version, with before/after images.
 5. **Multi-tenant from line one.** Tenant is a first-class key enforced in the database, not in application code.
 6. **Invariants live where they cannot be bypassed.** If a rule matters, it is a constraint or a policy the data layer enforces — never a convention a client is trusted to respect.
@@ -1090,10 +1090,10 @@ The team runs Cloudflare. The constraint is **stay on Cloudflare**, and that is 
 **Why not a plain Worker.** Cloudflare's own Hyperdrive documentation is explicit: it pools in **transaction mode**; `SET` "supports … for the duration of a transaction or a query" and is reset when the connection returns to the pool; each Worker invocation "may obtain multiple connections"; and it warns directly against wrapping multiple operations in one transaction because "the connection cannot be reused by other Worker isolates."
 
 Every one of those collides with a hard requirement here:
-- Debits-equal-credits is a `DEFERRABLE INITIALLY DEFERRED` constraint checked at COMMIT across many statements (SAH-003).
-- Document numbering needs a transaction-scoped advisory lock (SAH-051).
-- RLS needs `set_config('app.tenant_id', …, true)` held for the transaction (SAH-035).
-- Cost-layer replay after a back-dated invoice runs for minutes (SAH-005), as do month-end close, tax returns and the migration import.
+- Debits-equal-credits is a `DEFERRABLE INITIALLY DEFERRED` constraint checked at COMMIT across many statements (LEGACY-003).
+- Document numbering needs a transaction-scoped advisory lock (LEGACY-051).
+- RLS needs `set_config('app.tenant_id', …, true)` held for the transaction (LEGACY-035).
+- Cost-layer replay after a back-dated invoice runs for minutes (LEGACY-005), as do month-end close, tax returns and the migration import.
 
 **The resolution: Cloudflare Containers.** GA since April 2026, up to 4 vCPU and 12 GiB — a long-lived process holding real Postgres connections. Workers stay in front for routing, auth pre-checks, rate limiting and serving the electron-builder update feed from R2; anything touching the ledger is forwarded to the container.
 
@@ -1118,24 +1118,24 @@ Electron app (back office or POS)
 |---|---|---|
 | **Language** | **TypeScript**, everywhere | One language across API, workers, back office and POS. |
 | **Runtime** | **Bun 1.4** | Runs the API, workers and build (tests: see the Testing row). Node 26.3 compatibility as of August 2026, native `Bun.sql` Postgres client, and already the team's tooling runtime. Keep the API runtime-agnostic so **Node 24 LTS** remains a drop-in fallback if a library misbehaves. |
-| **Database** | **PostgreSQL 18** | Exact `numeric`, `DEFERRABLE` constraints, RLS, `MERGE` (fixes SAH-002/049), advisory locks, period partitioning, `SERIALIZABLE`, logical replication. |
+| **Database** | **PostgreSQL 18** | Exact `numeric`, `DEFERRABLE` constraints, RLS, `MERGE` (fixes LEGACY-002/049), advisory locks, period partitioning, `SERIALIZABLE`, logical replication. |
 | **Managed by** | **Supabase** (Postgres + Auth), Singapore | Known to the team; PITR on paid tiers. Used as a database and auth provider, **not** as a backend. |
 | **API framework** | **Hono** | Already in use; runs on Bun, Node and Workers alike, which keeps the container/edge split cheap. |
 | **Validation + contract** | **Zod** + `@hono/zod-openapi` | One schema → runtime validation, types, and the OpenAPI document the POS consumes. |
 | **Data access** | **Drizzle ORM** + `postgres.js` | SQL-first, trivially droppable to raw SQL for posting and costing. `postgres.js` runs on both Bun and Node, keeping the fallback real; `Bun.sql` is the same API if you switch later. |
-| **Migrations** | **Drizzle Kit** + hand-written `down.sql`, expand/contract | Forward-only in production, one monotonic version, online (fixes SAH-080). Never DDL from application code (SAH-053). *pgroll is an ADR the agent may raise if expand/contract by hand proves painful — not a v1 dependency.* |
-| **Job queue** | **pg-boss** | Postgres-backed, so a job is **enqueued in the same transaction as the posting** — the guarantee SAH-005 lacked. Verify it runs clean on Bun during Phase 0; it is plain JS over `pg`, so this should be routine. |
-| **Money** | `numeric(19,4)` in Postgres; **decimal.js** behind a `Money` type | Never floats — SAH-008 produced a unit cost of 500,020.00 from a rounding residue in `double precision`. |
+| **Migrations** | **Drizzle Kit** + hand-written `down.sql`, expand/contract | Forward-only in production, one monotonic version, online (fixes LEGACY-080). Never DDL from application code (LEGACY-053). *pgroll is an ADR the agent may raise if expand/contract by hand proves painful — not a v1 dependency.* |
+| **Job queue** | **pg-boss** | Postgres-backed, so a job is **enqueued in the same transaction as the posting** — the guarantee LEGACY-005 lacked. Verify it runs clean on Bun during Phase 0; it is plain JS over `pg`, so this should be routine. |
+| **Money** | `numeric(19,4)` in Postgres; **decimal.js** behind a `Money` type | Never floats — LEGACY-008 produced a unit cost of 500,020.00 from a rounding residue in `double precision`. |
 | **Desktop shell** | **Electron** + **electron-builder** | Both apps. Bundles its own Chromium, so **every shop PC renders identically** — Tauri would depend on whichever WebView2 each machine has, which is the wrong risk to take on unknown hardware. All TypeScript, no Rust in the build. Cost: ~120 MB per app, ~150 MB RAM idle. Revisit Tauri only if that footprint hurts on real hardware; the React code is identical either way. |
 | **Frontend** | **React 19 + Vite**, **TanStack Router / Query / Table / Virtual**, React Hook Form + Zod, Tailwind (logical properties) + shadcn/ui | Router gives type-safe routes and search-param state — an accountant filters a ledger and wants that exact view back from a bookmark. Table + Virtual give the dense keyboard-driven grids. |
-| **i18n** | **i18next** + ICU; `Intl` with `islamic-umalqura` | Arabic and English at parity, both directions (SAH-085). |
+| **i18n** | **i18next** + ICU; `Intl` with `islamic-umalqura` | Arabic and English at parity, both directions (LEGACY-085). |
 | **PDF / documents** | **Decide in week one** — Typst or a shaping-aware library | ⚠️ **Largest technical risk in reporting: Arabic RTL glyph shaping.** Prove it with a real tax invoice before Phase 6. |
 | **Spreadsheets** | ExcelJS | |
-| **Testing** | **Vitest** (run under Node 24 in CI — Vitest on Bun is unofficial) + **fast-check** + **Testcontainers** + **Playwright** | Concurrency defects (SAH-049/051/052) need real interleaved transactions; mocks will not find them. |
+| **Testing** | **Vitest** (run under Node 24 in CI — Vitest on Bun is unofficial) + **fast-check** + **Testcontainers** + **Playwright** | Concurrency defects (LEGACY-049/051/052) need real interleaved transactions; mocks will not find them. |
 | **Lint / format** | **oxlint** + **oxfmt** | Oxc's Rust toolchain — fast on a monorepo, first-class in Turborepo and Nx. ⚠️ oxfmt was beta in Feb 2026; confirm it has reached stable, though formatter churn is low-risk. |
 | **Monorepo / CI** | Turborepo + GitHub Actions | Back office, POS, API and shared domain in one repo. |
 | **Compute** | **Cloudflare Containers** (API + workers), **Workers** at the edge | §3.2.1. |
-| **Object storage** | **Cloudflare R2** | Attachments by opaque server-generated ids, never client paths (SAH-038). |
+| **Object storage** | **Cloudflare R2** | Attachments by opaque server-generated ids, never client paths (LEGACY-038). |
 | **Observability** | OpenTelemetry + Sentry | Plus the ledger-integrity SLI (§4.9). |
 
 ### 3.2.3 What this preserves and what it costs
@@ -1201,9 +1201,9 @@ Tenant
      └─ DocumentEvent ── IMMUTABLE ── every status transition with its actor (maker ≠ checker is read from here — §4.2.2)
 ```
 
-**Projections** — derived from the ledger, never hand-edited. **Synchronous ones** (`account_balance`, `stock_on_hand`) are updated by the posting service in the same transaction via `MERGE` on the full key (the correct upsert SAH-002/049 lacked), so a trial balance is exact the instant a document posts. **Asynchronous ones** (`party_ageing`, `item_profitability`, `stock_valuation` history) are pg-boss jobs. **All of them** are rebuilt from `ledger_entry`/`inventory_movement` into scratch tables nightly and compared row for row; a mismatch is an incident.
+**Projections** — derived from the ledger, never hand-edited. **Synchronous ones** (`account_balance`, `stock_on_hand`) are updated by the posting service in the same transaction via `MERGE` on the full key (the correct upsert LEGACY-002/049 lacked), so a trial balance is exact the instant a document posts. **Asynchronous ones** (`party_ageing`, `item_profitability`, `stock_valuation` history) are pg-boss jobs. **All of them** are rebuilt from `ledger_entry`/`inventory_movement` into scratch tables nightly and compared row for row; a mismatch is an incident.
 
-**Keys:** `uuidv7()` primary keys everywhere (§3.9). **Never reuse an identifier; never rewind a sequence** (SAH-021).
+**Keys:** `uuidv7()` primary keys everywhere (§3.9). **Never reuse an identifier; never rewind a sequence** (LEGACY-021).
 
 ## 3.4 Costing — the specific design
 
@@ -1222,19 +1222,19 @@ cost_layer(id, item, warehouse, lot, movement_id,
 - Issues consume layers per the company's method and **record exactly what they consumed** in `cost_consumption` (FIFO: specific layers; AVCO: a proportional slice of all open layers at the running average).
 - A back-dated document invalidates only layers at or after its `sequence`; a background job replays **from that point forward**, not from the beginning of time.
 - The replay writes an **adjustment entry**, never silently rewriting posted history.
-- The chronological key is explicit and total: `(effective_date, document_sequence, line_number)` — never dependent on an index definition (SAH-067).
-- Value is mandatory and non-null on every movement; a movement without value is rejected at write time (SAH-007).
-- Negative computed cost is a hard error. Divisor is clamped to a minimum meaningful quantity (SAH-008).
-- **One implementation.** Reporting, valuation and posting all call it (SAH-009).
+- The chronological key is explicit and total: `(effective_date, document_sequence, line_number)` — never dependent on an index definition (LEGACY-067).
+- Value is mandatory and non-null on every movement; a movement without value is rejected at write time (LEGACY-007).
+- Negative computed cost is a hard error. Divisor is clamped to a minimum meaningful quantity (LEGACY-008).
+- **One implementation.** Reporting, valuation and posting all call it (LEGACY-009).
 
-## 3.5 Ideas to carry forward from Sahlisoft
+## 3.5 Ideas to carry forward from the legacy system
 
 These are genuinely good and should survive the rewrite:
 
 - **The document-type engine** — but as versioned policy objects, not flags.
 - **Custom fields (`Descriptors`)** as a core service: typed, attachable per document type, indexed, validated.
 - **Analysis dimensions on every line** — generalised so a new dimension needs no schema change.
-- **Per-context rounding policies** and currency sub-units — but actually applied (SAH-019).
+- **Per-context rounding policies** and currency sub-units — but actually applied (LEGACY-019).
 - **Period locking** with before/after semantics and approval levels — but uniform, not per-tier.
 - **Offline POS with parcel-based sync.**
 - **An end-user report designer** — text-defined, diffable, version-controlled.
@@ -1251,7 +1251,7 @@ Node-locked dongle licensing · UDF-dependent SQL · hardcoded query plans · dy
 
 **Confirmed scope decision:** Windows is the only target platform for now. Physical POS hardware is **not in v1**. A **separate POS application is installed at each shop** and syncs with the main system.
 
-This is deliberately close to the old system's shape (back office + `PointOfSale.exe` + `SyncService.exe` + the `mpos` schema + parcels) — that part of Sahlisoft's architecture was sound and should be kept. What changes is the sync *mechanics*, which is where the old one is weak.
+This is deliberately close to the old system's shape (back office + `PointOfSale.exe` + `SyncService.exe` + the `mpos` schema + parcels) — that part of the legacy system's architecture was sound and should be kept. What changes is the sync *mechanics*, which is where the old one is weak.
 
 ### 3.7.1 Two applications, one codebase
 
@@ -1299,13 +1299,13 @@ GET /v1/sync/catalogue?since=<cursor>&limit=1000
 Every catalogue row carries a monotonic `revision`. **It must be assigned in commit order, not sequence order** — a plain sequence hands out 100 to a transaction that commits *after* a client has already read through 105, and that row is never seen. So the catalogue-write trigger takes `pg_advisory_xact_lock(hashtextextended('catalogue:' || tenant_id::text, 0))` before taking the next value, which serialises catalogue writes per tenant (low volume; acceptable) and makes cursor reads safe. Never a timestamp — clocks drift. The till stores its cursor and asks for everything after it. Interrupted transfers resume from the cursor; nothing is lost and nothing is re-applied twice. Deletions travel as tombstones, never as silent absence.
 
 **Up-sync (sales → back office).** Push-based, batched, and idempotent:
-- Every ticket gets a **uuidv7 generated at the till**, at the moment of sale — never a server-assigned id, never a shared counter. This is the fix for SAH-051's numbering race, and it means the till can sell for days with no network.
+- Every ticket gets a **uuidv7 generated at the till**, at the moment of sale — never a server-assigned id, never a shared counter. This is the fix for LEGACY-051's numbering race, and it means the till can sell for days with no network.
 - Sales are written to a local **outbox** table *in the same local transaction as the sale*. A background loop drains the outbox. A sale can never be committed locally but lost in transit.
 - The server applies a batch in one transaction with **a savepoint per ticket**: a bad ticket rolls back to its savepoint and is reported; the good tickets in the same batch still commit. Deduplication is on `client_ref`. **Re-sending a batch is harmless** — this is what makes retry safe on a flaky shop connection.
 - The server responds with per-ticket accept/reject. Rejected tickets stay in the outbox with the reason attached and surface in a shop-level "needs attention" queue — never silently dropped.
 - Only after a ticket is acknowledged does the till mark it synced.
 
-**Stock.** The till holds an *advisory* stock figure for display and low-stock warnings. **It is never the source of truth.** Authoritative stock lives in the back office, computed from the movement ledger. A till that has been offline shows a stale figure and says so; it does not block a sale on a number it cannot trust. (The old system's negative-stock controls were per-user, opt-in, and bypassable four ways — SAH-048.)
+**Stock.** The till holds an *advisory* stock figure for display and low-stock warnings. **It is never the source of truth.** Authoritative stock lives in the back office, computed from the movement ledger. A till that has been offline shows a stale figure and says so; it does not block a sale on a number it cannot trust. (The old system's negative-stock controls were per-user, opt-in, and bypassable four ways — LEGACY-048.)
 
 **Serial-numbered goods** — *only if serials enter scope; §3.0.3 expects they will not for a food distributor* — are the one exception that needs care: a till cannot safely allocate a unique serial while offline. Either reserve serial blocks per till in advance, or restrict serialised sales to online mode. Decide this per product category, and make it explicit.
 
@@ -1321,7 +1321,7 @@ One discipline to keep anyway: **design the sync API as though an external clien
 
 **Terminal identity.** `app.pos_terminal` (§3.8) — each terminal owns an `app.principal` of kind `terminal`, so it has a real audit identity and can be the `posted_by` of the tickets it syncs. Enrolment: an admin generates a one-time enrolment code in the back office; the till redeems it once, generating a keypair in Electron `safeStorage` and registering the public key. Thereafter every `/v1/sync/*` call is signed by the terminal key and exchanged for a short-lived terminal JWT signed by the API's own key (a secret listed in §4.11). Revoking a terminal (`revoked_at`) needs no user change.
 
-**Cashier identity offline.** A cashier is a **human principal** whose till credential lives in `app.pos_cashier` (Phase 6): the PIN hash (Argon2id, per-cashier salt), the branch, and the permission codes and limits the till needs — a **projection**, regenerated by the catalogue-revision trigger whenever a `role_assignment`, `role_assignment_branch` or `role_permission` row affecting that principal changes (and on termination), compared nightly against `actor_has()` like every other projection (D14), never edited by hand. Limits live in a relational `branch_pos_policy(tenant_id, company_id, branch_id, max_line_discount_pct, max_ticket_discount_pct, max_void_amount, …)` row per branch (§4.1: never a blob), maintained under `admin.company.manage`; sync apply re-verifies against that row, never against the snapshot. That row is down-synced only to the terminals of its branch, so a cashier can sign in with no network. Every cashier has a real Supabase auth user — created through the admin API at hire even when the person never opens the back office (random undisclosed password; an alias address on a tenant domain the owner supplies when there is no mailbox) — so `auth_subject` is always a Supabase `sub` and the §4.2 rule that a principal is created only from a Supabase-obtained `sub` holds for cashiers too. The PIN is a till credential, never a login, and is the only credential the application hashes (SAH-025, 026, 028). `pos_cashier.employee_id` references the HR employee row (§3.10.2): **cashiers are employees**, and setting `employee.terminated_on` revokes the credential and expires every role assignment **by trigger, not by handler** — an AFTER UPDATE OF `terminated_on` trigger on `employee` sets `pos_cashier.revoked_at` and `role_assignment.expires_at`, and bumps the catalogue revision (tombstone), so a direct `app_rw` update or the Phase 9 importer cannot leave a live credential behind. Each ticket carries the cashier's principal id, which the back office stores as `document.attributed_to` — **data about the document, shown as attribution**. The *acting* principal for the posting (`created_by`/`posted_by`) is the **terminal**, resolved from the terminal's signed sync call, never from the payload (SAH-044). **Sync apply re-verifies** the attributed cashier's authority and any supervisor override (`pos.ticket.override` by a *different* principal, recorded as a `document_event` **attributed to** the supervisor and **acted by** the terminal — `document_event.attributed_to`, never a payload-supplied `actor_id`, SAH-044) against the server's current assignments; a ticket that fails goes to the shop's needs-attention queue, never silently into the ledger (SAH-027, SAH-048).
+**Cashier identity offline.** A cashier is a **human principal** whose till credential lives in `app.pos_cashier` (Phase 6): the PIN hash (Argon2id, per-cashier salt), the branch, and the permission codes and limits the till needs — a **projection**, regenerated by the catalogue-revision trigger whenever a `role_assignment`, `role_assignment_branch` or `role_permission` row affecting that principal changes (and on termination), compared nightly against `actor_has()` like every other projection (D14), never edited by hand. Limits live in a relational `branch_pos_policy(tenant_id, company_id, branch_id, max_line_discount_pct, max_ticket_discount_pct, max_void_amount, …)` row per branch (§4.1: never a blob), maintained under `admin.company.manage`; sync apply re-verifies against that row, never against the snapshot. That row is down-synced only to the terminals of its branch, so a cashier can sign in with no network. Every cashier has a real Supabase auth user — created through the admin API at hire even when the person never opens the back office (random undisclosed password; an alias address on a tenant domain the owner supplies when there is no mailbox) — so `auth_subject` is always a Supabase `sub` and the §4.2 rule that a principal is created only from a Supabase-obtained `sub` holds for cashiers too. The PIN is a till credential, never a login, and is the only credential the application hashes (LEGACY-025, 026, 028). `pos_cashier.employee_id` references the HR employee row (§3.10.2): **cashiers are employees**, and setting `employee.terminated_on` revokes the credential and expires every role assignment **by trigger, not by handler** — an AFTER UPDATE OF `terminated_on` trigger on `employee` sets `pos_cashier.revoked_at` and `role_assignment.expires_at`, and bumps the catalogue revision (tombstone), so a direct `app_rw` update or the Phase 9 importer cannot leave a live credential behind. Each ticket carries the cashier's principal id, which the back office stores as `document.attributed_to` — **data about the document, shown as attribution**. The *acting* principal for the posting (`created_by`/`posted_by`) is the **terminal**, resolved from the terminal's signed sync call, never from the payload (LEGACY-044). **Sync apply re-verifies** the attributed cashier's authority and any supervisor override (`pos.ticket.override` by a *different* principal, recorded as a `document_event` **attributed to** the supervisor and **acted by** the terminal — `document_event.attributed_to`, never a payload-supplied `actor_id`, LEGACY-044) against the server's current assignments; a ticket that fails goes to the shop's needs-attention queue, never silently into the ledger (LEGACY-027, LEGACY-048).
 
 **Local SQLite schema (mirrors the wire contract in `packages/sync`):**
 ```
@@ -1367,7 +1367,7 @@ This is the **shape and the enforcement pattern**, written so the first migratio
 
 **Transactions.** Every database access, reads included, runs inside `withTenant(tx => …)`, which opens the transaction at **READ COMMITTED** (the audit chain below depends on it — see the note there), issues the two `set_config` calls first, and **retries once on `40P01` (deadlock) or `40001` (serialisation)** — safe because every unsafe API call is idempotent by key. A lint rule forbids bare `db.` calls. Without `withTenant`, `set_config(…, true)` is never set, `app.current_tenant()` is NULL, and RLS silently returns nothing. **Long jobs** (costing replay, sync apply, month-end) run as many short transactions, never one long one — the per-tenant audit lock is held to commit.
 
-**Linter rules (task 0.4), stated exactly:** every table in schema `app` except `tenant`, `principal`, `permission` (global catalogues with their own policies below) must carry `tenant_id`, RLS enabled and forced, and a `tenant_isolation` policy. Every table except pure join tables and counter tables (`membership`, `role_permission`, `role_assignment`, `role_assignment_branch`, `ledger_entry_dimension`, `document_series`, `document_number_void`, `idempotency_key`; plus `audit_log`, keyed by `seq`, and the `permission` catalogue) must have `id uuid` and `created_at`; `ledger_entry` is exempt from `created_at` only — its timestamp is `posted_at`, set by the posting service and never updated. Every permissive RLS policy on a table in schema `app` is either the standard tenant policy (`tenant_isolation`, `tenant_self`, `principal_*`) or is scoped to `app_auth`; **every policy that adds a permission or branch gate is `AS RESTRICTIVE`** — permissive policies OR together, so a permissive gate would be voided by `tenant_isolation` (SAH-033). Every column named `*_by` (and `document_event.actor_id`) carries the `stamp_actor` trigger. Every FK to a tenant-scoped parent must be the composite `(tenant_id, <parent>_id)` form (see `ledger_entry.account_id` — the reason is under it). Every table is audited except the immutable ones and the derived ones (`ledger_entry`, `ledger_entry_dimension`, `inventory_movement`, `document_event`, `audit_log`, `account_balance`, `cost_layer`, `cost_consumption`, `employee_ytd`, `idempotency_key`) and the seeded `permission` catalogue; `tenant` and `principal`, which have no `tenant_id`, take the generator's global-table variant of the audit trigger (stated under `audit_log` below). **Immutable** (`ledger_entry`, `ledger_entry_dimension`, `inventory_movement`, `document_event`, `audit_log`) and **audit-exempt** are two different lists: derived tables are exempt from auditing but must remain updatable by `app_rw`.
+**Linter rules (task 0.4), stated exactly:** every table in schema `app` except `tenant`, `principal`, `permission` (global catalogues with their own policies below) must carry `tenant_id`, RLS enabled and forced, and a `tenant_isolation` policy. Every table except pure join tables and counter tables (`membership`, `role_permission`, `role_assignment`, `role_assignment_branch`, `ledger_entry_dimension`, `document_series`, `document_number_void`, `idempotency_key`; plus `audit_log`, keyed by `seq`, and the `permission` catalogue) must have `id uuid` and `created_at`; `ledger_entry` is exempt from `created_at` only — its timestamp is `posted_at`, set by the posting service and never updated. Every permissive RLS policy on a table in schema `app` is either the standard tenant policy (`tenant_isolation`, `tenant_self`, `principal_*`) or is scoped to `app_auth`; **every policy that adds a permission or branch gate is `AS RESTRICTIVE`** — permissive policies OR together, so a permissive gate would be voided by `tenant_isolation` (LEGACY-033). Every column named `*_by` (and `document_event.actor_id`) carries the `stamp_actor` trigger. Every FK to a tenant-scoped parent must be the composite `(tenant_id, <parent>_id)` form (see `ledger_entry.account_id` — the reason is under it). Every table is audited except the immutable ones and the derived ones (`ledger_entry`, `ledger_entry_dimension`, `inventory_movement`, `document_event`, `audit_log`, `account_balance`, `cost_layer`, `cost_consumption`, `employee_ytd`, `idempotency_key`) and the seeded `permission` catalogue; `tenant` and `principal`, which have no `tenant_id`, take the generator's global-table variant of the audit trigger (stated under `audit_log` below). **Immutable** (`ledger_entry`, `ledger_entry_dimension`, `inventory_movement`, `document_event`, `audit_log`) and **audit-exempt** are two different lists: derived tables are exempt from auditing but must remain updatable by `app_rw`.
 
 ```sql
 -- 0001_foundations.sql  ───────────────────────────────────────────────────────
@@ -1378,7 +1378,7 @@ grant usage on schema app to app_rw;
 -- Identity comes from the API, set once per transaction, local to the transaction.
 -- withTenant():  select set_config('app.tenant_id', $1, true),
 --                       set_config('app.actor_id',  $2, true);
--- Nothing else can widen it (closes SAH-026, 027, 035).
+-- Nothing else can widen it (closes LEGACY-026, 027, 035).
 create function app.current_tenant() returns uuid language sql stable as $$
   select nullif(current_setting('app.tenant_id', true), '')::uuid $$;
 create function app.current_actor() returns uuid language sql stable as $$
@@ -1495,7 +1495,7 @@ create table app.role (
   created_at   timestamptz not null default now(),
   unique (tenant_id, code), unique (tenant_id, id)
 );
--- Global catalogue, seeded from packages/contracts/permissions.ts; a code no handler checks fails the build (SAH-047).
+-- Global catalogue, seeded from packages/contracts/permissions.ts; a code no handler checks fails the build (LEGACY-047).
 -- `mutating` lets CI prove that a read-only role is read-only (§4.2.2 R7).
 create table app.permission (
   code         text primary key,               -- '<module>.<resource>.<action>' (§4.2.1)
@@ -1538,7 +1538,7 @@ create table app.role_assignment_branch (
   -- foreign key (tenant_id, branch_id) references app.dimension_value(tenant_id, id) is added once that table exists (below)
 );
 -- THE authorisation predicate (§4.2.1): one function, security invoker, stable — used by every handler, by RLS policies on
--- sensitive tables (§3.10) and by triggers. Semantics (never fail open — SAH-042, SAH-050):
+-- sensitive tables (§3.10) and by triggers. Semantics (never fail open — LEGACY-042, LEGACY-050):
 --   p_branch_id NULL  = "company-wide authority": granted only by an unexpired assignment with NO branch rows;
 --   p_branch_id set   = granted by a company-wide assignment or by one whose branch rows include that branch;
 --   the tenant's SYSTEM principal (server-side jobs and the seed CLI only, never a request path — RC-1) always passes, so a
@@ -1567,7 +1567,7 @@ $$;
 -- `create policy branch_isolation on <t> as restrictive using (app.actor_in_branch(company_id, branch_id))`, where actor_in_branch
 -- is true for the system principal, for any unexpired company-wide assignment in that company, and for any branch row matching
 -- branch_id. RESTRICTIVE, because permissive policies OR together and a permissive gate would be voided by tenant_isolation.
--- No self-grant, no self-escalation (§4.2.2 R5; SAH-032): an actor may not change their own assignments, nor the permissions
+-- No self-grant, no self-escalation (§4.2.2 R5; LEGACY-032): an actor may not change their own assignments, nor the permissions
 -- of a role they currently hold. The seed runs as the system principal, so the owner's first assignment passes.
 create function app.forbid_self_grant() returns trigger language plpgsql as $$
 begin
@@ -1643,7 +1643,7 @@ begin
 end $$;
 create trigger role_assignment_keep_last_admin before update or delete on app.role_assignment for each row execute function app.keep_last_admin_assignment();
 create trigger role_permission_keep_last_admin before update or delete on app.role_permission for each row execute function app.keep_last_admin_permission();
--- Actor columns are never trusted (SAH-044): a column DEFAULT is not a control — direct SQL can supply any value. The generic
+-- Actor columns are never trusted (LEGACY-044): a column DEFAULT is not a control — direct SQL can supply any value. The generic
 -- BEFORE INSERT OR UPDATE trigger app.stamp_actor(<column>), attached by the migration generator to every table with a *_by column
 -- (created_by, posted_by, closed_by, voided_by, enrolled_by, granted_by, loaded_by, verified_by, entered_by; document_event.actor_id):
 -- on INSERT a supplied value is replaced with app.current_actor() (a NULL stays NULL — posted_by/closed_by are set later); on UPDATE a
@@ -1669,7 +1669,7 @@ create table app.fiscal_period (
   exclude using gist (company_id with =, daterange(starts_on, ends_on, '[]') with &&)  -- no overlaps
 );
 
-create type app.account_type as enum ('asset','liability','equity','income','expense');  -- one discriminator, not 30 booleans (SAH-072)
+create type app.account_type as enum ('asset','liability','equity','income','expense');  -- one discriminator, not 30 booleans (LEGACY-072)
 create table app.account (
   id          uuid primary key default uuidv7(),
   tenant_id   uuid not null references app.tenant(id),
@@ -1681,7 +1681,7 @@ create table app.account (
   parent_id   uuid,                          -- composite FK below (schema rule: every tenant-scoped FK carries tenant_id)
   is_group    boolean not null default false,
   currency    char(3),                       -- null = any currency
-  archived_at timestamptz,                   -- accounts are archived, never deleted (SAH-021)
+  archived_at timestamptz,                   -- accounts are archived, never deleted (LEGACY-021)
   created_at  timestamptz not null default now(),
   unique (company_id, code),
   unique (tenant_id, id),
@@ -1690,7 +1690,7 @@ create table app.account (
 );
 alter table app.company add foreign key (tenant_id, fx_rounding_account_id) references app.account(tenant_id, id);
 
--- ── Document types are data; posting rules are versioned policy (RC-3, SAH-013) ──
+-- ── Document types are data; posting rules are versioned policy (RC-3, LEGACY-013) ──
 create table app.document_type (
   id          uuid primary key default uuidv7(),
   tenant_id   uuid not null references app.tenant(id),
@@ -1708,13 +1708,13 @@ create table app.posting_policy (
   version           int  not null,
   effective_from    date not null,
   definition        jsonb not null,          -- validated against packages/domain/posting-policy.schema.json (below);
-                                             -- seeded from version-controlled files, so it is diffable — not an opaque blob (SAH-078)
+                                             -- seeded from version-controlled files, so it is diffable — not an opaque blob (LEGACY-078)
   created_at        timestamptz not null default now(),
   unique (document_type_id, version), unique (tenant_id, id),
   foreign key (tenant_id, document_type_id) references app.document_type(tenant_id, id)
 );
 
--- ── Numbering: a counter row per (company, series, period); numbers issued under an advisory lock (SAH-051) ──
+-- ── Numbering: a counter row per (company, series, period); numbers issued under an advisory lock (LEGACY-051) ──
 create table app.document_series (
   tenant_id         uuid not null references app.tenant(id),
   company_id        uuid not null,
@@ -1750,22 +1750,22 @@ create table app.document (
   tenant_id             uuid not null references app.tenant(id),
   company_id            uuid not null,
   document_type_id      uuid not null,
-  posting_policy_id     uuid,                -- PINNED at post time; never re-read (SAH-013)
+  posting_policy_id     uuid,                -- PINNED at post time; never re-read (LEGACY-013)
   status                app.document_status not null default 'draft',
   series                text not null,
   fiscal_period_id      uuid,                -- resolved from effective_date at issue
-  number                bigint,              -- assigned at ISSUE from document_series, never by the client (SAH-051)
+  number                bigint,              -- assigned at ISSUE from document_series, never by the client (LEGACY-051)
   effective_date        date not null,
   party_id              uuid,                -- FK (tenant_id, party_id) → app.party is added by the Phase 2 migration
   currency              char(3) not null,
   exchange_rate         numeric(19,8) not null default 1,
-  rate_source           text,                -- 'BNM 2026-09-04', 'manual:<actor>', … (SAH-012)
+  rate_source           text,                -- 'BNM 2026-09-04', 'manual:<actor>', … (LEGACY-012)
   reverses_document_id  uuid,                -- composite FK below
   client_ref            uuid,                -- uuidv7 generated at the till; the idempotency key (§3.7.3)
   branch_id             uuid not null,       -- BRANCH dimension value: the enforcement key for branch scoping (§4.2.1). NOT NULL: head-office documents carry the
-                                             -- head-office value, never NULL, so no branch gate has a NULL path (SAH-042, 050). POS tickets take it from the terminal; composite FK below
+                                             -- head-office value, never NULL, so no branch gate has a NULL path (LEGACY-042, 050). POS tickets take it from the terminal; composite FK below
   attributed_to         uuid references app.principal(id),   -- e.g. the cashier on a POS ticket: DATA about the document,
-                                                             -- not the acting principal (created_by/posted_by) — SAH-044
+                                                             -- not the acting principal (created_by/posted_by) — LEGACY-044
   created_by            uuid not null default app.current_actor() references app.principal(id),
   created_at            timestamptz not null default now(),
   posted_by             uuid references app.principal(id), posted_at timestamptz,
@@ -1811,9 +1811,9 @@ create table app.ledger_entry (
   fiscal_period_id   uuid not null,
   posting_policy_id  uuid not null,
   posted_at          timestamptz not null default now(),
-  posted_by          uuid not null default app.current_actor() references app.principal(id),   -- session, never a parameter (SAH-044)
+  posted_by          uuid not null default app.current_actor() references app.principal(id),   -- session, never a parameter (LEGACY-044)
   check (not (debit > 0 and credit > 0)),                        -- one side per line
-  check (base_debit  = round(debit  * exchange_rate, 4)),        -- base = value × rate, always (SAH-012)
+  check (base_debit  = round(debit  * exchange_rate, 4)),        -- base = value × rate, always (LEGACY-012)
   check (base_credit = round(credit * exchange_rate, 4)),
   unique (document_id, line_no),                                 -- also serves the per-document sum below
   unique (tenant_id, id),                                        -- lets ledger_entry_dimension use the composite FK form (v1.1 #14)
@@ -1821,12 +1821,12 @@ create table app.ledger_entry (
   -- point at tenant B's account if the uuid were known. Pairing tenant_id in the FK makes that impossible.
   foreign key (tenant_id, company_id)       references app.company(tenant_id, id),
   foreign key (tenant_id, document_id)      references app.document(tenant_id, id),
-  foreign key (tenant_id, account_id)       references app.account(tenant_id, id),        -- no orphan postings (SAH-021, 073)
+  foreign key (tenant_id, account_id)       references app.account(tenant_id, id),        -- no orphan postings (LEGACY-021, 073)
   foreign key (tenant_id, fiscal_period_id) references app.fiscal_period(tenant_id, id),
   foreign key (tenant_id, posting_policy_id) references app.posting_policy(tenant_id, id)
 );
 -- Partition by fiscal year once volume warrants it; PK and unique keys must then include effective_date.
-create index on app.ledger_entry (company_id, account_id, effective_date);   -- the index the old Journal never had (SAH-070)
+create index on app.ledger_entry (company_id, account_id, effective_date);   -- the index the old Journal never had (LEGACY-070)
 create index on app.ledger_entry (company_id, effective_date);
 
 create table app.ledger_entry_dimension (                       -- join table
@@ -1840,7 +1840,7 @@ create table app.ledger_entry_dimension (                       -- join table
   foreign key (tenant_id, dimension_value_id) references app.dimension_value(tenant_id, id)
 );
 
--- Immutability: belt (privileges — see the grants block at the end) and braces (trigger). (SAH-031, 041)
+-- Immutability: belt (privileges — see the grants block at the end) and braces (trigger). (LEGACY-031, 041)
 create function app.forbid_change() returns trigger language plpgsql as $$
 begin raise exception 'ERR_TABLE_IMMUTABLE: % is append-only', tg_table_name using errcode = 'check_violation'; end $$;
 create trigger ledger_entry_immutable before update or delete on app.ledger_entry
@@ -1848,7 +1848,7 @@ create trigger ledger_entry_immutable before update or delete on app.ledger_entr
 create trigger ledger_entry_dimension_immutable before update or delete on app.ledger_entry_dimension
   for each row execute function app.forbid_change();
 
--- Period lock: checked on the LINES, not a sibling header table; fails closed on NULL. (SAH-031, 042)
+-- Period lock: checked on the LINES, not a sibling header table; fails closed on NULL. (LEGACY-031, 042)
 create function app.assert_period_open() returns trigger language plpgsql as $$
 declare st app.period_status;
 begin
@@ -1862,7 +1862,7 @@ end $$;
 create trigger ledger_entry_period_open before insert on app.ledger_entry
   for each row execute function app.assert_period_open();
 
--- Debits = credits in BASE currency, per document, checked at COMMIT. (SAH-003)
+-- Debits = credits in BASE currency, per document, checked at COMMIT. (LEGACY-003)
 -- Per-transaction-currency balance is a posting-policy rule (a multi-currency revaluation journal
 -- legitimately balances only in base). Because base amounts are rounded per line, the posting
 -- service MUST add a base-currency FX-rounding line (rate 1, account company.fx_rounding_account_id)
@@ -1916,7 +1916,7 @@ create table app.idempotency_key (
   primary key (tenant_id, principal_id, key)
 );
 
--- ── Audit log: append-only, server-supplied actor, hash-chained. (SAH-029, 030, 040) ──
+-- ── Audit log: append-only, server-supplied actor, hash-chained. (LEGACY-029, 030, 040) ──
 create table app.audit_log (
   seq          bigint generated always as identity primary key,
   tenant_id    uuid not null references app.tenant(id),
@@ -2028,19 +2028,19 @@ alter default privileges for role app_migrator in schema app grant select, inser
 }
 ```
 
-**Two things the schema deliberately does *not* do**, because the API does them and a CI test proves it: (1) assign document numbers — the posting service takes the advisory lock described under `document_series` and issues the next number at *issue*, recording voids in `document_number_void`; (2) compute balances — **the posting service updates `app.account_balance(company_id, account_id, fiscal_period_id, currency, debit, credit, base_debit, base_credit)` in the same transaction via `MERGE`** (the correct upsert SAH-002/049 lacked), and the nightly ledger-integrity job rebuilds it from `ledger_entry` into a scratch table and compares row for row. A mismatch is an incident.
+**Two things the schema deliberately does *not* do**, because the API does them and a CI test proves it: (1) assign document numbers — the posting service takes the advisory lock described under `document_series` and issues the next number at *issue*, recording voids in `document_number_void`; (2) compute balances — **the posting service updates `app.account_balance(company_id, account_id, fiscal_period_id, currency, debit, credit, base_debit, base_credit)` in the same transaction via `MERGE`** (the correct upsert LEGACY-002/049 lacked), and the nightly ledger-integrity job rebuilds it from `ledger_entry` into a scratch table and compares row for row. A mismatch is an incident.
 
 ## 3.9 Engineering conventions
 
 Settled so the agent does not have to decide them, and so every module looks the same.
 
-**Identifiers.** `uuidv7()` server-side for everything (time-ordered, index-friendly). The POS generates a `uuidv7` at the till for each ticket (the `uuid` npm package or Bun's built-in), carried as `document.client_ref`. Never a sequential integer as a public identifier; never reuse; never rewind (SAH-021).
+**Identifiers.** `uuidv7()` server-side for everything (time-ordered, index-friendly). The POS generates a `uuidv7` at the till for each ticket (the `uuid` npm package or Bun's built-in), carried as `document.client_ref`. Never a sequential integer as a public identifier; never reuse; never rewind (LEGACY-021).
 
 **Time and dates.** All timestamps `timestamptz`, stored in UTC. Every company has a `timezone` (`Asia/Kuala_Lumpur` for the first customer). **`effective_date` is a `date`, entered by the user, and is the accounting date** — it is never derived from `posted_at`. Fiscal period is resolved from `effective_date` at posting and stored on the row. Hijri display is a presentation concern via `Intl`; storage is always Gregorian.
 
 **Money.** `numeric(19,4)` in Postgres. In TypeScript, `Money` is an opaque type wrapping `decimal.js`, carrying its currency; the compiler rejects adding MYR to USD. Display rounding applies the currency's policy at render time; **stored base amounts are never recomputed on read.** No `number` type ever holds a monetary value — a lint rule enforces it.
 
-**Quantities.** `numeric(19,6)`. Unit conversions are exact rationals `(numerator bigint, denominator bigint)`, never floats (SAH-066). Quantity is stored once, in the item's base unit; the entered unit and quantity are kept for display.
+**Quantities.** `numeric(19,6)`. Unit conversions are exact rationals `(numerator bigint, denominator bigint)`, never floats (LEGACY-066). Quantity is stored once, in the item's base unit; the entered unit and quantity are kept for display.
 
 **Naming.** `snake_case` everywhere in SQL; **singular** table names (`ledger_entry`, not `ledger_entries`), matching §3.8; enum types singular. TypeScript: `camelCase`, types `PascalCase`. Bilingual names on master data as `name_en` / `name_ar` columns — not a JSON blob.
 
@@ -2048,7 +2048,7 @@ Settled so the agent does not have to decide them, and so every module looks the
 
 **Deletion.** Financial rows: never — reversal only. Master data: `archived_at`, never `DELETE`. HR master data: archived, never deleted; a terminated employee keeps every payroll line and payslip for the statutory retention period. Genuine deletion exists only for drafts and for the GDPR/PDPA erasure workflow, and both write an audit row first.
 
-**Error codes.** Every error the API can return has a stable string code `ERR_<DOMAIN>_<REASON>` (`ERR_LEDGER_UNBALANCED`, `ERR_PERIOD_NOT_OPEN`, `ERR_STOCK_INSUFFICIENT`), a human message naming the specific entity, and a remedy. Codes are enumerated in one file; a code no code raises fails the build (the inverse of SAH-084).
+**Error codes.** Every error the API can return has a stable string code `ERR_<DOMAIN>_<REASON>` (`ERR_LEDGER_UNBALANCED`, `ERR_PERIOD_NOT_OPEN`, `ERR_STOCK_INSUFFICIENT`), a human message naming the specific entity, and a remedy. Codes are enumerated in one file; a code no code raises fails the build (the inverse of LEGACY-084).
 
 **Database access.** Every query — reads included — runs inside `withTenant(tx => …)`, which opens the transaction and issues the two `set_config(…, true)` calls before anything else. A lint rule forbids bare `db.` calls. Without this RLS silently returns zero rows (§3.8).
 
@@ -2056,9 +2056,9 @@ Settled so the agent does not have to decide them, and so every module looks the
 
 **Migrations.** One migration per PR, named `NNNN_<verb>_<noun>.sql`. **Production is forward-only.** Every migration ships a hand-written `NNNN.down.sql` that CI applies and then re-applies up on a Testcontainers database — "reversible" means that file exists and passes, not that production is ever rolled back. Expand/contract for any change touching a live table. Drizzle Kit generates the up; a human reads the SQL before merge. A CI check fails any new table lacking `tenant_id`, RLS, or an audit trigger.
 
-**Tests.** `tests/regression/sah-NNN.test.ts` — one file per Part I defect the current phase touches, named for it, so coverage of the defect register is greppable. `tests/invariants/` — the ledger and tenant-isolation suites, run on every PR. `tests/golden/` — costing and tax fixtures with expected output committed.
+**Tests.** `tests/regression/legacy-NNN.test.ts` — one file per Part I defect the current phase touches, named for it, so coverage of the defect register is greppable. `tests/invariants/` — the ledger and tenant-isolation suites, run on every PR. `tests/golden/` — costing and tax fixtures with expected output committed.
 
-**Localisation.** Every user-facing string goes through i18next with an ICU message; a CI check fails any hard-coded string in a component. Both catalogues must be complete before merge — no empty `msgstr`, no source-language fallbacks in the other language (SAH-085).
+**Localisation.** Every user-facing string goes through i18next with an ICU message; a CI check fails any hard-coded string in a component. Both catalogues must be complete before merge — no empty `msgstr`, no source-language fallbacks in the other language (LEGACY-085).
 
 **Logging.** Structured JSON; `tenant_id`, `actor_id`, `request_id`, `trace_id` on every line; never a token, password, or full card number. A lint rule forbids `console.log` outside scripts.
 
@@ -2073,12 +2073,12 @@ Owner decision 2026-09-05 (D25): HR with payroll is in v1. This section is the d
 **In v1 (Phase 8 unless marked):**
 
 - **Employee master** — `employee` extends a `party` of kind `employee` (1:1): employee number, home branch (a BRANCH dimension value), position, employment type, hire and termination dates, and an optional 1:1 `principal_id` (only staff who log in or sell). The minimal master lands in **Phase 6**, because cashiers are employees.
-- **Sensitive data** in a separate `employee_sensitive` table, field-level encrypted in the application (§4.6): national ID or passport, date of birth, residency category, bank account, EPF/SOCSO/income-tax reference numbers, work-permit expiry. Protected **in the data layer**: an RLS policy created **`AS RESTRICTIVE`** — `create policy sensitive_gate on app.employee_sensitive as restrictive using (app.actor_has('hr.employee.read_sensitive', (select e.company_id from app.employee e where e.id = employee_id)))` — alongside the standard permissive `tenant_isolation`; Postgres ANDs restrictive policies with the permissive set, so the gate composes instead of being OR-ed away, and a principal without the permission gets zero rows through any path (the system principal passes, so jobs still run); the API additionally omits the fields, and the gate covers filter, sort, search and export, not only display (SAH-033). `employee_sensitive` carries no copy of `company_id`'s parents — the policy joins `employee`.
+- **Sensitive data** in a separate `employee_sensitive` table, field-level encrypted in the application (§4.6): national ID or passport, date of birth, residency category, bank account, EPF/SOCSO/income-tax reference numbers, work-permit expiry. Protected **in the data layer**: an RLS policy created **`AS RESTRICTIVE`** — `create policy sensitive_gate on app.employee_sensitive as restrictive using (app.actor_has('hr.employee.read_sensitive', (select e.company_id from app.employee e where e.id = employee_id)))` — alongside the standard permissive `tenant_isolation`; Postgres ANDs restrictive policies with the permissive set, so the gate composes instead of being OR-ed away, and a principal without the permission gets zero rows through any path (the system principal passes, so jobs still run); the API additionally omits the fields, and the gate covers filter, sort, search and export, not only display (LEGACY-033). `employee_sensitive` carries no copy of `company_id`'s parents — the policy joins `employee`.
 - **Effective-dated statutory profile** per employee: the inputs the PCB/MTD method needs (marital status, spouse-working flag, child relief count, …). ⚠️ The field list is verified against LHDN's current publication, never invented here.
 - **Pay components** — a typed catalogue (`earning | deduction`), each mapped to a GL account and to statutory schemes through a join table (no "subject to X" booleans — RC-3). Malaysia seed: basic salary, fixed allowance, overtime (entered as an amount), bonus/commission, unpaid-leave deduction (days × daily rate), advance recovery.
 - **Compensation lines** — effective-dated recurring pay lines per employee. Salary history is the closed rows; a promotion is a new row.
-- **Statutory schemes as data** — `statutory_scheme` (EPF, SOCSO, EIS, PCB/MTD, plus any levy the owner confirms applies — a scheme is a **row**, never an enum, so a new levy is data, not a migration) and `statutory_rate_table(scheme, version, effective_from, effective_to, definition jsonb, source, loaded_by, verified_by, verified_at)`, seeded from version-controlled files under `packages/db/seed/my/statutory/<scheme>/vN.json` so every change is a reviewed diff (SAH-078). The seed PR is the primary load path; the runtime `hr.statutory_table.manage` load is break-glass, and **`verified_by` must differ from `loaded_by`** (trigger). **This document states no rate, threshold, ceiling or formula.** A run cannot pin an unverified table or one whose effective range does not cover the pay period (SAH-020).
-- **Payroll run** — a `Document` of type `PAYROLL` (kind `regular | supplementary | final`), 1:1 with `document` and using **the document state machine, not its own**: calculate → submit → approve → post, through the one posting service under a pinned policy; every `payroll_line` pins the rate-table versions it used (SAH-013). A run may be recalculated only while draft or submitted; any recalculation after submit returns it to draft and voids the pending approval, so an approver always approves the figures that will post. Correction after posting is a reversal plus a supplementary run; nothing is edited in place (SAH-041).
+- **Statutory schemes as data** — `statutory_scheme` (EPF, SOCSO, EIS, PCB/MTD, plus any levy the owner confirms applies — a scheme is a **row**, never an enum, so a new levy is data, not a migration) and `statutory_rate_table(scheme, version, effective_from, effective_to, definition jsonb, source, loaded_by, verified_by, verified_at)`, seeded from version-controlled files under `packages/db/seed/my/statutory/<scheme>/vN.json` so every change is a reviewed diff (LEGACY-078). The seed PR is the primary load path; the runtime `hr.statutory_table.manage` load is break-glass, and **`verified_by` must differ from `loaded_by`** (trigger). **This document states no rate, threshold, ceiling or formula.** A run cannot pin an unverified table or one whose effective range does not cover the pay period (LEGACY-020).
+- **Payroll run** — a `Document` of type `PAYROLL` (kind `regular | supplementary | final`), 1:1 with `document` and using **the document state machine, not its own**: calculate → submit → approve → post, through the one posting service under a pinned policy; every `payroll_line` pins the rate-table versions it used (LEGACY-013). A run may be recalculated only while draft or submitted; any recalculation after submit returns it to draft and voids the pending approval, so an approver always approves the figures that will post. Correction after posting is a reversal plus a supplementary run; nothing is edited in place (LEGACY-041).
 - **Money out on Phase 4 machinery** — `PAYROLL_PAYMENT` (one bank batch, one line per employee, clears salaries payable per employee); statutory remittances as ordinary `PAYMENT` documents to each authority modelled as a vendor party, refused if the amount differs from the schedule they settle; `EMPLOYEE_ADVANCE` (debit staff-advance receivable per employee, credit bank) recovered by the advance-recovery component — the outstanding balance is a ledger projection, never a loan ledger.
 - **Outputs** — a payslip PDF per employee per run (stored as an attachment with its hash); a monthly contribution/deduction schedule per scheme in the layout each authority accepts for upload ⚠️ *verify layouts against the authorities*, recorded as one `statutory_schedule` row per scheme per period (generated from posted lines only; attachment hash; the remittance PAYMENT that settled it) — a record, not a lodgement state machine; the annual per-employee statement and employer return generated from `employee_ytd` (Phase 8, using the Phase 7 report engine; form names verified against LHDN at build time); a bank-neutral CSV of the net-pay batch. Bank-specific formats are out.
 - **Year-to-date** — `employee_ytd` (per employee per tax year) is a projection rebuilt from posted lines nightly and compared (D14); `employee_ytd_opening` rows are loaded at cut-over so a mid-year switch computes PCB correctly (Phase 9).
@@ -2094,7 +2094,7 @@ Owner decision 2026-09-05 (D25): HR with payroll is in v1. This section is the d
 
 ### 3.10.2 Identity: employee, principal, cashier
 
-Three tables, one direction of reference. `employee` is the HR and statutory identity and exists for every staff member. `principal` (kind `human`) is the audit and login identity and exists only for staff who use the back office or a till; `employee.principal_id` is a nullable unique FK to it, and the principal never points at HR data, so identity works with no HR module loaded. `pos_cashier` (Phase 6) is the till credential — PIN hash, branch, snapshotted permission codes and limits — keyed on the principal and referencing the employee. Every cashier's principal is created from a Supabase-obtained `sub` like any other human (admin API at hire; alias address on a tenant domain when there is no mailbox — §3.7.5), so the identity model has exactly one human scheme; the PIN is never a login (SAH-025, 026, 028). Termination closes all three in one transaction (§3.7.5). The legacy split of `Users`, `Employees` and `Points` was right in spirit and wrong in mechanics: unlinked tables, a PIN reused as a password, no revocation path.
+Three tables, one direction of reference. `employee` is the HR and statutory identity and exists for every staff member. `principal` (kind `human`) is the audit and login identity and exists only for staff who use the back office or a till; `employee.principal_id` is a nullable unique FK to it, and the principal never points at HR data, so identity works with no HR module loaded. `pos_cashier` (Phase 6) is the till credential — PIN hash, branch, snapshotted permission codes and limits — keyed on the principal and referencing the employee. Every cashier's principal is created from a Supabase-obtained `sub` like any other human (admin API at hire; alias address on a tenant domain when there is no mailbox — §3.7.5), so the identity model has exactly one human scheme; the PIN is never a login (LEGACY-025, 026, 028). Termination closes all three in one transaction (§3.7.5). The legacy split of `Users`, `Employees` and `Points` was right in spirit and wrong in mechanics: unlinked tables, a PIN reused as a password, no revocation path.
 
 ### 3.10.3 Posting
 
@@ -2102,7 +2102,7 @@ Three tables, one direction of reference. `employee` is the HR and statutory ide
 
 ### 3.10.4 Rules this design must not break
 
-SAH-011 (no NULL statutory input reaches a line: the run refuses, naming the employee) · SAH-013 (rate-table and policy versions pinned per line) · SAH-019 (each scheme's rounding rule is declared in its table and applied through the one rounding function) · SAH-020 (no rate in code; an unverified or out-of-range table refuses) · SAH-029/030 (every HR write audited, no flag) · SAH-031/041 (posted runs and lines immutable; correction by reversal; period lock on the lines) · SAH-032 (approval authorised against the actor; maker ≠ checker read from `document_event`) · SAH-033/045 (sensitive reads gated by an RLS predicate on the actor's permission, never by a parameter) · SAH-044 (payroll actors from the session) · SAH-078 (statutory rules as version-controlled data).
+LEGACY-011 (no NULL statutory input reaches a line: the run refuses, naming the employee) · LEGACY-013 (rate-table and policy versions pinned per line) · LEGACY-019 (each scheme's rounding rule is declared in its table and applied through the one rounding function) · LEGACY-020 (no rate in code; an unverified or out-of-range table refuses) · LEGACY-029/030 (every HR write audited, no flag) · LEGACY-031/041 (posted runs and lines immutable; correction by reversal; period lock on the lines) · LEGACY-032 (approval authorised against the actor; maker ≠ checker read from `document_event`) · LEGACY-033/045 (sensitive reads gated by an RLS predicate on the actor's permission, never by a parameter) · LEGACY-044 (payroll actors from the session) · LEGACY-078 (statutory rules as version-controlled data).
 
 ### 3.10.5 Risks
 
@@ -2121,21 +2121,21 @@ Everything below is what turns a rewritten accounting engine into a professional
 **Model: pooled with row-level security**, plus a silo option for enterprise customers who require it contractually.
 
 - `tenant_id` on every table; a Postgres RLS policy on every table keyed to a session-set, server-controlled tenant claim. **The application role has no `BYPASSRLS`.**
-- A write whose `tenant_id` disagrees with the session claim is rejected by the policy, not by application code (SAH-035).
+- A write whose `tenant_id` disagrees with the session claim is rejected by the policy, not by application code (LEGACY-035).
 - Cross-tenant access (support, analytics) is a distinct principal with its own audit stream, never a widened user session. *(structure v1; support tooling deferred)*
-- Tenant-level configuration is relational and versioned, never a blob (SAH-078).
+- Tenant-level configuration is relational and versioned, never a blob (LEGACY-078).
 - **Noisy-neighbour control:** per-tenant rate limits, query timeouts, and background-job quotas. *(deferred until a second tenant)*
 - Document a written tenant-isolation test: a suite that attempts cross-tenant read/write through every endpoint and every background job, run in CI.
 
 ## 4.2 Identity and access — **[v1]** except where marked
 
-- **AuthN is delegated to Supabase Auth** (D3): the application never stores or compares a password, which is how SAH-028 is closed — by not owning credentials at all. Supabase provides bcrypt hashing, TOTP MFA, rate limiting, short-lived JWTs with rotating refresh tokens, and revocation on logout/password change (SAH-043). The application enforces **MFA required per tenant** by rejecting any JWT whose `aal` claim is below `aal2`. The only credentials the application itself hashes are cashier PINs for offline POS login (§3.7.5) — Argon2id, per-cashier salt. **Inviting a user** creates the `principal` from the `sub` returned by the Supabase admin invite call, never from a subject supplied by the client — a client-supplied subject would let one tenant pre-register another tenant's user (§3.8, `principal_insert`).
+- **AuthN is delegated to Supabase Auth** (D3): the application never stores or compares a password, which is how LEGACY-028 is closed — by not owning credentials at all. Supabase provides bcrypt hashing, TOTP MFA, rate limiting, short-lived JWTs with rotating refresh tokens, and revocation on logout/password change (LEGACY-043). The application enforces **MFA required per tenant** by rejecting any JWT whose `aal` claim is below `aal2`. The only credentials the application itself hashes are cashier PINs for offline POS login (§3.7.5) — Argon2id, per-cashier salt. **Inviting a user** creates the `principal` from the `sub` returned by the Supabase admin invite call, never from a subject supplied by the client — a client-supplied subject would let one tenant pre-register another tenant's user (§3.8, `principal_insert`).
 - **Enterprise:** SAML/OIDC SSO, SCIM provisioning, IP allow-lists, session-length policy. *(deferred)* Enforced MFA policy is **v1**.
-- **AuthZ:** relational RBAC — principal → role → permission, assigned per company and optionally per branch — plus row-level scoping through RLS. The role catalogue and permission scheme are in §4.2.1. **"Who can post a purchase return in company X?" must be answerable with one SQL query** (SAH-025, 034, 047).
+- **AuthZ:** relational RBAC — principal → role → permission, assigned per company and optionally per branch — plus row-level scoping through RLS. The role catalogue and permission scheme are in §4.2.1. **"Who can post a purchase return in company X?" must be answerable with one SQL query** (LEGACY-025, 034, 047).
 - The permission catalogue is a version-controlled file (`packages/contracts/permissions.ts`) seeded into `app.permission`; a permission no code evaluates **fails the build**, and a handler that references a code not in the catalogue fails the build.
 - **Machine access:** service accounts with scoped API keys, separate from human users, individually revocable, with their own audit trail.
 - **Support access** *(deferred)*: impersonation requires explicit tenant consent, is time-boxed, is banner-visible to the user, and writes a distinct audit record naming both the support agent and the impersonated user.
-- **Segregation of duties** is enforced in the data layer, not advised in the UI — the eight rules in §4.2.2. Approval is a state transition authorised against the *actor's* authority and recorded in `document_event` (SAH-032).
+- **Segregation of duties** is enforced in the data layer, not advised in the UI — the eight rules in §4.2.2. Approval is a state transition authorised against the *actor's* authority and recorded in `document_event` (LEGACY-032).
 
 ### 4.2.1 Role catalogue and permission scheme — **[v1]**
 
@@ -2163,20 +2163,20 @@ Everything below is what turns a rewritten accounting engine into a professional
 | `auditor` | External accountant or statutory auditor; assigned with `expires_at` | Read everything financial: ledger, documents, reports, stock and costs, payroll register (`hr.payroll.read`: posted lines only — no compensation or sensitive rows) and statutory schedules, audit log and document events; export | Any mutating permission — CI proves the role holds none (R7); identity numbers and bank details (`hr.employee.read_sensitive` is not in the seed; a tenant may add it) |
 | `pos_terminal` | A principal of kind `terminal`, assigned at enrolment with its branch row | `pos.sync.pull`, `pos.sync.push` | Anything else; a human never holds this role and a terminal holds nothing else (R8, trigger-enforced both ways) |
 
-**Branch scoping.** `role_assignment_branch` rows restrict an assignment to a set of BRANCH dimension values; no rows means every branch of the company. `app.actor_has(code, company_id, branch_id)` (§3.8) resolves authority from the principal's unexpired assignments and is the **only** evaluation point for permissions — handlers, RLS policies and triggers all call it. A NULL branch asks for *company-wide* authority and is granted only by an assignment with no branch rows, so a branch-restricted principal never gains anything by omitting the branch (SAH-042, SAH-050). Branch *isolation* of rows is a RESTRICTIVE RLS policy `branch_isolation` on every table with a `branch_id` column (`document`, shifts, attendance events, `pos_cashier`, branch-keyed projections), attached from Phase 6 when branch-scoped roles first exist (§3.8), so a missed handler check cannot leak another branch's rows. A request may narrow scope below the assignments, never widen it (SAH-042, SAH-045). `document.branch_id` is **NOT NULL** — head-office documents carry the head-office BRANCH value — and `pos_terminal.branch_id` is what the till's documents inherit; back-office documents take the branch from an explicit choice.
+**Branch scoping.** `role_assignment_branch` rows restrict an assignment to a set of BRANCH dimension values; no rows means every branch of the company. `app.actor_has(code, company_id, branch_id)` (§3.8) resolves authority from the principal's unexpired assignments and is the **only** evaluation point for permissions — handlers, RLS policies and triggers all call it. A NULL branch asks for *company-wide* authority and is granted only by an assignment with no branch rows, so a branch-restricted principal never gains anything by omitting the branch (LEGACY-042, LEGACY-050). Branch *isolation* of rows is a RESTRICTIVE RLS policy `branch_isolation` on every table with a `branch_id` column (`document`, shifts, attendance events, `pos_cashier`, branch-keyed projections), attached from Phase 6 when branch-scoped roles first exist (§3.8), so a missed handler check cannot leak another branch's rows. A request may narrow scope below the assignments, never widen it (LEGACY-042, LEGACY-045). `document.branch_id` is **NOT NULL** — head-office documents carry the head-office BRANCH value — and `pos_terminal.branch_id` is what the till's documents inherit; back-office documents take the branch from an explicit choice.
 
 ### 4.2.2 Segregation of duties — enforced rules **[v1]**
 
 Each rule names where it is enforced. None is a UI convention.
 
 - **R1 Maker ≠ checker.** For any document whose posting policy declares `approval.required` (seeded: PAYROLL, PAYROLL_PAYMENT, EMPLOYEE_ADVANCE, PAYMENT, STOCK_COUNT adjustments, and any type the tenant flags), the actor of the `approved` and `posted` transitions must differ from every actor of the `submitted` transition on that document. The trigger resolves the policy **effective for the document's `effective_date`** — not `document.posting_policy_id`, which §3.8 pins only at post and is NULL at approval. Enforced in the data layer (Phase 2): (1) an AFTER UPDATE OF status trigger on `document` **inserts the `document_event` row itself** (from_status, to_status, actor_id = `app.current_actor()`, reason from a transaction setting) — handlers never write `document_event`, so a direct `app_rw` update cannot skip it; (2) a BEFORE UPDATE OF status trigger enforces the legal transitions (draft → submitted → approved → issued → posted → reversed; submitted|approved → draft only for recalculation, §3.10.1) and, for a type whose effective policy declares `approval.required`, **fails closed**: a transition to approved or posted with no `submitted` event raises `ERR_SOD_NO_SUBMISSION`, and one whose actor matches any `submitted` actor raises `ERR_SOD_MAKER_IS_CHECKER`. Tested through the API, jobs and direct `app_rw` SQL (test 31).
-- **R2 Approval is authorised against the actor at transition time, in the data layer.** The same BEFORE UPDATE OF status trigger as R1 calls `app.actor_has(policy.approval.approve, document.company_id, document.branch_id)` for the approved transition and `app.actor_has(policy.approval.post, …)` for the posted transition; the codes come from the posting policy effective for the document's `effective_date` (§3.8 example: PAYMENT, PAYROLL_PAYMENT and EMPLOYEE_ADVANCE → `accounting.payment.approve` / `.post`; PAYROLL → `hr.payroll.approve` / `.post`; STOCK_COUNT → `inventory.adjustment.approve`). The handler's own check is a pre-flight for a better error message, not the control (SAH-032).
+- **R2 Approval is authorised against the actor at transition time, in the data layer.** The same BEFORE UPDATE OF status trigger as R1 calls `app.actor_has(policy.approval.approve, document.company_id, document.branch_id)` for the approved transition and `app.actor_has(policy.approval.post, …)` for the posted transition; the codes come from the posting policy effective for the document's `effective_date` (§3.8 example: PAYMENT, PAYROLL_PAYMENT and EMPLOYEE_ADVANCE → `accounting.payment.approve` / `.post`; PAYROLL → `hr.payroll.approve` / `.post`; STOCK_COUNT → `inventory.adjustment.approve`). The handler's own check is a pre-flight for a better error message, not the control (LEGACY-032).
 - **R3 Payroll chain.** The principal who submitted a PAYROLL run cannot approve or post it; a compensation change effective in the period of a run in `submitted` or `approved` status returns that run to `draft` (the one backward transition the state machine allows, recorded in `document_event` with reason `compensation_changed` — §3.10.1) and requires re-submission and re-approval; a change effective in a period whose run is already `posted` never touches that run — it is picked up by the next `supplementary` run. The approval screen lists everyone who changed compensation in the period.
 - **R4 No self-pay.** Writes to `compensation_line`, `employee_sensitive`, `employee_statutory_profile`, `employee.terminated_on` and `leave_record.status = approved` where the target employee's `principal_id = app.current_actor()` are rejected by trigger (test 31).
 - **R5 No self-grant, no self-escalation.** A principal cannot change their own `role_assignment` rows, nor the `role_permission` rows of a role they hold (`forbid_self_grant`, §3.8). The last principal holding `admin.user.manage` in a tenant cannot be stripped of it or expired (`keep_last_admin_assignment` / `keep_last_admin_permission`, §3.8, raising `ERR_RBAC_LAST_ADMIN`).
 - **R6 Incompatible pairs in the seed.** The catalogue file names permission pairs no single *seeded role other than `admin`* may hold — `accounting.payment.create` with `accounting.payment.approve`, `hr.payroll.prepare` with `hr.payroll.approve`, `hr.statutory_table.manage` with `hr.statutory_table.verify`, `hr.employee.read_sensitive` with `pos.ticket.sell`. `admin` is exempt because it is the full-permission bootstrap role (§3.8 step 4, D26); what binds an admin is R1 — an admin can hold both `hr.payroll.prepare` and `hr.payroll.approve` but can never approve or post a run they submitted. Enforced by a CI lint over `packages/db/seed/roles.ts`; no runtime table (the judge panel rejected one as over-building). A *principal* may still hold both through two roles — a small business cannot always avoid it — and R1 then guarantees the same person never acts on both sides of one document.
 - **R7 Read-only is provable.** `permission.mutating` is part of the catalogue; the seeded `auditor` role contains only non-mutating codes (CI test — `user` is a drafting role and holds `*.create` and `accounting.party.manage`, which are mutating by definition), and a mutating handler can never be gated by a read code (the build fails).
-- **R8 Kind discipline, period control, overrides.** A principal of kind `terminal` may hold only `pos_terminal`; `pos_terminal` may be assigned only to kind `terminal` (`assert_assignment_kind`, §3.8, enforced both ways); the system principal holds no role, but `app.actor_has()` returns true for it so server-side jobs (payroll calculation, `employee_ytd` rebuild, key rotation) can read RLS-gated rows — it is reachable only from jobs and the seed CLI, never from a request path (RC-1), and every write it makes is audited under its own id. `accounting.period.reopen` is distinct from `close`, held by `admin` only in the seed, requires a reason written to the audit row, and every reopen is reported by the nightly integrity job. Overrides — negative stock, credit limit, POS discount, void, blind return — are explicit permissions exercised per document by a second principal and recorded as a `document_event`, never session flags (SAH-027, SAH-048).
+- **R8 Kind discipline, period control, overrides.** A principal of kind `terminal` may hold only `pos_terminal`; `pos_terminal` may be assigned only to kind `terminal` (`assert_assignment_kind`, §3.8, enforced both ways); the system principal holds no role, but `app.actor_has()` returns true for it so server-side jobs (payroll calculation, `employee_ytd` rebuild, key rotation) can read RLS-gated rows — it is reachable only from jobs and the seed CLI, never from a request path (RC-1), and every write it makes is audited under its own id. `accounting.period.reopen` is distinct from `close`, held by `admin` only in the seed, requires a reason written to the audit row, and every reopen is reported by the nightly integrity job. Overrides — negative stock, credit limit, POS discount, void, blind return — are explicit permissions exercised per document by a second principal and recorded as a `document_event`, never session flags (LEGACY-027, LEGACY-048).
 
 ## 4.3 Tenant lifecycle — **[deferred]** except data export
 
@@ -2185,11 +2185,11 @@ Each rule names where it is enforced. None is a UI convention.
 - Trial with clear expiry, conversion path, and grace period.
 - **Data export at any time** *(v1 — it is your own books)*, unprompted, in open formats (CSV + JSON + a documented schema) — a legal requirement in several jurisdictions and a trust signal in all. Built in Phase 7.
 - Offboarding: export, then scheduled deletion with a stated retention window and a deletion certificate.
-- **Never** an initialisation procedure callable on a running system (SAH-039). *(v1)* Bootstrap is the offline `bun run seed` CLI of §5.0 task 0.7b, run as the migrator role, following the sequence in §3.8.
+- **Never** an initialisation procedure callable on a running system (LEGACY-039). *(v1)* Bootstrap is the offline `bun run seed` CLI of §5.0 task 0.7b, run as the migrator role, following the sequence in §3.8.
 
 ## 4.4 Billing and metering — **[deferred]**
 
-- Plans → **entitlements** (feature flags + limits), evaluated server-side on every request. *(The entitlement check itself is v1 — build the seam now, leave every plan unlimited.)* This is the modern replacement for `Futures` and the `.lic` dongle (SAH-082).
+- Plans → **entitlements** (feature flags + limits), evaluated server-side on every request. *(The entitlement check itself is v1 — build the seam now, leave every plan unlimited.)* This is the modern replacement for `Futures` and the `.lic` dongle (LEGACY-082).
 - Usage metering where the pricing model needs it (users, companies, documents/month, storage) — metered events written to an append-only stream, aggregated for billing.
 - Integration with a billing provider (Stripe/Paddle/Chargebee) rather than home-grown invoicing; handle proration, upgrades/downgrades, dunning, failed payments, and tax on *your own* invoices.
 - Grace and degradation behaviour must be explicit: what happens on non-payment (read-only, then export-only, then suspend) — never an abrupt licence-server failure with no diagnostic.
@@ -2200,7 +2200,7 @@ Each rule names where it is enforced. None is a UI convention.
 - Versioning: URL-major (`/v1/`), additive-only within a version, documented deprecation policy with sunset headers.
 - **Idempotency keys required on every unsafe method** — essential for POS terminals on flaky shop connections.
 - Cursor pagination everywhere (never offset on large tables), consistent filter/sort grammar, sparse fieldsets.
-- Errors as RFC 9457 `application/problem+json` with a **stable machine-readable code**, a human message naming the specific offending entity, and a remedy (SAH-084).
+- Errors as RFC 9457 `application/problem+json` with a **stable machine-readable code**, a human message naming the specific offending entity, and a remedy (LEGACY-084).
 - Rate limits with `RateLimit-*` headers *(v1 for abuse protection; per-plan quotas deferred)*.
 - **Webhooks** *(deferred)* with signed payloads, at-least-once delivery, replay endpoint, and a delivery log the tenant can inspect.
 - Bulk endpoints for import/export with async job semantics and a status resource.
@@ -2218,22 +2218,22 @@ Each rule names where it is enforced. None is a UI convention.
 
 This is where an accounting SaaS lives or dies, and where the old system is weakest.
 
-- **Immutable audit trail**: append-only, server-supplied actor, monotonic sequence, per-record chained hash so gaps and edits are detectable. Not optional, not suppressible (SAH-029, 030).
-- **Sequential document numbering**: assigned at *issue*, per (series, period), unique-constrained, gapless-provable, with voided numbers explicitly recorded (SAH-051).
-- **Period close**: uniform for all roles, reopening separately authorised and audited, immutability enforced across header + lines + projections in one boundary (SAH-031).
-- **No deletion of posted documents at any privilege level.** Corrections are reversing entries (SAH-041).
+- **Immutable audit trail**: append-only, server-supplied actor, monotonic sequence, per-record chained hash so gaps and edits are detectable. Not optional, not suppressible (LEGACY-029, 030).
+- **Sequential document numbering**: assigned at *issue*, per (series, period), unique-constrained, gapless-provable, with voided numbers explicitly recorded (LEGACY-051).
+- **Period close**: uniform for all roles, reopening separately authorised and audited, immutability enforced across header + lines + projections in one boundary (LEGACY-031).
+- **No deletion of posted documents at any privilege level.** Corrections are reversing entries (LEGACY-041).
 - **E-invoicing / fiscalisation** as a pluggable jurisdiction pack with document hash, QR code, transmission log, retry, and status reconciliation. The old system has the table shape for this (`JurTaxInfo` with `Guid`/`Token`/`Hash`/`QRCode`) but ships the triggers **disabled**.
   - ⚠️ **Confirm current requirements before scoping.** Malaysia's LHDN **MyInvois** e-invoicing regime and the GCC/ZATCA VAT rules both changed materially in recent years and phase-in thresholds move. Treat every specific deadline, threshold and schema version as *to be verified against the authority's current documentation*, not as settled by this document. **Malaysia is confirmed as the first jurisdiction (§0.3).** The GCC pack is deferred until a customer there exists.
-- **Tax engine**: versioned regimes with rate-effective-date tables; every tax code declares its regime; a mismatched return refuses to run (SAH-020).
-- **Rounding**: one function, explicit mode, symmetric across sign, applied at persist time, rule recorded per currency and per tax code (SAH-019).
+- **Tax engine**: versioned regimes with rate-effective-date tables; every tax code declares its regime; a mismatched return refuses to run (LEGACY-020).
+- **Rounding**: one function, explicit mode, symmetric across sign, applied at persist time, rule recorded per currency and per tax code (LEGACY-019).
 - **Payroll statutory pack (Malaysia):** EPF, SOCSO, EIS and PCB/MTD as versioned, effective-dated, **verified** rate tables pinned per payroll line; a run with an unverified or out-of-range table refuses; schedules and annual statements are generated from posted data and tie to the scheme payable accounts to the cent (§3.10). The same discipline as the tax engine — no rate lives in code, and a rate change is a seed PR, not a release.
 
 ## 4.8 Reliability and operations — **[v1]** except SLA
 
-- **RPO/RTO stated as numbers**, tested quarterly by an actual restore drill (SAH-081).
+- **RPO/RTO stated as numbers**, tested quarterly by an actual restore drill (LEGACY-081).
 - Continuous WAL archiving with **point-in-time recovery**; automated backups; restore verified automatically, not assumed.
 - HA: managed Postgres with a standby; stateless application tier; read replicas for reporting.
-- Zero-downtime deployments; **expand/contract migrations** so schema change never requires a maintenance window (the direct answer to SAH-080).
+- Zero-downtime deployments; **expand/contract migrations** so schema change never requires a maintenance window (the direct answer to LEGACY-080).
 - Graceful degradation: if the reporting store is down, transactional entry continues.
 - **Status page**, incident communication policy, published SLA with credits. *(deferred)*
 - Runbooks and blameless post-incident reviews *(v1)*; a formal on-call rotation *(deferred — one person cannot rotate)*.
@@ -2263,11 +2263,11 @@ This is where an accounting SaaS lives or dies, and where the old system is weak
   - *Property-based tests* for money arithmetic, rounding and currency conversion.
   - *Golden-file tests* for the costing engine and every tax return — a fixture set of documents with expected ledger output, so any formula change is visible in a diff.
   - *Deterministic-rebuild test:* rebuild every projection from the ledger into scratch tables; compare row for row on the full key and every amount.
-  - *Concurrency tests* that actually interleave transactions — the old system's SAH-049/051/052 would all be caught by a two-connection test.
+  - *Concurrency tests* that actually interleave transactions — the old system's LEGACY-049/051/052 would all be caught by a two-connection test.
   - *Load tests* against realistic data volumes (take the real row counts from the customer's live database before sizing).
 - Feature flags for progressive rollout; canary or blue/green deploys.
 - **Architecture Decision Records** for every significant choice.
-- Infrastructure as code; no manual production changes; **no DDL from application code** (SAH-053).
+- Infrastructure as code; no manual production changes; **no DDL from application code** (LEGACY-053).
 - Dependency update automation (Renovate) with a patch SLA.
 - **Environments:** `dev` (local, Testcontainers), `staging` (a real Cloudflare Container against a staging Supabase project, seeded from an anonymised snapshot), `production`. Nothing reaches production without passing through staging.
 - **Secrets:** never in the repository, never in `.env` files that are committed. Cloudflare secrets bindings for the container; Supabase vault or a KMS for anything the database needs; rotated on a schedule and on any suspected exposure. The inventory for v1: Supabase service-role key (seed CLI only), `app_rw` and `app_migrator` passwords, the **terminal-JWT signing key** (§3.7.5), the **HR field-encryption key** (§4.6, rotated with re-encryption as a pg-boss job), Sentry DSN, the code-signing certificate and its password (CI only).
@@ -2292,7 +2292,7 @@ Each phase has a **definition of done that is testable**, not a feature list. §
 | **6 · POS** | Shop POS application (§3.7.6), catalogue down-sync, outbox up-sync, shifts and cash reconciliation, offers, returns, loyalty ⚠️ *(confirm — §3.0.3)*, **the minimal employee master and `pos_cashier`** (cashiers are employees — §3.10.2), clock-in/out as `attendance_event`, **till cash lifecycle** ⚠️ (paid-outs, safe drops, banking — §3.0.4), server-side re-verification of cashier authority at sync apply | A till sells 8 hours offline and reconciles with **zero duplicates and zero lost tickets**; the shift Z-report ties to the ledger to the cent |
 | **7 · Reporting** | Report definition format, server-side render (PDF/XLSX/CSV), ~60 parameterised core reports, saved views, financial-statement layouts, tenant data export in open formats (§4.3 — v1) | A user clones and edits a report without a release; every report's numbers tie to the ledger |
 | **8 · HR & Payroll** *(v1 — D25)* | §3.10: employee master and sensitive data, effective-dated compensation and pay components, statutory schemes as versioned verified rate tables, PAYROLL / PAYROLL_PAYMENT / EMPLOYEE_ADVANCE document types and statutory remittances, payslips and monthly schedules, `employee_ytd` projection, a minimal leave register ⚠️ *(only if the owner confirms — §3.10.1, Part VII item 14)*, attendance events, termination flow, five HR reports | The business's real monthly payroll runs in Dulja **in parallel with the legacy system for one month**: every gross, statutory and net figure matches the legacy run and the authorities' calculators to the cent, or every difference is explained in writing and accepted by the owner; the run posts through the posting service under pinned policy and rate-table versions; Σ payslip net = salaries-payable credit; each scheme's schedule = its payable to the cent; preparer ≠ approver is enforced by the data layer; `employee_ytd` rebuilds bit-identically |
-| **9 · Migration** | Importer reading the live Sahlisoft Firebird database → Dulja. Items, customers, suppliers, open balances, open documents, batch/expiry positions, **employee master and current-tax-year YTD** (§5.1 items 11–12). | Trial balance **and** stock valuation match the source on the cut-over date, and the difference on every recomputed figure is explained (§5.1); each employee's imported YTD reconciles to their last legacy payslip |
+| **9 · Migration** | Importer reading the live legacy Firebird database → Dulja. Items, customers, suppliers, open balances, open documents, batch/expiry positions, **employee master and current-tax-year YTD** (§5.1 items 11–12). | Trial balance **and** stock valuation match the source on the cut-over date, and the difference on every recomputed figure is explained (§5.1); each employee's imported YTD reconciles to their last legacy payslip |
 | **10 · Other verticals** *(deferred)* | Fixed assets and depreciation (manual JOURNALs until then), service contracts and maintenance, purchase-requisition and PO-approval workflow. **Do not build in v1.** The clinic, school and aviation modules should very likely never be built. | Each vertical ships and upgrades independently of the core |
 
 **Sequencing notes.**
@@ -2314,7 +2314,7 @@ Each item is small enough to be one pull request and has an acceptance check. Do
 | 0.5 | Cloudflare Container skeleton (§3.2.4): `api` and `worker` classes from one image, a Worker in front forwarding `/v1/*` via the container binding, a Cron Trigger keeping `worker` awake; deploy to staging via GitHub Actions | `/healthz` returns 200 through the Worker and the container is unreachable directly; a scheduled job runs in `worker` while `api` is idle; deploy is one command |
 | 0.6 | Supabase Auth integration: the API verifies the JWT against Supabase JWKS, calls `app.resolve_principal(sub)` (the one SECURITY DEFINER door, owned by `app_auth` — §3.8) to obtain `tenant_id` and `principal_id`, and the `withTenant(tx => …)` helper pins READ COMMITTED, issues `set_config(..., true)` first in every transaction, and retries once on `40P01`/`40001`; a lint forbids bare `db.` calls; a middleware rejects any request without a resolvable membership; the `aal2` gate applies to every route except MFA enrolment | Tenant-isolation test: two tenants, every endpoint, zero cross-tenant reads or writes; connected as `app_rw` with no `set_config`, `resolve_principal(<subject>)` returns one row while `select * from app.principal` returns none |
 | 0.7 | RBAC tables per the amended §3.8 (`role.is_system`, `permission.module`/`mutating`, `role_assignment.granted_by`/`granted_at`/`expires_at`, `role_assignment_branch`, `app.actor_has()`, the `forbid_self_grant`, `assert_assignment_kind`, `keep_last_admin_*` and `stamp_actor` triggers) + the permission catalogue file with the Phase 0 codes + the nine seeded system roles (`packages/db/seed/roles.ts`) + the "who can do X in company Y (at branch B)" query; the build fails on a permission no code evaluates, on a seeded role other than `admin` holding an incompatible pair, and on a mutating code in `auditor` | Acceptance test 14 passes; the catalogue-integrity, incompatible-pair, auditor-read-only, expired-assignment and one-query assertions of test 36 pass against the Phase 0 catalogue; the branch-scoping assertions of test 36 are re-run in each phase that adds the entities they name |
-| 0.7b | **Bootstrap seed** — `bun run seed`, an offline CLI run as `app_migrator` (never an API endpoint — SAH-039), following the six-step sequence in §3.8 exactly: tenant → system principal → owner's Supabase auth user (admin API) + human principal + membership → first company, BRANCH dimension, the nine system roles and the owner's `admin` assignment (granted by the system principal, so the no-self-grant rule holds) → Malaysia seed pack from `packages/db/seed/my/` | Running it twice changes nothing; the principal + membership inserts succeed under `FORCE ROW LEVEL SECURITY` (regression test for v1.1 fix #2); the owner logs in, enrols MFA at `aal1`, and sees an empty but fully configured company |
+| 0.7b | **Bootstrap seed** — `bun run seed`, an offline CLI run as `app_migrator` (never an API endpoint — LEGACY-039), following the six-step sequence in §3.8 exactly: tenant → system principal → owner's Supabase auth user (admin API) + human principal + membership → first company, BRANCH dimension, the nine system roles and the owner's `admin` assignment (granted by the system principal, so the no-self-grant rule holds) → Malaysia seed pack from `packages/db/seed/my/` | Running it twice changes nothing; the principal + membership inserts succeed under `FORCE ROW LEVEL SECURITY` (regression test for v1.1 fix #2); the owner logs in, enrols MFA at `aal1`, and sees an empty but fully configured company |
 | 0.8 | Append-only, hash-chained audit log with the generic **AFTER ROW** trigger attached by the migration generator, including the `current_tenant()` variant for `principal` and the `id` variant for `tenant` (§3.8) | Acceptance test 13 passes; a manual `UPDATE app.audit_log` as `app_rw` is refused; inserting a `principal` produces exactly one audit row with a non-null `tenant_id` |
 | 0.9 | Currency + exchange-rate service with `rate_source`; `Money` type in `packages/domain` with the lint rule forbidding `number` for money | Property tests: `a + b − b = a` for 10⁶ random Money values; adding two currencies is a type error |
 | 0.10 | Dimension framework (type/value tables + API) and custom-field service (typed definitions + values + validation) | A new dimension and a new custom field are created through the API with no migration |
@@ -2326,21 +2326,21 @@ Each item is small enough to be one pull request and has an acceptance check. Do
 
 **Phase 0 exit:** every row above green (0.1 → 0.7, 0.7b, 0.8 → 0.15), plus acceptance tests 12, 13 and 14 passing in CI. Only then does Phase 1 (the ledger) begin.
 
-## 5.1 Migration from Sahlisoft — specific hazards
+## 5.1 Migration from the legacy system — specific hazards
 
 The source data contains the consequences of Part I. Do not import it naively.
 
-1. **Do not trust stored aggregates.** `AccTotals`, `AccObjects`, `AccCurTotals`, `MatTotals`, `MatObjects`, `MatQuantity`, `MatCosts`, `MatStatus` are all known to drift (SAH-001 → 006, 049, 050). **Recompute everything from `VouItems`/`BillItems`** and reconcile; where the recomputed figure differs from the stored one, report the difference to the customer rather than silently picking one.
-2. **Expect unbalanced vouchers.** Nothing prevented them (SAH-003). Detect them, quantify them, and agree a treatment (suspense account) with the customer *before* migrating.
-3. **Expect orphaned references.** `Job` 82% and `CostCentre` 81% unconstrained (SAH-073); the shipped `fixes/fix-Jobs.sql` and `fix-finals.sql` prove orphans occur. Report orphans; do not silently null them.
-4. **Expect NULL-poisoned balances and costs** (SAH-007, 011). These will appear as blank or zero, not as errors.
-5. **Expect duplicate aggregate rows** for `MatObjects`/`MatQuantity` (SAH-049).
+1. **Do not trust stored aggregates.** `AccTotals`, `AccObjects`, `AccCurTotals`, `MatTotals`, `MatObjects`, `MatQuantity`, `MatCosts`, `MatStatus` are all known to drift (LEGACY-001 → 006, 049, 050). **Recompute everything from `VouItems`/`BillItems`** and reconcile; where the recomputed figure differs from the stored one, report the difference to the customer rather than silently picking one.
+2. **Expect unbalanced vouchers.** Nothing prevented them (LEGACY-003). Detect them, quantify them, and agree a treatment (suspense account) with the customer *before* migrating.
+3. **Expect orphaned references.** `Job` 82% and `CostCentre` 81% unconstrained (LEGACY-073); the shipped `fixes/fix-Jobs.sql` and `fix-finals.sql` prove orphans occur. Report orphans; do not silently null them.
+4. **Expect NULL-poisoned balances and costs** (LEGACY-007, 011). These will appear as blank or zero, not as errors.
+5. **Expect duplicate aggregate rows** for `MatObjects`/`MatQuantity` (LEGACY-049).
 6. **Do not import cost figures.** `MatCosts` has no rebuild path and multiple corruption routes. Recompute cost from movement history with the new engine, and reconcile the resulting opening valuation with the customer.
-7. **Passwords cannot be migrated** — they are cleartext (SAH-028). Force a reset for every user; do not import the column.
-8. **Document numbers may contain duplicates and gaps** (SAH-051). Preserve them as historical strings; start the new gapless series after cut-over.
-9. **Report definitions live as blobs in the customer's database** (SAH-077). Extract and catalogue them early — it is the only way to know which of the 255 templates the customer actually uses.
+7. **Passwords cannot be migrated** — they are cleartext (LEGACY-028). Force a reset for every user; do not import the column.
+8. **Document numbers may contain duplicates and gaps** (LEGACY-051). Preserve them as historical strings; start the new gapless series after cut-over.
+9. **Report definitions live as blobs in the customer's database** (LEGACY-077). Extract and catalogue them early — it is the only way to know which of the 255 templates the customer actually uses.
 10. **Scope first, migrate second.** Run row counts per table against the live database before designing the importer. 460 tables is the shipped surface, not the used surface.
-11. **Legacy payroll data.** Import the employee master and each employee's current-tax-year YTD (gross, each statutory share, PCB) and reconcile them to the last legacy payslips before the first Dulja run; never import `TaxLayers` or recompute history from legacy rate layers; `Lends` are stored in UI units — convert explicitly to `Money`. `Users.PIN` and `Users.Password` are never imported (SAH-028).
+11. **Legacy payroll data.** Import the employee master and each employee's current-tax-year YTD (gross, each statutory share, PCB) and reconcile them to the last legacy payslips before the first Dulja run; never import `TaxLayers` or recompute history from legacy rate layers; `Lends` are stored in UI units — convert explicitly to `Money`. `Users.PIN` and `Users.Password` are never imported (LEGACY-028).
 12. **Employees exist twice in the legacy data** — `Salaries.Employees` and `Accounts` rows flagged `IsEmployee` (§0.4). Map both to one `party` of kind employee plus one `employee`; report the rows that do not match rather than guessing.
 
 ---
@@ -2371,7 +2371,7 @@ One monorepo. Turborepo. Bun workspaces.
 │  ├─ ui/             shadcn/ui components, design tokens, RTL-aware primitives, Storybook.
 │  └─ i18n/           en and ar catalogues, ICU helpers, Hijri formatting, the completeness checker.
 ├─ tests/
-│  ├─ regression/     sah-NNN.test.ts — one per Part I defect the code touches.
+│  ├─ regression/     legacy-NNN.test.ts — one per Part I defect the code touches.
 │  ├─ invariants/     ledger-balance, tenant-isolation, projection-rebuild, audit-chain.
 │  ├─ golden/         costing, tax and payroll fixtures with committed expected output.
 │  └─ e2e/            Playwright, both text directions, against staging.
@@ -2405,8 +2405,8 @@ The agent will block on these; provide them before the phase that needs them.
 | Phase 5 | LHDN MyInvois credentials and the current requirement set (§4.7) |
 | Phase 6 | The list of cashiers per branch; the alias e-mail domain for staff without a mailbox (every cashier gets a Supabase auth user — §3.7.5); the till cash-control answers (§3.0.4) |
 | Phase 8 | Employer registration numbers per authority; the current EPF/SOCSO/EIS/PCB tables and the authorities' worked examples, transcribed and signed off by the accountant; the staff list with branch, employment type, bank and statutory numbers; pay-period and pay-date conventions; answers to the ⚠️ items in §3.10.1 |
-| Any UI work | Screenshots of the equivalent Sahlisoft screens and a short description of how a fast operator uses each (§0.2) |
-| Phase 9 | Read access to the live Sahlisoft database, and the Firebird version |
+| Any UI work | Screenshots of the equivalent legacy screens and a short description of how a fast operator uses each (§0.2) |
+| Phase 9 | Read access to the live legacy database, and the Firebird version |
 
 ---
 
@@ -2416,45 +2416,45 @@ The bar for "we have not inherited the old system's defects." Every one maps to 
 
 | # | Test | Guards |
 |---|---|---|
-| 1 | **Ledger invariant.** For any tenant, period and company: Σdebit = Σcredit. Enforced continuously, alerted on breach. | SAH-003 |
-| 2 | **Deterministic projections.** Rebuild every projection from the ledger into scratch tables; compare row for row on the full key and all amounts. Identical. | SAH-001, 002, 013, 049, 050 |
-| 3 | **Re-key a posting.** Post to account A, re-key to a never-used account B. `sum(balances) == sum(postings)`. | SAH-002 |
-| 4 | **Multi-tenant aggregate.** Two tenants post to the same account+currency concurrently; each sees only its own. | SAH-001, 035 |
-| 5 | **Back-dated costing.** 12 months of movements; insert a purchase dated month 3. Only months 3–12 recompute; adjustment is visible and explained; runtime proportional to affected movements, not total history. | SAH-004, 005, 010 |
-| 6 | **Costing edge cases.** Return exceeding stock; wash line at zero stock; value-less movement. All rejected or handled; **no negative, NULL, or exploded cost is ever stored**. | SAH-007, 008 |
-| 7 | **One costing answer.** Stock valuation and profit reports tie to the cent for an item that has been transferred, gone negative, and had a supplier return. | SAH-009 |
-| 8 | **Multi-currency round-trip.** Invoice EUR, part-pay USD, settle in base, revalue at period end. FX gain/loss posts correctly; party balance correct in all three currencies; `base = round(value × rate)` holds on every line. | SAH-011, 012, 014 |
-| 9 | **Period lock.** Once locked, no write alters any entry in it by any path — API, import, admin, background job. The only remedy is a reversing entry in an open period. | SAH-031, 041 |
-| 10 | **Approval authority.** A user cannot set a document's approval state above their own authority through any endpoint or side effect. | SAH-032 |
-| 11 | **No auth bypass.** No parameter, header, session variable or stored procedure grants elevated privilege. Automated test attempts every known bypass shape. | SAH-025, 026, 027, 030, 042 |
-| 12 | **Tenant isolation.** Every endpoint and every background job attempts cross-tenant read and write; all rejected at the data layer. | SAH-035, 036 |
-| 13 | **Audit completeness.** Every write produces an audit record with a server-supplied actor. No flag suppresses it. The application role cannot UPDATE or DELETE audit rows. Hash chain verifies. | SAH-029, 030, 040 |
-| 14 | **Permission query.** "List every user who can post a purchase return in company X" is answerable in one SQL query. | SAH-034, 047 |
+| 1 | **Ledger invariant.** For any tenant, period and company: Σdebit = Σcredit. Enforced continuously, alerted on breach. | LEGACY-003 |
+| 2 | **Deterministic projections.** Rebuild every projection from the ledger into scratch tables; compare row for row on the full key and all amounts. Identical. | LEGACY-001, 002, 013, 049, 050 |
+| 3 | **Re-key a posting.** Post to account A, re-key to a never-used account B. `sum(balances) == sum(postings)`. | LEGACY-002 |
+| 4 | **Multi-tenant aggregate.** Two tenants post to the same account+currency concurrently; each sees only its own. | LEGACY-001, 035 |
+| 5 | **Back-dated costing.** 12 months of movements; insert a purchase dated month 3. Only months 3–12 recompute; adjustment is visible and explained; runtime proportional to affected movements, not total history. | LEGACY-004, 005, 010 |
+| 6 | **Costing edge cases.** Return exceeding stock; wash line at zero stock; value-less movement. All rejected or handled; **no negative, NULL, or exploded cost is ever stored**. | LEGACY-007, 008 |
+| 7 | **One costing answer.** Stock valuation and profit reports tie to the cent for an item that has been transferred, gone negative, and had a supplier return. | LEGACY-009 |
+| 8 | **Multi-currency round-trip.** Invoice EUR, part-pay USD, settle in base, revalue at period end. FX gain/loss posts correctly; party balance correct in all three currencies; `base = round(value × rate)` holds on every line. | LEGACY-011, 012, 014 |
+| 9 | **Period lock.** Once locked, no write alters any entry in it by any path — API, import, admin, background job. The only remedy is a reversing entry in an open period. | LEGACY-031, 041 |
+| 10 | **Approval authority.** A user cannot set a document's approval state above their own authority through any endpoint or side effect. | LEGACY-032 |
+| 11 | **No auth bypass.** No parameter, header, session variable or stored procedure grants elevated privilege. Automated test attempts every known bypass shape. | LEGACY-025, 026, 027, 030, 042 |
+| 12 | **Tenant isolation.** Every endpoint and every background job attempts cross-tenant read and write; all rejected at the data layer. | LEGACY-035, 036 |
+| 13 | **Audit completeness.** Every write produces an audit record with a server-supplied actor. No flag suppresses it. The application role cannot UPDATE or DELETE audit rows. Hash chain verifies. | LEGACY-029, 030, 040 |
+| 14 | **Permission query.** "List every user who can post a purchase return in company X" is answerable in one SQL query. | LEGACY-034, 047 |
 | 15 | **New document type, zero code.** Define "Consignment return" purely as configuration; it numbers, posts, prints, reports and reverses correctly. | RC-3 |
-| 16 | **Numbering.** Concurrent creation of the first document of a new type succeeds for both. Issued numbers are unique per (series, period). Deletion of an issued document is impossible. Voided numbers are recorded. | SAH-051 |
-| 17 | **Serial uniqueness under concurrency** *(only if serials are in scope, §3.0.3)*. Two terminals scan the same serial simultaneously; exactly one sale succeeds. | SAH-052 |
-| 18 | **Stock availability.** Negative stock is rejected by the data layer regardless of session flags, user attributes, or write path. Overrides are explicit and audited. | SAH-048 |
-| 19 | **Offline POS.** 500 tickets sold with the network down; reconnect; zero duplicates, zero lost tickets. Re-sending the same batch twice changes nothing. | SAH-051 |
+| 16 | **Numbering.** Concurrent creation of the first document of a new type succeeds for both. Issued numbers are unique per (series, period). Deletion of an issued document is impossible. Voided numbers are recorded. | LEGACY-051 |
+| 17 | **Serial uniqueness under concurrency** *(only if serials are in scope, §3.0.3)*. Two terminals scan the same serial simultaneously; exactly one sale succeeds. | LEGACY-052 |
+| 18 | **Stock availability.** Negative stock is rejected by the data layer regardless of session flags, user attributes, or write path. Overrides are explicit and audited. | LEGACY-048 |
+| 19 | **Offline POS.** 500 tickets sold with the network down; reconnect; zero duplicates, zero lost tickets. Re-sending the same batch twice changes nothing. | LEGACY-051 |
 | 20 | **Catalogue resume.** Kill the down-sync mid-transfer; resume from the cursor; the till's catalogue matches the back office exactly, with no row applied twice and no deletion missed. | — |
 | 21 | **Shift reconciliation.** A shift's Z-report — opening float, tenders by type, over/short — ties to the ledger to the cent. | — |
-| 22 | **One posting path.** A POS ticket and an equivalent back-office invoice produce identical ledger entries and cost consumptions after projecting out `id`, `document_id`, `posted_at`, `posted_by`. | SAH-009 |
-| 23 | **RTL/LTR parity.** Every screen and generated PDF renders correctly in Arabic and English, including numerals, Hijri/Gregorian dates and column order. | SAH-085 |
-| 24 | **Restore drill.** Restore to an arbitrary point in time; the trial balance computed from the restored ledger equals the trial balance the live system reported at that timestamp, and the audit chain verifies up to that point. | SAH-081 |
-| 25 | **Zero-downtime migration.** A schema change deploys with no maintenance window; duration is proportional to the change, not the data. | SAH-080 |
-| 26 | **Tax return determinism.** A golden fixture of documents produces a byte-identical return across runs; a tax code from the wrong regime causes a refusal, not a wrong number. | SAH-020, 058, 059 |
-| 27 | **No SQL text across the API.** Automated check that no endpoint or procedure parameter is interpolated into a query. | SAH-036, 037 |
-| 28 | **One payroll posting path.** A PAYROLL run and a hand-keyed JOURNAL with the same lines produce identical `ledger_entry` and `ledger_entry_dimension` rows after projecting out ids and timestamps. | SAH-003, 009 |
-| 29 | **Rate-table pinning.** Run M calculates with the table effective at M; inserting a later version leaves M's posted lines, payslips and ledger byte-identical; a supplementary run in M+1 pins the new version; an unverified table, or one that does not cover the period, is refused (`ERR_PAYROLL_RATE_TABLE_UNVERIFIED`). | SAH-013, 020 |
-| 30 | **Payslip ties to the ledger.** For every employee in a run: payslip net = credit to salaries payable tagged EMPLOYEE; Σ(employee + employer share) per scheme = credit to that scheme's payable; the monthly schedule per scheme equals that payable to the cent; a remittance for a different amount is refused. | SAH-011, 019 |
-| 31 | **Segregation of duties.** The submitter of a PAYROLL, PAYMENT, PAYROLL_PAYMENT, EMPLOYEE_ADVANCE or STOCK_COUNT cannot approve or post it through any path — API, job, or direct SQL as `app_rw`; a principal cannot alter their own compensation, sensitive data or leave approval; a principal cannot change their own role assignments or the permissions of a role they hold. | SAH-032, 042 |
-| 32 | **Sensitive fields have no side channel.** A principal without `hr.employee.read_sensitive` receives no identity, bank or statutory-number fields; one without `hr.compensation.read` receives no `compensation_line` or `employee_statutory_profile` rows (posted `payroll_line` amounts are gated by `hr.payroll.read`) — through any endpoint, filter, sort, search or export, checked over the OpenAPI document and by direct `app_rw` query under `withTenant`. | SAH-033, 045 |
-| 33 | **Golden payroll.** An owner-verified fixture — employees, profiles, compensation, rate tables — produces byte-identical payroll lines, ledger entries, payslips and schedules across runs; a missing statutory input fails the run naming the employee, never a silent zero. | SAH-011, 020 |
-| 34 | **Termination closes everything.** Setting `terminated_on` — including by direct `app_rw` SQL — revokes `pos_cashier` and expires every `role_assignment` in the same transaction (trigger); the next catalogue down-sync tombstones the cashier; a till that has applied the cursor rejects the PIN; the employee is excluded from the next regular run. | SAH-021, 044 |
-| 35 | **YTD rebuild and recalculation.** `employee_ytd` rebuilt from opening rows plus posted lines matches the maintained projection row for row; recalculating a submitted run returns it to draft and voids the pending approval; a rate table can be verified only by a principal other than the one who loaded it. | SAH-004, 016 |
-| 36 | **Role catalogue integrity and scoping.** Every code in the catalogue is evaluated by a handler and vice versa; no seeded role other than `admin` holds an incompatible pair; `auditor` holds no mutating code; a `branch_manager` at branch A cannot read or write documents, shifts, stock, attendance or tickets of branch B through any endpoint, filter or export; an expired assignment grants nothing; "who can approve payroll in company X" and "who can reset a PIN at branch B" are each one SQL query. | SAH-034, 042, 045, 047 |
-| 37 | **POS authority re-verified server-side.** A ticket whose discount exceeds the branch limit, a void, or a blind return is rejected at sync apply unless it carries an override by a principal other than the cashier who holds the permission at that branch; rejected tickets land in needs-attention, never in the ledger. | SAH-027, 048 |
-| 38 | **Payroll period lock.** A run whose period is closed or locked cannot post by any path until a principal with `accounting.period.reopen` reopens it with a reason; the reopen is audited and reported. | SAH-031 |
-| 39 | **Bank reconciliation.** A month's statement import matches every receipt, payment, payroll batch and till banking or lists it as unreconciled; matching never alters a ledger entry; the reconciled balance equals the bank account's ledger balance. | SAH-031, 041 (matching never alters a posted entry); RC-2 |
+| 22 | **One posting path.** A POS ticket and an equivalent back-office invoice produce identical ledger entries and cost consumptions after projecting out `id`, `document_id`, `posted_at`, `posted_by`. | LEGACY-009 |
+| 23 | **RTL/LTR parity.** Every screen and generated PDF renders correctly in Arabic and English, including numerals, Hijri/Gregorian dates and column order. | LEGACY-085 |
+| 24 | **Restore drill.** Restore to an arbitrary point in time; the trial balance computed from the restored ledger equals the trial balance the live system reported at that timestamp, and the audit chain verifies up to that point. | LEGACY-081 |
+| 25 | **Zero-downtime migration.** A schema change deploys with no maintenance window; duration is proportional to the change, not the data. | LEGACY-080 |
+| 26 | **Tax return determinism.** A golden fixture of documents produces a byte-identical return across runs; a tax code from the wrong regime causes a refusal, not a wrong number. | LEGACY-020, 058, 059 |
+| 27 | **No SQL text across the API.** Automated check that no endpoint or procedure parameter is interpolated into a query. | LEGACY-036, 037 |
+| 28 | **One payroll posting path.** A PAYROLL run and a hand-keyed JOURNAL with the same lines produce identical `ledger_entry` and `ledger_entry_dimension` rows after projecting out ids and timestamps. | LEGACY-003, 009 |
+| 29 | **Rate-table pinning.** Run M calculates with the table effective at M; inserting a later version leaves M's posted lines, payslips and ledger byte-identical; a supplementary run in M+1 pins the new version; an unverified table, or one that does not cover the period, is refused (`ERR_PAYROLL_RATE_TABLE_UNVERIFIED`). | LEGACY-013, 020 |
+| 30 | **Payslip ties to the ledger.** For every employee in a run: payslip net = credit to salaries payable tagged EMPLOYEE; Σ(employee + employer share) per scheme = credit to that scheme's payable; the monthly schedule per scheme equals that payable to the cent; a remittance for a different amount is refused. | LEGACY-011, 019 |
+| 31 | **Segregation of duties.** The submitter of a PAYROLL, PAYMENT, PAYROLL_PAYMENT, EMPLOYEE_ADVANCE or STOCK_COUNT cannot approve or post it through any path — API, job, or direct SQL as `app_rw`; a principal cannot alter their own compensation, sensitive data or leave approval; a principal cannot change their own role assignments or the permissions of a role they hold. | LEGACY-032, 042 |
+| 32 | **Sensitive fields have no side channel.** A principal without `hr.employee.read_sensitive` receives no identity, bank or statutory-number fields; one without `hr.compensation.read` receives no `compensation_line` or `employee_statutory_profile` rows (posted `payroll_line` amounts are gated by `hr.payroll.read`) — through any endpoint, filter, sort, search or export, checked over the OpenAPI document and by direct `app_rw` query under `withTenant`. | LEGACY-033, 045 |
+| 33 | **Golden payroll.** An owner-verified fixture — employees, profiles, compensation, rate tables — produces byte-identical payroll lines, ledger entries, payslips and schedules across runs; a missing statutory input fails the run naming the employee, never a silent zero. | LEGACY-011, 020 |
+| 34 | **Termination closes everything.** Setting `terminated_on` — including by direct `app_rw` SQL — revokes `pos_cashier` and expires every `role_assignment` in the same transaction (trigger); the next catalogue down-sync tombstones the cashier; a till that has applied the cursor rejects the PIN; the employee is excluded from the next regular run. | LEGACY-021, 044 |
+| 35 | **YTD rebuild and recalculation.** `employee_ytd` rebuilt from opening rows plus posted lines matches the maintained projection row for row; recalculating a submitted run returns it to draft and voids the pending approval; a rate table can be verified only by a principal other than the one who loaded it. | LEGACY-004, 016 |
+| 36 | **Role catalogue integrity and scoping.** Every code in the catalogue is evaluated by a handler and vice versa; no seeded role other than `admin` holds an incompatible pair; `auditor` holds no mutating code; a `branch_manager` at branch A cannot read or write documents, shifts, stock, attendance or tickets of branch B through any endpoint, filter or export; an expired assignment grants nothing; "who can approve payroll in company X" and "who can reset a PIN at branch B" are each one SQL query. | LEGACY-034, 042, 045, 047 |
+| 37 | **POS authority re-verified server-side.** A ticket whose discount exceeds the branch limit, a void, or a blind return is rejected at sync apply unless it carries an override by a principal other than the cashier who holds the permission at that branch; rejected tickets land in needs-attention, never in the ledger. | LEGACY-027, 048 |
+| 38 | **Payroll period lock.** A run whose period is closed or locked cannot post by any path until a principal with `accounting.period.reopen` reopens it with a reason; the reopen is audited and reported. | LEGACY-031 |
+| 39 | **Bank reconciliation.** A month's statement import matches every receipt, payment, payroll batch and till banking or lists it as unreconciled; matching never alters a ledger entry; the reconciled balance equals the bank account's ledger balance. | LEGACY-031, 041 (matching never alters a posted entry); RC-2 |
 
 ---
 
@@ -2467,8 +2467,8 @@ These could not be settled from the shipped files and must be answered before de
 3. **Malaysian e-invoicing specifics.** Malaysia is confirmed as the first jurisdiction (§0.3). What remains open is the *current* LHDN MyInvois requirement set — thresholds, mandatory fields, schema version, submission API. Verify against the authority's own current documentation before Phase 5; do not rely on this document or on training data for deadlines or schema versions.
 4. **Is `Users.Password` hashed client-side?** Changes the migration plan (forced reset vs. rehash-on-login). The schema has no salt or algorithm column either way, so a forced reset is the safe default.
 5. **Firebird version in production.** Determines whether the UDF path still works and how data can be extracted (`gbak` vs ODBC vs direct file read).
-6. **Actual DDL constraints.** Several findings (SAH-024, 049, 051, 066, 074) rest on the schema dump's key convention rather than real DDL. Confirm against `RDB$RELATION_CONSTRAINTS` and `RDB$INDICES` before rating them.
-7. **Does `MatOpens.Job` ever differ from 0 in production?** SAH-022 is a hard failure if so, and inert if not.
+6. **Actual DDL constraints.** Several findings (LEGACY-024, 049, 051, 066, 074) rest on the schema dump's key convention rather than real DDL. Confirm against `RDB$RELATION_CONSTRAINTS` and `RDB$INDICES` before rating them.
+7. **Does `MatOpens.Job` ever differ from 0 in production?** LEGACY-022 is a hard failure if so, and inert if not.
 8. **Which of the 255 report templates are in use?** They live as blobs in the customer database; extract and catalogue them.
 9. **Customisations.** The `Special`, `rah*` and `spr*` modules are customer-specific. Catalogue them before assuming the stock feature set.
 10. ⚠️ **Must historical POS *data* migrate?** The POS application itself is being rebuilt (§3.7). The open question is whether past tickets in the old `mpos` schema need to come across, or whether the new POS starts clean at cut-over with only the catalogue. Starting clean is far cheaper; confirm it is acceptable.
@@ -2484,93 +2484,93 @@ These could not be settled from the shipped files and must be answered before de
 
 | ID | Sev | Title | Root cause |
 |---|:--:|---|---|
-| SAH-001 | C | Currency balances updated without the tenant key | RC-2 |
-| SAH-002 | C | Upsert never fires on UPDATE; re-keying destroys the amount | RC-2 |
-| SAH-003 | C | Nothing enforces debits = credits | RC-2 |
-| SAH-004 | C | Cost advanced on INSERT only; no rebuild path exists | RC-2 |
-| SAH-005 | C | Dirty flag never set on INSERT; back-dated docs never recosted | RC-2 |
-| SAH-006 | C | Re-keying a line desynchronises cost aggregates | RC-2 |
-| SAH-007 | C | Value-less production movements NULL-poison cost forever | RC-2 |
-| SAH-008 | C | Cost can go negative, explode 10,000×, or be wiped to zero | RC-2 |
-| SAH-009 | C | Three different weighted-average formulas | RC-5 |
-| SAH-010 | C | `procCalcJobCosts` cannot compute job cost; incremental mode cannot run | RC-4 |
-| SAH-011 | C | NULL arithmetic irreversibly nulls balances and tax boxes | RC-2 |
-| SAH-012 | C | Base amounts never derived from value × rate; rate never validated | RC-2 |
-| SAH-013 | H | Reversal reads current flags, not those originally applied | RC-3 |
-| SAH-014 | H | `procSumVouItems` discards the caller's exchange rate | RC-4 |
-| SAH-015 | H | Date window predicate can never be satisfied | RC-4 |
-| SAH-016 | H | `MatStatus` min/max ratchet; INSERT-only maintenance | RC-2 |
-| SAH-017 | H | Delivery tracking double-adds bonus; never reverses on re-point | RC-2 |
-| SAH-018 | H | Return-line delete path unreachable; edit double-counts | RC-2 |
-| SAH-019 | H | Rounding configured everywhere, applied nowhere, function wrong | RC-5 |
-| SAH-020 | H | GST return hardcodes rate, ambiguous date, enum collision | RC-3 |
-| SAH-021 | H | Accounts deletable with postings; generator rewinds and reuses IDs | RC-2 |
-| SAH-022 | H | Singleton SELECT ignores a key column; hard-fails on multi-job opening | RC-4 |
-| SAH-023 | M | Audit sequence renumbered retroactively; collides across classes | RC-2 |
-| SAH-024 | L | Account codes from `max()` on a string, unlocked | RC-2 |
-| SAH-025 | C | `procQuickLogin` grants admin with no credentials | RC-1 |
-| SAH-026 | C | Session identity is client-writable context | RC-1 |
-| SAH-027 | C | One client-settable variable disables every write-time control | RC-1 |
-| SAH-028 | C | Passwords stored and compared in cleartext | RC-1 |
-| SAH-029 | C | Audit trail records no actor; table freely writable | RC-1 |
-| SAH-030 | C | A login parameter switches the audit trail off | RC-1 |
-| SAH-031 | C | Period locks per-tier, on a sibling table, not on the lines | RC-1 |
-| SAH-032 | H | User can raise a document's approval above their own | RC-1 |
-| SAH-033 | H | Confidentiality is a display filter with a caller-supplied off switch | RC-1 |
-| SAH-034 | H | `Grants` permission table never read by any code | RC-5 |
-| SAH-035 | H | Tenant scoping is a client convention | RC-1 |
-| SAH-036 | H | Six procedures accept a raw SQL predicate as a parameter | RC-4 |
-| SAH-037 | H | Four procedures interpolate unescaped user strings | RC-4 |
-| SAH-038 | H | Path traversal to arbitrary file write on the DB server | RC-1 |
-| SAH-039 | H | `procInitDatabase` creates an admin, unauthenticated, unguarded | RC-1 |
-| SAH-040 | H | Deletions logged less reliably than inserts | RC-1 |
-| SAH-041 | H | Hard deletes; anti-tampering triggers shipped disabled | RC-1 |
-| SAH-042 | M | Ownership/paid checks fail open on a missing user row | RC-1 |
-| SAH-043 | M | Failed authentication returns a row instead of raising | RC-1 |
-| SAH-044 | M | Session records caller-controlled, attributable to the wrong user | RC-1 |
-| SAH-045 | M | Department scoping is a report parameter | RC-1 |
-| SAH-046 | M | Site protection bypassable; two different flags share one name | RC-1 |
-| SAH-047 | M | Only 7 of ~55 permission flags are read by the database | RC-1 |
-| SAH-048 | H | Stock controls opt-in per user, with four bypasses | RC-1 |
-| SAH-049 | C | Aggregate tables unkeyed; upsert race duplicates silently | RC-2 |
-| SAH-050 | H | NULL dimensions accumulate orphans and lose decrements | RC-2 |
-| SAH-051 | H | Numbering races, no uniqueness, cannot be gapless | RC-2 |
-| SAH-052 | C | Serials can be sold twice; the check has no callers | RC-1 |
-| SAH-053 | M | Runtime DDL disables integrity machinery mid-transaction | RC-6 |
-| SAH-054 | H | Full recost aborts on the first historical below-cost sale | RC-2 |
-| SAH-055 | M | FIFO stock ageing non-functional (`OR` for `AND`) | RC-4 |
-| SAH-056 | H | Serial lookup length-based, non-sargable, silently wrong | RC-4 |
-| SAH-057 | H | Serial enquiry expands blocks with a full scan per unit | RC-4 |
-| SAH-058 | M | Tax item filters contradictory between union halves | RC-4 |
-| SAH-059 | H | Tax query overflows its buffer on a normal VAT return | RC-4 |
-| SAH-060 | M | `procFixMatStatus` mis-sorts and drops currency columns | RC-6 |
-| SAH-061 | M | `procUpdateMatCosts` permanently resets cost to opening value | RC-6 |
-| SAH-062 | L | Costing watermark written with the wrong document | RC-2 |
-| SAH-063 | L | Unguarded division by `BtmSize` in six of eight places | RC-4 |
-| SAH-064 | L | Copy-paste dead NULL guard; `BuyCur` never defaulted | RC-5 |
-| SAH-065 | L | Unreachable dead code in the audit trigger | RC-5 |
-| SAH-066 | L | Unit conversion defined in schema, applied nowhere | RC-5 |
-| SAH-067 | H | Stock-on-hand replays all history under a forced plan | RC-4 |
-| SAH-068 | H | 23 hardcoded plans, two pinning generated index names | RC-4 |
-| SAH-069 | M | Queries rebuilt per call into fixed buffers | RC-4 |
-| SAH-070 | M | Index coverage missing on the columns reports filter by | RC-6 |
-| SAH-071 | L | Recursive tree check per row inside triggers | RC-4 |
-| SAH-072 | H | Zero CHECK constraints; 544 booleans encoding exclusive states | RC-3 |
-| SAH-073 | H | Referential integrity inconsistent for the same relationship | RC-6 |
-| SAH-074 | M | 42 of 460 tables have no primary key | RC-6 |
-| SAH-075 | M | Template placeholders never substituted in shipped objects | RC-5 |
-| SAH-076 | M | 9% of the corpus is duplicate or near-duplicate | RC-5 |
-| SAH-077 | M | Call graph unresolvable; dead code undetectable | RC-5 |
-| SAH-078 | M | Behaviour-governing config in opaque blobs | RC-5 |
-| SAH-079 | M | 44 repair objects, two ledgers, one broken guard | RC-6 |
-| SAH-080 | H | Upgrade is a whole-database rebuild, console-only | RC-6 |
-| SAH-081 | M | Backup/restore manual, whole-file, destructive, no PITR | RC-6 |
-| SAH-082 | M | Licensing pinned to a hardcoded private IP | RC-6 |
-| SAH-083 | H | One error handler in 33,179 lines, and it swallows | RC-5 |
-| SAH-084 | M | Error messages not actionable; code convention broken | RC-5 |
-| SAH-085 | M | English build never proofread; Arabic in English dialogs | RC-5 |
-| SAH-086 | L | Vendor hardware config with mojibake and duplicate keys | RC-5 |
-| SAH-087 | L | Hardcoded developer build paths in shipped metadata | RC-6 |
+| LEGACY-001 | C | Currency balances updated without the tenant key | RC-2 |
+| LEGACY-002 | C | Upsert never fires on UPDATE; re-keying destroys the amount | RC-2 |
+| LEGACY-003 | C | Nothing enforces debits = credits | RC-2 |
+| LEGACY-004 | C | Cost advanced on INSERT only; no rebuild path exists | RC-2 |
+| LEGACY-005 | C | Dirty flag never set on INSERT; back-dated docs never recosted | RC-2 |
+| LEGACY-006 | C | Re-keying a line desynchronises cost aggregates | RC-2 |
+| LEGACY-007 | C | Value-less production movements NULL-poison cost forever | RC-2 |
+| LEGACY-008 | C | Cost can go negative, explode 10,000×, or be wiped to zero | RC-2 |
+| LEGACY-009 | C | Three different weighted-average formulas | RC-5 |
+| LEGACY-010 | C | `procCalcJobCosts` cannot compute job cost; incremental mode cannot run | RC-4 |
+| LEGACY-011 | C | NULL arithmetic irreversibly nulls balances and tax boxes | RC-2 |
+| LEGACY-012 | C | Base amounts never derived from value × rate; rate never validated | RC-2 |
+| LEGACY-013 | H | Reversal reads current flags, not those originally applied | RC-3 |
+| LEGACY-014 | H | `procSumVouItems` discards the caller's exchange rate | RC-4 |
+| LEGACY-015 | H | Date window predicate can never be satisfied | RC-4 |
+| LEGACY-016 | H | `MatStatus` min/max ratchet; INSERT-only maintenance | RC-2 |
+| LEGACY-017 | H | Delivery tracking double-adds bonus; never reverses on re-point | RC-2 |
+| LEGACY-018 | H | Return-line delete path unreachable; edit double-counts | RC-2 |
+| LEGACY-019 | H | Rounding configured everywhere, applied nowhere, function wrong | RC-5 |
+| LEGACY-020 | H | GST return hardcodes rate, ambiguous date, enum collision | RC-3 |
+| LEGACY-021 | H | Accounts deletable with postings; generator rewinds and reuses IDs | RC-2 |
+| LEGACY-022 | H | Singleton SELECT ignores a key column; hard-fails on multi-job opening | RC-4 |
+| LEGACY-023 | M | Audit sequence renumbered retroactively; collides across classes | RC-2 |
+| LEGACY-024 | L | Account codes from `max()` on a string, unlocked | RC-2 |
+| LEGACY-025 | C | `procQuickLogin` grants admin with no credentials | RC-1 |
+| LEGACY-026 | C | Session identity is client-writable context | RC-1 |
+| LEGACY-027 | C | One client-settable variable disables every write-time control | RC-1 |
+| LEGACY-028 | C | Passwords stored and compared in cleartext | RC-1 |
+| LEGACY-029 | C | Audit trail records no actor; table freely writable | RC-1 |
+| LEGACY-030 | C | A login parameter switches the audit trail off | RC-1 |
+| LEGACY-031 | C | Period locks per-tier, on a sibling table, not on the lines | RC-1 |
+| LEGACY-032 | H | User can raise a document's approval above their own | RC-1 |
+| LEGACY-033 | H | Confidentiality is a display filter with a caller-supplied off switch | RC-1 |
+| LEGACY-034 | H | `Grants` permission table never read by any code | RC-5 |
+| LEGACY-035 | H | Tenant scoping is a client convention | RC-1 |
+| LEGACY-036 | H | Six procedures accept a raw SQL predicate as a parameter | RC-4 |
+| LEGACY-037 | H | Four procedures interpolate unescaped user strings | RC-4 |
+| LEGACY-038 | H | Path traversal to arbitrary file write on the DB server | RC-1 |
+| LEGACY-039 | H | `procInitDatabase` creates an admin, unauthenticated, unguarded | RC-1 |
+| LEGACY-040 | H | Deletions logged less reliably than inserts | RC-1 |
+| LEGACY-041 | H | Hard deletes; anti-tampering triggers shipped disabled | RC-1 |
+| LEGACY-042 | M | Ownership/paid checks fail open on a missing user row | RC-1 |
+| LEGACY-043 | M | Failed authentication returns a row instead of raising | RC-1 |
+| LEGACY-044 | M | Session records caller-controlled, attributable to the wrong user | RC-1 |
+| LEGACY-045 | M | Department scoping is a report parameter | RC-1 |
+| LEGACY-046 | M | Site protection bypassable; two different flags share one name | RC-1 |
+| LEGACY-047 | M | Only 7 of ~55 permission flags are read by the database | RC-1 |
+| LEGACY-048 | H | Stock controls opt-in per user, with four bypasses | RC-1 |
+| LEGACY-049 | C | Aggregate tables unkeyed; upsert race duplicates silently | RC-2 |
+| LEGACY-050 | H | NULL dimensions accumulate orphans and lose decrements | RC-2 |
+| LEGACY-051 | H | Numbering races, no uniqueness, cannot be gapless | RC-2 |
+| LEGACY-052 | C | Serials can be sold twice; the check has no callers | RC-1 |
+| LEGACY-053 | M | Runtime DDL disables integrity machinery mid-transaction | RC-6 |
+| LEGACY-054 | H | Full recost aborts on the first historical below-cost sale | RC-2 |
+| LEGACY-055 | M | FIFO stock ageing non-functional (`OR` for `AND`) | RC-4 |
+| LEGACY-056 | H | Serial lookup length-based, non-sargable, silently wrong | RC-4 |
+| LEGACY-057 | H | Serial enquiry expands blocks with a full scan per unit | RC-4 |
+| LEGACY-058 | M | Tax item filters contradictory between union halves | RC-4 |
+| LEGACY-059 | H | Tax query overflows its buffer on a normal VAT return | RC-4 |
+| LEGACY-060 | M | `procFixMatStatus` mis-sorts and drops currency columns | RC-6 |
+| LEGACY-061 | M | `procUpdateMatCosts` permanently resets cost to opening value | RC-6 |
+| LEGACY-062 | L | Costing watermark written with the wrong document | RC-2 |
+| LEGACY-063 | L | Unguarded division by `BtmSize` in six of eight places | RC-4 |
+| LEGACY-064 | L | Copy-paste dead NULL guard; `BuyCur` never defaulted | RC-5 |
+| LEGACY-065 | L | Unreachable dead code in the audit trigger | RC-5 |
+| LEGACY-066 | L | Unit conversion defined in schema, applied nowhere | RC-5 |
+| LEGACY-067 | H | Stock-on-hand replays all history under a forced plan | RC-4 |
+| LEGACY-068 | H | 23 hardcoded plans, two pinning generated index names | RC-4 |
+| LEGACY-069 | M | Queries rebuilt per call into fixed buffers | RC-4 |
+| LEGACY-070 | M | Index coverage missing on the columns reports filter by | RC-6 |
+| LEGACY-071 | L | Recursive tree check per row inside triggers | RC-4 |
+| LEGACY-072 | H | Zero CHECK constraints; 544 booleans encoding exclusive states | RC-3 |
+| LEGACY-073 | H | Referential integrity inconsistent for the same relationship | RC-6 |
+| LEGACY-074 | M | 42 of 460 tables have no primary key | RC-6 |
+| LEGACY-075 | M | Template placeholders never substituted in shipped objects | RC-5 |
+| LEGACY-076 | M | 9% of the corpus is duplicate or near-duplicate | RC-5 |
+| LEGACY-077 | M | Call graph unresolvable; dead code undetectable | RC-5 |
+| LEGACY-078 | M | Behaviour-governing config in opaque blobs | RC-5 |
+| LEGACY-079 | M | 44 repair objects, two ledgers, one broken guard | RC-6 |
+| LEGACY-080 | H | Upgrade is a whole-database rebuild, console-only | RC-6 |
+| LEGACY-081 | M | Backup/restore manual, whole-file, destructive, no PITR | RC-6 |
+| LEGACY-082 | M | Licensing pinned to a hardcoded private IP | RC-6 |
+| LEGACY-083 | H | One error handler in 33,179 lines, and it swallows | RC-5 |
+| LEGACY-084 | M | Error messages not actionable; code convention broken | RC-5 |
+| LEGACY-085 | M | English build never proofread; Arabic in English dialogs | RC-5 |
+| LEGACY-086 | L | Vendor hardware config with mojibake and duplicate keys | RC-5 |
+| LEGACY-087 | L | Hardcoded developer build paths in shipped metadata | RC-6 |
 
 **By severity:** Critical 21 · High 33 · Medium 24 · Low 9 — **87 total.**
 **By root cause:** RC-1 (no authenticated caller) 22 · RC-2 (derived state hand-maintained) 21 · RC-3 (flags not types) 3 · RC-4 (dynamic SQL) 16 · RC-5 (blobs, un-analysable) 14 · RC-6 (rebuild-based upgrade) 11.
@@ -2590,4 +2590,4 @@ Stated plainly so nothing is assumed:
 
 ---
 
-*Compiled 2026-09-04 from the installed Sahlisoft Accounting Plus 4.0 tree (version 4.1.2). 913 database objects / 33,179 lines of PSQL extracted and audited; 460 tables / 5,136 columns; 13,778 UI strings; 255 report templates; 9 shipped repair scripts. No file in the installation was created, modified or deleted.*
+*Compiled 2026-09-04 from the installed tree of the legacy accounting system (version 4.1.2). 913 database objects / 33,179 lines of PSQL extracted and audited; 460 tables / 5,136 columns; 13,778 UI strings; 255 report templates; 9 shipped repair scripts. No file in the installation was created, modified or deleted.*

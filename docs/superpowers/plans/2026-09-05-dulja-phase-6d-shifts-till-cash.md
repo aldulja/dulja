@@ -33,7 +33,7 @@ TypeScript 5 on Bun; PostgreSQL 18 via `postgres.js` tagged templates (Drizzle m
 - **Interfaces produced:** §4.6.5 (`app.shift`, implemented verbatim plus the three FKs and one index Task 0 amends in), §4.6.1's `till_event` row, the shift/till-event apply paths of §4.10.1, §4.16.3's POS additions (`zReport`, `salesByCashier` and their param/row types — amendment A5), §4.5.8's `pos` map row, §4.2.7's `shiftRouteModule` at `/v1/companies/:companyId/shifts` with its one `PROBES` key (amendment A11), two new §4.2.8 module rows (`packages/contracts/src/pos/shift.ts`, `pos/reports.ts`), and ⚠️ **OD-10 only** §4.10.1's fourth message array `cashEvents`/`cashEventResults` with `TillCashMsg` (amendment A13) and `app.till_banking_link` with its `till_banking` `ReconcilableSource` (amendment A16, §4.8.3's registry seam).
 - **Four amendments this plan discovered that the contracts document did not have at all, all written by Task 0:** **A15** — 6A's `resolveSeries` suffixes **every** document carrying a `terminal_id`, so §4.14's `Series` column is the *policy* series and this slice's posted documents are numbered `TOS-<terminal code>` (and ⚠️ `TPO-`/`TSD-`/`TBK-`); **A16** — ⚠️ `till_banking_link` had no §4.6.1 register row and no §3.5.3 linter-set row, and its columns are fixed there before migration 0071 is written; **A17** — `seedShift`'s §4.17 row gains `currency?`, `branchId?` and `shiftId?`; **A18** — 2C shipped `MODULE_READ_CODE` in `apps/api/src/middleware/require-attachment-read.ts`, **not** at the `routes/accounting/attachments.ts` path §4.5.8's prose names, and §4.18 makes the written plan the authority.
 - **Owner decisions:** **OD-10** (till cash lifecycle) → **Tasks 9, 10, 11** (isolated; default **not built**). **OD-24** (screenshots before any screen) → **Task 12** (isolated; default **the screen task is blocked, not the slice**). **OD-05**'s 6D row is the ⚠️ §3.0.4 row spec:1063, which is the *same* decision as OD-10 — the three OD-10 tasks are its gate and this slice creates no separate OD-05 task.
-- **Part VI tests owned / re-run:** owns **21**; re-runs **39** (the till-banking clause, OD-10 only), **36** (shifts in branch scoping), **23** (screens, OD-24 only), and **6A's `packages/db/test/sync/apply.test.ts` batch suite — with exactly one case edited**, the `ERR_SYNC_MESSAGE_UNSUPPORTED` refusal that becomes the acceptance case (Task 3 Step 6, finished in Task 6 Step 5); every other case in that file stands byte-for-byte and Task 13's re-run matrix is where the claim is checked. **§3.0.4 rows owned:** spec:1063 (Till cash lifecycle ⚠️). **Regression files created / appended:** creates none; **appends to `tests/regression/sah-031.test.ts` and `tests/regression/sah-041.test.ts`** (both created by 0B — §3.7.3's Plan 0A-proven list names 031 and 041).
+- **Part VI tests owned / re-run:** owns **21**; re-runs **39** (the till-banking clause, OD-10 only), **36** (shifts in branch scoping), **23** (screens, OD-24 only), and **6A's `packages/db/test/sync/apply.test.ts` batch suite — with exactly one case edited**, the `ERR_SYNC_MESSAGE_UNSUPPORTED` refusal that becomes the acceptance case (Task 3 Step 6, finished in Task 6 Step 5); every other case in that file stands byte-for-byte and Task 13's re-run matrix is where the claim is checked. **§3.0.4 rows owned:** spec:1063 (Till cash lifecycle ⚠️). **Regression files created / appended:** creates none; **appends to `tests/regression/legacy-031.test.ts` and `tests/regression/legacy-041.test.ts`** (both created by 0B — §3.7.3's Plan 0A-proven list names 031 and 041).
 - **Shared namespaces this slice writes into:** **Document-type codes (§4.14)** — `TILL_OVER_SHORT` (`pos`, series `TOS`), seeded as `packages/db/seed/my/document-types/TILL_OVER_SHORT.json`; ⚠️ **OD-10 only** `TILL_PAID_OUT` (`pos`, `TPO`), `TILL_SAFE_DROP` (`pos`, `TSD`), `TILL_BANKING` (`pos`, `TBK`). Consumed and never re-seeded: `POS_TICKET` (6A). **Account codes (§4.15)** — two of this slice's own rows seeded **unconditionally**, `5120` Till over/short (expense) and `1130` Cash in transit (asset), plus ⚠️ **OD-10 only** `5130` Till paid out (expense), all in `packages/db/seed/my/chart-of-accounts/6d-till.json`. Consumed and asserted-not-re-seeded, with their seeding slice: `1110` Cash in till, `1120` Card clearing, `2200` Store-credit liability (**6A**); `1000` Cash on hand, `1100` Bank (**0C**). **Report codes (§4.16.1)** — **`pos.z_report` and `pos.sales_by_cashier`**, both this slice's own rows, seeded as routes over named read functions (§4.16.3) and **not** as `ReportDefinition`s; `ReportCodeSchema` is widened by both. **`DatasetId` members (§4.16.2) — none:** `shift` and `till_event` are **7C's** rows in the frozen union and 7A creates `datasets.ts`. **`fixtures.ts` helpers (§4.17) — exactly one, the row §4.17 assigns 6D, with three options added additively by amendment A17: `seedShift(db, s, opts: { terminalId; cashierPrincipalId; openingFloat?; currency?; branchId?; shiftId? }) → string`.** §4.17's registered row names only the first three; the other three are load-bearing (`shiftId` for amendment A6, `branchId` for A7, `currency` for Task 3's wrong-currency cases) and §4.17's own rule — "a slice needing an option a listed one lacks adds the option additively and records it here in the same PR" — is discharged by **A17**. **Shared test helpers (§4.17.1) — none new**; this slice consumes 6A's `tests/invariants/support/pos.ts` and 6C's `tests/invariants/support/staff.ts` and adds one exported member to each (Task 0 amendments A6 and A7).
 - **Never re-decide:** D1–D27 (spec:114–142); every name in the contracts document is frozen — a needed change goes to that document first.
 - **Contracts version:** 2026-09-07.
@@ -46,7 +46,7 @@ TypeScript 5 on Bun; PostgreSQL 18 via `postgres.js` tagged templates (Drizzle m
 4. **Never DDL from application code.** DDL lives only in `packages/db/migrations/NNNN_<verb>_<noun>.sql` with a hand-written `NNNN.down.sql` (§3.4.2, §3.4.5).
 5. **Never hard-code a package version into a source file** — the lockfile owns versions (spec:104).
 6. **Every new table** carries `tenant_id`, RLS via `app_meta.enable_tenant_rls`, FORCE RLS, `created_at`, the audit trigger via `app_meta.attach_audit` unless the table is in `AUDIT_EXEMPT`, `stamp_<col>` for every `*_by` column, composite `(tenant_id, x)` FKs, `unique (tenant_id, id)`, `snake_case` singular names, and a test that a second tenant cannot see it (§3.3, §3.5.1).
-7. **A column that records *whom* an act is attributed to is never named `*_by`** (§3.3). `shift.opened_principal_id`, `shift.closed_principal_id`, `till_event.cashier_principal_id` and `till_event.supervisor_principal_id` follow the rule; `stamp_actor` would otherwise overwrite the cashier with the terminal, which is SAH-044 in reverse.
+7. **A column that records *whom* an act is attributed to is never named `*_by`** (§3.3). `shift.opened_principal_id`, `shift.closed_principal_id`, `till_event.cashier_principal_id` and `till_event.supervisor_principal_id` follow the rule; `stamp_actor` would otherwise overwrite the cashier with the terminal, which is LEGACY-044 in reverse.
 8. **The terminal acts, the cashier is attributed** (hazard 19, spec:1324). Every document this slice posts through the sync path has `created_by` / `posted_by` = the terminal principal and its human on `attributed_to` or on a `*_principal_id` column.
 9. **`side` carries direction; a planned ledger amount is never negative** (§4.4.2 amendment A9). This slice is **named** in A9's warning list through its 6A inheritance: nothing here reads `amount.isNegative()` to decide a direction. `shift.over_short` is a **stored signed column** and is not a planned line — it is read once, its sign chooses which of two `document_line` rows carries the magnitude, and the magnitude itself is always positive.
 10. **Per-tenant rows cannot be written by a migration** (hazard 10). `FORCE ROW LEVEL SECURITY` binds `app_migrator`, so `0070` and `0072` create objects and seed `app.permission` (global) only. Document types, policies and chart rows are seed-pack data applied by `bun run seed --tenant <id> --only <sub-pack>`.
@@ -145,8 +145,8 @@ tests/
   invariants/probes.ts                            EDIT T7  — one PROBES entry for the shifts module
   invariants/phase-6d-pins.test.ts                NEW  T13 — the three pins that read @dulja/contracts,
                                                             @dulja/api/routes and probes.ts (§3.1)
-  regression/sah-031.test.ts                      EDIT T13 — append a "— 6D" describe block
-  regression/sah-041.test.ts                      EDIT T13 — append a "— 6D" describe block
+  regression/legacy-031.test.ts                      EDIT T13 — append a "— 6D" describe block
+  regression/legacy-041.test.ts                      EDIT T13 — append a "— 6D" describe block
 
 docs/adr/
   0063-shift-close-derives-expected-cash.md       NEW  T4  — a PROPOSAL (money semantics — spec:95)
@@ -525,7 +525,7 @@ create table app.shift (
   branch_id               uuid not null,
   terminal_id             uuid not null,
   -- ATTRIBUTION, never `*_by`: on a shift synced up by a terminal the acting principal is the TERMINAL, and
-  -- a stamped `opened_by` would silently replace the cashier with it — SAH-044 in reverse (§3.3).
+  -- a stamped `opened_by` would silently replace the cashier with it — LEGACY-044 in reverse (§3.3).
   opened_principal_id     uuid not null references app.principal(id),
   opened_at               timestamptz not null,
   opening_float           numeric(19,4) not null,
@@ -927,7 +927,7 @@ export const OVERRIDE_SUBJECT_FOR: Readonly<
   // A supervisor's override does not make a principal a shift closer. 6C's decision (d) draws the line:
   // an override lifts a LIMIT, and "may I close this drawer at all" is an AUTHORITY question. A cashier
   // handed a supervisor PIN to close a colleague's till would produce a TILL_OVER_SHORT attributed to
-  // the wrong human, which is SAH-044 with extra steps.
+  // the wrong human, which is LEGACY-044 with extra steps.
   "pos.shift.own": null,
   "pos.shift.close_any": null,
 };
@@ -1370,7 +1370,7 @@ export function moneyFromMessage(
  * was counted in, so `on conflict (id) do nothing` plus a read-back is the whole of "zero duplicates" for
  * this message kind — a re-send after a timeout answers `duplicate` and the first write's `opening_float`
  * stands. Overwriting it on a re-send would let a till change a figure a Z-report has already been built
- * on, which is SAH-020's shape ("the server does not overwrite a figure the shop chose") applied to cash.
+ * on, which is LEGACY-020's shape ("the server does not overwrite a figure the shop chose") applied to cash.
  *
  * `branch_id` and `terminal_id` come from `terminal`, never from `msg`: the context is signed and the
  * payload is not. `opened_principal_id` is the cashier from the payload — that is ATTRIBUTION data and the
@@ -1923,7 +1923,7 @@ other than `TILL_OVER_SHORT`. The till sends `countedCash` and nothing else; the
 - **Every future cash movement is included with no formula change.** OD-10's paid-outs, safe drops and
   bankings each post a `1110` leg, so they enter the sum the day their document type lands. Under (a) the
   formula would have had to grow a clause per type, and a type whose clause was forgotten would be a
-  silent shortfall — SAH-055's shape ("a figure recomputed by a second, staler rule").
+  silent shortfall — LEGACY-055's shape ("a figure recomputed by a second, staler rule").
 - **A POS return is handled without a sign rule.** A refund's cash tender posts a credit to `1110`, so
   `debit − credit` subtracts it. Nothing reads the sign of an amount to decide a direction (§4.4.2 A9).
 - **`status in ('posted', 'reversed')` and not `= 'posted'`.** A reversed ticket's own entries stay in the
@@ -3673,7 +3673,7 @@ const TENDER_ACCOUNT: Readonly<Record<string, string>> = {
  *
  * **Every figure comes from `app.ledger_entry`, never from `document_line`.** The DoD sentence is "the
  * shift Z-report ties to the ledger to the cent", and a report that summed tender lines would be a second
- * computation that can disagree — which is the defect SAH-055 names ("a figure recomputed by a staler
+ * computation that can disagree — which is the defect LEGACY-055 names ("a figure recomputed by a staler
  * rule") and the reason 1B's `trialBalance` reads `account_balance` rather than re-aggregating.
  *
  * **Branch isolation is RLS's job, not this query's.** `app.shift` carries Form A's restrictive
@@ -3971,7 +3971,7 @@ export const ZReportList = ListEnvelope(ZReportSchema);
  * `AuditLogQuery` (0b:4317): *"`@hono/zod-openapi` generates query parameters from a `ZodObject`, and a
  * `.refine` would wrap the schema in `ZodEffects`"* — so a refined query schema can fail parameter
  * generation and the OpenAPI diff check of Step 8. §4.18 makes 0B the authority on its own convention.
- * `.strict()` is likewise not used: 1B applies it to a report query, but `sah-036` sends undeclared
+ * `.strict()` is likewise not used: 1B applies it to a report query, but `legacy-036` sends undeclared
  * `where=` / `filter=` keys and expects them stripped (0b:4318), and this route is on that path.
  */
 export const ZReportQuery = ListQuery.extend({
@@ -5767,7 +5767,7 @@ const legsOf = async (ref: string): Promise<{ code: string; debit: string; credi
      order by a.code`;
 
 /** A comparable fingerprint of one document's ledger rows, so "matching altered no ledger entry"
- *  (SAH-041) is one assertion. Ids and timestamps are excluded; amounts and accounts are not. */
+ *  (LEGACY-041) is one assertion. Ids and timestamps are excluded; amounts and accounts are not. */
 const ledgerFingerprint = async (documentId: string): Promise<string> => {
   const rows = await db.admin<{ code: string; debit: string; credit: string; currency: string }[]>`
     select a.code, le.debit::text, le.credit::text, le.currency
@@ -6076,7 +6076,7 @@ const legsOf = async (ref: string): Promise<{ code: string; debit: string; credi
      order by a.code`;
 
 /** A comparable fingerprint of one document's ledger rows, so "matching altered no ledger entry"
- *  (SAH-041) is one assertion. Ids and timestamps are excluded; amounts and accounts are not. */
+ *  (LEGACY-041) is one assertion. Ids and timestamps are excluded; amounts and accounts are not. */
 const ledgerFingerprint = async (documentId: string): Promise<string> => {
   const rows = await api.db.admin<{ code: string; debit: string; credit: string; currency: string }[]>`
     select a.code, le.debit::text, le.credit::text, le.currency
@@ -6171,7 +6171,7 @@ describe("test 39 — a till banking is reconcilable, and matching never alters 
     expect(unreconciled.find((r) => r.kind === "till_banking")).toBeUndefined();
   });
 
-  it("matching and unmatching alter NO ledger entry (SAH-041, spec:2457)", async () => {
+  it("matching and unmatching alter NO ledger entry (LEGACY-041, spec:2457)", async () => {
     const before = await ledgerFingerprint(bankingDocumentId);
     await write((tx, ctx) => unmatch(tx, ctx, { matchId, reason: "wrong line" }));
     ({ matchId } = await write((tx, ctx) => match(tx, ctx, {
@@ -6566,7 +6566,7 @@ fact no ledger leg does — the shift — so an unreconciled banking can say whi
 drawer it came from. 6D adds ONE registerReconcilableSource call and edits no file
 of 4B's, which is the seam its card promised. Test 39's till-banking clause holds:
 the reconciled balance equals the bank account's ledger balance, and matching
-alters no ledger entry (SAH-041).
+alters no ledger entry (LEGACY-041).
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
@@ -7053,7 +7053,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 **The last task of the slice that closes Phase 6** (§3.8 names 0E, 1B, 2C, 3D, 4B, 5B, **6D**, 7C, 8D and 9B as the slices that rewrite the "Current phase" section — `AGENTS.md`'s from 4B on, `CLAUDE.md`'s before ADR 0088 retired it). It ships no new behaviour: it appends the two regression blocks the card assigns, re-runs every test the slice inherits, and re-asserts the pinned lists a later reader will otherwise take on trust.
 
 **Files**
-- Modify: `tests/regression/sah-031.test.ts`, `tests/regression/sah-041.test.ts` (one appended `describe` each), `AGENTS.md`
+- Modify: `tests/regression/legacy-031.test.ts`, `tests/regression/legacy-041.test.ts` (one appended `describe` each), `AGENTS.md`
 - Create: `packages/db/test/phase-6d-pins.test.ts`, `tests/invariants/phase-6d-pins.test.ts`
 
 **The pins are TWO files, and the split is the dependency rule, not taste.** §3.1 pins `packages/db` to `@dulja/domain`, and `scripts/lint/rules/dependency-rule.ts` runs over every import under `packages/**` — test files included, which is why `no-bare-db` has to name `packages/db/test/**` on an allow-list at all (§3.7.5). Three of the eight pinned claims read tiers `packages/db` may not name: `JOBS` and `ReportCodeSchema` live in `@dulja/contracts`, and the route/probe bijection needs `apps/api`'s routes **and** `tests/invariants/probes.ts` — and §4.17.1's one named allowance runs the *other* way (`apps/*/test/**` → `tests/invariants/support/**`), so not even an `apps/api` test has an allowance for `probes.ts`. Those three move to **`tests/invariants/phase-6d-pins.test.ts`**, where §3.1's tier table already lets the `tests` workspace import any package and reach `@dulja/api` through its exported `./routes` entry point. The five that read the *database* and the *repository tree* stay in `packages/db`. 3B hit the same wall and answered it the same way — read `app.permission` instead of importing `PERMISSIONS` (3b:3435, citing 1a:5105) — and Step 3's permission case does exactly that.
@@ -7064,12 +7064,12 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 - Consumes, in the two `tests/regression/**` appends: `sharedApi`, `repoFile` (0B — they live in that workspace); `reconcilableSources` (4B); `lintSchema` (§4.1); `staffFixture`, `buildTicket` (6C/6A); `applyBatch`, `withTenant`, `grantCodes`.
 - Produces: nothing importable.
 
-- [ ] **Step 1: Append the `sah-031` block — `tests/regression/sah-031.test.ts`.**
+- [ ] **Step 1: Append the `legacy-031` block — `tests/regression/legacy-031.test.ts`.**
 
-**SAH-031** (spec:490) is *"a direct `UPDATE "VouItems"` on a signed, locked, closed-period voucher silently rewriting `AccTotals` to match"*. 0B created the file (§3.7.3's Plan 0A-proven list); 4B appended a locked-period clause; 6D appends its own and **edits no earlier block**.
+**LEGACY-031** (spec:490) is *"a direct `UPDATE "VouItems"` on a signed, locked, closed-period voucher silently rewriting `AccTotals` to match"*. 0B created the file (§3.7.3's Plan 0A-proven list); 4B appended a locked-period clause; 6D appends its own and **edits no earlier block**.
 
 ```ts
-// tests/regression/sah-031.test.ts — APPENDED. 0B's file header already imports `sharedApi`, `repoFile`
+// tests/regression/legacy-031.test.ts — APPENDED. 0B's file header already imports `sharedApi`, `repoFile`
 // and vitest's globals for its own blocks; this block adds the three below to that header and touches
 // nothing above it. `sharedApi()` is 0B's memoised stack and is NOT stopped by this file (0b:39).
 import { applyBatch, withTenant } from "@dulja/db";
@@ -7077,7 +7077,7 @@ import { grantCodes } from "@dulja/db/test";
 import { buildTicket } from "../invariants/support/pos";
 import { staffFixture, type StaffFixture } from "../invariants/support/staff";
 
-describe("SAH-031 Direct table writes bypass every control — 6D", () => {
+describe("LEGACY-031 Direct table writes bypass every control — 6D", () => {
   let f: StaffFixture;
   let ctx: { tenantId: string; actorId: string; companyId: string };
   let shiftId: string;      // closed, with a posted TILL_OVER_SHORT
@@ -7086,7 +7086,7 @@ describe("SAH-031 Direct table writes bypass every control — 6D", () => {
 
   beforeAll(async () => {
     const api = await sharedApi();
-    f = await staffFixture(api, "sah031-6d");
+    f = await staffFixture(api, "legacy031-6d");
     ctx = { tenantId: f.seed.tenant, actorId: f.terminalA.principalId, companyId: f.seed.company };
     await grantCodes(api.db, f.seed, { codes: ["pos.shift.own"], principalId: f.cashierA,
                                        roleCode: "s031-own", branchIds: [f.branchA] });
@@ -7184,7 +7184,7 @@ describe("SAH-031 Direct table writes bypass every control — 6D", () => {
 
   it("the shift's close columns are all-or-nothing: no half-closed row can be written", async () => {
     // `shift_close_is_atomic` (0070). A direct UPDATE setting counted_cash without closed_at is the
-    // shape SAH-031 describes, and the constraint refuses it at the row.
+    // shape LEGACY-031 describes, and the constraint refuses it at the row.
     await expect(asRw((tx) => tx`update app.shift set counted_cash = 1 where id = ${openShiftId}`))
       .rejects.toThrow(/shift_close_is_atomic/);
   });
@@ -7193,12 +7193,12 @@ describe("SAH-031 Direct table writes bypass every control — 6D", () => {
 
 `drawerFingerprint(shiftId)` is written out in the block above: the four close columns, `over_short_document_id`, and the count and Σdebit/Σcredit of that document's ledger entries — the same shape as Task 8's `snapshot`, scoped to one drawer. `asMigrator`, `asRw`, `closeShiftFor` and `db` are assigned in the same `beforeAll` because each closes over the fixture.
 
-- [ ] **Step 2: Append the `sah-041` block — `tests/regression/sah-041.test.ts`.**
+- [ ] **Step 2: Append the `legacy-041` block — `tests/regression/legacy-041.test.ts`.**
 
-**SAH-041** (spec:567) is *"the anti-tampering triggers shipped inactive"*. 6D's block asserts that **this slice's** triggers and policies are live in the shipped schema, not merely present in a migration file.
+**LEGACY-041** (spec:567) is *"the anti-tampering triggers shipped inactive"*. 6D's block asserts that **this slice's** triggers and policies are live in the shipped schema, not merely present in a migration file.
 
 ```ts
-// tests/regression/sah-041.test.ts — APPENDED. `db` comes from 0B's `sharedDb()` in this file's own
+// tests/regression/legacy-041.test.ts — APPENDED. `db` comes from 0B's `sharedDb()` in this file's own
 // header; the two additions this block needs are below. `OD10` is computed from the gate directory Task 9
 // Step 1 names, so the OD-10 case is skipped by a FILE CHECK and not by a comment.
 import { existsSync } from "node:fs";
@@ -7208,14 +7208,14 @@ import { REPO_ROOT } from "../support/source";
 
 const OD10 = existsSync(join(REPO_ROOT, "docs/owner/od-10"));
 
-describe("SAH-041 Anti-tampering controls shipped inactive — 6D", () => {
+describe("LEGACY-041 Anti-tampering controls shipped inactive — 6D", () => {
   it("every trigger and policy 0070 and ⚠️ 0071 attach is ENABLED in the shipped schema", async () => {
     const triggers = await db.admin<{ table: string; name: string; enabled: string }[]>`
       select c.relname as table, t.tgname as name, t.tgenabled::text as enabled
         from pg_trigger t join pg_class c on c.oid = t.tgrelid join pg_namespace n on n.oid = c.relnamespace
        where n.nspname = 'app' and c.relname in ('shift', 'till_event', 'till_banking_link')
          and not t.tgisinternal order by 1, 2`;
-    // 'O' is "enabled, origin" — the only acceptable value. 'D' is DISABLED, which is SAH-041 verbatim.
+    // 'O' is "enabled, origin" — the only acceptable value. 'D' is DISABLED, which is LEGACY-041 verbatim.
     for (const t of triggers) expect(t.enabled).toBe("O");
     // And the ones that must EXIST: the audit trigger on shift, forbid_change on till_event.
     expect(triggers.map((t) => `${t.table}:${t.name}`)).toContain("shift:audit_row");
@@ -7236,9 +7236,9 @@ describe("SAH-041 Anti-tampering controls shipped inactive — 6D", () => {
   // ⚠️ OD-10 only, and gated by the FILE the owner's answer lands in rather than by a comment: with no
   // `docs/owner/od-10/` directory, Tasks 9–11 were dropped and `till_banking` is not a registered
   // `Reconcilable` kind. `it.skip` reports it as skipped, which is the honest state — a body-less `it`
-  // passes unconditionally and claims coverage of a SAH-041 clause nothing tested.
+  // passes unconditionally and claims coverage of a LEGACY-041 clause nothing tested.
   //
-  // **It asserts SCHEMA, not a transaction, and that is why it belongs in this file at all.** SAH-041 is
+  // **It asserts SCHEMA, not a transaction, and that is why it belongs in this file at all.** LEGACY-041 is
   // "the anti-tampering triggers shipped inactive", so every case in this block reads the shipped schema
   // — and `sharedDb()` is a fresh migrated database with 0B's two thin seeds and no POS corpus, so a
   // banking document to unmatch does not exist here and could not be built without the whole 6A/6C world.
@@ -7449,13 +7449,13 @@ slice with a screen task), and the Phase 7+ items of §2.12.
 - [ ] **Step 7: Commit.**
 
 ```bash
-git add tests/regression/sah-031.test.ts tests/regression/sah-041.test.ts \
+git add tests/regression/legacy-031.test.ts tests/regression/legacy-041.test.ts \
         packages/db/test/phase-6d-pins.test.ts tests/invariants/phase-6d-pins.test.ts AGENTS.md
-git commit -m "test(regression): sah-031 and sah-041 — 6D blocks, and the phase-6 exit [6D T13]
+git commit -m "test(regression): legacy-031 and legacy-041 — 6D blocks, and the phase-6 exit [6D T13]
 
-sah-031: a re-sent close writes nothing, a till_event resists app_migrator, and
+legacy-031: a re-sent close writes nothing, a till_event resists app_migrator, and
 shift_close_is_atomic refuses a half-closed row — a correction is a document,
-never an update. sah-041: every trigger 0070 attaches is tgenabled = 'O', both
+never an update. legacy-041: every trigger 0070 attaches is tgenabled = 'O', both
 policies are RESTRICTIVE with FORCE RLS, and app_rw's DELETE list is the pinned
 five. phase-6d-pins re-asserts the eight claims this plan's prose makes: no job,
 no ERRORS row, no DatasetId member, sixteen pos codes, one route module, one
@@ -7535,7 +7535,7 @@ Searched for `TBD`, `TODO`, `implement later`, `add appropriate`, `similar to Ta
 - **Task 12 Steps 3, 4 and 5** (were three prose paragraphs immediately after a preamble claiming "Steps 2–5 carry real code"). Both `.tsx` screens, the two component suites and the Playwright spec are written out against **0E's** real names — `useShell().t`, `DataGrid`, `Column`, `formatMoney` — not 3A's `useT`/`DataTable`, which 0E does not ship.
 - **Task 10's till-cash header** gained `read`, `zReport`, `seedShift` and `branchBTerminal`, all of which its cases called and none of which the file declared.
 
-**Fixed in the second pass, and recorded because the first audit missed them:** the `ZReportParams`/`ZReport` interface bodies in Task 7 Step 2 (was `/* … as declared above … */`, now inlined together with `SalesByCashierParams` and `SalesByCashierRow`); the whole `pos.sales_by_cashier` handler (Task 7 Step 4, was one sentence); all three `shifts` handlers (Task 7 Step 5, was a block comment); the six route-test cases (Task 7 Step 7, was six English sentences); acceptance test 21's `ticket()` helper (Task 8 Step 1, was `/* … */`); `sellInto` / `returnInto` / `closeShiftFor` (Task 7 Step 1, called and never defined); `insertPostedTicket` / `buildTicketLocal` (Task 6 Step 1, same); `sellCash` (Task 5, was "per Step 6"); the sah-031 `beforeAll` and `drawerFingerprint` (Task 13 Step 1, was a comment); the sah-041 OD-10 case (Task 13 Step 2, was a title with two comment lines and no statement — it passed unconditionally and claimed a SAH-041 clause nothing tested); and **Task 6 Step 6's route guard**, which was one sentence describing the replacement raiser for `ERR_SYNC_MESSAGE_UNSUPPORTED` and is now the `KNOWN_BATCH_KEYS` check, its exact detail text, its route-suite case and its entry in the task's Modify list.
+**Fixed in the second pass, and recorded because the first audit missed them:** the `ZReportParams`/`ZReport` interface bodies in Task 7 Step 2 (was `/* … as declared above … */`, now inlined together with `SalesByCashierParams` and `SalesByCashierRow`); the whole `pos.sales_by_cashier` handler (Task 7 Step 4, was one sentence); all three `shifts` handlers (Task 7 Step 5, was a block comment); the six route-test cases (Task 7 Step 7, was six English sentences); acceptance test 21's `ticket()` helper (Task 8 Step 1, was `/* … */`); `sellInto` / `returnInto` / `closeShiftFor` (Task 7 Step 1, called and never defined); `insertPostedTicket` / `buildTicketLocal` (Task 6 Step 1, same); `sellCash` (Task 5, was "per Step 6"); the legacy-031 `beforeAll` and `drawerFingerprint` (Task 13 Step 1, was a comment); the legacy-041 OD-10 case (Task 13 Step 2, was a title with two comment lines and no statement — it passed unconditionally and claimed a LEGACY-041 clause nothing tested); and **Task 6 Step 6's route guard**, which was one sentence describing the replacement raiser for `ERR_SYNC_MESSAGE_UNSUPPORTED` and is now the `KNOWN_BATCH_KEYS` check, its exact detail text, its route-suite case and its entry in the task's Modify list.
 
 **No step says "handle errors appropriately", "add validation" or "see Task N".** Every refusal in this plan names its `ERR_*` code from Global Constraint 11's closed list and carries its exact message text. **Every test file's code block carries its own complete import header**, and **every `it` in the plan has statements** — the one `it.skip` in the plan is Task 13 Step 2's OD-10 schema case, which is gated on the `docs/owner/od-10/` directory and reports as skipped rather than passing vacuously.
 

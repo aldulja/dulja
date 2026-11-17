@@ -8,7 +8,7 @@
 
 **Tech Stack:** Bun 1.4 (install, scripts) · Node 24 LTS (runs Vitest) · TypeScript strict · PostgreSQL 18 (`postgres:18` in Testcontainers) · `decimal.js` · `postgres` (postgres.js) · `drizzle-orm` / `drizzle-kit` · `pg-boss` · Hono + `@hono/zod-openapi` + Zod · Vitest + fast-check + Testcontainers · `typescript` (compiler API, for the lint rules) · oxlint + oxfmt · Turborepo.
 
-**Spec:** `docs/spec/rebuild-spec.md` v1.2. Sections this plan implements: §3.2.2 (pg-boss and Money rows, spec:1127–1128), §3.2.4 (worker container class, spec:1155–1161), §3.3 (Currency / ExchangeRate / RoundingPolicy and the Dimension line, spec:1175–1177), §3.5 (custom fields as a core service, spec:1235), §3.8 (`dimension_type` / `dimension_value`, `idempotency_key` — spec:1789–1794, 1907–1917), §3.9 (Money, Quantities, Naming — spec:2041–2045), §4.2.1 (permission catalogue and the nine roles, spec:2140–2166), §4.2.2 R6/R7 (spec:2177–2178), §4.5 (API design, spec:2197–2206), §4.9 (observability, spec:2241–2247), §4.11 (engineering practice, spec:2258–2274), §5.0 rows 0.7, 0.9, 0.10, 0.11 (spec:2316–2321), Part VI tests 14 and 36 (spec:2432, 2454). Companion: `docs/spec/sahlisoft-accounting-analysis.md`.
+**Spec:** `docs/spec/rebuild-spec.md` v1.2. Sections this plan implements: §3.2.2 (pg-boss and Money rows, spec:1127–1128), §3.2.4 (worker container class, spec:1155–1161), §3.3 (Currency / ExchangeRate / RoundingPolicy and the Dimension line, spec:1175–1177), §3.5 (custom fields as a core service, spec:1235), §3.8 (`dimension_type` / `dimension_value`, `idempotency_key` — spec:1789–1794, 1907–1917), §3.9 (Money, Quantities, Naming — spec:2041–2045), §4.2.1 (permission catalogue and the nine roles, spec:2140–2166), §4.2.2 R6/R7 (spec:2177–2178), §4.5 (API design, spec:2197–2206), §4.9 (observability, spec:2241–2247), §4.11 (engineering practice, spec:2258–2274), §5.0 rows 0.7, 0.9, 0.10, 0.11 (spec:2316–2321), Part VI tests 14 and 36 (spec:2432, 2454). Companion: `docs/spec/legacy-system-analysis.md`.
 
 ## Assumptions and contracts (from docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md)
 
@@ -18,7 +18,7 @@
 - **Interfaces consumed:** §4.1 (the whole Plan 0A produced surface), §4.2.2 (`createDb`, `withTenant`, `TenantContext`, `systemContext`), §4.2.3 (`Logger`, `AppEnv`, `RequestContext`, middleware order), §4.2.4 (`Problem`, `ERRORS`, `ErrCode`, `AppError`, `fromDatabaseError`), §4.2.5 (`PERMISSIONS`, `PERMISSION`, `PermissionCode`, `isMutating`, `requirePermission`, `ScopeSource`, `RoleSeed`, `INCOMPATIBLE_PAIRS`), §4.2.7 (`RouteModule`, **`buildRoutes`** — the authoritative form a new module is registered inside, `ROUTES`, **`IdempotencyHeader`**, `createApp`, `PROBES`, `IsolationProbe`), §4.17.1 (`grantAdmin(api, s)` from `tests/support/api.ts`), §4.2.8 (`UuidSchema`, `DateSchema`, `CurrencySchema`, `MoneySchema`, `QuantitySchema`, `RateSchema`, `ListEnvelope`, `ListQuery`, `ProblemSchema`), §4.2.9 (idempotency semantics), §4.2.12 (`startApi`, `ApiRequest`, `StartedApi`), §3.4.6 (the generalised reversibility test), §3.5.1 (the new-table recipe), §3.7.5 (`LintRule`, `LintViolation`, `SourceFile`).
 - **Interfaces produced:** §4.2.1 verbatim (`@dulja/domain`), §4.2.6 verbatim (`createJobClient`, `JOB_NAMES`, `eachTenant`, `JobHandler`, `registerHandler`, `pgboss.tenant_registry`, and the registered `JobPayload` map replacing 0B's stub — `JOBS`, `JobName`, `JobEnvelope`, `EnqueueOptions` and `JobClient` are **0B's** declarations, which Task 6 verifies and extends but never rewrites, per §4.2.6's per-file table), §4.2.10 verbatim (`app.currency`, `app.exchange_rate`, `app.rate_for`), §4.2.11 verbatim (`app.custom_field_definition`, `app.custom_field_value`, `validateCustomFieldValue`), §4.2.5's `packages/db/seed/roles.ts` half (`RoleSeed`, `ROLES`, `INCOMPATIBLE_PAIRS`), §3.6.3's two lints (`permission-catalogue`, `role-seed`), §3.7.5's `no-number-money`, §4.17's `seedBranch` / `seedCurrency` / `seedRate`.
 - **Owner decisions:** **OD-04** (the nine role names of spec §4.2.1, changelog #17) → **Task 14, isolated**; default assumed = the spec's names exactly. No other OD item touches this slice; **OD-24 does not apply — 0D ships no screen** (its card carries no OD-24 row; the back-office screens are 0E's).
-- **Part VI tests owned / re-run:** owned **14** (the 0A "who can post X in company Y" query becomes real against the seeded catalogue) and **36** (the catalogue-integrity, incompatible-pair, auditor-read-only, expired-assignment and one-query assertions; the branch-scoping assertions are 6C's). Re-run **12** and **13** for the four new tables. **§3.0.4 rows owned:** none — 0D contributes rates to spec:1045, which 4B owns. **Regression files created:** `tests/regression/sah-005.test.ts` (transactional enqueue), `sah-008.test.ts` (`Money` never float), `sah-019.test.ts` (one rounding function). **Appended to:** none.
+- **Part VI tests owned / re-run:** owned **14** (the 0A "who can post X in company Y" query becomes real against the seeded catalogue) and **36** (the catalogue-integrity, incompatible-pair, auditor-read-only, expired-assignment and one-query assertions; the branch-scoping assertions are 6C's). Re-run **12** and **13** for the four new tables. **§3.0.4 rows owned:** none — 0D contributes rates to spec:1045, which 4B owns. **Regression files created:** `tests/regression/legacy-005.test.ts` (transactional enqueue), `legacy-008.test.ts` (`Money` never float), `legacy-019.test.ts` (one rounding function). **Appended to:** none.
 - **Shared namespaces this slice writes into:** document-type codes (§4.14) — **none**; account codes (§4.15) — **none seeded, none consumed** (0D writes no policy and no seed pack); report codes (§4.16.1) and `DatasetId` members (§4.16.2) — **none**; `fixtures.ts` helpers (§4.17) — **`seedBranch`, `seedCurrency`, `seedRate`, and no others**. `ERR_*` (§4.2.4): 0D adds exactly `ERR_MONEY_CURRENCY_MISMATCH`, `ERR_MONEY_SCALE`, `ERR_RATIONAL_ZERO_DENOMINATOR`, `ERR_RATE_NOT_FOUND` to `ERRORS`.
 - **Never re-decide:** D1–D27 (spec:114–142); every name in the contracts document is frozen — a needed change goes to that document first.
 - **Contracts version:** 2026-09-05.
@@ -61,14 +61,14 @@ and the nine-role seed. Every line is real content an executor types — there i
 
 Copied from the spec; every task's requirements include these.
 
-- **Never**, at any phase, for any reason (spec:97–104): write to a ledger or movement table outside the posting service; represent money as a float, anywhere, including in TypeScript; build SQL by string concatenation (SAH-036/037/069); issue DDL from application code (SAH-053); disable an invariant, constraint or trigger "temporarily" (SAH-027, 041, 053); gate an audit write on any flag (SAH-030); hard-code a package version into a source file — the lockfile owns versions.
+- **Never**, at any phase, for any reason (spec:97–104): write to a ledger or movement table outside the posting service; represent money as a float, anywhere, including in TypeScript; build SQL by string concatenation (LEGACY-036/037/069); issue DDL from application code (LEGACY-053); disable an invariant, constraint or trigger "temporarily" (LEGACY-027, 041, 053); gate an audit write on any flag (LEGACY-030); hard-code a package version into a source file — the lockfile owns versions.
 - **Always** (spec:106), for every new table: `tenant_id`, an RLS policy, `created_at`, a migration, and a test that a second tenant cannot see it. For every new endpoint: Zod schema, OpenAPI entry, idempotency on unsafe methods, and a tenant-isolation test. For every UI screen: verified in both text directions before merge. *(0D ships no screen.)*
 - **Money** (spec:2041): "`numeric(19,4)` in Postgres. In TypeScript, `Money` is an opaque type wrapping `decimal.js`, carrying its currency; the compiler rejects adding MYR to USD. Display rounding applies the currency's policy at render time; **stored base amounts are never recomputed on read.** No `number` type ever holds a monetary value — a lint rule enforces it."
-- **Quantities** (spec:2043): "`numeric(19,6)`. Unit conversions are exact rationals `(numerator bigint, denominator bigint)`, never floats (SAH-066). Quantity is stored once, in the item's base unit; the entered unit and quantity are kept for display."
-- **Identifiers** (spec:2037): `uuidv7()` server-side for everything; never a sequential integer as a public identifier; never reuse; never rewind (SAH-021).
+- **Quantities** (spec:2043): "`numeric(19,6)`. Unit conversions are exact rationals `(numerator bigint, denominator bigint)`, never floats (LEGACY-066). Quantity is stored once, in the item's base unit; the entered unit and quantity are kept for display."
+- **Identifiers** (spec:2037): `uuidv7()` server-side for everything; never a sequential integer as a public identifier; never reuse; never rewind (LEGACY-021).
 - **Time** (spec:2039): all timestamps `timestamptz` in UTC; `effective_date` is a `date`, entered by the user, never derived from `posted_at`.
 - **Naming** (spec:2045): `snake_case` in SQL, **singular** table names; TypeScript `camelCase`, types `PascalCase`; bilingual master data as `name_en` / `name_ar` columns, never a JSON blob.
-- **Rounding** (spec:2228): one function, explicit mode, symmetric across sign, applied at persist time, rule recorded per currency and per tax code (SAH-019).
+- **Rounding** (spec:2228): one function, explicit mode, symmetric across sign, applied at persist time, rule recorded per currency and per tax code (LEGACY-019).
 - **Error codes** (spec:2051): every error has a stable `ERR_<DOMAIN>_<REASON>`, a human message naming the specific entity, and a remedy; codes are enumerated in `packages/contracts/src/errors.ts`; a code no code raises fails the build.
 - **Database access** (spec:2053): every query — reads included — runs inside `withTenant(tx => …)`, which opens the transaction and issues the two `set_config(…, true)` calls before anything else. A lint rule forbids bare `db.` calls.
 - **API** (spec:2055): `/v1/…`; cursor pagination; `Idempotency-Key` required on POST/PUT/PATCH/DELETE; `application/problem+json` errors; OpenAPI generated from Zod, committed, diffed in CI.
@@ -175,7 +175,7 @@ tests/
 ├─ invariants/job-isolation.test.ts             every registered job, two tenants
 ├─ invariants/role-catalogue.test.ts            acceptance tests 14 and 36 (Phase 0 clauses)
 ├─ lint/                                        unit tests for the three new lint rules
-└─ regression/sah-005.test.ts  sah-008.test.ts  sah-019.test.ts
+└─ regression/legacy-005.test.ts  legacy-008.test.ts  legacy-019.test.ts
 
 docs/adr/
 ├─ 0007-pg-boss-on-bun.md          0008-money-and-rounding-surface.md
@@ -265,7 +265,7 @@ import { MONEY_SCALE, QUANTITY_SCALE, RATE_SCALE, round } from "../src/index";
 
 const d = (s: string) => new Decimal(s);
 
-describe("round() — spec §3.9 'one rounding function, explicit mode, symmetric across sign' (SAH-019)", () => {
+describe("round() — spec §3.9 'one rounding function, explicit mode, symmetric across sign' (LEGACY-019)", () => {
   it("the three scales are the SQL column scales", () => {
     expect([MONEY_SCALE, RATE_SCALE, QUANTITY_SCALE]).toEqual([4, 8, 6]);
   });
@@ -309,7 +309,7 @@ describe("round() — spec §3.9 'one rounding function, explicit mode, symmetri
 import { describe, expect, it } from "vitest";
 import { rational, rationalToDecimal, RationalZeroDenominatorError } from "../src/index";
 
-describe("Rational — exact unit conversions, never floats (spec §3.9; SAH-066)", () => {
+describe("Rational — exact unit conversions, never floats (spec §3.9; LEGACY-066)", () => {
   it("keeps numerator and denominator as bigints, normalised to a positive denominator", () => {
     expect(rational(12n, 5n)).toEqual({ numerator: 12n, denominator: 5n });
     expect(rational(12n, -5n)).toEqual({ numerator: -12n, denominator: 5n });
@@ -332,7 +332,7 @@ describe("Rational — exact unit conversions, never floats (spec §3.9; SAH-066
     expect(rationalToDecimal(rational(-2n, 3n), 6, "HALF_AWAY_FROM_ZERO").toFixed(6)).toBe("-0.666667");
   });
 
-  it("survives values far beyond IEEE-754 exactness (the SAH-066 class)", () => {
+  it("survives values far beyond IEEE-754 exactness (the LEGACY-066 class)", () => {
     const r = rational(9007199254740993n, 3n);                       // 2^53 + 1 over 3
     expect(rationalToDecimal(r, 6, "TOWARD_ZERO").toFixed(6)).toBe("3002399751580331.000000");
   });
@@ -374,9 +374,9 @@ export const RATE_SCALE = 8;
 export const QUANTITY_SCALE = 6;
 
 /**
- * The one rounding function (spec §4.6 "one function, explicit mode, symmetric across sign"; SAH-019).
+ * The one rounding function (spec §4.6 "one function, explicit mode, symmetric across sign"; LEGACY-019).
  * Every mode here is symmetric across sign — there is deliberately no CEIL/FLOOR, because an asymmetric
- * mode applied to a signed money value is the SAH-019 defect ("configured everywhere, applied nowhere,
+ * mode applied to a signed money value is the LEGACY-019 defect ("configured everywhere, applied nowhere,
  * and the one rounding function is wrong").
  */
 export type RoundingMode = "HALF_AWAY_FROM_ZERO" | "HALF_EVEN" | "TOWARD_ZERO" | "AWAY_FROM_ZERO";
@@ -401,7 +401,7 @@ import type Decimal from "decimal.js";
 import { D } from "./decimal";
 import { round, type RoundingMode } from "./rounding";
 
-/** Exact rational for unit conversions (spec §3.9 Quantities; SAH-066). `denominator` is always > 0. */
+/** Exact rational for unit conversions (spec §3.9 Quantities; LEGACY-066). `denominator` is always > 0. */
 export interface Rational {
   readonly numerator: bigint;
   readonly denominator: bigint;
@@ -464,14 +464,14 @@ Expected: `rounding.test.ts` 6 passed, `rational.test.ts` 5 passed; lint and typ
 
 Spec §3.9 requires `numeric(19,4)` in Postgres and an opaque `Money` type over `decimal.js` in TypeScript that
 carries its currency and makes MYR + USD a compiler error. Spec §4.6 requires exactly one rounding function with an
-explicit mode, symmetric across sign, applied at persist time (SAH-019). SAH-008 is the failure this prevents: a
+explicit mode, symmetric across sign, applied at persist time (LEGACY-019). LEGACY-008 is the failure this prevents: a
 unit cost of 500,020.00 produced by a rounding residue in `double precision`.
 
 ## Decision
 
 1. `decimal.js` behind a cloned constructor at **precision 40**; no global `Decimal.set`.
 2. Four rounding modes, all symmetric across sign: `HALF_AWAY_FROM_ZERO`, `HALF_EVEN`, `TOWARD_ZERO`,
-   `AWAY_FROM_ZERO`. No CEIL/FLOOR — an asymmetric mode on a signed amount is SAH-019.
+   `AWAY_FROM_ZERO`. No CEIL/FLOOR — an asymmetric mode on a signed amount is LEGACY-019.
 3. `Money.multiply` and `Money.divide` **require** an explicit `RoundingMode` parameter; there is no implicit default.
 4. Base conversion is always `HALF_AWAY_FROM_ZERO` at scale 4, because that is what Postgres `round(numeric, int)`
    does and the `ledger_entry` CHECK `base_debit = round(debit * exchange_rate, 4)` (spec §3.8) must hold by
@@ -505,7 +505,7 @@ git add packages/domain docs/adr/0008-money-and-rounding-surface.md package.json
 git commit -m "feat(domain): @dulja/domain with Rational and the one rounding function [0D T1]
 
 Four symmetric rounding modes and exact bigint rationals over a cloned decimal.js
-constructor. spec §3.9, §4.6; SAH-019, SAH-066. ADR 0008.
+constructor. spec §3.9, §4.6; LEGACY-019, LEGACY-066. ADR 0008.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
@@ -541,7 +541,7 @@ const MYR = currency("MYR");
 const USD = currency("USD");
 const m = (s: string) => Money.of(s, MYR);
 
-describe("Money — spec §3.9 'opaque, carries its currency, never a float' (SAH-008)", () => {
+describe("Money — spec §3.9 'opaque, carries its currency, never a float' (LEGACY-008)", () => {
   it("currency() accepts three upper-case letters and rejects everything else", () => {
     expect(currency("MYR")).toBe("MYR");
     for (const bad of ["myr", "MY", "MYRR", "M1R", " MYR", ""]) {
@@ -890,7 +890,7 @@ git commit -m "feat(domain): Money — opaque, currency-carrying, never a float 
 
 Compile-time currency separation via a const type parameter; largest-remainder
 allocate; explicit rounding on every multiply and divide. Adds the three money
-ERR_* rows and fromDomainError() to packages/contracts. spec §3.9; SAH-008.
+ERR_* rows and fromDomainError() to packages/contracts. spec §3.9; LEGACY-008.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
@@ -921,7 +921,7 @@ import { Quantity, rational } from "../src/index";
 
 const q = (s: string) => Quantity.of(s);
 
-describe("Quantity — spec §3.9 'numeric(19,6), exact rational conversions' (SAH-066)", () => {
+describe("Quantity — spec §3.9 'numeric(19,6), exact rational conversions' (LEGACY-066)", () => {
   it("of() pads to six decimal places and refuses a seventh", () => {
     expect(q("12").toString()).toBe("12.000000");
     expect(q("12.5").toString()).toBe("12.500000");
@@ -1059,7 +1059,7 @@ export class Quantity {
 
   /**
    * Exact conversion: multiply by the numerator and divide by the denominator at precision 40, then round
-   * HALF_EVEN to 6 dp **once, at the end** (spec §3.9). Rounding per step is the SAH-066 defect.
+   * HALF_EVEN to 6 dp **once, at the end** (spec §3.9). Rounding per step is the LEGACY-066 defect.
    */
   convert(conversion: Rational): Quantity {
     const exact = this.value.times(new D(conversion.numerator.toString())).div(new D(conversion.denominator.toString()));
@@ -1148,7 +1148,7 @@ git commit -m "feat(domain): Quantity, ExchangeRate and toBase [0D T3]
 
 Exact rational conversions rounded once at scale 6; base conversion pinned to
 HALF_AWAY_FROM_ZERO at scale 4 so the ledger_entry CHECK holds by construction.
-spec §3.9, §3.8; SAH-066.
+spec §3.9, §3.8; LEGACY-066.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
@@ -1157,7 +1157,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ### Task 4: Definition of done 0.9 — the property suite, the compile-time currency proof, and the `no-number-money` lint
 
 **Files:**
-- Create: `packages/domain/test/money.property.test.ts`, `packages/domain/test/money.type.test.ts`, `scripts/lint/rules/no-number-money.ts`, `tests/lint/no-number-money.test.ts`, `tests/regression/sah-008.test.ts`
+- Create: `packages/domain/test/money.property.test.ts`, `packages/domain/test/money.type.test.ts`, `scripts/lint/rules/no-number-money.ts`, `tests/lint/no-number-money.test.ts`, `tests/regression/legacy-008.test.ts`
 - Modify: `packages/domain/package.json` (dev dependency `fast-check`), `tests/vitest.config.ts` (one new include glob), `tests/package.json` (dependency `@dulja/domain`)
 
 **Interfaces:**
@@ -1332,7 +1332,7 @@ import ts from "typescript";
 import type { LintRule, LintViolation, SourceFile } from "../types";
 
 /**
- * spec §3.9: "No `number` type ever holds a monetary value — a lint rule enforces it." (SAH-008)
+ * spec §3.9: "No `number` type ever holds a monetary value — a lint rule enforces it." (LEGACY-008)
  *
  * The regex is the one contracts §3.7.5 fixes. It matches a *declared type annotation*, not an inferred type: the
  * rule runner hands us parsed source files with no type checker, and an annotation is what the spec's sentence is
@@ -1395,7 +1395,7 @@ export const rule: LintRule = {
               file: file.fileName,
               line: line + 1,
               rule: "no-number-money",
-              detail: `'${text}' is typed number — a monetary or rate value must be Money, Quantity, Decimal or string (spec §3.9, SAH-008)`,
+              detail: `'${text}' is typed number — a monetary or rate value must be Money, Quantity, Decimal or string (spec §3.9, LEGACY-008)`,
             });
           }
         }
@@ -1426,7 +1426,7 @@ import { rule } from "../../scripts/lint/rules/no-number-money";
 const parse = (fileName: string, source: string) =>
   ts.createSourceFile(fileName, source, ts.ScriptTarget.ES2022, /* setParentNodes */ true, ts.ScriptKind.TS);
 
-describe("no-number-money — spec §3.9 'no number type ever holds a monetary value' (SAH-008)", () => {
+describe("no-number-money — spec §3.9 'no number type ever holds a monetary value' (LEGACY-008)", () => {
   it("flags a money-ish property, parameter, variable and return type declared as number", () => {
     const f = parse("packages/contracts/src/admin/thing.ts", `
       export interface Line { unitPrice: number; note: string }
@@ -1485,7 +1485,7 @@ describe("no-number-money — spec §3.9 'no number type ever holds a monetary v
       file: "apps/api/src/a.ts",
       line: 2,
       rule: "no-number-money",
-      detail: "'netAmount' is typed number — a monetary or rate value must be Money, Quantity, Decimal or string (spec §3.9, SAH-008)",
+      detail: "'netAmount' is typed number — a monetary or rate value must be Money, Quantity, Decimal or string (spec §3.9, LEGACY-008)",
     }]);
   });
 });
@@ -1498,7 +1498,7 @@ Expected first: FAIL — `Failed to resolve import "../../scripts/lint/rules/no-
 
 Two diagnostics for the first assertion, which is the one that pins the rule's node coverage. If it reports **4** and the missing detail is `'balance'`, the `PropertyDeclaration` branch was dropped — a class field is a `ts.PropertyDeclaration`, not a `ts.PropertySignature`, and both belong in the first `if`. If it reports **4** and the missing detail is `'totalOf'`, the `FunctionDeclaration` branch was dropped from the second `if` — a function's own name is what the rule tests against `MONEYISH` and `node.type` is its return annotation. Fix the rule, not the test: the fixture is written so each of the five hits comes from a different node kind.
 
-- [ ] **Step 8: Write `tests/regression/sah-008.test.ts`**
+- [ ] **Step 8: Write `tests/regression/legacy-008.test.ts`**
 
 ```ts
 import Decimal from "decimal.js";
@@ -1507,7 +1507,7 @@ import { currency, Money, round } from "@dulja/domain";
 
 const MYR = currency("MYR");
 
-describe("SAH-008 Weighted-average cost can go negative, explode by 10,000×, or be wiped to zero — 0D", () => {
+describe("LEGACY-008 Weighted-average cost can go negative, explode by 10,000×, or be wiped to zero — 0D", () => {
   it("money arithmetic is exact where double precision is not", () => {
     // The float answer to 0.1 + 0.2 is 0.30000000000000004; a residue of that shape, divided by a small
     // quantity, is what produced a unit cost of 500,020.00 in the legacy system.
@@ -1553,7 +1553,7 @@ describe("SAH-008 Weighted-average cost can go negative, explode by 10,000×, or
 
 `scripts/lint/run.ts` (0B) already loads every `scripts/lint/rules/*.ts` — no registration edit is needed.
 
-Run: `bun run lint && bun run lint:rules && bun run typecheck && cd packages/domain && bun run test && cd ../tests && bun run test -- lint regression/sah-008.test.ts`
+Run: `bun run lint && bun run lint:rules && bun run typecheck && cd packages/domain && bun run test && cd ../tests && bun run test -- lint regression/legacy-008.test.ts`
 Expected: `lint:rules` prints nothing and exits 0 (no existing file violates `no-number-money`); every suite green. The property suite takes ~40–90 s — that is why `packages/domain/vitest.config.ts` sets `testTimeout: 60_000` and why the 10⁶ run is one `it`, not eight.
 
 If `lint:rules` reports a violation in `packages/contracts/src/common.ts`, check whether it is a genuine money value typed `number`; if it is `ListQuery.limit` the rule's regex has been widened by mistake — `limit` does not match `MONEYISH`.
@@ -1566,9 +1566,9 @@ git commit -m "test(domain): DoD 0.9 — 10^6 money property runs and the compil
 
 fast-check a+b-b=a over 10^6 values, allocate summation, round idempotence; the
 @ts-expect-error assertion that makes 'adding two currencies is a type error'
-fail typecheck if it ever compiles; the no-number-money lint; sah-008.
+fail typecheck if it ever compiles; the no-number-money lint; legacy-008.
 
-spec §5.0 row 0.9, §3.9; SAH-008.
+spec §5.0 row 0.9, §3.9; LEGACY-008.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
@@ -1677,10 +1677,10 @@ Expected: FAIL — `expected 0 to be 1` on the first assertion; schema `pgboss` 
 ```sql
 -- 0004_create_pgboss_schema.sql — the job queue's home (contracts §4.2.6).
 -- spec §3.2.2: pg-boss is Postgres-backed "so a job is enqueued in the same transaction as the posting — the
--- guarantee SAH-005 lacked". pg-boss owns its own tables; app_rw may not create objects (spec §3.8, task 0.2), so
+-- guarantee LEGACY-005 lacked". pg-boss owns its own tables; app_rw may not create objects (spec §3.8, task 0.2), so
 -- this file creates the schema and its default privileges and `bun run --cwd apps/worker jobs:install` installs
 -- pg-boss's tables as app_migrator at deploy time — the same class of tooling as the migration runner, never
--- application code (spec §0.2 "no DDL from application code", SAH-053).
+-- application code (spec §0.2 "no DDL from application code", LEGACY-053).
 
 -- ── 1. the schema ─────────────────────────────────────────────────────────────
 create schema pgboss;
@@ -1765,7 +1765,7 @@ Fill each **verified** line from Step 1's output. Do not copy the expected value
 ## Context
 
 Spec §3.2.2 chooses pg-boss because "a job is enqueued in the same transaction as the posting — the guarantee
-SAH-005 lacked". Three facts had to be verified against the installed version rather than assumed: the option that
+LEGACY-005 lacked". Three facts had to be verified against the installed version rather than assumed: the option that
 makes pg-boss run its INSERT on our transaction, the options that stop it migrating and point it at a schema, and
 whether a queue must be declared before a job is sent. Contracts §4.2.6 fixes the wrapper's shape around them.
 
@@ -1785,13 +1785,13 @@ whether a queue must be declared before a job is sent. Contracts §4.2.6 fixes t
 1. Migration `0004_create_pgboss_schema.sql` creates schema `pgboss`, grants `usage` (never `create`) to `app_rw`,
    and sets default privileges so every table pg-boss later creates as `app_migrator` is DML-accessible to `app_rw`.
 2. pg-boss's own DDL runs **once per environment** in the deploy step `bun run --cwd apps/worker jobs:install`,
-   connected as `app_migrator` on `DATABASE_URL_MIGRATOR`. Application code never issues DDL (spec §0.2, SAH-053).
+   connected as `app_migrator` on `DATABASE_URL_MIGRATOR`. Application code never issues DDL (spec §0.2, LEGACY-053).
 3. At runtime pg-boss is constructed with `{ schema: "pgboss", migrate: false }` on `DATABASE_URL` (`app_rw`).
 4. `packages/db/src/jobs/enqueue.ts` is the **only** application file that calls `sql.unsafe` outside the migration
    runner (§0.2 "never build SQL by string concatenation" — this forwards pg-boss's own parameterised statement text
    with bound values and interpolates nothing). It is one of exactly three sanctioned homes for `unsafe`.
 5. `enqueue` **throws** when pg-boss returns `null` (a `singletonKey` collision). A silently un-inserted job is
-   exactly the SAH-005 failure mode — a job that never runs — so the wrapper fails loudly instead.
+   exactly the LEGACY-005 failure mode — a job that never runs — so the wrapper fails loudly instead.
 
 ## Consequences
 
@@ -1824,7 +1824,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ### Task 6: `apps/worker`, the transactional `enqueue`, and 0B's closed `JOBS` registry verified (DoD 0.11)
 
 **Files:**
-- Create: `packages/db/src/jobs/tenants.ts`, `apps/worker/package.json`, `apps/worker/tsconfig.json`, `apps/worker/vitest.config.ts`, `apps/worker/src/boss.ts`, `apps/worker/src/install.ts`, `apps/worker/src/handler.ts`, `apps/worker/src/log.ts`, `tests/regression/sah-005.test.ts`
+- Create: `packages/db/src/jobs/tenants.ts`, `apps/worker/package.json`, `apps/worker/tsconfig.json`, `apps/worker/vitest.config.ts`, `apps/worker/src/boss.ts`, `apps/worker/src/install.ts`, `apps/worker/src/handler.ts`, `apps/worker/src/log.ts`, `tests/regression/legacy-005.test.ts`
 - Modify (**replace**): `packages/db/src/jobs/payloads.ts` — 0B Task 4 created this file as a types-only stub (`export interface JobPayload { [name: string]: unknown }`); Step 5 replaces its body with the registered `extends Record<JobName, unknown>` map of §4.2.6 and adds 0D's two job payloads. `JobPayload[N]` is `unknown` under both forms, so no 0B call site changes.
 - Modify: `packages/db/src/jobs/enqueue.ts` — 0B Task 4 created it with `JobEnvelope`, `EnqueueOptions` and `JobClient` as interfaces only; **Step 6 extends 0B's file**, adding `createJobClient(boss: PgBoss): JobClient` and the `pg-boss` import — its one `sql.unsafe` home (§3.3, ADR 0007). The three interfaces 0B shipped are not rewritten (§4.2.6's per-file table: a `Create` verb on a file 0B already wrote is how a plan silently drops its predecessor's interfaces).
 - Modify (**verify only**): `packages/db/src/jobs/names.ts` — 0B Task 4 wrote the closed sixteen-name `JOBS` const and `JobName`; **Step 4 verifies them and writes nothing** (§4.2.6's per-file table: "0D neither creates nor rewrites it").
@@ -1901,7 +1901,7 @@ import { seedTenant, type Seed } from "./fixtures";
 import { installBoss, stopBoss } from "./boss";
 import { withTenant as testWithTenant, uuidv7 } from "./harness";
 
-describe("transactional enqueue — spec §5.0 row 0.11, §3.2.2 (SAH-005)", () => {
+describe("transactional enqueue — spec §5.0 row 0.11, §3.2.2 (LEGACY-005)", () => {
   let db: Db; let boss: PgBoss; let jobs: JobClient; let a: Seed; let b: Seed;
 
   beforeAll(async () => {
@@ -2029,7 +2029,7 @@ export interface JobPayload extends Record<JobName, unknown> {
 }
 ```
 
-- [ ] **Step 6: Extend 0B's `packages/db/src/jobs/enqueue.ts`** — 0B Task 4 created this file with `JobEnvelope`, `EnqueueOptions` and `JobClient` as interfaces only (0b:1585–1610). This slice **adds** the `pg-boss` type import, the `JOBS` / `JobName` / `JobPayload` re-exports, `createJobClient` and `JOB_NAMES`; the three interfaces keep every member and modifier 0B shipped, and only the `JobClient` doc comment's citation is updated (`spec:2321` → `spec §5.0 row 0.11; SAH-005`). The block below is the file's whole content after the step, so the executor can diff it against 0B's rather than guess where the additions go.
+- [ ] **Step 6: Extend 0B's `packages/db/src/jobs/enqueue.ts`** — 0B Task 4 created this file with `JobEnvelope`, `EnqueueOptions` and `JobClient` as interfaces only (0b:1585–1610). This slice **adds** the `pg-boss` type import, the `JOBS` / `JobName` / `JobPayload` re-exports, `createJobClient` and `JOB_NAMES`; the three interfaces keep every member and modifier 0B shipped, and only the `JobClient` doc comment's citation is updated (`spec:2321` → `spec §5.0 row 0.11; LEGACY-005`). The block below is the file's whole content after the step, so the executor can diff it against 0B's rather than guess where the additions go.
 
 ```ts
 import type PgBoss from "pg-boss";
@@ -2056,7 +2056,7 @@ export interface EnqueueOptions {
 export interface JobClient {
   /**
    * Inserts the job through pg-boss USING `tx`, so it is visible only after the enclosing withTenant commits and
-   * never on rollback (spec §5.0 row 0.11; SAH-005). Returns the pg-boss job id.
+   * never on rollback (spec §5.0 row 0.11; LEGACY-005). Returns the pg-boss job id.
    */
   enqueue<N extends JobName>(tx: Sql, name: N, job: JobEnvelope<JobPayload[N]>, opts?: EnqueueOptions): Promise<string>;
 }
@@ -2081,7 +2081,7 @@ export function createJobClient(boss: PgBoss): JobClient {
         retryBackoff: true,
       });
       if (id === null) {
-        // A silently un-inserted job is exactly SAH-005: work that is never done. Fail loudly (ADR 0007 decision 5).
+        // A silently un-inserted job is exactly LEGACY-005: work that is never done. Fail loudly (ADR 0007 decision 5).
         throw new Error(`pg-boss did not insert job ${name}: singletonKey '${opts?.singletonKey ?? ""}' is already queued`);
       }
       return id;
@@ -2221,7 +2221,7 @@ export function resetHandlers(): void { HANDLERS.clear(); }
 /**
  * Deploy step: `bun run --cwd apps/worker jobs:install`. Installs pg-boss's own tables **as app_migrator** and
  * declares every queue in the closed registry. Run once per environment, never from the API (spec §0.2: no DDL from
- * application code, SAH-053). ADR 0007.
+ * application code, LEGACY-053). ADR 0007.
  */
 import PgBoss from "pg-boss";
 import { JOB_NAMES } from "@dulja/db";
@@ -2246,7 +2246,7 @@ Expected: PASS — 12 tests in `jobs.test.ts`; typecheck exits 0.
 
 If the rollback test *passes trivially* (0 before and after because the commit test also enqueued nothing), check that `boss.send` really received the `db` option — without it pg-boss uses its own pool and the row appears immediately, which the third test ("invisible until commit") is there to catch.
 
-- [ ] **Step 11: Write `tests/regression/sah-005.test.ts`**
+- [ ] **Step 11: Write `tests/regression/legacy-005.test.ts`**
 
 Add `"@dulja/worker": "workspace:*"` to `tests/package.json` dependencies and run `bun install`.
 
@@ -2259,7 +2259,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createJobClient, JOBS, withTenant, type JobClient } from "@dulja/db";
 import { installBoss, seedTenant, startDb, stopBoss, uuidv7, type Db, type Seed } from "@dulja/db/test";
 
-describe("SAH-005 `MatCosts.Changed` is never set on INSERT, so back-dated documents are never recosted — 0D", () => {
+describe("LEGACY-005 `MatCosts.Changed` is never set on INSERT, so back-dated documents are never recosted — 0D", () => {
   let db: Db; let boss: PgBoss; let jobs: JobClient; let s: Seed;
   beforeAll(async () => {
     db = await startDb();
@@ -2301,7 +2301,7 @@ describe("SAH-005 `MatCosts.Changed` is never set on INSERT, so back-dated docum
 
   it("the enqueue helper refuses to fail silently", async () => {
     const requestId = await uuidv7(db.admin);
-    const opts = { singletonKey: "sah-005-once" };
+    const opts = { singletonKey: "legacy-005-once" };
     const ctx = { tenantId: s.tenant, actorId: s.system, requestId };
     await withTenant(db.rw, ctx, (tx) =>
       jobs.enqueue(tx, "accounting.period.month_end", { tenantId: s.tenant, requestId, payload: {} }, opts));
@@ -2325,7 +2325,7 @@ git commit -m "feat(worker): pg-boss with transactional enqueue against 0B's JOB
 
 enqueue(tx, name, envelope) runs pg-boss's own INSERT on the caller's transaction,
 so a rolled-back transaction never leaves a job behind and a committed one never
-loses its follow-up work. DoD 0.11; sah-005. spec §3.2.2; contracts §4.2.6.
+loses its follow-up work. DoD 0.11; legacy-005. spec §3.2.2; contracts §4.2.6.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
@@ -2915,7 +2915,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ### Task 8: Migration 0005 — `app.currency`, `app.exchange_rate`, `app.rate_for()` and the Postgres-agreement proof
 
 **Files:**
-- Create: `packages/db/migrations/0005_create_currency_exchange_rate.sql`, `packages/db/migrations/0005.down.sql`, `packages/db/src/schema/schema.ts` (only if 0B has no shared `pgSchema("app")`), `packages/db/src/schema/currency.ts`, `packages/db/src/schema/exchange-rate.ts`, `packages/db/src/rates/rate-for.ts`, `packages/db/test/currency.test.ts`, `packages/db/test/money-postgres.test.ts`, `tests/regression/sah-019.test.ts`, `docs/adr/0009-exchange-rate-lookup.md`
+- Create: `packages/db/migrations/0005_create_currency_exchange_rate.sql`, `packages/db/migrations/0005.down.sql`, `packages/db/src/schema/schema.ts` (only if 0B has no shared `pgSchema("app")`), `packages/db/src/schema/currency.ts`, `packages/db/src/schema/exchange-rate.ts`, `packages/db/src/rates/rate-for.ts`, `packages/db/test/currency.test.ts`, `packages/db/test/money-postgres.test.ts`, `tests/regression/legacy-019.test.ts`, `docs/adr/0009-exchange-rate-lookup.md`
 - Modify: `packages/db/test/fixtures.ts` (add `seedCurrency`, `seedRate` — additive only), `packages/db/src/index.ts`
 
 **Interfaces:**
@@ -2977,7 +2977,7 @@ describe("migration 0005 — currency and exchange_rate (contracts §4.2.10; spe
       select rate::text, entered_by, source from app.exchange_rate where id = ${id}`);
     expect(row).toEqual({ rate: "4.68000000", entered_by: a.human, source: `manual:${a.human}` });
 
-    // stamp_entered_by overwrites a forged value (SAH-044)
+    // stamp_entered_by overwrites a forged value (LEGACY-044)
     const forged = await uuidv7(db.admin);
     await withTenant(db.rw, a.tenant, a.human, (tx) => tx`
       insert into app.exchange_rate (tenant_id, company_id, from_currency, to_currency, rate, effective_from, source, entered_by)
@@ -3051,7 +3051,7 @@ create table app.currency (
   name_en                 text not null,
   name_ar                 text,                                    -- spec §3.9 Naming: bilingual master data
   minor_units             smallint not null default 2,
-  pos_rounding_increment  numeric(19,4) not null default 0.01,     -- spec §3.7.6 POS rounding per currency (SAH-019)
+  pos_rounding_increment  numeric(19,4) not null default 0.01,     -- spec §3.7.6 POS rounding per currency (LEGACY-019)
   rounding_mode           text not null default 'HALF_AWAY_FROM_ZERO'
                             check (rounding_mode in ('HALF_AWAY_FROM_ZERO','HALF_EVEN','TOWARD_ZERO','AWAY_FROM_ZERO')),
                             -- exactly the four RoundingMode literals of @dulja/domain; a text + CHECK, not an enum,
@@ -3086,7 +3086,7 @@ create table app.exchange_rate (
 );
 call app_meta.enable_tenant_rls('app.exchange_rate');
 call app_meta.attach_audit('app.exchange_rate');
--- A DEFAULT is not a control (SAH-044): the trigger overwrites whatever the client sent.
+-- A DEFAULT is not a control (LEGACY-044): the trigger overwrites whatever the client sent.
 call app_meta.attach_stamp('app.exchange_rate', 'entered_by');
 
 -- The lookup index the rate_for() plan wants: the same leading columns, descending on the date.
@@ -3305,7 +3305,7 @@ describe("toBase() agrees with Postgres round(value * rate, 4) — contracts haz
 
 `startDb({ migrate: false })` is deliberate: this test needs Postgres's `numeric` arithmetic, not the schema, and skipping the migrations makes it the fastest DB test in the repo.
 
-- [ ] **Step 9: Write `tests/regression/sah-019.test.ts`**
+- [ ] **Step 9: Write `tests/regression/legacy-019.test.ts`**
 
 ```ts
 import type { Sql } from "postgres";
@@ -3318,7 +3318,7 @@ import { seedCurrency, seedTenant, startDb, uuidv7, type Db, type Seed } from "@
 const MYR = currency("MYR");
 const MODES: RoundingMode[] = ["HALF_AWAY_FROM_ZERO", "HALF_EVEN", "TOWARD_ZERO", "AWAY_FROM_ZERO"];
 
-describe("SAH-019 Rounding is configured everywhere, applied nowhere, and the one rounding function is wrong — 0D", () => {
+describe("LEGACY-019 Rounding is configured everywhere, applied nowhere, and the one rounding function is wrong — 0D", () => {
   let db: Db; let s: Seed;
   beforeAll(async () => { db = await startDb(); s = await seedTenant(db, "Alpha"); });
   afterAll(async () => { await db.stop(); });
@@ -3380,9 +3380,9 @@ describe("SAH-019 Rounding is configured everywhere, applied nowhere, and the on
   it("stored amounts are never re-rounded on read (spec §3.9 'stored base amounts are never recomputed on read')", async () => {
     await asHuman((tx) => tx`
       insert into app.exchange_rate (tenant_id, company_id, from_currency, to_currency, rate, effective_from, source)
-      values (${s.tenant}, ${s.company}, 'USD', 'MYR', 4.68123456, '2026-01-01', 'sah-019')`);
+      values (${s.tenant}, ${s.company}, 'USD', 'MYR', 4.68123456, '2026-01-01', 'legacy-019')`);
     const [row] = await asHuman((tx) => tx<{ rate: string }[]>`
-      select rate::text from app.exchange_rate where source = 'sah-019'`);
+      select rate::text from app.exchange_rate where source = 'legacy-019'`);
     expect(row!.rate).toBe("4.68123456");        // eight places, unchanged, on every read
   });
 });
@@ -3428,7 +3428,7 @@ once rather than in whichever slice hits it first (contracts §4.2.10 fixes the 
 
 - 4B's FX settlement and revaluation read the same function; there is one lookup rule in the system, not two.
 - A tenant that forgets to enter a rate gets a refused document with a named remedy rather than a silently wrong
-  base amount — the SAH-011/SAH-012 class of defect.
+  base amount — the LEGACY-011/LEGACY-012 class of defect.
 ```
 
 - [ ] **Step 11: Run everything and commit**
@@ -3443,7 +3443,7 @@ git commit -m "feat(db): migration 0005 — currency, exchange_rate and the one 
 A step function over effective_from with mandatory provenance; no interpolation,
 no synthesised inverse, UNIT_RATE for the identity pair. Proves toBase() agrees
 with Postgres round() over 10^4 pairs so the ledger CHECK holds by construction.
-ADR 0009; sah-019. spec §3.3, §3.8; contracts §4.2.10.
+ADR 0009; legacy-019. spec §3.3, §3.8; contracts §4.2.10.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
@@ -3751,7 +3751,7 @@ export const CreateExchangeRateBody = z.object({
   rate: RateSchema.refine((r) => !/^0+\.0{8}$/.test(r), "rate must be greater than zero"),
   effectiveFrom: DateSchema,
   source: z.string().min(1).max(200),
-  // enteredBy is deliberately absent: it is stamped by the database from the session (SAH-044).
+  // enteredBy is deliberately absent: it is stamped by the database from the session (LEGACY-044).
 }).strict();
 
 export const ExchangeRateQuery = ListQuery.extend({
@@ -4155,7 +4155,7 @@ describe("migration 0007 and the dimension service — spec §3.3 'a new dimensi
       createDimensionValue(tx, { dimensionTypeId: a.branchType, code: "HQ", nameEn: "again" }))).rejects.toThrow(/unique|duplicate key/);
   });
 
-  it("a value tree is walked with a recursive CTE, never a loop of queries (SAH-071)", async () => {
+  it("a value tree is walked with a recursive CTE, never a loop of queries (LEGACY-071)", async () => {
     const rows = await withTenant(db.rw, a.tenant, a.human, (tx) => tx<{ code: string; depth: number }[]>`
       with recursive tree as (
         select id, code, 0 as depth from app.dimension_value where parent_id is null and dimension_type_id in
@@ -5219,7 +5219,7 @@ export { customFieldValue as customFieldValueTable } from "./schema/custom-field
 
 ## Context
 
-Spec §3.5 keeps Sahlisoft's `Descriptors` idea but demands it be "typed, attachable per document type, indexed,
+Spec §3.5 keeps the legacy system's `Descriptors` idea but demands it be "typed, attachable per document type, indexed,
 validated" — the legacy version was an untyped free-text bag, which is why the same field held `"31/12"`, `"31-Dec"`
 and `""` across three documents. Spec §5.0 row 0.10 requires a new field through the API with **no migration**, so
 a column-per-field design is excluded by the requirement itself.
@@ -5234,7 +5234,7 @@ a column-per-field design is excluded by the requirement itself.
    **normalised** value. The API, the seed CLI and any future importer call it, so a money field cannot hold
    `"12.5"` from one path and `"12.5000"` from another.
 3. **Money in a custom field is `{ amount, currency }`, decimal is a string.** Never a JSON number: JSON numbers are
-   IEEE-754 doubles, which is SAH-008 wearing a different hat.
+   IEEE-754 doubles, which is LEGACY-008 wearing a different hat.
 4. **`entity_id` has no foreign key.** It points at whichever table the definition's `entity` names, and Postgres
    has no polymorphic FK. Isolation is carried by the definition's composite `(tenant_id, definition_id)` FK and by
    RLS on both tables; a value can never reach another tenant's definition.
@@ -5872,7 +5872,7 @@ describe("permission-catalogue — spec §4.2 'a permission no code evaluates fa
     expect(rule.run([CATALOGUE, handler])).toEqual([]);
   });
 
-  it("fails when a catalogue code is evaluated by nothing (SAH-047)", () => {
+  it("fails when a catalogue code is evaluated by nothing (LEGACY-047)", () => {
     const handler = parse("apps/api/src/routes/admin/users.ts", `
       const x = PERMISSION["admin.user.manage"];
     `);
@@ -6064,7 +6064,7 @@ function namedCodes(file: SourceFile): { code: string; line: number }[] {
 
 /**
  * spec §4.2: "a permission no code evaluates **fails the build**, and a handler that references a code not in the
- * catalogue fails the build" (SAH-034, SAH-047; acceptance test 36's catalogue-integrity clause).
+ * catalogue fails the build" (LEGACY-034, LEGACY-047; acceptance test 36's catalogue-integrity clause).
  *
  * Both directions. A code counts as *evaluated* when it appears as a string literal anywhere in the reference
  * scopes — which catches `PERMISSION["x"]`, `requirePermission("x", …)`, `principalHas("x", …)` and
@@ -6094,7 +6094,7 @@ export const rule: LintRule = {
         if (!catalogue.has(named.code)) {
           violations.push({
             file: file.fileName, line: named.line, rule: "permission-catalogue",
-            detail: `'${named.code}' is not in the catalogue (${CATALOGUE_FILE}) — a handler that references an uncatalogued code fails the build (spec §4.2, SAH-047)`,
+            detail: `'${named.code}' is not in the catalogue (${CATALOGUE_FILE}) — a handler that references an uncatalogued code fails the build (spec §4.2, LEGACY-047)`,
           });
         }
       }
@@ -6104,7 +6104,7 @@ export const rule: LintRule = {
     if (orphans.length > 0) {
       violations.push({
         file: catalogueFile.fileName, line: 1, rule: "permission-catalogue",
-        detail: `${orphans.length} catalogue code(s) evaluated by no route or job handler: ${orphans.join(", ")} (spec §4.2 'a permission no code evaluates fails the build', SAH-047)`,
+        detail: `${orphans.length} catalogue code(s) evaluated by no route or job handler: ${orphans.join(", ")} (spec §4.2 'a permission no code evaluates fails the build', LEGACY-047)`,
       });
     }
     return violations;
@@ -6263,7 +6263,7 @@ export interface PrincipalWithPermission { principalId: string; displayName: str
 
 /**
  * **Acceptance test 14** (spec Part VI): "List every user who can post a purchase return in company X" is
- * answerable **in one SQL query** (SAH-025, 034, 047) — and test 36's "who can approve payroll in company X" and
+ * answerable **in one SQL query** (LEGACY-025, 034, 047) — and test 36's "who can approve payroll in company X" and
  * "who can reset a PIN at branch B" are the same query with a different code and a branch.
  *
  * The code is a **parameter**, never interpolated (test 27), so the same statement answers every phase's question
@@ -6537,7 +6537,7 @@ Confirm the deliverables of §5.0 rows 0.7, 0.9, 0.10 and 0.11:
 | 0.7 | "Acceptance test 14 passes; the catalogue-integrity, incompatible-pair, auditor-read-only, expired-assignment and one-query assertions of test 36 pass against the Phase 0 catalogue" | `tests/invariants/role-catalogue.test.ts` (T15) + `packages/db/test/roles-seed.test.ts` (T14) + `scripts/lint/rules/{permission-catalogue,role-seed}.ts` in `lint:rules` |
 | 0.9 | "Property tests: `a + b − b = a` for 10⁶ random Money values; adding two currencies is a type error" | `packages/domain/test/money.property.test.ts` + `money.type.test.ts` under `bun run typecheck` (T4) |
 | 0.10 | "A new dimension and a new custom field are created through the API with no migration" | `apps/api/test/routes/admin/custom-fields.test.ts` first `it` (T13), asserting `listApplied()` unchanged |
-| 0.11 | "A test rolls back a transaction that enqueued a job; the job never runs" | `packages/db/test/jobs.test.ts` (T6) + `tests/regression/sah-005.test.ts` |
+| 0.11 | "A test rolls back a transaction that enqueued a job; the job never runs" | `packages/db/test/jobs.test.ts` (T6) + `tests/regression/legacy-005.test.ts` |
 
 - [ ] **Step 10: Commit**
 
@@ -6550,7 +6550,7 @@ the build'; role-seed proves R6 and R7 over the seed, skipping pairs whose codes
 are not live yet. whoCan answers 'who can do X in company Y (at branch B)' in one
 statement with the code bound, not interpolated. Closes DoD 0.7.
 
-spec §4.2, §4.2.2 R6/R7, §5.0 row 0.7; Part VI 14, 36; SAH-025, 034, 047.
+spec §4.2, §4.2.2 R6/R7, §5.0 row 0.7; Part VI 14, 36; LEGACY-025, 034, 047.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
@@ -6581,7 +6581,7 @@ Run against the spec sections listed in the header, the contracts document §2.1
 | §4.11 property tests for money, one migration per PR, reversible migrations, ADRs | T4, T5, T8, T10, T12; ADRs 0007–0010 |
 | Part VI 14 and 36 (owned) | T15 |
 | Part VI 12 and 13 re-run for the four new tables | T8, T10, T12 (two-tenant + audit assertions), T7 (job isolation) |
-| Regression files sah-005, sah-008, sah-019 | T6, T4, T8 |
+| Regression files legacy-005, legacy-008, legacy-019 | T6, T4, T8 |
 
 **Deliverables of the 0D card, one by one:** `@dulja/domain` with the exact §4.2.1 surface (T1–T3) · fast-check 10⁶ + `money.type.test.ts` + `no-number-money` (T4) · migration 0004 + `jobs:install` (T5, T6) · migration 0005 + `app.rate_for()` + the rate API (T8, T9) · migration 0006 + the custom-field service through the API (T12, T13) · migration 0007 + the dimension API (T10, T11) · `apps/worker` with `enqueue`, the rollback test, the card's job-name registry — **0B's `JOBS`, verified by T6 Step 4 and re-exported from the `@dulja/db` barrel, never written here** (§4.2.6's per-file table) — the system-principal resolver and the integrity scaffold (T6, T7) · the catalogue build check, `seed/roles.ts`, the R6/R7 lints (T14, T15) · `admin.idempotency_key.purge` (T7). **Nothing on the card is unassigned.**
 
@@ -6593,7 +6593,7 @@ Searched the plan for `TBD`, `TODO`, `implement later`, `fill in`, `add appropri
 
 ### 3. Type consistency
 
-- `RoundingMode`'s four literals are identical in `packages/domain/src/money/rounding.ts` (T1), the `app.currency.rounding_mode` CHECK (T8), `RoundingModeSchema` (T9) and `sah-019.test.ts` (T8).
+- `RoundingMode`'s four literals are identical in `packages/domain/src/money/rounding.ts` (T1), the `app.currency.rounding_mode` CHECK (T8), `RoundingModeSchema` (T9) and `legacy-019.test.ts` (T8).
 - `Money.toJSON()` returns `{ amount, currency }` (T2); `MoneySchema` (§4.2.8, 0B) and the custom-field money branch (T12) both consume that exact shape; `custom_field_value.value` stores it.
 - `CustomFieldKind`'s eight literals are identical in `types.ts` (T12), the `kind` CHECK (T12) and `CustomFieldKindSchema` (T13); `CustomFieldEntity`'s four are identical in `service.ts`, the `entity` CHECK and `CustomFieldEntitySchema`.
 - `JobName` is derived from `JOBS` in 0B's `jobs/names.ts` (T6 Step 4 verifies both and writes neither); `JobHandler`, `registerHandler`, `runJob` (T7), `JOB_PROBES` (T7) and `enqueue` (T6) are all generic over it. `JobPayload` extends `Record<JobName, unknown>` so `JobPayload[N]` type-checks for the fourteen names whose slices have not landed.
@@ -6602,7 +6602,7 @@ Searched the plan for `TBD`, `TODO`, `implement later`, `fill in`, `add appropri
 - `Seed` is untouched; the three new fixtures use the uniform `(db, s, opts?)` shape of §4.17 and the exact names it assigns 0D.
 - `LintRule`/`LintViolation`/`SourceFile` are consumed identically by all three new rules (T4, T15).
 - `setValues`'s fourth parameter is `readonly { definitionId: string; value?: unknown }[]` (T12) and T13's `SetCustomFieldValuesBody` infers exactly that — `z.unknown()` makes the key optional, and both sides are spelled the same way rather than one of them casting (assumption 15).
-- **`withTenant` by import path.** `packages/db/test/*` (`currency.test.ts`, `dimension.test.ts`, `custom-field.test.ts`, `jobs.test.ts`, `fixtures.ts`) keeps Plan 0A's 4-argument test helper from `./harness`; root `tests/` (`sah-005`, `sah-019`, `probes.ts`, `role-catalogue.test.ts`) and `apps/*/test` (both worker suites) import the production `withTenant(sql, ctx, fn)` from `@dulja/db` and pass a `TenantContext` whose `requestId` is a real `uuidv7` — §4.2.2 and §4.2.12, and the reason the two names may coexist.
+- **`withTenant` by import path.** `packages/db/test/*` (`currency.test.ts`, `dimension.test.ts`, `custom-field.test.ts`, `jobs.test.ts`, `fixtures.ts`) keeps Plan 0A's 4-argument test helper from `./harness`; root `tests/` (`legacy-005`, `legacy-019`, `probes.ts`, `role-catalogue.test.ts`) and `apps/*/test` (both worker suites) import the production `withTenant(sql, ctx, fn)` from `@dulja/db` and pass a `TenantContext` whose `requestId` is a real `uuidv7` — §4.2.2 and §4.2.12, and the reason the two names may coexist.
 - Every unsafe `createRoute` this slice adds declares `request.headers: IdempotencyHeader` (§4.2.7) — **eight** operations: currencies `POST /` and `PATCH /{currencyId}`; exchange-rates `POST /`; dimension-types `POST /`, `POST /{dimensionTypeId}/values` and `PATCH /{dimensionTypeId}/values/{valueId}`; custom-field-definitions `POST /`; custom-fields `PUT /{entity}/{entityId}`. T9 Step 8's `node -e` check counts them in the generated document, and T11 and T13 re-run it.
 - Every module this slice mounts is added **inside `buildRoutes(deps)`** (T9 Step 7, T11 Step 5, T13 Step 5), never pushed onto `ROUTES` — §4.2.7 makes `buildRoutes` authoritative and `ROUTES` the stub-built derivation, so a push would be enumerated by the lints and never served by `createApp`. After T13 the function returns twelve modules: 0B's seven plus 0D's five.
 

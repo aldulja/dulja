@@ -94,7 +94,7 @@ async function typeIdOf(db: Db, s: Seed, code: string): Promise<string | undefin
  * — so the type arrives exactly as `bun run seed` would put it there, names and module included.
  *
  * SELECT FIRST: `postFromPack` calls this on every post, and once a posted document pins a policy version
- * the loader refuses to rewrite that version if the file has since moved (SAH-013, ADR 0027). A type that is
+ * the loader refuses to rewrite that version if the file has since moved (LEGACY-013, ADR 0027). A type that is
  * already configured is therefore never reloaded.
  */
 export async function seedTypeFromPack(db: Db, s: Seed, code: string): Promise<string> {
@@ -296,7 +296,7 @@ export interface PostFromPackOptions {
 /**
  * Post one document of a seed-pack type by CODE: the type configured from the pack (`seedTypeFromPack`), the
  * party's CURRENT payment term pinned on the draft through 4A's `resolvePartyTerm` exactly as 4A's drafting
- * services pin it (SAH-013 — the ageing cuts on the pinned term), the series the pack's policy numbers under,
+ * services pin it (LEGACY-013 — the ageing cuts on the pinned term), the series the pack's policy numbers under,
  * and the approval path the pack's policy declares; then 4A's `postArDocument` drafts, walks the REAL state
  * machine and posts through 1A's frozen `postDocument`.
  *

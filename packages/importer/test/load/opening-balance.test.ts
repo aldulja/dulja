@@ -417,7 +417,7 @@ describe("what the opening refuses, reports or leaves off the ledger", () => {
     }
   });
 
-  it("reports an unmapped and an excluded legacy account, and refuses a NULL total (SAH-007)", async () => {
+  it("reports an unmapped and an excluded legacy account, and refuses a NULL total (LEGACY-007)", async () => {
     const own = await ownTenant("opening-unmapped");
     setAccountMap(mapPlus(EXCLUDED));
     useCorpus(

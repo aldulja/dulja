@@ -10,7 +10,7 @@ export interface LedgerBalanceOptions {
  * The ledger-integrity SLI of spec:2246: "Σdebit = Σcredit per tenant/period/company".
  * The tenant half is RLS — this runs inside withTenant, so app.ledger_entry already shows one tenant's
  * rows and no query below mentions tenant_id (contracts §4.2.2). That is the structural answer to
- * SAH-001, where the aggregate was keyed without the tenant.
+ * LEGACY-001, where the aggregate was keyed without the tenant.
  *
  * The comparison is in BASE amounts. A revaluation journal legitimately balances only in base
  * (0001 §7), and base is what the deferred ledger_entry_balanced constraint checks per document;

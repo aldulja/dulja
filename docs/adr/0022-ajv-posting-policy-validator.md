@@ -8,7 +8,7 @@
 
 spec:2008 makes the posting policy a JSON document validated against
 `packages/domain/posting-policy.schema.json`, and spec:1711 requires it to be diffable and version-controlled
-rather than an opaque blob (SAH-078). Two things follow: something must validate a policy against that schema,
+rather than an opaque blob (LEGACY-078). Two things follow: something must validate a policy against that schema,
 and TypeScript must have a type for it that cannot drift from the schema.
 
 ## Decision

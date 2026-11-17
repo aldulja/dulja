@@ -37,7 +37,7 @@ other than `TILL_OVER_SHORT`. The till sends `countedCash` and nothing else; the
 - **Every future cash movement is included with no formula change.** OD-10's paid-outs, safe drops and
   bankings each post a `1110` leg, so they enter the sum the day their document type lands. Under (a) the
   formula would have had to grow a clause per type, and a type whose clause was forgotten would be a
-  silent shortfall — SAH-055's shape ("a figure recomputed by a second, staler rule").
+  silent shortfall — LEGACY-055's shape ("a figure recomputed by a second, staler rule").
 - **A POS return is handled without a sign rule.** A refund's cash tender posts a credit to `1110`, so
   `debit − credit` subtracts it. Nothing reads the sign of an amount to decide a direction (§4.4.2 A9).
 - **`status in ('posted', 'reversed')` and not `= 'posted'`.** A reversed ticket's own entries stay in the

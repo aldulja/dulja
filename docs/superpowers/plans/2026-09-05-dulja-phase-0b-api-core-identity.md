@@ -18,7 +18,7 @@
 - **Interfaces consumed:** contracts §4.1 (the whole Plan 0A surface), §3.4.6 (the exact generalised reversibility test), §3.5.2–§3.5.4 (linter sets and the pinned DELETE list — this slice changes neither), §3.6.1–§3.6.3 (catalogue module, codes, build checks), §3.7.1–§3.7.5 (test layout, isolation harness, regression ownership, lint rules), §3.11 (environment variable names).
 - **Interfaces produced:** contracts §4.2.2 (`createDb`, `TenantContext`, `withTenant`, `systemContext`), §4.2.3 (`Logger`, `RequestContext`, `AppEnv`, the middleware order), §4.2.4 (`Problem`, `ERRORS`, `ErrCode`, `AppError`, `fromDatabaseError` — the 25-code 0B subset), §4.2.5 (`PERMISSIONS`, `PERMISSION`, `isMutating`, `requirePermission`, `ScopeSource`), §4.2.7 (`RouteModule`, `ROUTES`, `createApp`, `PROBES`), §4.2.8 (`packages/contracts/src/common.ts`), §4.2.9 (idempotency semantics), §4.2.12 (`@dulja/db/test` subpath, `ApiRequest`, `StartedApi`, `startApi`).
 - **Owner decisions:** **OD-01** (v1.1 changelog #2 — `principal` RLS split into SELECT/UPDATE + INSERT policies, *Confirm*) and **OD-02** (v1.1 changelog #3 — `resolve_principal` owned by `app_auth`, *Confirm*) → **Task 5, the single isolated gate task**. Neither blocks merge: both are **already built by Plan 0A Task 5** and this plan is written against them as built (contracts §2.12 default: "as built"). **If OD-01 is rejected:** only Task 5's identity chain and Task 8's invite handler change — the handler stops relying on the `principal_insert` policy, and the insert order (principal without `RETURNING`, then `membership`, one transaction) is replaced by whatever policy shape the owner confirms; no other task's files move. **If OD-02 is rejected:** `resolvePrincipal`'s SQL text is unchanged (it calls `app.resolve_principal(sub)` either way), but the auth-bypass assertion in Task 13 (`tests/invariants/auth-bypass.test.ts`, last `it`) that "`select * from app.principal` as `app_rw` with no `set_config` returns zero rows while `resolve_principal` returns one" is replaced by whatever door the owner confirms. No other OD item touches this slice; **OD-24 does not apply — 0B ships no screen** (contracts Appendix A #5 lists the eighteen slices that do, and 0B is not one).
-- **Part VI tests owned / re-run:** **owned 11, 12, 13, 27** (12 and 13 were proven at the data layer by Plan 0A — plan0A:2940, 2943; 0B proves the endpoint and API-write paths). **Re-runs: none.** **§3.0.4 rows owned:** spec:1065 Cross-cutting — "Tenancy + RLS, identity, RBAC with nine roles, branch scoping, segregation of duties, audit log, idempotent API" (segregation of duties is completed by 2B and branch isolation by 6C; both list the row under re-runs). **Regression files created:** `sah-025, 026, 027, 028, 034, 035, 036, 037, 043, 047, 068, 069, 078, 082, 083, 084` (full scenarios this slice's own work proves); thin files for the twenty-one remaining Plan 0A-proven defects `sah-003, 012, 013, 021, 029, 030, 031, 032, 033, 040, 041, 042, 044, 050, 051, 053, 070, 072, 073, 074, 080`; and `sah-023, 045, 065, 071, 075, 087` for structural facts 0A fixed — **forty-three files, all created in Task 14**. **Appended to:** none (0B is first in execution order for every file it touches). `sah-024` is 1A's.
+- **Part VI tests owned / re-run:** **owned 11, 12, 13, 27** (12 and 13 were proven at the data layer by Plan 0A — plan0A:2940, 2943; 0B proves the endpoint and API-write paths). **Re-runs: none.** **§3.0.4 rows owned:** spec:1065 Cross-cutting — "Tenancy + RLS, identity, RBAC with nine roles, branch scoping, segregation of duties, audit log, idempotent API" (segregation of duties is completed by 2B and branch isolation by 6C; both list the row under re-runs). **Regression files created:** `legacy-025, 026, 027, 028, 034, 035, 036, 037, 043, 047, 068, 069, 078, 082, 083, 084` (full scenarios this slice's own work proves); thin files for the twenty-one remaining Plan 0A-proven defects `legacy-003, 012, 013, 021, 029, 030, 031, 032, 033, 040, 041, 042, 044, 050, 051, 053, 070, 072, 073, 074, 080`; and `legacy-023, 045, 065, 071, 075, 087` for structural facts 0A fixed — **forty-three files, all created in Task 14**. **Appended to:** none (0B is first in execution order for every file it touches). `legacy-024` is 1A's.
 - **Shared namespaces this slice writes into:** document-type codes (§4.14) **none**; account codes (§4.15) **none seeded, none consumed**; report codes (§4.16.1) **none** and `DatasetId` members (§4.16.2) **none**; `fixtures.ts` helpers (§4.17) **none** — §4.17 assigns 0B no helper, and this plan adds none (`packages/db/test/fixtures.ts` is not modified by any task). The one shared namespace this slice writes is the `ERR_*` space (§4.2.4): exactly the twenty-five codes §4.2.4 names as "0B's subset", no more.
 - **Never re-decide:** D1–D27 (spec:114–142); every name in the contracts document is frozen — a needed change goes to that document first.
 - **Contracts version:** 2026-09-05.
@@ -40,7 +40,7 @@ Every one is a place where the spec or the contracts document is silent or in te
 11. **The Supabase JWKS URL is never constructed.** `SUPABASE_JWKS_URL` holds the complete URL (contracts §3.11). Task 5 fetches the authority's current documentation, records the observed form in ADR 0005, and the code only ever does `createRemoteJWKSet(new URL(env.SUPABASE_JWKS_URL))` (contracts Appendix A #3).
 12. **`app.permission` is empty after migration 0001.** Plan 0A inserts permission rows only inside its own test files (plan0A:1118), never in `0001_foundations.sql`. Migration 0002 is therefore the first writer of that table, and Task 7's both-directions catalogue test can assert exact set equality.
 
-13. **Every name this slice adds beyond the frozen registry, in one list.** Contracts §4 says a plan "may add members only by amending this document"; the amendment has not been made yet, so the list lives here and **must be carried into the contracts document before 0C or 0D consumes any of it**. Named in the assumptions above: `AppDeps` + `authAdmin` and `verifier` (1), `ScopeSource { company: "any" }` (3), `resolvePrincipal` (4), the `jobs/` type files (5), `AAL1_PATHS` and the `GET /v1/session` exemption (6), the `error-codes` literal excision (7), the `no-bare-db` allow-list and generic-argument change (8). **Two more lint-rule allowances, both forced by Plan 0A files this slice may not edit, and both owed to contracts §3.7.5 (and §3.3 for the second):** (a) `dependency-rule` gains a **named-allowance set** keyed `<file path>|<package root>`, holding exactly one entry — `packages/db/test/permission-catalogue.test.ts|@dulja/contracts` — because contracts §3.6.3 freezes that path for the both-directions catalogue check while `packages/db`'s tier is `["@dulja/domain"]`, so the contract-mandated test would otherwise be a lint violation. It is a named file, not a `packages/*/test/**` carve-out, so `packages/domain/test/**` reaching `@dulja/db` is still caught. The same rule also gains **`ESCAPE_ALLOW`**, a second named-allowance set for the *relative-path escape* check — contracts §4.17.1 places on this file the allowances that let `apps/api/test/**` and `apps/worker/test/**` import the root test tier's shared helpers, and `ALLOW` cannot serve them because it is keyed on a `@dulja/*` package root while those imports are relative. §4.17.1's closing sentence names `tests/invariants/support/**`, but the table directly above it registers `grantAdmin`/`problemOf`/`sharedApi`/`fullRegression` in **`tests/support/api.ts`**, which 0D, 2A and 2C all import from `apps/api/test/routes/**`; both roots are therefore listed, and nothing wider — `apps/api/src/**` reaching `tests/` is still a violation. Matched by no file in this slice; proved by Task 12 Step 1's four cases. (b) `no-sql-concat`'s `UNSAFE_ALLOW` gains **`packages/db/test/harness.ts` and `packages/db/test/roles.test.ts`**, which apply `packages/db/roles.sql` with `admin.unsafe(readFileSync(ROLES_SQL, "utf8"))` (plan0A:476, 553) — a checked-in .sql file read from disk, the same case as `migrate.ts`; contracts §3.3's "`sql.unsafe` is permitted in exactly three places" predates Plan 0A's harness. Task 14's `sah-036` allowed set carries the same fourth entry, because the two must agree. Named nowhere else until now: **`PoolerUrlError`** (Task 2 — §4.2.2 names only the thrown code), **`buildRoutes(deps)`** (Task 8 — §4.2.7 freezes `ROUTES` as a const; `ROUTES` survives as `buildRoutes({ authAdmin: new StubAuthAdmin() })`), **`parseFilters` / `FILTER_OPS` / `FilterClause`** (Task 3), **`IdempotencyHeader`** (Task 11 — declared in `apps/api/src/routes/idempotency-header.ts` and re-exported from `apps/api/src/routes/index.ts`, because a `const` in `index.ts`'s own body is a temporal-dead-zone `ReferenceError` for every route module `index.ts` imports; both import paths are the same binding), **`RECLAIM_AFTER_SECONDS`** (Task 6), **`assertRouteGates`**, **`readConfig` / `ConfigError` / `ApiConfig`**, **`createLogger`**, **`encodeCursor` / `decodeCursor`**, **`TenantContextError`'s widened code union**, **`loadPrincipals`**, **`signToken`** (Task 5 — needed for the expired and wrong-issuer shapes contracts §3.7.2 requires), **`TENANT_FREE`** (Task 13), the **`"./routes"` export of `apps/api`** (Task 13), and the **`{ company: "any" }` gate on `GET /v1/companies/{companyId}`** (Task 10 — a `path:companyId` gate would answer 403 for another tenant's id and leak its existence). One structural fact belongs on the same list: **`tests/**` is outside every lint root** — `scripts/lint/run.ts` walks `apps`, `packages` and `scripts` only — which is what makes `tests/support/ledger.ts`'s direct `app.ledger_entry` insert legal against 1A's `posting-only-tables` rule. If a later slice adds `tests` to `ROOTS`, that rule needs `tests/support/**` on its allow-list or every thin ledger regression fails lint.
+13. **Every name this slice adds beyond the frozen registry, in one list.** Contracts §4 says a plan "may add members only by amending this document"; the amendment has not been made yet, so the list lives here and **must be carried into the contracts document before 0C or 0D consumes any of it**. Named in the assumptions above: `AppDeps` + `authAdmin` and `verifier` (1), `ScopeSource { company: "any" }` (3), `resolvePrincipal` (4), the `jobs/` type files (5), `AAL1_PATHS` and the `GET /v1/session` exemption (6), the `error-codes` literal excision (7), the `no-bare-db` allow-list and generic-argument change (8). **Two more lint-rule allowances, both forced by Plan 0A files this slice may not edit, and both owed to contracts §3.7.5 (and §3.3 for the second):** (a) `dependency-rule` gains a **named-allowance set** keyed `<file path>|<package root>`, holding exactly one entry — `packages/db/test/permission-catalogue.test.ts|@dulja/contracts` — because contracts §3.6.3 freezes that path for the both-directions catalogue check while `packages/db`'s tier is `["@dulja/domain"]`, so the contract-mandated test would otherwise be a lint violation. It is a named file, not a `packages/*/test/**` carve-out, so `packages/domain/test/**` reaching `@dulja/db` is still caught. The same rule also gains **`ESCAPE_ALLOW`**, a second named-allowance set for the *relative-path escape* check — contracts §4.17.1 places on this file the allowances that let `apps/api/test/**` and `apps/worker/test/**` import the root test tier's shared helpers, and `ALLOW` cannot serve them because it is keyed on a `@dulja/*` package root while those imports are relative. §4.17.1's closing sentence names `tests/invariants/support/**`, but the table directly above it registers `grantAdmin`/`problemOf`/`sharedApi`/`fullRegression` in **`tests/support/api.ts`**, which 0D, 2A and 2C all import from `apps/api/test/routes/**`; both roots are therefore listed, and nothing wider — `apps/api/src/**` reaching `tests/` is still a violation. Matched by no file in this slice; proved by Task 12 Step 1's four cases. (b) `no-sql-concat`'s `UNSAFE_ALLOW` gains **`packages/db/test/harness.ts` and `packages/db/test/roles.test.ts`**, which apply `packages/db/roles.sql` with `admin.unsafe(readFileSync(ROLES_SQL, "utf8"))` (plan0A:476, 553) — a checked-in .sql file read from disk, the same case as `migrate.ts`; contracts §3.3's "`sql.unsafe` is permitted in exactly three places" predates Plan 0A's harness. Task 14's `legacy-036` allowed set carries the same fourth entry, because the two must agree. Named nowhere else until now: **`PoolerUrlError`** (Task 2 — §4.2.2 names only the thrown code), **`buildRoutes(deps)`** (Task 8 — §4.2.7 freezes `ROUTES` as a const; `ROUTES` survives as `buildRoutes({ authAdmin: new StubAuthAdmin() })`), **`parseFilters` / `FILTER_OPS` / `FilterClause`** (Task 3), **`IdempotencyHeader`** (Task 11 — declared in `apps/api/src/routes/idempotency-header.ts` and re-exported from `apps/api/src/routes/index.ts`, because a `const` in `index.ts`'s own body is a temporal-dead-zone `ReferenceError` for every route module `index.ts` imports; both import paths are the same binding), **`RECLAIM_AFTER_SECONDS`** (Task 6), **`assertRouteGates`**, **`readConfig` / `ConfigError` / `ApiConfig`**, **`createLogger`**, **`encodeCursor` / `decodeCursor`**, **`TenantContextError`'s widened code union**, **`loadPrincipals`**, **`signToken`** (Task 5 — needed for the expired and wrong-issuer shapes contracts §3.7.2 requires), **`TENANT_FREE`** (Task 13), the **`"./routes"` export of `apps/api`** (Task 13), and the **`{ company: "any" }` gate on `GET /v1/companies/{companyId}`** (Task 10 — a `path:companyId` gate would answer 403 for another tenant's id and leak its existence). One structural fact belongs on the same list: **`tests/**` is outside every lint root** — `scripts/lint/run.ts` walks `apps`, `packages` and `scripts` only — which is what makes `tests/support/ledger.ts`'s direct `app.ledger_entry` insert legal against 1A's `posting-only-tables` rule. If a later slice adds `tests` to `ROOTS`, that rule needs `tests/support/**` on its allow-list or every thin ledger regression fails lint.
 
 ---
 
@@ -51,10 +51,10 @@ Copied verbatim from spec §0.2 (spec:97–106). Every task's requirements impli
 **Never**, at any phase, for any reason:
 - write to a ledger or movement table outside the posting service;
 - represent money as a float, anywhere, including in TypeScript;
-- build SQL by string concatenation (SAH-036/037/069);
-- issue DDL from application code (SAH-053);
-- disable an invariant, constraint or trigger "temporarily" (SAH-027, 041, 053);
-- gate an audit write on any flag (SAH-030);
+- build SQL by string concatenation (LEGACY-036/037/069);
+- issue DDL from application code (LEGACY-053);
+- disable an invariant, constraint or trigger "temporarily" (LEGACY-027, 041, 053);
+- gate an audit write on any flag (LEGACY-030);
 - hard-code a package version into a source file — the lockfile owns versions.
 
 **Always**, for every new table: `tenant_id`, an RLS policy, `created_at`, a migration, and a test that a second tenant cannot see it. For every new endpoint: Zod schema, OpenAPI entry, idempotency on unsafe methods, and a tenant-isolation test. For every UI screen: verified in both text directions before merge.
@@ -181,7 +181,7 @@ Everything this plan creates or modifies. One responsibility per file; the task 
    ├─ invariants/tenant-isolation.test.ts   test 12 over every route and job                                   T13
    ├─ invariants/auth-bypass.test.ts        test 11 — every known bypass shape                                  T13
    ├─ golden/.gitkeep, e2e/.gitkeep         directories the later slices fill                                   T13
-   └─ regression/sah-NNN.test.ts × 43       16 full · 21 thin · 6 structural (contracts §3.7.3)                 T14
+   └─ regression/legacy-NNN.test.ts × 43       16 full · 21 thin · 6 structural (contracts §3.7.3)                 T14
 ```
 
 ---
@@ -1035,7 +1035,7 @@ describe("the ERR_* registry — spec:2051, contracts §4.2.4", () => {
     ]);
   });
 
-  it("every code carries a status, a title and a remedy — the three things SAH-084 lacked", () => {
+  it("every code carries a status, a title and a remedy — the three things LEGACY-084 lacked", () => {
     for (const [code, def] of Object.entries(ERRORS)) {
       expect(code, code).toMatch(/^ERR_[A-Z0-9_]+$/);
       expect(def.status, code).toBeGreaterThanOrEqual(400);
@@ -1063,11 +1063,11 @@ describe("the ERR_* registry — spec:2051, contracts §4.2.4", () => {
     expect(fromDatabaseError({ code: "23503", message: "violates foreign key" }).code).toBe("ERR_CONFLICT_REFERENCE");
     const unknown = fromDatabaseError({ code: "22P02", message: "invalid input syntax for type uuid: \"nope\"" });
     expect(unknown.code).toBe("ERR_INTERNAL");
-    expect(unknown.detail).not.toContain("nope");                 // never echo the driver's text (SAH-083)
+    expect(unknown.detail).not.toContain("nope");                 // never echo the driver's text (LEGACY-083)
     expect(unknown.extra?.["sqlstate"]).toBe("22P02");            // …but keep it for the log line
   });
 
-  it("a check_violation with no token is ERR_INTERNAL, not a silently swallowed success (SAH-083)", () => {
+  it("a check_violation with no token is ERR_INTERNAL, not a silently swallowed success (LEGACY-083)", () => {
     expect(fromDatabaseError({ code: "23514", message: "new row violates check constraint \"chk_x\"" }).code).toBe("ERR_INTERNAL");
   });
 });
@@ -1235,7 +1235,7 @@ const DB_TOKEN = /^(ERR_[A-Z0-9_]+): (.*)$/s;
 /**
  * postgres.js error → AppError. A CHECK violation whose message starts with a DB token carries that token
  * (plan0A:1130–1141); the pinned SQLSTATEs map by contract; everything else becomes ERR_INTERNAL with the
- * SQLSTATE kept in `extra` for the log line and stripped from the response (the inverse of SAH-083/084).
+ * SQLSTATE kept in `extra` for the log line and stripped from the response (the inverse of LEGACY-083/084).
  */
 export function fromDatabaseError(e: unknown): AppError {
   const err = e as { code?: unknown; message?: unknown };
@@ -1419,8 +1419,8 @@ Expected: PASS (14 tests across three files).
 
 ## Context
 spec:2051 requires every API error to carry a stable machine-readable code, a human message naming the specific
-entity, and a remedy — the inverse of SAH-084, where messages were neither actionable nor conventional, and of
-SAH-083, where one handler in 33,179 lines swallowed the error. spec:2205 fixes the media type as RFC 9457
+entity, and a remedy — the inverse of LEGACY-084, where messages were neither actionable nor conventional, and of
+LEGACY-083, where one handler in 33,179 lines swallowed the error. spec:2205 fixes the media type as RFC 9457
 `application/problem+json`. RFC 9457 defines `type`, `title`, `status`, `detail` and `instance`; it says nothing
 about a machine code or a remedy, and it invites extension members.
 
@@ -1671,7 +1671,7 @@ describe("the api skeleton — spec:2314, 2055, 2063", () => {
     expect(body.remedy.length).toBeGreaterThan(0);
   });
 
-  it("a thrown driver error becomes ERR_INTERNAL and never echoes the driver text (SAH-083)", async () => {
+  it("a thrown driver error becomes ERR_INTERNAL and never echoes the driver text (LEGACY-083)", async () => {
     const app = createApp(deps);
     app.get("/boom", () => { throw Object.assign(new Error('relation "app.secret" does not exist'), { code: "42P01" }); });
     const res = await app.request("/boom");
@@ -1855,7 +1855,7 @@ const TRACEPARENT = /^[0-9a-f]{2}-([0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}$/i;
 
 /**
  * spec:2063 wants request_id and trace_id on every line. An incoming X-Request-Id is honoured only when it is a
- * uuid — a caller-supplied string would otherwise reach the log and the audit context unvalidated (SAH-026).
+ * uuid — a caller-supplied string would otherwise reach the log and the audit context unvalidated (LEGACY-026).
  * In 0B `trace_id` comes from `traceparent` when present and falls back to the request id; 0C replaces this with
  * the OpenTelemetry context and the value keeps the same field name.
  */
@@ -2197,7 +2197,7 @@ describe("identity chain — spec:2004, 2132, §5.0 row 0.6; acceptance test 11"
     expect((await problem(blocked)).code).toBe("ERR_AUTH_AAL_INSUFFICIENT");
   });
 
-  it("a forged X-Tenant-Id or X-Actor-Id header changes nothing — identity comes from the token (SAH-026)", async () => {
+  it("a forged X-Tenant-Id or X-Actor-Id header changes nothing — identity comes from the token (LEGACY-026)", async () => {
     const b = await seedTenant(api.db, "Beta");
     const res = await api.request({
       method: "GET", path: "/v1/session", as: a.human,
@@ -2367,7 +2367,7 @@ export function authenticate(deps: { db: Sql; verifier: JwtVerifier }): Middlewa
     }
 
     // The ONE door that runs before a tenant is known (plan0A:1451; OD-02 — as built). A client-supplied
-    // X-Tenant-Id or X-Actor-Id is never read: identity comes from the verified token only (SAH-026, SAH-042).
+    // X-Tenant-Id or X-Actor-Id is never read: identity comes from the verified token only (LEGACY-026, LEGACY-042).
     const rows = await resolvePrincipal(deps.db, sub);
     if (rows.length === 0) throw new AppError("ERR_AUTH_NO_MEMBERSHIP", "this account is not a member of any tenant");
     if (rows.length > 1) throw new AppError("ERR_INTERNAL", "the subject resolves to more than one membership");
@@ -2509,7 +2509,7 @@ directions, and the JWKS URL and admin-invite path are Supabase's to change, so 
    wiring decision, recorded in ADR 0011.** 0B's endpoint, its tests and its OpenAPI entry are identical either way.
 5. **Nothing is read from a request header.** `X-Tenant-Id`, `X-Actor-Id`, a body field named `tenant_id` and a
    query parameter naming a session variable are all ignored; the tenant and actor come from the verified token
-   through `resolve_principal` (SAH-025, 026, 042).
+   through `resolve_principal` (LEGACY-025, 026, 042).
 
 ## Consequences
 - A Supabase change to the JWKS path is a configuration change, not a code change.
@@ -2781,7 +2781,7 @@ describe("Idempotency-Key — spec:2055, 2201; contracts §4.2.9", () => {
     expect(((await second.json()) as Problem).code).toBe("ERR_INTERNAL");
   });
 
-  it("one principal cannot replay another principal's key (SAH-042)", async () => {
+  it("one principal cannot replay another principal's key (LEGACY-042)", async () => {
     const b = await seedTenant(api.db, "Beta");
     const key = "cross-1";
     await api.request({ method: "POST", path: "/v1/probe", as: a.human, body: { n: 1 }, idempotencyKey: key });
@@ -3295,10 +3295,10 @@ async function bodyField(c: Context<AppEnv>, name: string): Promise<string | nul
 }
 
 /**
- * A PRE-FLIGHT, not the control (spec:2173, SAH-032): it calls app.actor_has inside the request's own
+ * A PRE-FLIGHT, not the control (spec:2173, LEGACY-032): it calls app.actor_has inside the request's own
  * withTenant so the caller gets a good error, while RLS policies and triggers remain the actual enforcement.
  * A NULL branch asks for company-wide authority and is granted only by an assignment with no branch rows, so a
- * branch-restricted principal never gains anything by omitting the branch (SAH-042, SAH-050).
+ * branch-restricted principal never gains anything by omitting the branch (LEGACY-042, LEGACY-050).
  */
 export function requirePermission(code: PermissionCode, scope: ScopeSource): MiddlewareHandler<AppEnv> {
   const handler: MiddlewareHandler<AppEnv> = async (c, next) => {
@@ -3704,7 +3704,7 @@ EOF
 ---
 ### Task 9: RBAC administration — `/v1/admin/roles` and `/v1/companies/{companyId}/role-assignments`
 
-The "roles assigned" half of the Phase 0 definition of done. Two resources in one task because they share one error surface: every refusal here comes from a Plan 0A trigger (`forbid_self_grant`, `assert_assignment_kind`, `keep_last_admin_*`), and the handlers add no checks of their own — the pre-flight is `requirePermission`, the control is the data layer (SAH-032). **One exception, and it is the only one:** `role_assignment.principal_id` is a plain FK to the global `app.principal` and FK checks bypass RLS (plan0A:1331–1334, 2027), so no trigger can see that a foreign tenant's principal was named. The assignment handler makes that one membership check itself, inside the same `withTenant` (Step 5).
+The "roles assigned" half of the Phase 0 definition of done. Two resources in one task because they share one error surface: every refusal here comes from a Plan 0A trigger (`forbid_self_grant`, `assert_assignment_kind`, `keep_last_admin_*`), and the handlers add no checks of their own — the pre-flight is `requirePermission`, the control is the data layer (LEGACY-032). **One exception, and it is the only one:** `role_assignment.principal_id` is a plain FK to the global `app.principal` and FK checks bypass RLS (plan0A:1331–1334, 2027), so no trigger can see that a foreign tenant's principal was named. The assignment handler makes that one membership check itself, inside the same `withTenant` (Step 5).
 
 Role assignments mount **under a company** (`role_assignment` carries `company_id`), so they use `{ company: "path:companyId" }` and need no tenant-wide scope. Roles do not, so they use `{ company: "any" }`.
 
@@ -3884,7 +3884,7 @@ describe("/v1/companies/{companyId}/role-assignments — spec:2166, 2179 R5/R8",
     expect(((await list.json()) as { items: unknown[] }).items).toHaveLength(1);
   });
 
-  it("grantedBy is stamped from the session, not from the body (SAH-044)", async () => {
+  it("grantedBy is stamped from the session, not from the body (LEGACY-044)", async () => {
     const [row] = await api.db.admin<{ granted_by: string }[]>`
       select granted_by from app.role_assignment where principal_id = ${invited} and role_id = ${clerkRole}`;
     expect(row!.granted_by).toBe(a.human);
@@ -4110,7 +4110,7 @@ roleAssignmentRoutes.openapi(
       const [member] = await tx<{ principal_id: string }[]>`
         select principal_id from app.membership where principal_id = ${body.principalId}`;
       if (!member) throw new AppError("ERR_CONFLICT_REFERENCE", `no principal ${body.principalId} in this tenant`);
-      // granted_by is stamped by the trigger; a value in the statement is overwritten (plan0A:2373, SAH-044).
+      // granted_by is stamped by the trigger; a value in the statement is overwritten (plan0A:2373, LEGACY-044).
       // forbid_self_grant and assert_assignment_kind fire on the insert; the handler adds no OTHER check —
       // a cross-tenant `role_id` is already refused by the composite `(tenant_id, role_id)` FK.
       await tx`insert into app.role_assignment (tenant_id, principal_id, role_id, company_id, expires_at)
@@ -4241,7 +4241,7 @@ git commit -m "$(cat <<'EOF'
 feat(api): role and role-assignment administration [0B T9]
 
 Every refusal comes from a Plan 0A trigger — forbid_self_grant, assert_assignment_kind,
-keep_last_admin_* — surfaced as a problem code (SAH-032). The one check a trigger cannot
+keep_last_admin_* — surfaced as a problem code (LEGACY-032). The one check a trigger cannot
 make is membership: principal_id is a plain FK and FK checks bypass RLS, so the assignment
 handler asks for the membership row and answers ERR_CONFLICT_REFERENCE on a miss.
 granted_by is stamped from the session; ending an assignment sets expires_at.
@@ -4317,7 +4317,7 @@ export const AuditLogQuery = ListQuery.extend({
    * which is what makes `?sort=seq;drop table app.tenant` an ERR_VALIDATION_FAILED rather than a 200. The
    * override is an EMPTY-STRING bound on the same key, not a `.refine(...)`: `@hono/zod-openapi` generates query
    * parameters from a `ZodObject`, and a `.refine` would wrap the schema in `ZodEffects`. `.strict()` is likewise
-   * avoided — `sah-036` sends undeclared `where=` and `filter=` keys and expects them stripped, not rejected.
+   * avoided — `legacy-036` sends undeclared `where=` and `filter=` keys and expects them stripped, not rejected.
    */
   sort: z.string().max(0, "sort is not supported on this resource").optional(),
 });
@@ -4393,7 +4393,7 @@ import type { Problem } from "@dulja/contracts";
 import { seedTenant, uuidv7, type Seed } from "@dulja/db/test";
 import { startApi, type StartedApi } from "../../support/app";
 
-describe("/v1/admin/audit-log — spec:2124, acceptance test 13; SAH-029, 030, 040", () => {
+describe("/v1/admin/audit-log — spec:2124, acceptance test 13; LEGACY-029, 030, 040", () => {
   let api: StartedApi; let a: Seed; let b: Seed;
   beforeAll(async () => {
     api = await startApi(); a = await seedTenant(api.db, "Alpha"); b = await seedTenant(api.db, "Beta");
@@ -5075,7 +5075,7 @@ const UNSAFE_ALLOW = [
   // roles suite re-applies the same file to prove idempotence (plan0A:553). A checked-in .sql file read from
   // disk is code, not input — the identical case to migrate.ts — and neither file is reachable from a request.
   // Without these two entries `bun run lint:rules` reports two violations on a tree that has changed nothing,
-  // and Step 6, Task 14's `sah-036` and Task 15's final gate all fail. Contracts §3.3 is owed the amendment.
+  // and Step 6, Task 14's `legacy-036` and Task 15's final gate all fail. Contracts §3.3 is owed the amendment.
   "packages/db/test/harness.ts", "packages/db/test/roles.test.ts",
 ];
 /** A SQL keyword, but never a method call: `.update(`, `.delete(` and `.select(` are JavaScript, not SQL. */
@@ -5109,7 +5109,7 @@ export const rule: LintRule = {
           built = body.includes("${") && KEYWORDS.test(body);
         }
         if (built) {
-          out.push({ file: f.path, line: i + 1, rule: this.name, detail: "SQL assembled from a string; use a `tx` tagged template with bound values (SAH-036, 037)" });
+          out.push({ file: f.path, line: i + 1, rule: this.name, detail: "SQL assembled from a string; use a `tx` tagged template with bound values (LEGACY-036, 037)" });
         }
       });
     }
@@ -5278,7 +5278,7 @@ import { ERRORS } from "../../../packages/contracts/src/errors";
 import type { LintRule, LintViolation } from "../types";
 
 /**
- * spec:2051: "a code no code raises fails the build (the inverse of SAH-084)." Only the `ERRORS` OBJECT LITERAL
+ * spec:2051: "a code no code raises fails the build (the inverse of LEGACY-084)." Only the `ERRORS` OBJECT LITERAL
  * is excised, not the whole registry file: `fromDatabaseError` lives in that same file and is the only raiser of
  * ERR_RLS_DENIED, ERR_CONFLICT_UNIQUE and ERR_CONFLICT_REFERENCE, so excluding the file wholesale would leave
  * those three satisfied by nothing but assertion strings in test files — and deleting a test would then fail the
@@ -5364,7 +5364,7 @@ EOF
 
 **Interfaces:**
 - Consumes: `ROUTES`, `RouteModule`, `createApp` from `apps/api` **through its package entry only** (`@dulja/api`, never a route file — contracts §3.1); `JOBS` from `@dulja/db`; `startDb`, `seedTenant`, `draftDocument`, `uuidv7`, `Db`, `Seed` from `@dulja/db/test`; `withTenant` (production) from `@dulja/db`; `startApi`, `ApiRequest` from `apps/api/test/support/app`.
-- Produces: `export const PROBES: Readonly<Record<string, IsolationProbe>>` keyed by `RouteModule.path` and `export interface IsolationProbe` (contracts §4.2.7); `export function sharedDb(): Promise<{ db: Db; rw: Sql; a: Seed; b: Seed }>`, `export interface ThinContext` and `export function thinRegression(sah: string, heading: string, cites: string, body: (ctx: ThinContext) => Promise<void>): void` — all four consumed by Task 14.
+- Produces: `export const PROBES: Readonly<Record<string, IsolationProbe>>` keyed by `RouteModule.path` and `export interface IsolationProbe` (contracts §4.2.7); `export function sharedDb(): Promise<{ db: Db; rw: Sql; a: Seed; b: Seed }>`, `export interface ThinContext` and `export function thinRegression(legacyDefect: string, heading: string, cites: string, body: (ctx: ThinContext) => Promise<void>): void` — all four consumed by Task 14.
 
 - [ ] **Step 1: Scaffold the workspace**
 
@@ -5441,9 +5441,9 @@ export interface ThinContext { db: Db; rw: Sql; a: Seed; b: Seed; withTenant: ty
  * information_schema / lintSchema — and citing the Plan 0A test that first proved it.
  */
 export function thinRegression(
-  sah: string, heading: string, cites: string, body: (ctx: ThinContext) => Promise<void>,
+  legacyDefect: string, heading: string, cites: string, body: (ctx: ThinContext) => Promise<void>,
 ): void {
-  describe(`${sah} ${heading} — 0B`, () => {
+  describe(`${legacyDefect} ${heading} — 0B`, () => {
     it(`holds through the production API layer (first proven by ${cites})`, async () => {
       const ctx = await sharedDb();
       await body({ ...ctx, withTenant, expect });
@@ -5630,7 +5630,7 @@ describe("acceptance test 11 — no parameter, header or stored procedure grants
 
   const code = async (res: Response) => ((await res.json()) as Problem).code;
 
-  it("a forged X-Tenant-Id / X-Actor-Id is ignored (SAH-026)", async () => {
+  it("a forged X-Tenant-Id / X-Actor-Id is ignored (LEGACY-026)", async () => {
     const res = await api.request({ method: "GET", path: "/v1/session", as: a.human,
       headers: { "X-Tenant-Id": b.tenant, "X-Actor-Id": b.human } });
     expect(await res.json()).toMatchObject({ tenantId: a.tenant, principalId: a.human });
@@ -5655,12 +5655,12 @@ describe("acceptance test 11 — no parameter, header or stored procedure grants
     }
   });
 
-  it("a valid signature over a subject with no membership grants nothing (SAH-025, 043)", async () => {
+  it("a valid signature over a subject with no membership grants nothing (LEGACY-025, 043)", async () => {
     expect(await code(await api.request({ method: "GET", path: "/v1/session", as: "00000000-0000-7000-8000-000000000000" })))
       .toBe("ERR_AUTH_NO_MEMBERSHIP");
   });
 
-  it("a body field named tenant_id does not move the session (SAH-035)", async () => {
+  it("a body field named tenant_id does not move the session (LEGACY-035)", async () => {
     const res = await api.request({ method: "POST", path: "/v1/companies", as: a.human,
       body: { code: "SNEAK", name: "Sneak", baseCurrency: "MYR", tenant_id: b.tenant, tenantId: b.tenant } });
     expect([201, 403]).toContain(res.status);
@@ -5668,13 +5668,13 @@ describe("acceptance test 11 — no parameter, header or stored procedure grants
     expect(leak!.n).toBe(0);
   });
 
-  it("a query parameter that names a session variable does nothing (SAH-027)", async () => {
+  it("a query parameter that names a session variable does nothing (LEGACY-027)", async () => {
     const res = await api.request({ method: "GET", path: `/v1/companies?limit=100&app.tenant_id=${b.tenant}&set_config=1`, as: a.human });
     const ids = ((await res.json()) as { items: { id: string }[] }).items.map((i) => i.id);
     expect(ids).not.toContain(b.company);
   });
 
-  it("an Idempotency-Key cannot be replayed across principals (SAH-042)", async () => {
+  it("an Idempotency-Key cannot be replayed across principals (LEGACY-042)", async () => {
     const key = "bypass-replay";
     await api.request({ method: "POST", path: "/v1/companies", as: a.human, body: { code: "K1", name: "K1", baseCurrency: "MYR" }, idempotencyKey: key });
     const other = await api.request({ method: "POST", path: "/v1/companies", as: b.human, body: { code: "K1", name: "K1", baseCurrency: "MYR" }, idempotencyKey: key });
@@ -5692,7 +5692,7 @@ describe("acceptance test 11 — no parameter, header or stored procedure grants
     await rw.end();
   });
 
-  it("app_rw cannot write a row for another tenant even with the uuid in hand (SAH-035)", async () => {
+  it("app_rw cannot write a row for another tenant even with the uuid in hand (LEGACY-035)", async () => {
     const rw = createDb(api.db.url("app_rw"));
     await expect(rw.begin(async (tx) => {
       await tx`select set_config('app.tenant_id', ${a.tenant}, true), set_config('app.actor_id', ${a.human}, true)`;
@@ -5727,25 +5727,25 @@ EOF
 
 ---
 
-### Task 14: the forty-three `tests/regression/sah-NNN.test.ts` files (contracts §3.7.3)
+### Task 14: the forty-three `tests/regression/legacy-NNN.test.ts` files (contracts §3.7.3)
 
 `spec:2059` requires one regression file per Part I defect touched. Contracts §3.7.3 makes the **first slice in execution order** the creator, and 0B is first for forty-three of them: sixteen **full** files whose scenario this slice's own work proves through HTTP, twenty-one **thin** files re-running a Plan 0A data-layer proof through the *production* `withTenant`, and six **structural** files for facts 0A fixed without a dedicated test. Every later slice appends a `describe("… — <slice id>")` block to these same files and never edits the block written here.
 
-`sah-024` is **not** in this list: contracts §3.7.3 names **1A** as its creator, marked `it.skip` until OD-27 answers Part VII #6. Do not create it here.
+`legacy-024` is **not** in this list: contracts §3.7.3 names **1A** as its creator, marked `it.skip` until OD-27 answers Part VII #6. Do not create it here.
 
 **No red step here either, for the reason Task 13 states.** These forty-three files assert against behaviour Tasks 1–12 already shipped; a run before the file exists reports `Cannot find module`, not a failing assertion. Step 6 is the run that matters, and Step 7 is the mechanical count.
 
 **Files:**
 - Create: `tests/support/api.ts`, `tests/support/source.ts`, `tests/support/ledger.ts`
-- Create (16 full): `tests/regression/sah-025.test.ts`, `sah-026`, `sah-027`, `sah-028`, `sah-034`, `sah-035`, `sah-036`, `sah-037`, `sah-043`, `sah-047`, `sah-068`, `sah-069`, `sah-078`, `sah-082`, `sah-083`, `sah-084` (`.test.ts` each)
-- Create (21 thin): `tests/regression/sah-003.test.ts`, `sah-012`, `sah-013`, `sah-021`, `sah-029`, `sah-030`, `sah-031`, `sah-032`, `sah-033`, `sah-040`, `sah-041`, `sah-042`, `sah-044`, `sah-050`, `sah-051`, `sah-053`, `sah-070`, `sah-072`, `sah-073`, `sah-074`, `sah-080` (`.test.ts` each)
-- Create (6 structural): `tests/regression/sah-023.test.ts`, `sah-045`, `sah-065`, `sah-071`, `sah-075`, `sah-087` (`.test.ts` each)
-- Modify: `apps/api/src/app.ts` — one added line, `export { ConfigError, readConfig, type ApiConfig } from "./config";`, so `sah-082` reaches the config through the `@dulja/api` package entry rather than a source file (contracts §3.1; the same rule Task 13 followed for `ROUTES`)
+- Create (16 full): `tests/regression/legacy-025.test.ts`, `legacy-026`, `legacy-027`, `legacy-028`, `legacy-034`, `legacy-035`, `legacy-036`, `legacy-037`, `legacy-043`, `legacy-047`, `legacy-068`, `legacy-069`, `legacy-078`, `legacy-082`, `legacy-083`, `legacy-084` (`.test.ts` each)
+- Create (21 thin): `tests/regression/legacy-003.test.ts`, `legacy-012`, `legacy-013`, `legacy-021`, `legacy-029`, `legacy-030`, `legacy-031`, `legacy-032`, `legacy-033`, `legacy-040`, `legacy-041`, `legacy-042`, `legacy-044`, `legacy-050`, `legacy-051`, `legacy-053`, `legacy-070`, `legacy-072`, `legacy-073`, `legacy-074`, `legacy-080` (`.test.ts` each)
+- Create (6 structural): `tests/regression/legacy-023.test.ts`, `legacy-045`, `legacy-065`, `legacy-071`, `legacy-075`, `legacy-087` (`.test.ts` each)
+- Modify: `apps/api/src/app.ts` — one added line, `export { ConfigError, readConfig, type ApiConfig } from "./config";`, so `legacy-082` reaches the config through the `@dulja/api` package entry rather than a source file (contracts §3.1; the same rule Task 13 followed for `ROUTES`)
 - Delete: `tests/regression/.gitkeep` (the directory now holds forty-three files)
 
 **Interfaces:**
 - Consumes: `sharedDb`, `thinRegression`, `ThinContext` (Task 13); `startApi`, `StartedApi` from `apps/api/test/support/app` (Task 5 — a test-support module, the same cross-workspace import Task 13 already makes); `ROUTES`, `readConfig`, `ConfigError` from `@dulja/api` (Tasks 4, 13); `seedTenant`, `draftDocument`, `uuidv7`, `AUDIT_EXEMPT`, `MIGRATIONS_DIR`, `type Db`, `type Seed` from `@dulja/db/test` and `@dulja/db`; `withTenant`, `lintSchema`, `discover`, `listApplied` from `@dulja/db`; `type Problem`, `ERRORS`, `PERMISSIONS` from `@dulja/contracts` (Tasks 3, 7); `type SourceFile` from `scripts/lint/types` and `rule as noSqlConcat` from `scripts/lint/rules/no-sql-concat` (Task 12).
-- Produces: `export async function grantAdmin(api: StartedApi, s: Seed): Promise<void>`; `export function sharedApi(): Promise<{ api: StartedApi; a: Seed; b: Seed }>`; `export interface FullContext { api: StartedApi; a: Seed; b: Seed; expect: typeof expect }`; `export function fullRegression(sah: string, heading: string, cases: Record<string, (ctx: FullContext) => Promise<void>>): void`; `export async function problemOf(res: Response): Promise<Problem>`; `export const REPO_ROOT: string` and `export function sourceFiles(roots?: string[]): SourceFile[]`; `export interface Line` and `export async function postLines(tx: Sql, s: Seed, docId: string, lines: Line[], periodId?: string): Promise<void>`. Every later slice writing a full regression file uses `fullRegression` + `sharedApi`; every later slice writing a thin one uses Task 13's `thinRegression` + `sharedDb`.
+- Produces: `export async function grantAdmin(api: StartedApi, s: Seed): Promise<void>`; `export function sharedApi(): Promise<{ api: StartedApi; a: Seed; b: Seed }>`; `export interface FullContext { api: StartedApi; a: Seed; b: Seed; expect: typeof expect }`; `export function fullRegression(legacyDefect: string, heading: string, cases: Record<string, (ctx: FullContext) => Promise<void>>): void`; `export async function problemOf(res: Response): Promise<Problem>`; `export const REPO_ROOT: string` and `export function sourceFiles(roots?: string[]): SourceFile[]`; `export interface Line` and `export async function postLines(tx: Sql, s: Seed, docId: string, lines: Line[], periodId?: string): Promise<void>`. Every later slice writing a full regression file uses `fullRegression` + `sharedApi`; every later slice writing a thin one uses Task 13's `thinRegression` + `sharedDb`.
 
 - [ ] **Step 1: Write the three support modules**
 
@@ -5812,9 +5812,9 @@ export interface FullContext { api: StartedApi; a: Seed; b: Seed; expect: typeof
  * `describe` body); each `it` awaits the memoised app itself.
  */
 export function fullRegression(
-  sah: string, heading: string, cases: Record<string, (ctx: FullContext) => Promise<void>>,
+  legacyDefect: string, heading: string, cases: Record<string, (ctx: FullContext) => Promise<void>>,
 ): void {
-  describe(`${sah} ${heading} — 0B`, () => {
+  describe(`${legacyDefect} ${heading} — 0B`, () => {
     for (const [name, fn] of Object.entries(cases)) {
       it(name, async () => {
         const { api, a, b } = await sharedApi();
@@ -5899,12 +5899,12 @@ export async function postLines(tx: Sql, s: Seed, docId: string, lines: Line[], 
 
 - [ ] **Step 2: Write the first eight full files — identity and authorisation (025, 026, 027, 028, 034, 035, 043, 047)**
 
-`tests/regression/sah-025.test.ts`:
+`tests/regression/legacy-025.test.ts`:
 
 ```ts
 import { fullRegression, problemOf } from "../support/api";
 
-fullRegression("SAH-025", "`procQuickLogin` grants a full administrator session with no credentials", {
+fullRegression("LEGACY-025", "`procQuickLogin` grants a full administrator session with no credentials", {
   "no Authorization header reaches nothing — not even the aal1-exempt session route": async ({ api, expect }) => {
     const res = await api.request({ method: "GET", path: "/v1/session" });
     expect(res.status).toBe(401);
@@ -5921,7 +5921,7 @@ fullRegression("SAH-025", "`procQuickLogin` grants a full administrator session 
 
   "administrator authority is a role assignment, never a side effect of signing in": async ({ api, a, expect }) => {
     const invite = await api.request({ method: "POST", path: "/v1/admin/users", as: a.human,
-      body: { email: "sah025@example.test", displayName: "SAH-025" } });
+      body: { email: "legacy025@example.test", displayName: "LEGACY-025" } });
     expect(invite.status).toBe(201);
     const created = (await invite.json()) as { id: string };
     await api.loadPrincipals();
@@ -5934,12 +5934,12 @@ fullRegression("SAH-025", "`procQuickLogin` grants a full administrator session 
 });
 ```
 
-`tests/regression/sah-026.test.ts`:
+`tests/regression/legacy-026.test.ts`:
 
 ```ts
 import { fullRegression, problemOf } from "../support/api";
 
-fullRegression("SAH-026", "Session identity is unauthenticated, client-writable context", {
+fullRegression("LEGACY-026", "Session identity is unauthenticated, client-writable context", {
   "the tenant and actor come from the verified token, never from a header": async ({ api, a, b, expect }) => {
     const res = await api.request({ method: "GET", path: "/v1/session", as: a.human,
       headers: { "X-Tenant-Id": b.tenant, "X-Actor-Id": b.human, "X-Principal-Id": b.human } });
@@ -5949,10 +5949,10 @@ fullRegression("SAH-026", "Session identity is unauthenticated, client-writable 
 
   "a body field named tenant_id is stripped by the schema and never reaches the row": async ({ api, a, b, expect }) => {
     const res = await api.request({ method: "POST", path: "/v1/companies", as: a.human,
-      body: { code: "SAH026", name: "SAH-026", baseCurrency: "MYR", tenant_id: b.tenant, tenantId: b.tenant } });
+      body: { code: "LEGACY026", name: "LEGACY-026", baseCurrency: "MYR", tenant_id: b.tenant, tenantId: b.tenant } });
     expect(res.status).toBe(201);
     const [row] = await api.db.admin<{ tenant_id: string }[]>`
-      select tenant_id from app.company where code = 'SAH026'`;
+      select tenant_id from app.company where code = 'LEGACY026'`;
     expect(row!.tenant_id).toBe(a.tenant);
   },
 
@@ -5968,12 +5968,12 @@ fullRegression("SAH-026", "Session identity is unauthenticated, client-writable 
 });
 ```
 
-`tests/regression/sah-027.test.ts`:
+`tests/regression/legacy-027.test.ts`:
 
 ```ts
 import { fullRegression, problemOf } from "../support/api";
 
-fullRegression("SAH-027", "One client-settable variable disables every write-time control", {
+fullRegression("LEGACY-027", "One client-settable variable disables every write-time control", {
   "a query parameter naming a session variable is stripped and changes nothing": async ({ api, a, b, expect }) => {
     const res = await api.request({ method: "GET", as: a.human,
       path: `/v1/companies?limit=100&app.tenant_id=${b.tenant}&set_config=1&silent=1&audit=off` });
@@ -5991,7 +5991,7 @@ fullRegression("SAH-027", "One client-settable variable disables every write-tim
       // Every off-switch the legacy system had, invented back: none of them exists, and setting them is inert.
       await tx`select set_config('app.silent', '1', true), set_config('app.audit', 'off', true),
                       set_config('app.skip_checks', 'true', true), set_config('app.admin', '1', true)`;
-      await tx`insert into app.company (tenant_id, code, name, base_currency) values (${a.tenant}, 'SAH027', 'SAH-027', 'MYR')`;
+      await tx`insert into app.company (tenant_id, code, name, base_currency) values (${a.tenant}, 'LEGACY027', 'LEGACY-027', 'MYR')`;
     });
     const after = await api.db.admin<{ n: number }[]>`
       select count(*)::int as n from app.audit_log where tenant_id = ${a.tenant}`;
@@ -6002,18 +6002,18 @@ fullRegression("SAH-027", "One client-settable variable disables every write-tim
     await expect(api.db.rw.begin(async (tx) => {
       await tx`select set_config('app.tenant_id', ${a.tenant}, true), set_config('app.actor_id', ${a.human}, true)`;
       await tx`select set_config('app.bypass_rls', 'on', true), set_config('row_security', 'off', true)`;
-      await tx`insert into app.company (tenant_id, code, name, base_currency) values (${b.tenant}, 'SAH027X', 'Forged', 'MYR')`;
+      await tx`insert into app.company (tenant_id, code, name, base_currency) values (${b.tenant}, 'LEGACY027X', 'Forged', 'MYR')`;
     })).rejects.toThrow(/row-level security|permission denied/);
   },
 });
 ```
 
-`tests/regression/sah-028.test.ts`:
+`tests/regression/legacy-028.test.ts`:
 
 ```ts
 import { fullRegression, problemOf } from "../support/api";
 
-fullRegression("SAH-028", "Passwords are stored and compared in cleartext", {
+fullRegression("LEGACY-028", "Passwords are stored and compared in cleartext", {
   "no identity table in schema app has a password or credential column": async ({ api, expect }) => {
     // Scoped to the identity tables, not schema-wide: 6A's `terminal_enrolment` and 8A's HR envelope carry
     // legitimate secret material, and this block cannot be edited when they land (contracts §3.7.3). The defect
@@ -6037,7 +6037,7 @@ fullRegression("SAH-028", "Passwords are stored and compared in cleartext", {
 
   "the API never accepts a password: the invite body is e-mail and display name only": async ({ api, a, expect }) => {
     const res = await api.request({ method: "POST", path: "/v1/admin/users", as: a.human,
-      body: { email: "sah028@example.test", displayName: "SAH-028", password: "hunter2" } });
+      body: { email: "legacy028@example.test", displayName: "LEGACY-028", password: "hunter2" } });
     expect(res.status).toBe(201);
     const created = (await res.json()) as { id: string };
     const [row] = await api.db.admin<{ auth_subject: string }[]>`
@@ -6047,13 +6047,13 @@ fullRegression("SAH-028", "Passwords are stored and compared in cleartext", {
 });
 ```
 
-`tests/regression/sah-034.test.ts`:
+`tests/regression/legacy-034.test.ts`:
 
 ```ts
 import { PERMISSIONS } from "@dulja/contracts";
 import { fullRegression, problemOf } from "../support/api";
 
-fullRegression("SAH-034", "`Grants` — the document-level permission table — is never read by any code", {
+fullRegression("LEGACY-034", "`Grants` — the document-level permission table — is never read by any code", {
   "the permission table is real data that the database itself reads, not a table nothing consults": async ({ api, expect }) => {
     // `Grants` existed and was never queried. `app.permission` is the FK target of every `role_permission` row
     // and the argument of `app.actor_has` (plan0A:985–1004), so a code that is not here cannot be granted and a
@@ -6095,12 +6095,12 @@ fullRegression("SAH-034", "`Grants` — the document-level permission table — 
 });
 ```
 
-`tests/regression/sah-035.test.ts`:
+`tests/regression/legacy-035.test.ts`:
 
 ```ts
 import { fullRegression, problemOf } from "../support/api";
 
-fullRegression("SAH-035", "Tenant (Site) scoping is a client convention", {
+fullRegression("LEGACY-035", "Tenant (Site) scoping is a client convention", {
   "reading another tenant's row by its uuid is 404, not a row": async ({ api, a, b, expect }) => {
     const res = await api.request({ method: "GET", path: `/v1/companies/${b.company}`, as: a.human });
     expect(res.status).toBe(404);
@@ -6126,18 +6126,18 @@ fullRegression("SAH-035", "Tenant (Site) scoping is a client convention", {
   "app_rw itself cannot insert a row for another tenant even holding the uuid": async ({ api, a, b, expect }) => {
     await expect(api.db.rw.begin(async (tx) => {
       await tx`select set_config('app.tenant_id', ${a.tenant}, true), set_config('app.actor_id', ${a.human}, true)`;
-      await tx`insert into app.company (tenant_id, code, name, base_currency) values (${b.tenant}, 'SAH035', 'Forged', 'MYR')`;
+      await tx`insert into app.company (tenant_id, code, name, base_currency) values (${b.tenant}, 'LEGACY035', 'Forged', 'MYR')`;
     })).rejects.toThrow(/row-level security/);
   },
 });
 ```
 
-`tests/regression/sah-043.test.ts`:
+`tests/regression/legacy-043.test.ts`:
 
 ```ts
 import { fullRegression, problemOf } from "../support/api";
 
-fullRegression("SAH-043", "Failed authentication returns a row instead of raising", {
+fullRegression("LEGACY-043", "Failed authentication returns a row instead of raising", {
   "every failure shape is a problem document with a 401 status, never a body of data": async ({ api, expect }) => {
     const forged = "eyJhbGciOiJSUzI1NiIsImtpZCI6InRlc3Qta2V5IiwidHlwIjoiSldUIn0.eyJzdWIiOiJ4In0.AAAA";
     for (const token of [forged, "Bearer", "", "null", "undefined"]) {
@@ -6163,14 +6163,14 @@ fullRegression("SAH-043", "Failed authentication returns a row instead of raisin
 });
 ```
 
-`tests/regression/sah-047.test.ts`:
+`tests/regression/legacy-047.test.ts`:
 
 ```ts
 import { ROUTES } from "@dulja/api";
 import { ERRORS, PERMISSIONS } from "@dulja/contracts";
 import { fullRegression, problemOf } from "../support/api";
 
-fullRegression("SAH-047", "Only 7 of ~55 permission flags are ever read by the database", {
+fullRegression("LEGACY-047", "Only 7 of ~55 permission flags are ever read by the database", {
   "the catalogue and the seeded table are the same set, in both directions": async ({ api, expect }) => {
     const rows = await api.db.admin<{ code: string }[]>`select code from app.permission order by code`;
     expect(rows.map((r) => r.code)).toEqual([...PERMISSIONS].map((p) => p.code).sort());
@@ -6198,7 +6198,7 @@ fullRegression("SAH-047", "Only 7 of ~55 permission flags are ever read by the d
 
 - [ ] **Step 3: Write the eight remaining full files — SQL text, configuration and error handling (036, 037, 068, 069, 078, 082, 083, 084)**
 
-`tests/regression/sah-036.test.ts`:
+`tests/regression/legacy-036.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -6206,7 +6206,7 @@ import { rule as noSqlConcat } from "../../scripts/lint/rules/no-sql-concat";
 import { fullRegression, problemOf } from "../support/api";
 import { sourceFiles } from "../support/source";
 
-describe("SAH-036 Six procedures accept a raw SQL predicate as a parameter — 0B (source)", () => {
+describe("LEGACY-036 Six procedures accept a raw SQL predicate as a parameter — 0B (source)", () => {
   it("no shipped source builds SQL by concatenation or hands `.unsafe` a non-literal (acceptance test 27)", () => {
     const violations = noSqlConcat.run(sourceFiles());
     expect(violations.map((v) => `${v.file}:${v.line} ${v.detail}`)).toEqual([]);
@@ -6243,7 +6243,7 @@ describe("SAH-036 Six procedures accept a raw SQL predicate as a parameter — 0
   });
 });
 
-fullRegression("SAH-036", "Six procedures accept a raw SQL predicate as a parameter", {
+fullRegression("LEGACY-036", "Six procedures accept a raw SQL predicate as a parameter", {
   "no endpoint accepts a predicate: an undeclared filter key is stripped, never spliced": async ({ api, a, expect }) => {
     const res = await api.request({ method: "GET", as: a.human,
       path: `/v1/admin/audit-log?limit=5&where=${encodeURIComponent("1=1 or tenant_id is not null")}&filter=${encodeURIComponent("true")}` });
@@ -6270,7 +6270,7 @@ fullRegression("SAH-036", "Six procedures accept a raw SQL predicate as a parame
 });
 ```
 
-`tests/regression/sah-037.test.ts`:
+`tests/regression/legacy-037.test.ts`:
 
 ```ts
 import { fullRegression, problemOf } from "../support/api";
@@ -6282,13 +6282,13 @@ const INJECTIONS = [
   "\\'; update app.company set name = 'owned'; --",
 ];
 
-fullRegression("SAH-037", "Four procedures interpolate unescaped user strings into SQL literals", {
+fullRegression("LEGACY-037", "Four procedures interpolate unescaped user strings into SQL literals", {
   "an injection string is stored and returned byte-identically, and nothing else changes": async ({ api, a, expect }) => {
     let n = 0;
     for (const evil of INJECTIONS) {
       n += 1;
       const created = await api.request({ method: "POST", path: "/v1/companies", as: a.human,
-        body: { code: `SAH037${n}`, name: evil, baseCurrency: "MYR" } });
+        body: { code: `LEGACY037${n}`, name: evil, baseCurrency: "MYR" } });
       expect(created.status).toBe(201);
       const { id } = (await created.json()) as { id: string };
 
@@ -6313,7 +6313,7 @@ fullRegression("SAH-037", "Four procedures interpolate unescaped user strings in
   "an injection string in an Idempotency-Key is a key, not a fragment": async ({ api, a, expect }) => {
     const key = "k'; delete from app.idempotency_key; --";
     const res = await api.request({ method: "POST", path: "/v1/companies", as: a.human,
-      body: { code: "SAH037K", name: "Key", baseCurrency: "MYR" }, idempotencyKey: key });
+      body: { code: "LEGACY037K", name: "Key", baseCurrency: "MYR" }, idempotencyKey: key });
     expect(res.status).toBe(201);
     const [row] = await api.db.admin<{ key: string }[]>`select key from app.idempotency_key where key = ${key}`;
     expect(row!.key).toBe(key);
@@ -6321,7 +6321,7 @@ fullRegression("SAH-037", "Four procedures interpolate unescaped user strings in
 });
 ```
 
-`tests/regression/sah-068.test.ts`:
+`tests/regression/legacy-068.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -6330,7 +6330,7 @@ import { sourceFiles } from "../support/source";
 
 /** The legacy fix for missing indexes was a pinned plan (`PLAN JOIN (…)`, `+ INDEX (…)`); Dulja's fix is the
  *  index itself, and no plan directive anywhere. Both halves are asserted. */
-describe("SAH-068 23 hardcoded query plans, two pinning implicitly-generated index names — 0B (source)", () => {
+describe("LEGACY-068 23 hardcoded query plans, two pinning implicitly-generated index names — 0B (source)", () => {
   it("no source file pins an optimiser plan or names an index in a query", () => {
     const offenders = sourceFiles()
       .flatMap((f) => f.lines.map((line, i) => ({ file: f.path, line: i + 1, text: line })))
@@ -6339,7 +6339,7 @@ describe("SAH-068 23 hardcoded query plans, two pinning implicitly-generated ind
   });
 });
 
-fullRegression("SAH-068", "23 hardcoded query plans, two pinning implicitly-generated index names", {
+fullRegression("LEGACY-068", "23 hardcoded query plans, two pinning implicitly-generated index names", {
   "the index the ledger reports need exists, so no plan needs pinning": async ({ api, expect }) => {
     const idx = await api.db.admin<{ indexname: string }[]>`
       select indexname from pg_indexes where schemaname = 'app' and tablename = 'ledger_entry' order by indexname`;
@@ -6355,12 +6355,12 @@ fullRegression("SAH-068", "23 hardcoded query plans, two pinning implicitly-gene
 });
 ```
 
-`tests/regression/sah-069.test.ts`:
+`tests/regression/legacy-069.test.ts`:
 
 ```ts
 import { fullRegression, problemOf } from "../support/api";
 
-fullRegression("SAH-069", "Every report query is rebuilt, re-parsed and re-planned on each call, into fixed-size buffers", {
+fullRegression("LEGACY-069", "Every report query is rebuilt, re-parsed and re-planned on each call, into fixed-size buffers", {
   "the free-text columns this slice reads are unbounded: nothing can be silently truncated by a buffer": async ({ api, expect }) => {
     // Named tables, not a schema-wide sweep: later slices add tables and cannot edit this block (§3.7.3).
     // Every one of these is `text`, never `varchar(n)` — an over-length value is refused by the schema at the
@@ -6375,7 +6375,7 @@ fullRegression("SAH-069", "Every report query is rebuilt, re-parsed and re-plann
 
   "an over-length value is REFUSED at the schema boundary, never trimmed to fit": async ({ api, a, expect }) => {
     const res = await api.request({ method: "POST", path: "/v1/companies", as: a.human,
-      body: { code: "SAH069A", name: "x".repeat(201), baseCurrency: "MYR" } });   // CreateCompanyBody: max(200)
+      body: { code: "LEGACY069A", name: "x".repeat(201), baseCurrency: "MYR" } });   // CreateCompanyBody: max(200)
     expect(res.status).toBe(400);
     const problem = await problemOf(res);
     expect(problem.code).toBe("ERR_VALIDATION_FAILED");
@@ -6385,7 +6385,7 @@ fullRegression("SAH-069", "Every report query is rebuilt, re-parsed and re-plann
   "a value at the declared limit round-trips byte-identically": async ({ api, a, expect }) => {
     const name = "ن".repeat(200);                  // 200 characters, 400 bytes: a byte buffer would have cut it
     const created = await api.request({ method: "POST", path: "/v1/companies", as: a.human,
-      body: { code: "SAH069B", name, baseCurrency: "MYR" } });
+      body: { code: "LEGACY069B", name, baseCurrency: "MYR" } });
     expect(created.status).toBe(201);
     const { id } = (await created.json()) as { id: string };
     const read = await api.request({ method: "GET", path: `/v1/companies/${id}`, as: a.human });
@@ -6394,13 +6394,13 @@ fullRegression("SAH-069", "Every report query is rebuilt, re-parsed and re-plann
 });
 ```
 
-`tests/regression/sah-078.test.ts`:
+`tests/regression/legacy-078.test.ts`:
 
 ```ts
 import { PERMISSIONS } from "@dulja/contracts";
 import { fullRegression } from "../support/api";
 
-fullRegression("SAH-078", "Behaviour-governing configuration lives in opaque blobs", {
+fullRegression("LEGACY-078", "Behaviour-governing configuration lives in opaque blobs", {
   "permissions are a version-controlled list, not a bitmask blob": async ({ api, expect }) => {
     const cols = await api.db.admin<{ data_type: string }[]>`
       select data_type from information_schema.columns
@@ -6436,7 +6436,7 @@ fullRegression("SAH-078", "Behaviour-governing configuration lives in opaque blo
 });
 ```
 
-`tests/regression/sah-082.test.ts`:
+`tests/regression/legacy-082.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -6445,7 +6445,7 @@ import { sourceFiles } from "../support/source";
 
 /** No container start: the defect was a literal in shipped code, and its fix is that every address the server
  *  needs is a named environment variable read once at boot (contracts §3.11). */
-describe("SAH-082 Licensing is pinned to a hardcoded private IP address — 0B", () => {
+describe("LEGACY-082 Licensing is pinned to a hardcoded private IP address — 0B", () => {
   const env = { APP_ENV: "dev", LOG_LEVEL: "info", DATABASE_URL: "postgres://u:p@localhost:5432/d",
     SUPABASE_JWKS_URL: "https://example.test/keys", SUPABASE_JWT_ISSUER: "https://example.test" };
 
@@ -6471,15 +6471,15 @@ describe("SAH-082 Licensing is pinned to a hardcoded private IP address — 0B",
 });
 ```
 
-`tests/regression/sah-083.test.ts`:
+`tests/regression/legacy-083.test.ts`:
 
 ```ts
 import { ERRORS } from "@dulja/contracts";
 import { fullRegression, problemOf } from "../support/api";
 
-fullRegression("SAH-083", "One error handler in 33,179 lines, and it swallows the error", {
+fullRegression("LEGACY-083", "One error handler in 33,179 lines, and it swallows the error", {
   "a database error is classified and surfaced, never swallowed into a success": async ({ api, a, expect }) => {
-    const body = { code: "SAH083", name: "First", baseCurrency: "MYR" };
+    const body = { code: "LEGACY083", name: "First", baseCurrency: "MYR" };
     expect((await api.request({ method: "POST", path: "/v1/companies", as: a.human, body })).status).toBe(201);
 
     // A DIFFERENT Idempotency-Key, so the reservation cannot mask it: the unique violation reaches the handler.
@@ -6518,13 +6518,13 @@ fullRegression("SAH-083", "One error handler in 33,179 lines, and it swallows th
 });
 ```
 
-`tests/regression/sah-084.test.ts`:
+`tests/regression/legacy-084.test.ts`:
 
 ```ts
 import { ERRORS } from "@dulja/contracts";
 import { fullRegression, problemOf } from "../support/api";
 
-fullRegression("SAH-084", "Error messages are not actionable and the code convention is broken", {
+fullRegression("LEGACY-084", "Error messages are not actionable and the code convention is broken", {
   "every registry entry has a title and a remedy, and every code follows ERR_<DOMAIN>_<REASON>": async ({ expect }) => {
     for (const [code, def] of Object.entries(ERRORS)) {
       expect(code).toMatch(/^ERR_[A-Z]+(?:_[A-Z0-9]+)+$/);
@@ -6562,16 +6562,16 @@ fullRegression("SAH-084", "Error messages are not actionable and the code conven
 
 Each is one `thinRegression(...)` call: the minimal scenario re-run through the **production** `withTenant` (or, for a privilege or catalogue fact, a catalog read), citing the Plan 0A test that first proved it. `ctx` is Task 13's `ThinContext` — `{ db, rw, a, b, withTenant, expect }`, where `rw` is the production `createDb` pool and `withTenant` the production three-argument helper.
 
-`tests/regression/sah-003.test.ts`:
+`tests/regression/legacy-003.test.ts`:
 
 ```ts
 import { draftDocument, uuidv7 } from "@dulja/db/test";
 import { thinRegression } from "../support/regression";
 import { postLines } from "../support/ledger";
 
-thinRegression("SAH-003", "Nothing enforces that debits equal credits",
+thinRegression("LEGACY-003", "Nothing enforces that debits equal credits",
   "packages/db/test/ledger.test.ts", async ({ db, rw, a, withTenant, expect }) => {
-    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "sah-003" };
+    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "legacy-003" };
     const doc = await draftDocument(db, a, { clientRef: await uuidv7(db.admin) });
     await expect(withTenant(rw, ctx, (tx) =>
       postLines(tx, a, doc, [{ account: a.cash, debit: "100" }, { account: a.sales, credit: "90" }]),
@@ -6582,16 +6582,16 @@ thinRegression("SAH-003", "Nothing enforces that debits equal credits",
   });
 ```
 
-`tests/regression/sah-012.test.ts`:
+`tests/regression/legacy-012.test.ts`:
 
 ```ts
 import { draftDocument, uuidv7 } from "@dulja/db/test";
 import { thinRegression } from "../support/regression";
 import { postLines } from "../support/ledger";
 
-thinRegression("SAH-012", "Base-currency amounts are never derived from value × rate, and the rate is never validated",
+thinRegression("LEGACY-012", "Base-currency amounts are never derived from value × rate, and the rate is never validated",
   "packages/db/test/ledger.test.ts", async ({ db, rw, a, withTenant, expect }) => {
-    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "sah-012" };
+    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "legacy-012" };
 
     const ok = await draftDocument(db, a, { clientRef: await uuidv7(db.admin) });
     await withTenant(rw, ctx, (tx) => postLines(tx, a, ok, [
@@ -6610,16 +6610,16 @@ thinRegression("SAH-012", "Base-currency amounts are never derived from value ×
   });
 ```
 
-`tests/regression/sah-013.test.ts`:
+`tests/regression/legacy-013.test.ts`:
 
 ```ts
 import { draftDocument, uuidv7 } from "@dulja/db/test";
 import { thinRegression } from "../support/regression";
 import { postLines } from "../support/ledger";
 
-thinRegression("SAH-013", "Reversal reads *current* document-type flags instead of what was originally applied",
+thinRegression("LEGACY-013", "Reversal reads *current* document-type flags instead of what was originally applied",
   "packages/db/test/documents.test.ts", async ({ db, rw, a, withTenant, expect }) => {
-    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "sah-013" };
+    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "legacy-013" };
     const doc = await draftDocument(db, a, { clientRef: await uuidv7(db.admin) });
     await withTenant(rw, ctx, (tx) => postLines(tx, a, doc,
       [{ account: a.cash, debit: "7" }, { account: a.sales, credit: "7" }]));
@@ -6635,12 +6635,12 @@ thinRegression("SAH-013", "Reversal reads *current* document-type flags instead 
   });
 ```
 
-`tests/regression/sah-021.test.ts`:
+`tests/regression/legacy-021.test.ts`:
 
 ```ts
 import { thinRegression } from "../support/regression";
 
-thinRegression("SAH-021", "Accounts can be deleted with posted entries; the ID generator then rewinds and reuses their IDs",
+thinRegression("LEGACY-021", "Accounts can be deleted with posted entries; the ID generator then rewinds and reuses their IDs",
   "packages/db/test/privileges.test.ts", async ({ db, expect }) => {
     const [priv] = await db.admin<{ del: boolean }[]>`
       select has_table_privilege('app_rw', 'app.account', 'delete') as del`;
@@ -6667,16 +6667,16 @@ thinRegression("SAH-021", "Accounts can be deleted with posted entries; the ID g
   });
 ```
 
-`tests/regression/sah-029.test.ts`:
+`tests/regression/legacy-029.test.ts`:
 
 ```ts
 import { thinRegression } from "../support/regression";
 
-thinRegression("SAH-029", "The audit trail records no actor and is a freely writable table",
+thinRegression("LEGACY-029", "The audit trail records no actor and is a freely writable table",
   "packages/db/test/audit.test.ts", async ({ db, rw, a, withTenant, expect }) => {
-    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "sah-029" };
+    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "legacy-029" };
     await withTenant(rw, ctx, (tx) =>
-      tx`insert into app.company (tenant_id, code, name, base_currency) values (${a.tenant}, 'SAH029', 'SAH-029', 'MYR')`);
+      tx`insert into app.company (tenant_id, code, name, base_currency) values (${a.tenant}, 'LEGACY029', 'LEGACY-029', 'MYR')`);
 
     const [row] = await db.admin<{ actor_id: string; action: string }[]>`
       select actor_id, action from app.audit_log
@@ -6691,14 +6691,14 @@ thinRegression("SAH-029", "The audit trail records no actor and is a freely writ
   });
 ```
 
-`tests/regression/sah-030.test.ts`:
+`tests/regression/legacy-030.test.ts`:
 
 ```ts
 import { thinRegression } from "../support/regression";
 
-thinRegression("SAH-030", "A login parameter switches the audit trail off",
+thinRegression("LEGACY-030", "A login parameter switches the audit trail off",
   "packages/db/test/audit.test.ts", async ({ db, rw, a, withTenant, expect }) => {
-    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "sah-030" };
+    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "legacy-030" };
     const [before] = await db.admin<{ n: number }[]>`
       select count(*)::int as n from app.audit_log where tenant_id = ${a.tenant}`;
 
@@ -6707,7 +6707,7 @@ thinRegression("SAH-030", "A login parameter switches the audit trail off",
       // — an unknown `app.*` GUC is just a string nothing reads.
       await tx`select set_config('app.silent', '1', true), set_config('app.audit', 'off', true),
                       set_config('app.no_audit', 'true', true), set_config('app.login_silent', '1', true)`;
-      await tx`insert into app.company (tenant_id, code, name, base_currency) values (${a.tenant}, 'SAH030', 'SAH-030', 'MYR')`;
+      await tx`insert into app.company (tenant_id, code, name, base_currency) values (${a.tenant}, 'LEGACY030', 'LEGACY-030', 'MYR')`;
     });
 
     const [after] = await db.admin<{ n: number }[]>`
@@ -6723,16 +6723,16 @@ thinRegression("SAH-030", "A login parameter switches the audit trail off",
   });
 ```
 
-`tests/regression/sah-031.test.ts`:
+`tests/regression/legacy-031.test.ts`:
 
 ```ts
 import { draftDocument, uuidv7 } from "@dulja/db/test";
 import { thinRegression } from "../support/regression";
 import { postLines } from "../support/ledger";
 
-thinRegression("SAH-031", "Period locks live on a sibling table, are per-privilege-tier, and do not reach the line items",
+thinRegression("LEGACY-031", "Period locks live on a sibling table, are per-privilege-tier, and do not reach the line items",
   "packages/db/test/ledger.test.ts", async ({ db, rw, a, withTenant, expect }) => {
-    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "sah-031" };
+    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "legacy-031" };
     for (const [period, date] of [[a.closedPeriod, "2026-02-10"], [a.lockedPeriod, "2026-03-10"]] as const) {
       const doc = await draftDocument(db, a, { periodId: period, effectiveDate: date, clientRef: await uuidv7(db.admin) });
       await expect(withTenant(rw, ctx, (tx) => postLines(tx, a, doc,
@@ -6742,19 +6742,19 @@ thinRegression("SAH-031", "Period locks live on a sibling table, are per-privile
   });
 ```
 
-`tests/regression/sah-032.test.ts`:
+`tests/regression/legacy-032.test.ts`:
 
 ```ts
 import { uuidv7 } from "@dulja/db/test";
 import { thinRegression } from "../support/regression";
 
-thinRegression("SAH-032", "A user can raise a document's approval level above their own",
+thinRegression("LEGACY-032", "A user can raise a document's approval level above their own",
   "packages/db/test/tenant-isolation.test.ts", async ({ db, rw, a, withTenant, expect }) => {
-    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "sah-032" };
+    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "legacy-032" };
     const roleId = await uuidv7(db.admin);
     await db.migrator.begin(async (tx) => {
       await tx`select set_config('app.tenant_id', ${a.tenant}, true), set_config('app.actor_id', ${a.system}, true)`;
-      await tx`insert into app.role (id, tenant_id, code, name_en) values (${roleId}, ${a.tenant}, 'sah032', 'SAH-032')`;
+      await tx`insert into app.role (id, tenant_id, code, name_en) values (${roleId}, ${a.tenant}, 'legacy032', 'LEGACY-032')`;
     });
 
     await expect(withTenant(rw, ctx, (tx) =>
@@ -6764,13 +6764,13 @@ thinRegression("SAH-032", "A user can raise a document's approval level above th
   });
 ```
 
-`tests/regression/sah-033.test.ts`:
+`tests/regression/legacy-033.test.ts`:
 
 ```ts
 import { lintSchema } from "@dulja/db";
 import { thinRegression } from "../support/regression";
 
-thinRegression("SAH-033", "Confidentiality levels are a read-time display filter with a caller-supplied off switch",
+thinRegression("LEGACY-033", "Confidentiality levels are a read-time display filter with a caller-supplied off switch",
   "packages/db/test/schema-lint.test.ts", async ({ db, expect }) => {
     const violations = await lintSchema(db.admin);
     expect(violations.filter((v) => v.rule === "extra_permissive_policy")).toEqual([]);
@@ -6783,19 +6783,19 @@ thinRegression("SAH-033", "Confidentiality levels are a read-time display filter
   });
 ```
 
-`tests/regression/sah-040.test.ts`:
+`tests/regression/legacy-040.test.ts`:
 
 ```ts
 import { uuidv7 } from "@dulja/db/test";
 import { thinRegression } from "../support/regression";
 
-thinRegression("SAH-040", "Deletions are logged less reliably than inserts, and can erase the document header",
+thinRegression("LEGACY-040", "Deletions are logged less reliably than inserts, and can erase the document header",
   "packages/db/test/audit.test.ts", async ({ db, rw, a, withTenant, expect }) => {
-    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "sah-040" };
+    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "legacy-040" };
     const roleId = await uuidv7(db.admin);
     await db.migrator.begin(async (tx) => {
       await tx`select set_config('app.tenant_id', ${a.tenant}, true), set_config('app.actor_id', ${a.system}, true)`;
-      await tx`insert into app.role (id, tenant_id, code, name_en) values (${roleId}, ${a.tenant}, 'sah040', 'SAH-040')`;
+      await tx`insert into app.role (id, tenant_id, code, name_en) values (${roleId}, ${a.tenant}, 'legacy040', 'LEGACY-040')`;
       await tx`insert into app.role_permission (tenant_id, role_id, permission_code)
                values (${a.tenant}, ${roleId}, 'admin.audit_log.read')`;
     });
@@ -6814,16 +6814,16 @@ thinRegression("SAH-040", "Deletions are logged less reliably than inserts, and 
   });
 ```
 
-`tests/regression/sah-041.test.ts`:
+`tests/regression/legacy-041.test.ts`:
 
 ```ts
 import { draftDocument, uuidv7 } from "@dulja/db/test";
 import { thinRegression } from "../support/regression";
 import { postLines } from "../support/ledger";
 
-thinRegression("SAH-041", "Documents are hard-deleted and the anti-tampering controls are shipped disabled",
+thinRegression("LEGACY-041", "Documents are hard-deleted and the anti-tampering controls are shipped disabled",
   "packages/db/test/ledger.test.ts", async ({ db, rw, a, withTenant, expect }) => {
-    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "sah-041" };
+    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "legacy-041" };
     const doc = await draftDocument(db, a, { clientRef: await uuidv7(db.admin) });
     await withTenant(rw, ctx, (tx) => postLines(tx, a, doc,
       [{ account: a.cash, debit: "10" }, { account: a.sales, credit: "10" }]));
@@ -6842,17 +6842,17 @@ thinRegression("SAH-041", "Documents are hard-deleted and the anti-tampering con
   });
 ```
 
-`tests/regression/sah-042.test.ts`:
+`tests/regression/legacy-042.test.ts`:
 
 ```ts
 import { thinRegression } from "../support/regression";
 
-thinRegression("SAH-042", "Ownership and paid-record checks fail open when the user row is missing",
+thinRegression("LEGACY-042", "Ownership and paid-record checks fail open when the user row is missing",
   "packages/db/test/ledger.test.ts", async ({ rw, a, withTenant, expect }) => {
     const GHOST = "00000000-0000-7000-8000-0000000042ff";
     // The predicate answers about a principal that does not exist: FALSE, never NULL, never true. A missing user
     // row closes the door instead of opening it (plan0A:985–1004 — actor_has never fails open).
-    const [ghost] = await withTenant(rw, { tenantId: a.tenant, actorId: GHOST, requestId: "sah-042" }, (tx) =>
+    const [ghost] = await withTenant(rw, { tenantId: a.tenant, actorId: GHOST, requestId: "legacy-042" }, (tx) =>
       tx<{ company: boolean; branch: boolean; unknown_code: boolean }[]>`
         select app.actor_has('admin.user.manage', ${a.company})            as company,
                app.actor_has('admin.user.manage', ${a.company}, ${a.hq})   as branch,
@@ -6863,36 +6863,36 @@ thinRegression("SAH-042", "Ownership and paid-record checks fail open when the u
   });
 ```
 
-`tests/regression/sah-044.test.ts`:
+`tests/regression/legacy-044.test.ts`:
 
 ```ts
 import { thinRegression } from "../support/regression";
 
-thinRegression("SAH-044", "Session records are caller-controlled and attributable to the wrong user",
+thinRegression("LEGACY-044", "Session records are caller-controlled and attributable to the wrong user",
   "packages/db/test/audit.test.ts", async ({ db, rw, a, b, withTenant, expect }) => {
-    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "sah-044" };
+    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "legacy-044" };
     // The statement supplies another tenant's principal as created_by; the stamp trigger overwrites it from the
     // session, so a DEFAULT is not the only control and a caller cannot mis-attribute a write (plan0A:2365).
     await withTenant(rw, ctx, (tx) =>
       tx`insert into app.company (tenant_id, code, name, base_currency, created_by)
-         values (${a.tenant}, 'SAH044', 'SAH-044', 'MYR', ${b.human})`);
+         values (${a.tenant}, 'LEGACY044', 'LEGACY-044', 'MYR', ${b.human})`);
 
     const [row] = await db.admin<{ created_by: string }[]>`
-      select created_by from app.company where tenant_id = ${a.tenant} and code = 'SAH044'`;
+      select created_by from app.company where tenant_id = ${a.tenant} and code = 'LEGACY044'`;
     expect(row!.created_by).toBe(a.human);
 
     await expect(withTenant(rw, ctx, (tx) =>
-      tx`update app.company set created_by = ${b.human} where tenant_id = ${a.tenant} and code = 'SAH044'`,
+      tx`update app.company set created_by = ${b.human} where tenant_id = ${a.tenant} and code = 'LEGACY044'`,
     )).rejects.toThrow(/ERR_ACTOR_IMMUTABLE/);
   });
 ```
 
-`tests/regression/sah-050.test.ts`:
+`tests/regression/legacy-050.test.ts`:
 
 ```ts
 import { thinRegression } from "../support/regression";
 
-thinRegression("SAH-050", "NULL dimension values make aggregates accumulate orphans and lose all decrements",
+thinRegression("LEGACY-050", "NULL dimension values make aggregates accumulate orphans and lose all decrements",
   "packages/db/test/schema-lint.test.ts", async ({ db, expect }) => {
     const cols = await db.admin<{ column_name: string; is_nullable: string }[]>`
       select column_name, is_nullable from information_schema.columns
@@ -6908,15 +6908,15 @@ thinRegression("SAH-050", "NULL dimension values make aggregates accumulate orph
   });
 ```
 
-`tests/regression/sah-051.test.ts`:
+`tests/regression/legacy-051.test.ts`:
 
 ```ts
 import { draftDocument, uuidv7 } from "@dulja/db/test";
 import { thinRegression } from "../support/regression";
 
-thinRegression("SAH-051", "Document numbering races on first use, has no uniqueness constraint, and cannot be gapless",
+thinRegression("LEGACY-051", "Document numbering races on first use, has no uniqueness constraint, and cannot be gapless",
   "packages/db/test/documents.test.ts", async ({ db, rw, a, withTenant, expect }) => {
-    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "sah-051" };
+    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "legacy-051" };
     const first = await draftDocument(db, a, { clientRef: await uuidv7(db.admin) });
     const second = await draftDocument(db, a, { clientRef: await uuidv7(db.admin) });
 
@@ -6934,14 +6934,14 @@ thinRegression("SAH-051", "Document numbering races on first use, has no uniquen
   });
 ```
 
-`tests/regression/sah-053.test.ts`:
+`tests/regression/legacy-053.test.ts`:
 
 ```ts
 import { thinRegression } from "../support/regression";
 
-thinRegression("SAH-053", "Runtime DDL disables integrity machinery mid-transaction",
+thinRegression("LEGACY-053", "Runtime DDL disables integrity machinery mid-transaction",
   "packages/db/test/privileges.test.ts", async ({ rw, a, withTenant, expect }) => {
-    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "sah-053" };
+    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "legacy-053" };
     const [create] = await withTenant(rw, ctx, (tx) =>
       tx<{ ok: boolean }[]>`select has_schema_privilege('app_rw', 'app', 'create') as ok`);
     expect(create!.ok).toBe(false);                         // the app role owns nothing and can create nothing
@@ -6959,12 +6959,12 @@ thinRegression("SAH-053", "Runtime DDL disables integrity machinery mid-transact
   });
 ```
 
-`tests/regression/sah-070.test.ts`:
+`tests/regression/legacy-070.test.ts`:
 
 ```ts
 import { thinRegression } from "../support/regression";
 
-thinRegression("SAH-070", "Index coverage is thin on exactly the columns reports filter by",
+thinRegression("LEGACY-070", "Index coverage is thin on exactly the columns reports filter by",
   "packages/db/test/schema-lint.test.ts", async ({ db, expect }) => {
     const idx = await db.admin<{ indexname: string }[]>`
       select indexname from pg_indexes where schemaname = 'app' and tablename = 'ledger_entry'`;
@@ -6972,7 +6972,7 @@ thinRegression("SAH-070", "Index coverage is thin on exactly the columns reports
 
     // The columns the §4.16 reports filter by are covered by real indexes rather than by pinned plans: the
     // ledger by (company_id, account_id, effective_date) and (company_id, effective_date), the document by its
-    // numbering tuple. Coverage is the fix; SAH-068's plan pinning was the workaround for its absence.
+    // numbering tuple. Coverage is the fix; LEGACY-068's plan pinning was the workaround for its absence.
     expect(idx.map((i) => i.indexname)).toContain("ledger_entry_company_date_idx");
     const docIdx = await db.admin<{ indexdef: string }[]>`
       select indexdef from pg_indexes where schemaname = 'app' and tablename = 'document'`;
@@ -6980,12 +6980,12 @@ thinRegression("SAH-070", "Index coverage is thin on exactly the columns reports
   });
 ```
 
-`tests/regression/sah-072.test.ts`:
+`tests/regression/legacy-072.test.ts`:
 
 ```ts
 import { thinRegression } from "../support/regression";
 
-thinRegression("SAH-072", "Zero CHECK constraints across 460 tables, and 544 boolean columns encoding mutually exclusive states",
+thinRegression("LEGACY-072", "Zero CHECK constraints across 460 tables, and 544 boolean columns encoding mutually exclusive states",
   "packages/db/test/schema-lint.test.ts", async ({ db, expect }) => {
     const [checks] = await db.admin<{ n: number }[]>`
       select count(*)::int as n from pg_constraint c join pg_class t on t.oid = c.conrelid
@@ -7014,13 +7014,13 @@ thinRegression("SAH-072", "Zero CHECK constraints across 460 tables, and 544 boo
   });
 ```
 
-`tests/regression/sah-073.test.ts`:
+`tests/regression/legacy-073.test.ts`:
 
 ```ts
 import { lintSchema } from "@dulja/db";
 import { thinRegression } from "../support/regression";
 
-thinRegression("SAH-073", "Referential integrity is enforced inconsistently for the same logical relationship",
+thinRegression("LEGACY-073", "Referential integrity is enforced inconsistently for the same logical relationship",
   "packages/db/test/schema-lint.test.ts", async ({ db, expect }) => {
     const violations = await lintSchema(db.admin);
     expect(violations.filter((v) => v.rule === "composite_fk")).toEqual([]);
@@ -7030,13 +7030,13 @@ thinRegression("SAH-073", "Referential integrity is enforced inconsistently for 
   });
 ```
 
-`tests/regression/sah-074.test.ts`:
+`tests/regression/legacy-074.test.ts`:
 
 ```ts
 import { lintSchema } from "@dulja/db";
 import { thinRegression } from "../support/regression";
 
-thinRegression("SAH-074", "42 of 460 tables have no primary key",
+thinRegression("LEGACY-074", "42 of 460 tables have no primary key",
   "packages/db/test/schema-lint.test.ts", async ({ db, expect }) => {
     const noPk = await db.admin<{ relname: string }[]>`
       select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
@@ -7048,7 +7048,7 @@ thinRegression("SAH-074", "42 of 460 tables have no primary key",
   });
 ```
 
-`tests/regression/sah-080.test.ts`:
+`tests/regression/legacy-080.test.ts`:
 
 ```ts
 import { discover, listApplied } from "@dulja/db";
@@ -7056,7 +7056,7 @@ import { MIGRATIONS_DIR } from "@dulja/db/test";
 import { existsSync } from "node:fs";
 import { thinRegression } from "../support/regression";
 
-thinRegression("SAH-080", "Schema upgrade is a full database dump-and-repump driven by 6,251 uncoordinated version integers",
+thinRegression("LEGACY-080", "Schema upgrade is a full database dump-and-repump driven by 6,251 uncoordinated version integers",
   "packages/db/test/migrate.test.ts", async ({ db, expect }) => {
     const applied = await listApplied(db.migrator);
     expect(applied).toEqual([...applied].sort((x, y) => x - y));
@@ -7073,14 +7073,14 @@ thinRegression("SAH-080", "Schema upgrade is a full database dump-and-repump dri
 
 - [ ] **Step 5: Write the six structural files (contracts §3.7.3 — facts 0A fixed without a dedicated test)**
 
-`tests/regression/sah-023.test.ts`:
+`tests/regression/legacy-023.test.ts`:
 
 ```ts
 import { thinRegression } from "../support/regression";
 
-thinRegression("SAH-023", "Audit sequence numbers are renumbered retroactively and collide across document classes",
+thinRegression("LEGACY-023", "Audit sequence numbers are renumbered retroactively and collide across document classes",
   "packages/db/test/audit.test.ts", async ({ db, rw, a, withTenant, expect }) => {
-    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "sah-023" };
+    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "legacy-023" };
     const seqOf = async (): Promise<number> => {
       const [row] = await db.admin<{ seq: string }[]>`
         select coalesce(max(seq), 0)::text as seq from app.audit_log where tenant_id = ${a.tenant}`;
@@ -7088,10 +7088,10 @@ thinRegression("SAH-023", "Audit sequence numbers are renumbered retroactively a
     };
     const before = await seqOf();
     await withTenant(rw, ctx, (tx) =>
-      tx`insert into app.company (tenant_id, code, name, base_currency) values (${a.tenant}, 'SAH023A', 'A', 'MYR')`);
+      tx`insert into app.company (tenant_id, code, name, base_currency) values (${a.tenant}, 'LEGACY023A', 'A', 'MYR')`);
     const mid = await seqOf();
     await withTenant(rw, ctx, (tx) =>
-      tx`insert into app.company (tenant_id, code, name, base_currency) values (${a.tenant}, 'SAH023B', 'B', 'MYR')`);
+      tx`insert into app.company (tenant_id, code, name, base_currency) values (${a.tenant}, 'LEGACY023B', 'B', 'MYR')`);
     const after = await seqOf();
     expect(mid).toBeGreaterThan(before);
     expect(after).toBeGreaterThan(mid);                     // one ascending stream, never renumbered
@@ -7108,19 +7108,19 @@ thinRegression("SAH-023", "Audit sequence numbers are renumbered retroactively a
   });
 ```
 
-`tests/regression/sah-045.test.ts`:
+`tests/regression/legacy-045.test.ts`:
 
 ```ts
 import { uuidv7 } from "@dulja/db/test";
 import { thinRegression } from "../support/regression";
 
-thinRegression("SAH-045", "Department scoping is a report parameter, not an access control",
+thinRegression("LEGACY-045", "Department scoping is a report parameter, not an access control",
   "packages/db/test/tenant-isolation.test.ts", async ({ db, rw, a, withTenant, expect }) => {
-    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "sah-045" };
+    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "legacy-045" };
     const roleId = await uuidv7(db.admin);
     await db.migrator.begin(async (tx) => {
       await tx`select set_config('app.tenant_id', ${a.tenant}, true), set_config('app.actor_id', ${a.system}, true)`;
-      await tx`insert into app.role (id, tenant_id, code, name_en) values (${roleId}, ${a.tenant}, 'sah045', 'SAH-045')`;
+      await tx`insert into app.role (id, tenant_id, code, name_en) values (${roleId}, ${a.tenant}, 'legacy045', 'LEGACY-045')`;
       await tx`insert into app.role_permission (tenant_id, role_id, permission_code)
                values (${a.tenant}, ${roleId}, 'admin.audit_log.read')`;
       await tx`insert into app.role_assignment (tenant_id, principal_id, role_id, company_id)
@@ -7137,7 +7137,7 @@ thinRegression("SAH-045", "Department scoping is a report parameter, not an acce
     await db.migrator.begin(async (tx) => {
       await tx`select set_config('app.tenant_id', ${a.tenant}, true), set_config('app.actor_id', ${a.system}, true)`;
       await tx`insert into app.dimension_value (id, tenant_id, dimension_type_id, code, name_en)
-               values (${otherBranch}, ${a.tenant}, ${a.branchType}, 'SAH045B', 'Other branch')`;
+               values (${otherBranch}, ${a.tenant}, ${a.branchType}, 'LEGACY045B', 'Other branch')`;
       // The branch row carries the assignment's whole natural key — role_assignment has no surrogate id
       // (plan0A: primary key (principal_id, role_id, company_id, branch_id), composite FK back to it).
       await tx`insert into app.role_assignment_branch (tenant_id, principal_id, role_id, company_id, branch_id)
@@ -7152,13 +7152,13 @@ thinRegression("SAH-045", "Department scoping is a report parameter, not an acce
   });
 ```
 
-`tests/regression/sah-065.test.ts`:
+`tests/regression/legacy-065.test.ts`:
 
 ```ts
 import { AUDIT_EXEMPT, lintSchema } from "@dulja/db";
 import { thinRegression } from "../support/regression";
 
-thinRegression("SAH-065", "Unreachable dead code in the audit trigger",
+thinRegression("LEGACY-065", "Unreachable dead code in the audit trigger",
   "packages/db/test/audit.test.ts", async ({ db, expect }) => {
     // One generic trigger function, attached by one procedure, with no per-table branches to go stale: there is
     // no branch to become unreachable. Every non-exempt table carries it, and the linter says so.
@@ -7179,14 +7179,14 @@ thinRegression("SAH-065", "Unreachable dead code in the audit trigger",
   });
 ```
 
-`tests/regression/sah-071.test.ts`:
+`tests/regression/legacy-071.test.ts`:
 
 ```ts
 import { thinRegression } from "../support/regression";
 
-thinRegression("SAH-071", "Tree-integrity checks run a recursive procedure per row inside triggers",
+thinRegression("LEGACY-071", "Tree-integrity checks run a recursive procedure per row inside triggers",
   "packages/db/test/schema-lint.test.ts", async ({ db, rw, a, withTenant, expect }) => {
-    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "sah-071" };
+    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "legacy-071" };
     // No trigger on a hierarchical table calls a recursive routine: the only triggers are the generic audit,
     // stamp and immutability ones. A tree is read with a recursive CTE at query time, never validated row by
     // row inside a write path.
@@ -7218,12 +7218,12 @@ thinRegression("SAH-071", "Tree-integrity checks run a recursive procedure per r
   });
 ```
 
-`tests/regression/sah-075.test.ts`:
+`tests/regression/legacy-075.test.ts`:
 
 ```ts
 import { thinRegression } from "../support/regression";
 
-thinRegression("SAH-075", "Deployment template placeholders were never substituted in shipped objects",
+thinRegression("LEGACY-075", "Deployment template placeholders were never substituted in shipped objects",
   "packages/db/test/privileges.test.ts", async ({ db, expect }) => {
     const objects = await db.admin<{ kind: string; name: string }[]>`
       select 'relation' as kind, c.relname as name from pg_class c join pg_namespace n on n.oid = c.relnamespace
@@ -7243,14 +7243,14 @@ thinRegression("SAH-075", "Deployment template placeholders were never substitut
   });
 ```
 
-`tests/regression/sah-087.test.ts`:
+`tests/regression/legacy-087.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
 import { sourceFiles } from "../support/source";
 
 /** A source-only fact: nothing about a developer's machine may be readable from a shipped file. */
-describe("SAH-087 Hardcoded developer build paths in shipped metadata — 0B", () => {
+describe("LEGACY-087 Hardcoded developer build paths in shipped metadata — 0B", () => {
   it("no shipped source contains an absolute developer path", () => {
     const PATTERNS = [/[A-Za-z]:\\\\?(?:Users|Documents|Projects|Dev)\b/i, /\/(?:Users|home)\/[a-z0-9._-]+\//i, /\/mnt\/[cd]\//i];
     const offenders = sourceFiles()
@@ -7274,25 +7274,25 @@ describe("SAH-087 Hardcoded developer build paths in shipped metadata — 0B", (
 
 Run: `bun run --cwd tests test`
 
-Expected: **PASS — 45 files**. Two invariant files (Task 13) and forty-three regression files: 16 full (`sah-025, 026, 027, 028, 034, 035, 036, 037, 043, 047, 068, 069, 078, 082, 083, 084`), 21 thin (`sah-003, 012, 013, 021, 029, 030, 031, 032, 033, 040, 041, 042, 044, 050, 051, 053, 070, 072, 073, 074, 080`), 6 structural (`sah-023, 045, 065, 071, 075, 087`). **Four** Testcontainers starts for the whole run — `sharedDb()`, `sharedApi()`, and one for each of the two invariant suites — and the run reports `@dulja/tests`.
+Expected: **PASS — 45 files**. Two invariant files (Task 13) and forty-three regression files: 16 full (`legacy-025, 026, 027, 028, 034, 035, 036, 037, 043, 047, 068, 069, 078, 082, 083, 084`), 21 thin (`legacy-003, 012, 013, 021, 029, 030, 031, 032, 033, 040, 041, 042, 044, 050, 051, 053, 070, 072, 073, 074, 080`), 6 structural (`legacy-023, 045, 065, 071, 075, 087`). **Four** Testcontainers starts for the whole run — `sharedDb()`, `sharedApi()`, and one for each of the two invariant suites — and the run reports `@dulja/tests`.
 
-If a full file fails with `relation "app.company" does not exist`, the file has mixed `sharedApi()` with `sharedDb()`: they are different databases (Step 1's header comment). If a thin file fails with `duplicate key value violates unique constraint` on `app.company`, two files chose the same `code` literal — every file's literals are `SAH<nnn>`-prefixed for exactly this reason, because all twenty-seven thin and structural files share one database and one pair of tenants.
+If a full file fails with `relation "app.company" does not exist`, the file has mixed `sharedApi()` with `sharedDb()`: they are different databases (Step 1's header comment). If a thin file fails with `duplicate key value violates unique constraint` on `app.company`, two files chose the same `code` literal — every file's literals are `LEGACY<nnn>`-prefixed for exactly this reason, because all twenty-seven thin and structural files share one database and one pair of tenants.
 
 - [ ] **Step 7: Verify the count and the naming rule**
 
 ```bash
 ls tests/regression/*.test.ts | wc -l
-ls tests/regression/ | grep -v '^sah-[0-9]\{3\}\.test\.ts$' || true
+ls tests/regression/ | grep -v '^legacy-[0-9]\{3\}\.test\.ts$' || true
 grep -L 'describe(' tests/regression/*.test.ts || true
 ```
 
-Expected: `43`; the second command prints nothing (no suffixed names — `sah-009-pos.test.ts` is forbidden by contracts §3.7.3, and `.gitkeep` is gone); the third prints nothing directly and every file reaches a `describe` through `thinRegression` or `fullRegression`.
+Expected: `43`; the second command prints nothing (no suffixed names — `legacy-009-pos.test.ts` is forbidden by contracts §3.7.3, and `.gitkeep` is gone); the third prints nothing directly and every file reaches a `describe` through `thinRegression` or `fullRegression`.
 
 ```bash
-test ! -e tests/regression/sah-024.test.ts && echo "sah-024 correctly absent (1A creates it)"
+test ! -e tests/regression/legacy-024.test.ts && echo "legacy-024 correctly absent (1A creates it)"
 ```
 
-Expected: `sah-024 correctly absent (1A creates it)`.
+Expected: `legacy-024 correctly absent (1A creates it)`.
 
 - [ ] **Step 8: Commit**
 
@@ -7301,12 +7301,12 @@ git rm --cached tests/regression/.gitkeep
 rm -f tests/regression/.gitkeep
 git add tests/support tests/regression
 git commit -m "$(cat <<'EOF'
-test(regression): the forty-three sah-NNN files this slice creates [0B T14]
+test(regression): the forty-three legacy-NNN files this slice creates [0B T14]
 
 16 full scenarios through the HTTP surface, 21 thin re-runs of Plan 0A data-layer
 proofs through the production withTenant, 6 structural facts. Contracts §3.7.3:
 0B is first in execution order for all forty-three; later slices append a
-describe block and never edit these. sah-024 is 1A's.
+describe block and never edit these. legacy-024 is 1A's.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 EOF
@@ -7405,15 +7405,15 @@ Run against the contracts card for 0B (§2, lines 44–74), the spec sections th
 | thin regression files for the Plan 0A-proven defects (§3.7.3) | **T14** |
 | `CLAUDE.md` "Current phase" rewritten | **T15** |
 
-**2. Definition of done — the card's verbatim clauses.** "Users invited" → T8 (`POST /v1/admin/users`, asserted end-to-end). "Roles assigned" → T9 (`/v1/companies/{companyId}/role-assignments`). "Every write audited with server-supplied actor" → T10's acceptance-test-13 case plus T14's `sah-029`, `sah-030`, `sah-040`, `sah-044`. "The tenant-isolation suite passes against every endpoint" → T13, which fails the build when a `ROUTES` entry has no `PROBES` entry. The whole of the §5.0 row 0.6 cell — "connected as `app_rw` with no `set_config`, `resolve_principal(<subject>)` returns one row while `select * from app.principal` returns none" — is the last `it` of T13's `auth-bypass.test.ts`, repeated from the other side in T14's `sah-026` and `sah-043`.
+**2. Definition of done — the card's verbatim clauses.** "Users invited" → T8 (`POST /v1/admin/users`, asserted end-to-end). "Roles assigned" → T9 (`/v1/companies/{companyId}/role-assignments`). "Every write audited with server-supplied actor" → T10's acceptance-test-13 case plus T14's `legacy-029`, `legacy-030`, `legacy-040`, `legacy-044`. "The tenant-isolation suite passes against every endpoint" → T13, which fails the build when a `ROUTES` entry has no `PROBES` entry. The whole of the §5.0 row 0.6 cell — "connected as `app_rw` with no `set_config`, `resolve_principal(<subject>)` returns one row while `select * from app.principal` returns none" — is the last `it` of T13's `auth-bypass.test.ts`, repeated from the other side in T14's `legacy-026` and `legacy-043`.
 
-**3. Acceptance tests owned.** 11 → T13 `auth-bypass.test.ts` (nine bypass shapes) with T14's `sah-025`, `sah-026`, `sah-027`, `sah-035`, `sah-043` re-attempting them one defect at a time. 12 → T13 `tenant-isolation.test.ts` over `ROUTES` and `JOBS`. 13 → T10 (`renaming a company writes an audit row with the server-supplied actor`) and T14's `sah-029`/`sah-040`. 27 → T12 (`no-sql-concat`, `no-bare-db`) with T14's `sah-036` running the rule over the real tree. **Re-runs: none**, as the card states.
+**3. Acceptance tests owned.** 11 → T13 `auth-bypass.test.ts` (nine bypass shapes) with T14's `legacy-025`, `legacy-026`, `legacy-027`, `legacy-035`, `legacy-043` re-attempting them one defect at a time. 12 → T13 `tenant-isolation.test.ts` over `ROUTES` and `JOBS`. 13 → T10 (`renaming a company writes an audit row with the server-supplied actor`) and T14's `legacy-029`/`legacy-040`. 27 → T12 (`no-sql-concat`, `no-bare-db`) with T14's `legacy-036` running the rule over the real tree. **Re-runs: none**, as the card states.
 
 **4. Owner gates.** OD-01 and OD-02 are **one** task — T5 — and no other task states an assumption about either. Neither blocks merge (§2.12 default "as built"). The rejection consequences are written in the header's Owner-decisions bullet and repeated in T5. OD-24 does not apply: 0B ships no screen. No other OD item is mentioned anywhere in this plan, which is correct — hazard 6 forbids spreading a ⚠️ item across tasks.
 
-**5. Hazards (contracts §5) checked one by one.** #1, #2, #3: no statutory rate, no MyInvois detail, no Firebird assumption appears anywhere in this plan — a text search for `EPF`, `SOCSO`, `PCB`, `MyInvois`, `LHDN`, `gbak`, `Firebird` finds nothing outside the Part I defect headings quoted in T14, which are descriptions of the legacy system and state no rate. #5: no owner-account task — 0B provisions nothing. #8: every Plan 0A name is used exactly as §4.1 spells it, and the two `withTenant`s are kept apart (#15) — `packages/db/test/**` uses the 4-argument test helper, `tests/**` and `apps/**` use the production 3-argument one. #9: `fixtures.ts` is not modified by any task. #10: migration 0002 writes only `app.permission`, the one global table. #11: no enum label is added. #12: T1 generalises the reversibility test before migration 0002 exists (T7). #13: `lint-schema.ts` set membership is unchanged — 0B adds no table. #14: migration 0002 and ADRs 0003–0006 are exactly the allocated ranges, and 0003 is deliberately left unused. #21: this slice writes **no** new `sql.unsafe` call site — `packages/db/src/migrate.ts` and `jobs/enqueue.ts` are Plan 0A's and 0D's, and T14's `sah-053` was rewritten to use literal tagged templates rather than `.unsafe`. The one correction the audit forced (§8c below): Plan 0A's `packages/db/test/harness.ts` and `roles.test.ts` each call `admin.unsafe(readFileSync(ROLES_SQL, "utf8"))` (plan0A:476, 553), so "three homes" was already false in the tree this slice inherits; both are on T12's `UNSAFE_ALLOW` and `harness.ts` is in `sah-036`'s subset. #26: the five codes are exactly spec:2146–2150's `admin.*` set — no code is invented. #27: no `service` principal kind. #31: every `ROUTES` entry has a `PROBES` entry and the harness fails the build otherwise. #32: the shared-namespace bullet in the header names all five registers, and the only one this slice writes is `ERR_*` — exactly the twenty-five §4.2.4 assigns it, verified by counting `Object.keys(ERRORS)` in T14's `sah-083`. #35: no placeholder (see 7 below).
+**5. Hazards (contracts §5) checked one by one.** #1, #2, #3: no statutory rate, no MyInvois detail, no Firebird assumption appears anywhere in this plan — a text search for `EPF`, `SOCSO`, `PCB`, `MyInvois`, `LHDN`, `gbak`, `Firebird` finds nothing outside the Part I defect headings quoted in T14, which are descriptions of the legacy system and state no rate. #5: no owner-account task — 0B provisions nothing. #8: every Plan 0A name is used exactly as §4.1 spells it, and the two `withTenant`s are kept apart (#15) — `packages/db/test/**` uses the 4-argument test helper, `tests/**` and `apps/**` use the production 3-argument one. #9: `fixtures.ts` is not modified by any task. #10: migration 0002 writes only `app.permission`, the one global table. #11: no enum label is added. #12: T1 generalises the reversibility test before migration 0002 exists (T7). #13: `lint-schema.ts` set membership is unchanged — 0B adds no table. #14: migration 0002 and ADRs 0003–0006 are exactly the allocated ranges, and 0003 is deliberately left unused. #21: this slice writes **no** new `sql.unsafe` call site — `packages/db/src/migrate.ts` and `jobs/enqueue.ts` are Plan 0A's and 0D's, and T14's `legacy-053` was rewritten to use literal tagged templates rather than `.unsafe`. The one correction the audit forced (§8c below): Plan 0A's `packages/db/test/harness.ts` and `roles.test.ts` each call `admin.unsafe(readFileSync(ROLES_SQL, "utf8"))` (plan0A:476, 553), so "three homes" was already false in the tree this slice inherits; both are on T12's `UNSAFE_ALLOW` and `harness.ts` is in `legacy-036`'s subset. #26: the five codes are exactly spec:2146–2150's `admin.*` set — no code is invented. #27: no `service` principal kind. #31: every `ROUTES` entry has a `PROBES` entry and the harness fails the build otherwise. #32: the shared-namespace bullet in the header names all five registers, and the only one this slice writes is `ERR_*` — exactly the twenty-five §4.2.4 assigns it, verified by counting `Object.keys(ERRORS)` in T14's `legacy-083`. #35: no placeholder (see 7 below).
 
-**6. Type and name consistency across tasks.** `createApp(deps: AppDeps)` with the five members is fixed in T4 and every later task constructs the same object. `ScopeSource`'s four variants are declared in T7 and only those four are used in T8–T10. `thinRegression(sah, heading, cites, body)` is four-argument in T13's implementation, in T13's Produces block (corrected) and in all twenty-seven T14 call sites. `ThinContext` is `{ db, rw, a, b, withTenant, expect }` in T13 and every T14 thin file destructures a subset of exactly those names. `FullContext` is `{ api, a, b, expect }` in T14's `tests/support/api.ts` and every full file destructures a subset of exactly those. `Seed` fields used in T14 — `tenant`, `system`, `human`, `company`, `period`, `closedPeriod`, `lockedPeriod`, `cash`, `sales`, `policy`, `branchType`, `hq` — are all in contracts §4.1's list. Every `ERR_*` string asserted in T14 is one of the twenty-five defined in T3. `RouteModule.permissions` (not `permission`) is what T14's `sah-047` reads, matching T4.
+**6. Type and name consistency across tasks.** `createApp(deps: AppDeps)` with the five members is fixed in T4 and every later task constructs the same object. `ScopeSource`'s four variants are declared in T7 and only those four are used in T8–T10. `thinRegression(legacyDefect, heading, cites, body)` is four-argument in T13's implementation, in T13's Produces block (corrected) and in all twenty-seven T14 call sites. `ThinContext` is `{ db, rw, a, b, withTenant, expect }` in T13 and every T14 thin file destructures a subset of exactly those names. `FullContext` is `{ api, a, b, expect }` in T14's `tests/support/api.ts` and every full file destructures a subset of exactly those. `Seed` fields used in T14 — `tenant`, `system`, `human`, `company`, `period`, `closedPeriod`, `lockedPeriod`, `cash`, `sales`, `policy`, `branchType`, `hq` — are all in contracts §4.1's list. Every `ERR_*` string asserted in T14 is one of the twenty-five defined in T3. `RouteModule.permissions` (not `permission`) is what T14's `legacy-047` reads, matching T4.
 
 **7. Placeholder scan.** `grep -nE "TBD|TODO|implement later|fill in|similar to Task|and so on|add appropriate|handle edge cases"` over this file returns **zero** matches outside this sentence and the No-Placeholders reminder in the Global Constraints table. Every code step carries the code; every command step carries the command and its expected output. The four `<fill at execution — Step 8>` slots in ADR-0005 are the single deliberate exception, and they are labelled as such: contracts Appendix A #3 forbids writing a vendor's JWKS path or invite path from memory, so Task 5 Step 8 fetches the authority's current documentation and fills them in. Every remaining `…` in this file is a spread operator, a real ellipsis inside English prose, or an elision inside a comment whose subject is spelled out in full at the step that writes it.
 
@@ -7422,19 +7422,19 @@ Run against the contracts card for 0B (§2, lines 44–74), the spec sections th
 - Header assumption 9 claimed "two Plan 0A files are edited, and only two" while T1, T12, T13 and T15 also touch `packages/db/package.json`, `packages/db/src/index.ts`, root `package.json`, `ci.yml` and `CLAUDE.md`. Reworded to "two Plan 0A **test** files", with the repository-level additive extensions listed.
 - Header assumption 10 claimed one shared container for the whole `tests` run, which the two invariant suites (each calling `startApi()`) already contradicted, and `sharedApi()` adds a third. Reworded with the warning that `sharedDb()` and `sharedApi()` are different databases; the count itself is corrected to four two bullets below.
 - T13's Produces block declared `thinRegression(n, heading, body)` — three arguments — against its own four-argument implementation. Corrected.
-- T14's `sah-047` first drafted its "every code gates a route" assertion against a served `/openapi.json`, which no task mounts; rewritten against `ROUTES` from `@dulja/api`, the entry T13 already established.
-- T14's `sah-053` first used `tx.unsafe(ddl)` in a loop, against hazard 21; rewritten as four literal tagged templates.
-- T14's `sah-021` first read `pg_attrdef` through a four-way join and asserted `information_schema.sequences` is empty — which `audit_log.seq bigint generated always as identity` (plan0A:2261) makes false. Rewritten against `information_schema.columns.column_default` and `is_identity`.
-- T14's `sah-070` first asserted that `tenant_id` leads an index on every tenant-scoped table, which `document_series` (PK `(company_id, series, fiscal_period_id)`) and `ledger_entry_dimension` (PK `(entry_id, dimension_type_id)`) falsify. Rewritten against the two named ledger indexes and the document numbering index.
-- T14's `sah-072` first asserted no table has more than three boolean columns, which nothing in migration 0001 guarantees. Rewritten against `app.account` (zero booleans, an `account_type` enum) and the absence of any `real`/`double precision` column.
-- T14's `sah-042` first asserted `actor_has` is false for the seeded human, which depends on what `seedTenant` grants — unstated in §4.1. Rewritten to compare the whole row for a principal that provably does not exist, across company-wide, branch-scoped and unknown-code forms.
-- T14's `sah-034` first called `app.actor_has` from `db.admin`, outside any `withTenant` transaction — where `app.current_actor()` has no value and the statement, not the assertion, would fail. Rewritten to assert the catalogue and its foreign key from the catalog, and to prove enforcement through the HTTP path in the same file's second case. **The rule this makes general: no test calls `actor_has`, `current_actor` or `current_tenant` outside a `withTenant` body.**
-- T14's `sah-045` first inserted `app.role_assignment_branch (tenant_id, role_assignment_id, branch_id)`; that table has no surrogate key — its columns are `(tenant_id, principal_id, role_id, company_id, branch_id)` with a composite FK back to `role_assignment` (plan0A). Corrected.
-- T14's `sah-030` folded `set_config('session_replication_role', 'replica', true)` into the transaction that then inserts a company. That parameter is **superuser-only**: `app_rw` gets `permission denied to set parameter`, the transaction aborts, and the audit assertion never runs. Split into its own `rejects.toThrow(/permission denied/i)` — which is the stronger regression anyway, because it is the one real Postgres trigger-silencer and it is closed to the app role.
-- T14's `sah-036` walked `scripts/` looking for `.unsafe(` call sites, which would have matched the **fixture string** inside `scripts/lint/lint.test.ts` (Task 12) — the very file that proves the rule fires. Test files are now excluded from that scan.
-- T14's `sah-071` searched every `app` routine for `with recursive`; a later slice's report function would falsify it. Scoped to trigger functions, which is the actual claim ("per row inside triggers").
-- T14's `sah-072` asserted `app.account` has **no** boolean column; it has one, `is_group` (plan0A). Corrected to exactly `["is_group"]`, with the reason it is not a state flag.
-- T14's `sah-082` imported `apps/api/src/config` by relative path, against contracts §3.1 ("through its package entry only") — the rule Task 13 already followed for `ROUTES`. `apps/api/src/app.ts` now re-exports `readConfig`, `ConfigError` and `ApiConfig`, and the test imports `@dulja/api`.
+- T14's `legacy-047` first drafted its "every code gates a route" assertion against a served `/openapi.json`, which no task mounts; rewritten against `ROUTES` from `@dulja/api`, the entry T13 already established.
+- T14's `legacy-053` first used `tx.unsafe(ddl)` in a loop, against hazard 21; rewritten as four literal tagged templates.
+- T14's `legacy-021` first read `pg_attrdef` through a four-way join and asserted `information_schema.sequences` is empty — which `audit_log.seq bigint generated always as identity` (plan0A:2261) makes false. Rewritten against `information_schema.columns.column_default` and `is_identity`.
+- T14's `legacy-070` first asserted that `tenant_id` leads an index on every tenant-scoped table, which `document_series` (PK `(company_id, series, fiscal_period_id)`) and `ledger_entry_dimension` (PK `(entry_id, dimension_type_id)`) falsify. Rewritten against the two named ledger indexes and the document numbering index.
+- T14's `legacy-072` first asserted no table has more than three boolean columns, which nothing in migration 0001 guarantees. Rewritten against `app.account` (zero booleans, an `account_type` enum) and the absence of any `real`/`double precision` column.
+- T14's `legacy-042` first asserted `actor_has` is false for the seeded human, which depends on what `seedTenant` grants — unstated in §4.1. Rewritten to compare the whole row for a principal that provably does not exist, across company-wide, branch-scoped and unknown-code forms.
+- T14's `legacy-034` first called `app.actor_has` from `db.admin`, outside any `withTenant` transaction — where `app.current_actor()` has no value and the statement, not the assertion, would fail. Rewritten to assert the catalogue and its foreign key from the catalog, and to prove enforcement through the HTTP path in the same file's second case. **The rule this makes general: no test calls `actor_has`, `current_actor` or `current_tenant` outside a `withTenant` body.**
+- T14's `legacy-045` first inserted `app.role_assignment_branch (tenant_id, role_assignment_id, branch_id)`; that table has no surrogate key — its columns are `(tenant_id, principal_id, role_id, company_id, branch_id)` with a composite FK back to `role_assignment` (plan0A). Corrected.
+- T14's `legacy-030` folded `set_config('session_replication_role', 'replica', true)` into the transaction that then inserts a company. That parameter is **superuser-only**: `app_rw` gets `permission denied to set parameter`, the transaction aborts, and the audit assertion never runs. Split into its own `rejects.toThrow(/permission denied/i)` — which is the stronger regression anyway, because it is the one real Postgres trigger-silencer and it is closed to the app role.
+- T14's `legacy-036` walked `scripts/` looking for `.unsafe(` call sites, which would have matched the **fixture string** inside `scripts/lint/lint.test.ts` (Task 12) — the very file that proves the rule fires. Test files are now excluded from that scan.
+- T14's `legacy-071` searched every `app` routine for `with recursive`; a later slice's report function would falsify it. Scoped to trigger functions, which is the actual claim ("per row inside triggers").
+- T14's `legacy-072` asserted `app.account` has **no** boolean column; it has one, `is_group` (plan0A). Corrected to exactly `["is_group"]`, with the reason it is not a state flag.
+- T14's `legacy-082` imported `apps/api/src/config` by relative path, against contracts §3.1 ("through its package entry only") — the rule Task 13 already followed for `ROUTES`. `apps/api/src/app.ts` now re-exports `readConfig`, `ConfigError` and `ApiConfig`, and the test imports `@dulja/api`.
 - Header assumption 10 and Task 14 Step 6 said **three** containers; the two invariant suites each start their own, so the true count is **four**. Corrected in both places.
 - The File-structure `ci.yml` row listed T14, which modifies no workflow. Removed.
 - Task 15's CLAUDE.md text claimed test 14 is 2B's and about `document_event`. Contracts §6.1 row 14 says **"Permission query", owned by 0D**. Corrected — a wrong ownership statement in the agent entry point misdirects every later session.
@@ -7447,14 +7447,14 @@ Run against the contracts card for 0B (§2, lines 44–74), the spec sections th
 - **`dependency-rule` reported every subpath import.** It compared whole specifiers against a tier list of package roots, so `@dulja/contracts/permissions` (six files) and `@dulja/db/test` (every file under `apps/api/test/`) were violations. The specifier is now reduced to its package root before the membership test. The dead `tests` row was deleted rather than repaired: `run.ts` walks apps, packages and scripts only, so it could never match, and a dead row invites a later slice to trust a check that never ran. **Found while verifying that fix, and not on the review list:** the same rule's relative-path branch tested `/\.\.\/(apps|packages)\//` against the specifier text, which the rule's *own* unit-test case — `apps/api/src/app.ts` importing `"../../worker/src/handler"` — does not contain (from `src/`, the escape is `../../worker/`, never `../apps/`), so the case asserted a violation the pattern could never produce and Task 12's suite would have failed. The branch now resolves the specifier against the importing file's directory and asks whether the result still sits under the owner's workspace, which catches every escape and passes every intra-package import; two such imports were added to the case as negatives.
 - **`error-codes.ts` used `require()` in an ESM module**, so its own case in `scripts/lint/lint.test.ts` threw `ReferenceError` under Vitest on Node 24 (it worked only under `bun run lint:rules`). Static imports now, with the migrations directory derived from `import.meta.url` as `run.ts` does. In the same pass the exclusion was narrowed from the whole registry file to the `ERRORS` **object literal**, so `fromDatabaseError` — the only raiser of `ERR_RLS_DENIED`, `ERR_CONFLICT_UNIQUE` and `ERR_CONFLICT_REFERENCE` — counts as the raise site it is, instead of those three passing on assertion strings in test files. Header assumption 7 and the fixture were rewritten to match.
 - **The invariant suite's job-name assertion failed on the registry it ships.** `/^[a-z_]+\.[a-z_]+\.[a-z_]+$/` requires three segments; the frozen `JOBS` holds `reporting.render`. Relaxed to `{1,2}`.
-- **`auth-bypass.test.ts` read `.items` off a 403 body.** Its `beforeAll` seeded two tenants but granted no role, so `GET /v1/companies` answered 403 and the SAH-027 case threw a TypeError instead of asserting. It now grants the five admin codes to each tenant's human with the same `grantEverything` shape `tenant-isolation.test.ts` uses — inlined, not imported from `tests/support/api.ts`, which Task 14 has not written yet.
+- **`auth-bypass.test.ts` read `.items` off a 403 body.** Its `beforeAll` seeded two tenants but granted no role, so `GET /v1/companies` answered 403 and the LEGACY-027 case threw a TypeError instead of asserting. It now grants the five admin codes to each tenant's human with the same `grantEverything` shape `tenant-isolation.test.ts` uses — inlined, not imported from `tests/support/api.ts`, which Task 14 has not written yet.
 - **`GET /v1/companies/{companyId}` answered 403, not the 404 its own test and probe expected.** Gating a read with `{ company: "path:companyId" }` refuses another tenant's id at the middleware, which tells the caller the id exists. Regated `{ company: "any" }` so the handler runs and RLS produces the 404 the "never a leak" rule wants; `PATCH` keeps `thisCompany`. With the status now honest, the isolation harness asserts `toBe(probe.expect)` instead of `toContain([403, 404])` — the loose form was what let the mismatch hide, and it made `IsolationProbe.expect` dead. The same change repairs a second suite: `companies.test.ts`'s first case creates a company and reads it back, and under `path:companyId` the caller held no assignment in the company it had just created, so the read would have been 403.
-- **`sah-026` asserted a `kind` field the session payload has never had.** `SessionSchema` names it `principalKind`. Corrected.
+- **`legacy-026` asserted a `kind` field the session payload has never had.** `SessionSchema` names it `principalKind`. Corrected.
 - **A cross-tenant `principalId` was accepted by the role-assignment handler.** `role_assignment.principal_id` is a plain FK to the global `app.principal` and FK checks bypass RLS (plan0A:1331–1334, 2027), so `assert_assignment_kind` reads zero rows, `v_kind` is NULL, both branches are NULL, and the insert succeeded — while the test asserted 409. A membership pre-check inside the same `withTenant` now raises `ERR_CONFLICT_REFERENCE`, the test asserts the code and that no junk row survives, and Task 9's "the handlers add no checks of their own" is amended to name this one exception.
 - **Acceptance test 11 named expiry and issuer but exercised neither.** `tokenFor` always writes `iss: TEST_ISSUER` and `exp: now + 600`. `StartedApi` gains `signToken(claims)` — the same key and `kid`, an arbitrary claim set — and both suites' existing loops gained an expired token and a wrong-issuer token, so no test count moved. Contracts §3.7.2 lists both shapes; nothing proved jose's `exp`/`iss` checks were wired.
-- **`AuditLogQuery`'s `sort` rejection was prose only.** Step 5 described adding a `.refine`, no code step performed it, and the injection assertion depended on it. The bound is now in Step 1's schema as `sort: z.string().max(0, …).optional()` — an override on the same key, because `@hono/zod-openapi` generates query parameters from a `ZodObject` and a `.refine` would wrap it in `ZodEffects`, while `.strict()` would break `sah-036`'s undeclared-key case.
+- **`AuditLogQuery`'s `sort` rejection was prose only.** Step 5 described adding a `.refine`, no code step performed it, and the injection assertion depended on it. The bound is now in Step 1's schema as `sort: z.string().max(0, …).optional()` — an override on the same key, because `@hono/zod-openapi` generates query parameters from a `ZodObject` and a `.refine` would wrap it in `ZodEffects`, while `.strict()` would break `legacy-036`'s undeclared-key case.
 - Smaller: T11 Step 4 said nine unsafe operations where there are ten (now listed by name); `packages/contracts/src/admin/role.ts` imported an unused `ListQuery`, which oxlint's `correctness` set reports; `createApp`'s `defaultHook` took an unused `c`, and the note beside it cited a `noUnusedParameters` option `tsconfig.base.json` does not set; ADR-0003 credited Task 14 with a rule Task 12 writes; Task 7's Produces block spelled `PermissionAction` and `SliceId` with an ellipsis where the plan's own rule wants the text; ADR-0005's four unfilled vendor slots now read `<fill at execution — Step 8>` so they are not mistaken for an unfinished draft; assumption 3 now says outright that the first company and the owner's first `admin` assignment come from 0C's bootstrap seed; and a case titled "a principal without admin.user.manage is refused" whose assertion was `expect([200, 403]).toContain(...)` is retitled to what it proves and asserts the deterministic 200 (`actor_has` short-circuits true for `kind = 'system'`, plan0A:1366–1368).
-- **Rejected, with the line that refutes it.** A review note held that `sah-036`'s first case fails because `sourceFiles()` reaches `scripts/lint/lint.test.ts`, whose fixture string carries SQL. It does reach it — but `no-sql-concat` opens with `if (!/^(apps|packages)\//.test(f.path)) continue;`, so the rule never looks at a `scripts/` path. The `.test.ts` exclusion in the file's *second* case is genuinely needed, because that case greps `f.text` itself instead of going through the rule. The first case is left scanning test files on purpose: that is where a real concatenation would otherwise hide.
+- **Rejected, with the line that refutes it.** A review note held that `legacy-036`'s first case fails because `sourceFiles()` reaches `scripts/lint/lint.test.ts`, whose fixture string carries SQL. It does reach it — but `no-sql-concat` opens with `if (!/^(apps|packages)\//.test(f.path)) continue;`, so the rule never looks at a `scripts/` path. The `.test.ts` exclusion in the file's *second* case is genuinely needed, because that case greps `f.text` itself instead of going through the rule. The first case is left scanning test files on purpose: that is where a real concatenation would otherwise hide.
 - **Recorded, not fixed here.** Every name this slice adds beyond contracts §4 is now listed in header assumption 13, including the ones no assumption previously mentioned. The contracts document is outside this plan's write scope; the amendment is owed before 0C or 0D consumes any of them. The same applies to §3.4.2 / §3.6.3, which spell the permission-seed file `NNNN_seed_permission_phase<n><letter>.sql` while the 0B card and the slice definition both say `0002_seed_permission_phase0.sql`. Both names match `discover()`'s regex so nothing breaks, and this plan follows the card; the contradiction is the contracts document's to settle before 1A writes `phase1a`.
 
 **8b. The containment rule these fixes established.** A 0B regression block is frozen the moment it merges: contracts §3.7.3 lets later slices *append* a `describe` and forbids editing this one. So **a 0B block asserts on objects migration 0001 or 0002 created, or it asserts containment — never schema-wide exact equality on something a later slice will legitimately extend.** Applied to: `ERRORS` (`toContain` each of the twenty-five, not `toHaveLength(25)`, because 0D adds codes), `app` audit functions (`toContain`, not `toEqual`), identity columns (`toContainEqual` plus a targeted absence), `bytea` columns (the two named policy columns, because 8A's `employee_sensitive` envelope is legitimately `bytea` — §4.12.5), credential columns (`principal`/`membership`/`tenant` only, because 6A's `terminal_enrolment` may carry secret material), and `varchar` columns (the seven tables this slice reads). Three schema-wide sweeps are deliberately **kept**, because each is a permanent invariant no slice may ever break: no `real`/`double precision` column anywhere (spec:2041), every `app` table has a primary key, and `lintSchema` reports zero violations (contracts §3.5.2 — "the shipped schema must report zero violations after every migration").
@@ -7462,8 +7462,8 @@ Run against the contracts card for 0B (§2, lines 44–74), the spec sections th
 **8c. Fixed in the independent-audit pass (the third review of this file).** An auditor read the plan against the contracts document, Plan 0A and the spec. Each item below was verified at the source it cites before the fix was made.
 
 - **`dependency-rule` flagged the contract-mandated catalogue test, so Task 12 Step 6's "0 violations" could not pass.** `run.ts` collects every `.ts` under `apps`, `packages` and `scripts`, and `dependency-rule` resolves an owner by path prefix with no test-directory carve-out — so `packages/db/test/permission-catalogue.test.ts` (T7 Step 1) importing `@dulja/contracts/permissions` is owned by `packages/db`, whose tier is `["@dulja/domain"]`, and reduced to `@dulja/contracts` it is one violation. Contracts §3.6.3 freezes that path, so the test does not move: the rule gains a **named-allowance set** keyed `<file path>|<package root>` with one entry and the reason on the line — the mechanism §4.17.1 already describes for the `apps/*/test/**` → `tests/invariants/support/**` imports. A blanket `packages/*/test/**` carve-out was rejected: under it `packages/domain/test/x.test.ts` importing `@dulja/db` would pass silently, which is the architecture bug spec:2389 exists to catch. Two cases were added **inside** the rule's existing `it` (the allowed pair green, another file in the same directory still red), so Step 6's "5 tests" is unchanged. The earlier `dependency-rule` fix in §8a corrected subpath imports from `apps/api` and never asked what the rule sees under `packages/*/test/**`.
-- **`no-sql-concat` fired on Plan 0A's two `admin.unsafe(readFileSync(ROLES_SQL, "utf8"))` sites.** The `.unsafe(` branch's only path filter is `/^(apps|packages)\//`, so test directories are in scope; `[^)]*` captures `readFileSync(ROLES_SQL, "utf8"`, which starts with neither quote nor backtick, and neither `packages/db/test/harness.ts` (plan0A:476) nor `packages/db/test/roles.test.ts` (plan0A:553) was on `UNSAFE_ALLOW`. Two violations on a tree this slice has not touched, breaking Task 12 Step 6, Task 15's final gate and **both** cases of T14's `sah-036` — case 2's `.test.tsx?$` filter removes `roles.test.ts` but not `harness.ts`. Both paths joined `UNSAFE_ALLOW` with the reason on the line (a checked-in .sql file read from disk is code, not input — the identical case to `migrate.ts`), `sah-036`'s allowed set gained `packages/db/test/harness.ts` so the two agree, its title no longer claims "exactly the three homes", and the harness form was added to T12 Step 1 as a negative with the unallowed twin as a positive. Plan 0A is immovable, so the allow-lists moved, not the harness.
-- **Found while verifying that fix, and not on the auditor's list: `sah-036`'s second case reported the rule file as a caller of itself.** `sourceFiles()` defaults to `["apps", "packages", "scripts"]` (T14 Step 1), and `scripts/lint/rules/no-sql-concat.ts` contains the literal `.unsafe(` in its own violation message — and now in its allow-list comments too. It is not a `.test.ts`, so the case's `.test.tsx?$` filter does not remove it, and `expect([…the allowed paths]).toContain("scripts/lint/rules/no-sql-concat.ts")` fails: Task 14 Step 6's "PASS — 45 files" was unreachable, and the defect predates this audit — the §8a fix narrowed the *test-file* half of the same scan and never asked about the rule file. The case now calls `sourceFiles(["apps", "packages"])`, which is exactly the tree the rule itself polices (`if (!/^(apps|packages)\//.test(f.path)) continue;`), with the reason on the line. The **first** case is unchanged and still passes `sourceFiles()` with the default roots: it runs the rule, and the rule skips `scripts/` on its own. In the same pass the rule's violation message stopped saying "outside the three allowed homes" (it is five) and two comments stopped citing a plan section by number, which means nothing in a repository file.
+- **`no-sql-concat` fired on Plan 0A's two `admin.unsafe(readFileSync(ROLES_SQL, "utf8"))` sites.** The `.unsafe(` branch's only path filter is `/^(apps|packages)\//`, so test directories are in scope; `[^)]*` captures `readFileSync(ROLES_SQL, "utf8"`, which starts with neither quote nor backtick, and neither `packages/db/test/harness.ts` (plan0A:476) nor `packages/db/test/roles.test.ts` (plan0A:553) was on `UNSAFE_ALLOW`. Two violations on a tree this slice has not touched, breaking Task 12 Step 6, Task 15's final gate and **both** cases of T14's `legacy-036` — case 2's `.test.tsx?$` filter removes `roles.test.ts` but not `harness.ts`. Both paths joined `UNSAFE_ALLOW` with the reason on the line (a checked-in .sql file read from disk is code, not input — the identical case to `migrate.ts`), `legacy-036`'s allowed set gained `packages/db/test/harness.ts` so the two agree, its title no longer claims "exactly the three homes", and the harness form was added to T12 Step 1 as a negative with the unallowed twin as a positive. Plan 0A is immovable, so the allow-lists moved, not the harness.
+- **Found while verifying that fix, and not on the auditor's list: `legacy-036`'s second case reported the rule file as a caller of itself.** `sourceFiles()` defaults to `["apps", "packages", "scripts"]` (T14 Step 1), and `scripts/lint/rules/no-sql-concat.ts` contains the literal `.unsafe(` in its own violation message — and now in its allow-list comments too. It is not a `.test.ts`, so the case's `.test.tsx?$` filter does not remove it, and `expect([…the allowed paths]).toContain("scripts/lint/rules/no-sql-concat.ts")` fails: Task 14 Step 6's "PASS — 45 files" was unreachable, and the defect predates this audit — the §8a fix narrowed the *test-file* half of the same scan and never asked about the rule file. The case now calls `sourceFiles(["apps", "packages"])`, which is exactly the tree the rule itself polices (`if (!/^(apps|packages)\//.test(f.path)) continue;`), with the reason on the line. The **first** case is unchanged and still passes `sourceFiles()` with the default roots: it runs the rule, and the rule skips `scripts/` on its own. In the same pass the rule's violation message stopped saying "outside the three allowed homes" (it is five) and two comments stopped citing a plan section by number, which means nothing in a repository file.
 - **`fromDatabaseError`'s last line did not compile.** `const sqlstate = typeof err.code === "string" ? err.code : undefined` is `string | undefined`; the four SQLSTATE branches narrow it by `===`, the trailing `return new AppError("ERR_INTERNAL", …, { sqlstate })` does not, and `exactOptionalPropertyTypes: true` (plan0A:274–288) rejects an explicit `undefined` for an optional property — TS2379, with T3 Step 10's typecheck gate stating "Expected: green". Rewritten as a conditional spread rather than by widening the declared type, because contracts §4.2.4 freezes `extra?: Partial<Problem>` and this plan has already widened it once. **The same rule bites a second site the auditor flagged but could not confirm from the plan alone, and it does reproduce:** `startApi`'s `app.request(input.path, { …, body: input.form ?? (… ? undefined : …) })` passes an explicit `undefined` for `RequestInit`'s `body?: BodyInit | null` on every GET. T5 Step 9 now builds the init object with a ternary that omits the key.
 - **Tasks 13 and 14 went straight to a green run with no red step.** Both are pure test-authoring tasks over behaviour Tasks 1–12 already shipped, so a pre-write run reports `Cannot find module` and proves nothing. Rather than synthesise a red step that carries no information, each task now states the deviation and names the step that does carry it (T13's coverage gate, both tasks' Step 6). Task 1 Step 3 already explained its own PASS-first shape.
 - **The `workspaces` edit moved from Task 12 to Task 13.** Task 12 Step 5 added `"tests"` and Step 7 committed `package.json`, while `tests/package.json` was not created until Task 13 Step 1 — a window, spanning Step 6's `bun run lint:rules`, in which the array names a directory with no manifest. The array now changes in Task 13 Step 1, in the same commit as the manifest; Task 12 keeps only the `lint:rules` script. The File-structure row and Task 13's Modify line say so.
@@ -7480,7 +7480,7 @@ Run against the contracts card for 0B (§2, lines 44–74), the spec sections th
 - **Rejected: "`sharedDb()`'s return shape may not match `const { db } = await sharedDb()`" (raised by 3D, citing contracts §4.18 open item 5).** T13 Step 2 declares `export function sharedDb(): Promise<{ db: Db; rw: Sql; a: Seed; b: Seed }>` and T13's Produces block spells it identically; contracts §4.17.1 describes the same thing as "one `Db` + `rw` + two `Seed`s". `const { db } = await sharedDb()` and `const { db, rw } = await sharedDb()` both destructure that object correctly, so 3B's and 3A's files — and 3D's two — need no change. §4.18 item 5 was filed against **1A's** use sites, and 1A's own audit pass has already closed it from the plan side (1a:6361: "the import is now `from \"../support/regression\"` … This closes contracts §4.18's round-1 open item (5) from the plan side: the use sites were wrong, §4.17.1 was right"). Nothing to change in this file; the bookkeeping close belongs to the contracts document, which is outside this plan's write scope.
 - **Owed to the contracts document by this pass, on top of what §8 and §8c already list.** §4.2.7 should record that `IdempotencyHeader` is declared in `apps/api/src/routes/idempotency-header.ts` and re-exported from `apps/api/src/routes/index.ts` — the registered import path is unchanged, so no consuming plan needs an edit, but a slice that reads §4.2.7 and re-declares the schema in `index.ts` reintroduces the crash. §4.17.1's closing sentence should read `tests/support/**` **and** `tests/invariants/support/**`, matching its own table. §4.18 open item 5 can be marked closed: 1A's use sites were the error, §4.17.1's shape was right, and 1a:6361 records the correction.
 
-**9. Known gaps, stated rather than hidden.** Migration **0003 is unused** — the range is allocated, gaps are legal (§3.4.1), and no later plan may claim it. The `jobs/` files ship **types only**; `createJobClient` and the pg-boss migration are 0D's, and T13's job loop therefore asserts the registry's shape rather than a running handler. `packages/importer/src/reader.ts` appears in the `no-sql-concat` allow-list and in `sah-036`'s assertion as a **subset** check precisely because 9A has not created it yet.
+**9. Known gaps, stated rather than hidden.** Migration **0003 is unused** — the range is allocated, gaps are legal (§3.4.1), and no later plan may claim it. The `jobs/` files ship **types only**; `createJobClient` and the pg-boss migration are 0D's, and T13's job loop therefore asserts the registry's shape rather than a running handler. `packages/importer/src/reader.ts` appears in the `no-sql-concat` allow-list and in `legacy-036`'s assertion as a **subset** check precisely because 9A has not created it yet.
 
 ---
 
@@ -7502,7 +7502,7 @@ Two execution options:
 - Work in an isolated worktree (`superpowers:using-git-worktrees`) branched from the commit that merged Plan 0A. Confirm with `git log --oneline -1` that Plan 0A's final commit is the parent and that `bun run test` is green *before* any change — Task 1 begins by editing a Plan 0A test file, and a red baseline would be indistinguishable from a regression.
 - `docker` must be running: every task from Task 1 onward starts a Testcontainers PostgreSQL 18 container.
 - Tasks run **in order**. T2 needs T1's `./test` subpath; T4 needs T3's `Logger` and `ERRORS`; T5–T7 need T4's `createApp` signature; T8–T10 need T7's `requirePermission`; T11 needs every route mounted; T12 needs T3's `ERRORS`; T13 needs T4's `ROUTES` and T5's `startApi`; T14 needs T13's `sharedDb`/`thinRegression`; T15 is last, per contracts §3.8.
-- **Three lint allow-list entries in Task 12 are load-bearing and must not be "tidied" away** (Self-Review 8c): `dependency-rule`'s named allowance for `packages/db/test/permission-catalogue.test.ts|@dulja/contracts`, and `no-sql-concat`'s `UNSAFE_ALLOW` entries for `packages/db/test/harness.ts` and `packages/db/test/roles.test.ts`. All three exist because Plan 0A files, which this slice may not edit, would otherwise fail `bun run lint:rules` on a tree nothing changed. Task 14's `sah-036` carries the matching fourth path; the two lists must stay in agreement. Contracts §3.7.5 and §3.3 are owed the amendment.
+- **Three lint allow-list entries in Task 12 are load-bearing and must not be "tidied" away** (Self-Review 8c): `dependency-rule`'s named allowance for `packages/db/test/permission-catalogue.test.ts|@dulja/contracts`, and `no-sql-concat`'s `UNSAFE_ALLOW` entries for `packages/db/test/harness.ts` and `packages/db/test/roles.test.ts`. All three exist because Plan 0A files, which this slice may not edit, would otherwise fail `bun run lint:rules` on a tree nothing changed. Task 14's `legacy-036` carries the matching fourth path; the two lists must stay in agreement. Contracts §3.7.5 and §3.3 are owed the amendment.
 - Every commit ends with `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>` and carries the `[0B T<n>]` suffix in its subject. One migration in this whole plan — `0002_seed_permission_phase0.sql` in Task 7 — so only that PR carries a migration (spec:2057).
 - Pushing to GitHub is the owner's call and is not part of any task's definition of done (plan0A:2927).
 

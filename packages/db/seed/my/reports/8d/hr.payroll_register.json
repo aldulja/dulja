@@ -120,7 +120,7 @@
       "orientation": "landscape",
       "paper": "A4",
       "header": "{title} — {generatedAt}",
-      "footer": "Every statutory line names the rate-table version it pinned (SAH-013) — كل سطر نظامي يحمل إصدار الجدول المثبت"
+      "footer": "Every statutory line names the rate-table version it pinned (LEGACY-013) — كل سطر نظامي يحمل إصدار الجدول المثبت"
     },
     "tieOut": { "kind": "ledger_sum", "account": "2400" }
   }

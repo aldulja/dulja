@@ -123,7 +123,7 @@ describe("/v1/companies/{companyId}/documents — contracts §4.2.7, spec:2287",
     expect((await posted.json()) as { status: string }).toMatchObject({ status: "posted" });
   });
 
-  it("surfaces ERR_LEDGER_UNBALANCED as a problem+json with the difference in the detail (SAH-003)", async () => {
+  it("surfaces ERR_LEDGER_UNBALANCED as a problem+json with the difference in the detail (LEGACY-003)", async () => {
     const doc = (await (
       await create(a.human, [
         { lineNo: 1, accountId: a.cash, debit: "100.0000" },

@@ -15,7 +15,7 @@ import {
  * The third, `inventory.valuation`, deliberately declares NOTHING here: `ValuationRowSchema`,
  * `ValuationQuery` and `ValuationList` are 3B's, in `inventory/valuation.ts`, and its route imports them
  * unchanged. One valuation row type, one valuation read (`valuationAsOf`) — which is the whole answer to
- * SAH-009 and the reason this file is not the place to declare a second.
+ * LEGACY-009 and the reason this file is not the place to declare a second.
  *
  * Every name carries `Report` because 3A's `StockOnHandSchema` / `StockOnHandQuery` / `StockOnHandList`
  * already leave the contracts barrel from `inventory/stock.ts` for its master-data list route. A duplicate

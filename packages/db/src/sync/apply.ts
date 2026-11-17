@@ -140,7 +140,7 @@ const TENDER_METHODS = new Set(["cash", "card", "transfer", "store_credit"]);
  * Tax is recomputed by the tax service. Returns preserve verified carrying-cost and historical
  * source budgets; stock movements, consumptions, numbering and ledger writes remain in posting.
  *
- * **The terminal acts and the cashier is attributed** (hazard 19, SAH-044). `created_by` and `posted_by` come
+ * **The terminal acts and the cashier is attributed** (hazard 19, LEGACY-044). `created_by` and `posted_by` come
  * from the column default `app.current_actor()`, which is `ctx.actorId` — the terminal's principal, resolved
  * from the signed call. `attributed_to` is `cashierPrincipalId`, a data column. No line of this function
  * passes a principal id from the payload into an actor column.
@@ -397,7 +397,7 @@ async function applyTicket(
 
   // (h) Recompute tax and compare THROUGH Money. `computeDocumentTax` has already WRITTEN the server's
   //     figures, so a mismatch is a refusal and never a correction: a till whose catalogue is stale re-pulls
-  //     and re-prices, and no receipt is issued at a rate nobody chose (SAH-020's discipline at the till).
+  //     and re-prices, and no receipt is issued at a rate nobody chose (LEGACY-020's discipline at the till).
   const sourceId = [...returnFacts.values()][0]?.sourceDocumentId;
   const computed = await computeDocumentTax(
     sp,
@@ -901,7 +901,7 @@ function verifyTax(
       throw new SyncError(
         "ERR_VALIDATION_FAILED",
         `ticket ${ticket.clientRef} line ${wire.lineNo}: the till says tax ${wire.taxAmount.amount} and this server computes ${server.taxAmount}` +
-          `; re-pull the catalogue and re-price — the server does not overwrite a price the shop did not choose (SAH-020)`,
+          `; re-pull the catalogue and re-price — the server does not overwrite a price the shop did not choose (LEGACY-020)`,
       );
     }
   }

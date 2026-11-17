@@ -117,7 +117,7 @@ const TENDER_ACCOUNT: Readonly<Record<string, string>> = {
  *
  * **Every figure comes from `app.ledger_entry`, never from `document_line`.** The DoD sentence is "the
  * shift Z-report ties to the ledger to the cent", and a report that summed tender lines would be a second
- * computation that can disagree — which is the defect SAH-055 names ("a figure recomputed by a staler
+ * computation that can disagree — which is the defect LEGACY-055 names ("a figure recomputed by a staler
  * rule") and the reason 1B's `trialBalance` reads `account_balance` rather than re-aggregating.
  *
  * **Branch isolation is RLS's job; the report code is this query's.** `app.shift` carries Form A's

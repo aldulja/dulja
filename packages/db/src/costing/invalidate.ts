@@ -29,7 +29,7 @@ export async function lockTenantAuditSerial(tx: Sql, tenantId: string): Promise<
  * Marks every layer and consumption of the affected items at or after `(effectiveDate, postingSeq)` invalid
  * and enqueues ONE `inventory.cost.replay` per company (contracts §4.7.2). Runs on the caller's `tx`, so the
  * invalidation and the enqueue commit with the posting or roll back with it (spec:1127 — the guarantee
- * SAH-005 lacked, where a dirty flag was set from three of four code paths).
+ * LEGACY-005 lacked, where a dirty flag was set from three of four code paths).
  *
  * The comparison is Postgres's row-wise `>=`, which is the contracts §4.3.5 key's first two elements compared
  * lexicographically — exactly "at or after its sequence" (spec:1220). Spelling it as

@@ -101,7 +101,7 @@ describe("stock_valuation — the as-of snapshot (spec:1204; test 2 re-run)", ()
     expect(rows).toEqual([{ quantity: "50.000000", value: "625.0000", as_of: "2026-01-31" }]);
   });
 
-  it("it agrees with valuationAsOf to the cent — one function, one answer (spec:1228, SAH-009)", async () => {
+  it("it agrees with valuationAsOf to the cent — one function, one answer (spec:1228, LEGACY-009)", async () => {
     const direct = await withTenant(db.rw, s.tenant, s.system, (tx) =>
       valuationAsOf(tx, { companyId: s.company, asOf: "2026-01-31", limit: 50 }),
     );

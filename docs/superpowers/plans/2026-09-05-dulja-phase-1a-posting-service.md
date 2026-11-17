@@ -4,11 +4,11 @@
 
 **Goal.** Ship the posting service — the one code path through which any financial row is ever written — together with the Phase 1 tables it needs (`document_line`, `account_balance`, `document.posting_seq`), the JOURNAL document type and its policy v1, the chart-of-accounts and fiscal-period APIs, and the generic document API through which a journal voucher is drafted and posted. At the end of this slice a balanced two-line journal entered through `POST /v1/companies/{companyId}/documents` and posted through `POST …/documents/{id}/transitions` produces immutable `ledger_entry` rows, a `MERGE`d `account_balance` row and an audit trail, and `Σdebit = Σcredit` holds over ten thousand fast-check-generated documents.
 
-**Architecture.** The posting service is split by the dependency rule (spec:2389, contracts §3.1): the pure half — the policy JSON Schema, the document snapshot and posting-plan types, `evaluatePolicy`, `validateRequires`, `balanceInBase` — lives in `packages/domain/src/posting/` and performs no I/O; the I/O half — `loadSnapshot`, `resolvePolicy`, `issueDocument`, `postDocument`, `reverseDocument`, `voidDocument` — lives in `packages/db/src/posting/` and is exported from `@dulja/db`. Neither `apps/api` nor `apps/worker` contains posting logic: the document routes here and the sync-apply, payroll and recost jobs of later phases all call the same four functions (spec:1360, 2081 — "exactly the same posting service"). Every one of them takes the caller's `tx` — the transaction `withTenant` opened — and none opens its own, so the handler's work, the pg-boss enqueue and the posting commit or roll back together. The acting principal is **always** `app.current_actor()` read from the session, never a parameter (SAH-044).
+**Architecture.** The posting service is split by the dependency rule (spec:2389, contracts §3.1): the pure half — the policy JSON Schema, the document snapshot and posting-plan types, `evaluatePolicy`, `validateRequires`, `balanceInBase` — lives in `packages/domain/src/posting/` and performs no I/O; the I/O half — `loadSnapshot`, `resolvePolicy`, `issueDocument`, `postDocument`, `reverseDocument`, `voidDocument` — lives in `packages/db/src/posting/` and is exported from `@dulja/db`. Neither `apps/api` nor `apps/worker` contains posting logic: the document routes here and the sync-apply, payroll and recost jobs of later phases all call the same four functions (spec:1360, 2081 — "exactly the same posting service"). Every one of them takes the caller's `tx` — the transaction `withTenant` opened — and none opens its own, so the handler's work, the pg-boss enqueue and the posting commit or roll back together. The acting principal is **always** `app.current_actor()` read from the session, never a parameter (LEGACY-044).
 
 **Tech Stack.** TypeScript on Bun (apps and packages) with Vitest on Node 24 for tests (D5); PostgreSQL 18 through `postgres.js` tagged templates; Drizzle ORM mirrors for reads and as the migration diff source (ADR-0002, contracts §3.4.9); Hono + `@hono/zod-openapi` for routes; `decimal.js` behind `Money` (0D); Ajv (JSON Schema draft 2020-12) for policy validation; `fast-check` for the property and fuzz suites; Testcontainers for every database test. No package version appears in any source file — the lockfile owns versions (spec:104).
 
-**Spec.** `docs/spec/rebuild-spec.md` v1.2 — §0.2 (spec:97–106), §3.1 (spec:1071–1078), §3.3 and its projections paragraph (spec:1163–1206), §3.8 in full (spec:1362–2032), §3.9 (spec:2039–2051), §4.7 (spec:2222–2224), §4.11 (spec:2262–2267), Part V phase 1 row (spec:2287), Part VI tests 1, 3, 4, 9, 16 (spec:2419–2457), Part I §A SAH-001–024. Contracts: `docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md` (2026-09-05).
+**Spec.** `docs/spec/rebuild-spec.md` v1.2 — §0.2 (spec:97–106), §3.1 (spec:1071–1078), §3.3 and its projections paragraph (spec:1163–1206), §3.8 in full (spec:1362–2032), §3.9 (spec:2039–2051), §4.7 (spec:2222–2224), §4.11 (spec:2262–2267), Part V phase 1 row (spec:2287), Part VI tests 1, 3, 4, 9, 16 (spec:2419–2457), Part I §A LEGACY-001–024. Contracts: `docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md` (2026-09-05).
 
 ---
 
@@ -19,8 +19,8 @@
 - **Migration numbers:** 0011–0014 — `0011_create_document_line.sql`, `0012_create_account_balance.sql`, `0013_alter_document_add_posting_seq.sql`, `0014_seed_permission_phase1.sql`, each with a hand-written `NNNN.down.sql`. **ADR numbers:** 0021–0023 — 0021 `document_line` base shape (a **proposal**, spec:95, since it is a data-model decision), 0022 Ajv as the posting-policy validator with a committed generated `PostingPolicy` type, 0023 `fiscal_period.reopen_reason` as the audited reopen reason.
 - **Interfaces consumed:** §4.1 (the whole Plan 0A surface), §4.2.1 (`Money`/`toBase`/`ExchangeRate`), §4.2.2 (`withTenant`, `TenantContext`, `systemContext`), §4.2.3 (`AppEnv`, `Logger`, middleware order), §4.2.4 (`Problem`, `ERRORS`, `AppError`, `fromDatabaseError`), §4.2.5 (`PERMISSIONS`, `requirePermission`, `RoleSeed`/`ROLES`), §4.2.6 (`JobClient` — no job is enqueued by Phase 1; the parameter exists so the signature is final), §4.2.7 (`RouteModule`, `buildRoutes`, `PROBES`), §4.2.8 (common Zod schemas, list envelope, cursor), §4.2.9 (idempotency), §4.2.10 (`app.rate_for`), §4.2.12 (`startApi`), §4.15 (account codes seeded by 0C).
 - **Interfaces produced:** §4.3.1 verbatim (`loadSnapshot`, `resolvePolicy`, `issueDocument`, `IssueResult`, `postDocument`, `PostResult`, `reverseDocument`, `voidDocument`, `DocumentStatus`; `transitionDocument`/`recordOverride` are 2A/2B and are **not** implemented here), §4.3.2 (the fixed algorithm, at its Phase 1 subset), §4.3.3 verbatim (`app.account_balance` and the `MERGE`), §4.3.4 verbatim (the Phase 1 `app.document_line`), §4.3.5 (`document.posting_seq`, `app.posting_seq`), §4.3.6 verbatim (numbering at issue), §4.3.7 verbatim (the document-type seed envelope and `JOURNAL.json`), §4.4.1 at the **JOURNAL subset** (`packages/domain/posting-policy.schema.json`, `$id: urn:dulja:posting-policy:1`), §4.4.2 verbatim for every declared type (`PostingPolicy`, `DocumentSnapshot`, `LineSnapshot`, `PlannedLedgerLine`, `PlannedMovement`, `PlannedTaxLine`, `PostingPlan`, `PolicyValidation`, `PayComponentRef`, `SchemeRef`, `PayrollLineRef`, `ItemRef`, `TaxCodeRef`) and at the JOURNAL subset for `evaluatePolicy`, §3.5.2's `posting-only-tables` lint, §3.6.2's six `accounting.*` codes, §4.17's `JOURNAL_POLICY_V1`, `seedTenantV2`, `seedJournalPolicy`, `seedAccount`.
-- **Owner decisions:** **OD-24** (screenshots and a two-minute operator description before any screen) → **Task 15, isolated**; default assumed = **no screen ships in this slice** — 1A ships the API surface only and the three Phase 1 screens (chart of accounts, journal entry, fiscal periods) are 1B's Delivers. No other OD item gates this slice; **OD-27** (Part VII #6, real DDL constraints) is *cited* by the conditional regression file `tests/regression/sah-024.test.ts`, which contracts §3.7.3 makes 1A create **marked `it.skip` with the reason** — that is one `it` inside Task 14, not a gate on any deliverable. **OD-06** (v1 costing method) is **not** this slice's: `DocumentSnapshot.company.costingMethod` is filled with the §2.12 default `"avco"` because `app.company` has no `costing_method` column before 3B, and 3B's isolated OD-06 task changes that one expression.
-- **Part VI tests owned / re-run:** owns **1** (ledger invariant — the fast-check fuzz suite of Task 14), **3** (re-key a posting — Task 9), **4** (multi-tenant aggregate — the two-connection, two-tenant concurrent post of Task 14). Re-runs **16** (JOURNAL numbering — the concurrency pre-check of Task 7; 2B owns it), **9** (period lock through the **API and admin paths only** — Task 12 for the API path, Tasks 11 and 8 for the admin path; 1B owns the test and ships the background-job path, 9B the import path), **12**, **13** and **36** for the three new tables and the six new codes. **§3.0.4 rows owned:** none — 1A contributes to spec:1040 (owned by 1B) and to spec:1045's "base = value × rate" clause (owned by 4B). **Regression files created:** `tests/regression/sah-001.test.ts`, `sah-002.test.ts`, `sah-011.test.ts`, `sah-024.test.ts` (⚠️ conditional, created immediately and marked `it.skip` until OD-27 answers Part VII #6 — contracts §3.7.3 names 1A as its creator), `sah-049.test.ts`, `sah-079.test.ts`. **Appended to:** `sah-003`, `sah-012`, `sah-021`, `sah-031`, `sah-035`, `sah-041`, `sah-050`, `sah-051`, `sah-070`, `sah-071` (each already created by 0B; this slice adds a `describe("… — 1A", …)` block and never edits an earlier one).
+- **Owner decisions:** **OD-24** (screenshots and a two-minute operator description before any screen) → **Task 15, isolated**; default assumed = **no screen ships in this slice** — 1A ships the API surface only and the three Phase 1 screens (chart of accounts, journal entry, fiscal periods) are 1B's Delivers. No other OD item gates this slice; **OD-27** (Part VII #6, real DDL constraints) is *cited* by the conditional regression file `tests/regression/legacy-024.test.ts`, which contracts §3.7.3 makes 1A create **marked `it.skip` with the reason** — that is one `it` inside Task 14, not a gate on any deliverable. **OD-06** (v1 costing method) is **not** this slice's: `DocumentSnapshot.company.costingMethod` is filled with the §2.12 default `"avco"` because `app.company` has no `costing_method` column before 3B, and 3B's isolated OD-06 task changes that one expression.
+- **Part VI tests owned / re-run:** owns **1** (ledger invariant — the fast-check fuzz suite of Task 14), **3** (re-key a posting — Task 9), **4** (multi-tenant aggregate — the two-connection, two-tenant concurrent post of Task 14). Re-runs **16** (JOURNAL numbering — the concurrency pre-check of Task 7; 2B owns it), **9** (period lock through the **API and admin paths only** — Task 12 for the API path, Tasks 11 and 8 for the admin path; 1B owns the test and ships the background-job path, 9B the import path), **12**, **13** and **36** for the three new tables and the six new codes. **§3.0.4 rows owned:** none — 1A contributes to spec:1040 (owned by 1B) and to spec:1045's "base = value × rate" clause (owned by 4B). **Regression files created:** `tests/regression/legacy-001.test.ts`, `legacy-002.test.ts`, `legacy-011.test.ts`, `legacy-024.test.ts` (⚠️ conditional, created immediately and marked `it.skip` until OD-27 answers Part VII #6 — contracts §3.7.3 names 1A as its creator), `legacy-049.test.ts`, `legacy-079.test.ts`. **Appended to:** `legacy-003`, `legacy-012`, `legacy-021`, `legacy-031`, `legacy-035`, `legacy-041`, `legacy-050`, `legacy-051`, `legacy-070`, `legacy-071` (each already created by 0B; this slice adds a `describe("… — 1A", …)` block and never edits an earlier one).
 - **Shared namespaces this slice writes into:** **document-type codes (§4.14):** `JOURNAL`, `module: "accounting"`, series `JV` — the only one. **Account codes (§4.15):** **none seeded** — every code this slice's policy and tests name is 0C's: `1000` Cash on hand, `4000` Sales, `5920` FX rounding (the `company.fx_rounding_account_id` target), plus `1100` Bank and `1300` Inventory control used only as second accounts in tests. Task 10's first step asserts `1000`, `4000` and `5920` resolve for the seeded company (contracts §5 item 33). **Report codes (§4.16.1) and `DatasetId` members (§4.16.2):** **none** — `accounting.trial_balance` and `accounting.ledger` are 1B's. **`fixtures.ts` helpers (§4.17):** `JOURNAL_POLICY_V1`, `seedTenantV2`, `seedJournalPolicy`, `seedAccount` — **and no others**. **`ERR_*` (§4.2.4):** this slice adds exactly `ERR_PERIOD_NOT_FOUND`, `ERR_POLICY_NOT_FOUND`, `ERR_POLICY_INVALID`, `ERR_POLICY_REQUIRES_MISSING`, `ERR_DOC_NO_LINES` and `ERR_DOC_STATUS_ILLEGAL` to `ERRORS` in `packages/contracts/src/errors.ts` — two in **Task 5** (the two `ERR_POLICY_*` the evaluator throws) and the remaining four in **Task 6**, all six therefore inside the one pull request that spans Tasks 4→12. They land no later than Task 6 and not "each in the PR that raises it", because Task 6 Step 5's `if (e instanceof PostingError) return new AppError(e.code, e.detail)` needs `PostingErrorCode` to be a literal subset of `ErrCode` **with no cast**, and `PostingErrorCode` carries all nine of §4.3.8's Phase 1 members from Task 6 Step 2 onward. The `error-codes` build check is satisfied for every one of the six from the moment it is added, because each occurs as a string literal in `packages/domain/src/posting/evaluate.ts` or `packages/db/src/posting/errors.ts` — both inside `packages/**/src/**`.
 - **Never re-decide:** D1–D27 (spec:114–142); every name in the contracts document is frozen — a needed change goes to that document first.
 - **Contract amendments this plan depends on — seven, each listed with its section, its wording and the task it blocks in the Self-Review's *Contract amendments* table.** In task order: **A1** `app.fiscal_period.reopen_reason` registered in §4.3.4/§4.6 (blocks **Task 3**); **A7** the six `accounting.*` role grants recorded in §3.6.4's register sentence (lands **with Task 4**); **A3** `balanceInBase`'s third parameter in §4.4.2 and the `balanceLines()` spelling in §2.2, and **A6** the three §4.4.2 additions `parsePolicy`, `validateDocumentTypeSeed` and a body for `PolicyEvaluationError` (both block **Task 5**); **A2** `PostingError`/`PostingErrorCode` in §4.3.1/§4.3.8 and **A5** the `refs.accountsByCode` sentence at contracts:2108 (block **Task 6**); **A4** the balance-key advisory lock beside the §4.3.3 `MERGE` (blocks **Task 8**). None changes behaviour; each makes the registry say what this plan ships. The architect makes them in their own PR — the project folder is read-only to this plan's writer except this file. **As of the 2026-09-08 audit, A1, A2, A3 and A6 have landed in the contracts document; A4 and A5 have not** — §4.3.3's `MERGE` recipe still carries no balance-key advisory lock and §4.4.2 still reads "holds exactly the §4.15 codes the policy names" — so Tasks 6 and 8 remain gated, and A7's register sentence still records only 2A's and 2B's grants.
@@ -44,7 +44,7 @@
 
 ## Global Constraints
 
-**Never** (spec:97–104, restated because each task must be able to stand alone): write to a ledger or movement table outside the posting service; represent money as a float anywhere, TypeScript included; build SQL by string concatenation (SAH-036/037/069); issue DDL from application code (SAH-053); disable an invariant, constraint or trigger "temporarily" (SAH-027, 041, 053); gate an audit write on any flag (SAH-030); hard-code a package version into a source file — the lockfile owns versions.
+**Never** (spec:97–104, restated because each task must be able to stand alone): write to a ledger or movement table outside the posting service; represent money as a float anywhere, TypeScript included; build SQL by string concatenation (LEGACY-036/037/069); issue DDL from application code (LEGACY-053); disable an invariant, constraint or trigger "temporarily" (LEGACY-027, 041, 053); gate an audit write on any flag (LEGACY-030); hard-code a package version into a source file — the lockfile owns versions.
 
 **Always**, for every new table (spec:106 unioned with the Plan 0A linter, contracts §3.3): `tenant_id`; RLS enabled **and forced** through `call app_meta.enable_tenant_rls('app.<name>')`; the policy named exactly `tenant_isolation`; `id uuid primary key default uuidv7()` unless the table is in `NO_ID_TABLES`; `created_at timestamptz not null default now()`; `call app_meta.attach_audit('app.<name>')` unless the table is in `AUDIT_EXEMPT`; `call app_meta.attach_stamp('app.<name>', '<col>_by')` for every `*_by` column; composite FKs `(tenant_id, <parent>_id)` to every tenant-scoped parent; a migration with a hand-written down; a Drizzle mirror in `packages/db/src/schema/`; and a test that a second tenant cannot see it. `lintSchema` must report **zero** violations after every migration.
 
@@ -175,9 +175,9 @@ scripts/lint/rules/posting-only-tables.test.ts                                  
 tests/
 ├─ invariants/probes.ts                    four new PROBES entries                             T10→T12
 └─ regression/
-   ├─ sah-001.test.ts  sah-002.test.ts  sah-011.test.ts  sah-024.test.ts (skipped)
-   ├─ sah-049.test.ts  sah-079.test.ts                                                            T14
-   └─ appends to sah-003, 012, 021, 031, 035, 041, 050, 051, 070, 071                              T14
+   ├─ legacy-001.test.ts  legacy-002.test.ts  legacy-011.test.ts  legacy-024.test.ts (skipped)
+   ├─ legacy-049.test.ts  legacy-079.test.ts                                                            T14
+   └─ appends to legacy-003, 012, 021, 031, 035, 041, 050, 051, 070, 071                              T14
 
 docs/adr/
 ├─ 0021-document-line-base-shape.md        PROPOSAL (spec:95)                                     T1
@@ -209,7 +209,7 @@ import { lintSchema } from "../src/lint-schema";
 import { draftDocument, seedTenant, type Seed } from "./fixtures";
 import { startDb, uuidv7, withTenant, type Db } from "./harness";
 
-describe("app.document_line — contracts §4.3.4 (spec:1748, SAH-021, 035)", () => {
+describe("app.document_line — contracts §4.3.4 (spec:1748, LEGACY-021, 035)", () => {
   let db: Db;
   let a: Seed;
   let b: Seed;
@@ -264,7 +264,7 @@ describe("app.document_line — contracts §4.3.4 (spec:1748, SAH-021, 035)", ()
     ).rejects.toThrow(/document_line_document_id_line_no_key/);
   });
 
-  it("cannot borrow another tenant's account through the composite FK (SAH-035)", async () => {
+  it("cannot borrow another tenant's account through the composite FK (LEGACY-035)", async () => {
     const doc = await draftDocument(db, a);
     await expect(
       withTenant(db.rw, a.tenant, a.human, (tx) => tx`
@@ -350,7 +350,7 @@ create table app.document_line (
   unique (document_id, line_no),
   unique (tenant_id, id),
   -- Composite FKs: an FK check bypasses RLS, so a plain references would let tenant A's line point at
-  -- tenant B's account if the uuid were known (SAH-035, spec:1820).
+  -- tenant B's account if the uuid were known (LEGACY-035, spec:1820).
   foreign key (tenant_id, company_id)  references app.company(tenant_id, id),
   foreign key (tenant_id, document_id) references app.document(tenant_id, id) on delete cascade,
   foreign key (tenant_id, account_id)  references app.account(tenant_id, id)
@@ -363,7 +363,7 @@ call app_meta.attach_audit('app.document_line');          -- before/after images
 -- app_rw receives select, insert, update through the default privileges of migration 0001 (plan0A:2564).
 -- No DELETE: the cascade from document runs with the table owner's rights, and 2B's migration 0023 is the
 -- one slice that grants app_rw DELETE here, guarded by document_delete_draft_only (contracts §3.5.4).
--- No extra index: `unique (document_id, line_no)` already backs every lookup by document (SAH-070).
+-- No extra index: `unique (document_id, line_no)` already backs every lookup by document (LEGACY-070).
 ```
 
 `packages/db/migrations/0011.down.sql`:
@@ -488,7 +488,7 @@ EOF
 
 ### Task 2 — Migration `0012_create_account_balance.sql`: `app.account_balance`
 
-The one projection Phase 1 maintains. It is derived — every row is a sum of `ledger_entry` rows over the full key `(company, account, fiscal period, currency)` — which is precisely why SAH-001 and SAH-049 happened in the legacy system: its aggregate tables were keyed on less than the grain they aggregated, so two tenants' rows collided and a concurrent upsert lost an amount. The key here is the whole grain, the write is a single `MERGE`, and 1B rebuilds the table from the ledger and compares row for row.
+The one projection Phase 1 maintains. It is derived — every row is a sum of `ledger_entry` rows over the full key `(company, account, fiscal period, currency)` — which is precisely why LEGACY-001 and LEGACY-049 happened in the legacy system: its aggregate tables were keyed on less than the grain they aggregated, so two tenants' rows collided and a concurrent upsert lost an amount. The key here is the whole grain, the write is a single `MERGE`, and 1B rebuilds the table from the ledger and compares row for row.
 
 **Files:**
 - Create: `packages/db/migrations/0012_create_account_balance.sql`, `packages/db/migrations/0012.down.sql`, `packages/db/src/schema/account_balance.ts`, `packages/db/test/account-balance.test.ts`
@@ -513,7 +513,7 @@ import { startDb, withTenant, type Db } from "./harness";
  *  service exists. Task 8 moves this statement into packages/db/src/posting/post.ts unchanged. */
 const MERGE_FROM_DOCUMENT = (tenant: string, company: string, doc: string) => [tenant, company, doc] as const;
 
-describe("app.account_balance — contracts §4.3.3 (SAH-001, 002, 049)", () => {
+describe("app.account_balance — contracts §4.3.3 (LEGACY-001, 002, 049)", () => {
   let db: Db;
   let a: Seed;
   let b: Seed;
@@ -527,7 +527,7 @@ describe("app.account_balance — contracts §4.3.3 (SAH-001, 002, 049)", () => 
     await db.stop();
   });
 
-  it("is keyed on the full grain — company, account, period and currency (SAH-049)", async () => {
+  it("is keyed on the full grain — company, account, period and currency (LEGACY-049)", async () => {
     const key = await withTenant(db.admin, a.tenant, a.system, (tx) => tx<{ attname: string }[]>`
       select att.attname
         from pg_index i
@@ -549,7 +549,7 @@ describe("app.account_balance — contracts §4.3.3 (SAH-001, 002, 049)", () => 
     );
   });
 
-  it("accumulates rather than replaces when the same key is merged twice (SAH-002)", async () => {
+  it("accumulates rather than replaces when the same key is merged twice (LEGACY-002)", async () => {
     const merge = (amount: string) =>
       withTenant(db.rw, a.tenant, a.human, (tx) => tx`
         merge into app.account_balance b
@@ -572,7 +572,7 @@ describe("app.account_balance — contracts §4.3.3 (SAH-001, 002, 049)", () => 
     expect(row!.base_debit).toBe("125.5000");
   });
 
-  it("refuses an account from another tenant through the composite FK (SAH-035)", async () => {
+  it("refuses an account from another tenant through the composite FK (LEGACY-035)", async () => {
     await expect(
       withTenant(db.rw, a.tenant, a.human, (tx) => tx`
         insert into app.account_balance (tenant_id, company_id, account_id, fiscal_period_id, currency, debit)
@@ -580,7 +580,7 @@ describe("app.account_balance — contracts §4.3.3 (SAH-001, 002, 049)", () => 
     ).rejects.toThrow(/account_balance_tenant_id_account_id_fkey/);
   });
 
-  it("a second tenant sees no balances and cannot update one (SAH-001)", async () => {
+  it("a second tenant sees no balances and cannot update one (LEGACY-001)", async () => {
     const seen = await withTenant(db.rw, b.tenant, b.human, (tx) => tx<{ n: number }[]>`
       select count(*)::int as n from app.account_balance`);
     expect(seen[0]!.n).toBe(0);
@@ -612,8 +612,8 @@ Expected: **FAIL** — `relation "app.account_balance" does not exist` on the fi
 ```sql
 -- 0012_create_account_balance.sql — the only projection Phase 1 maintains (contracts §4.3.3; spec:2031).
 -- The legacy system's aggregate tables were keyed on less than the grain they aggregated, so two tenants'
--- rows collided (SAH-001) and a concurrent upsert silently lost an amount (SAH-049); its upsert never fired
--- on UPDATE, so re-keying a posting destroyed the balance (SAH-002). The key here IS the grain, the write is
+-- rows collided (LEGACY-001) and a concurrent upsert silently lost an amount (LEGACY-049); its upsert never fired
+-- on UPDATE, so re-keying a posting destroyed the balance (LEGACY-002). The key here IS the grain, the write is
 -- one MERGE, and 1B's integrity job rebuilds the table from ledger_entry and compares row for row.
 
 -- ── 1. the projection ─────────────────────────────────────────────────────────────────────────────────
@@ -629,7 +629,7 @@ create table app.account_balance (
   base_credit       numeric(19,4) not null default 0,
   created_at        timestamptz not null default now(),
   updated_at        timestamptz not null default now(),
-  primary key (company_id, account_id, fiscal_period_id, currency),   -- the full key the MERGE targets (SAH-002/049)
+  primary key (company_id, account_id, fiscal_period_id, currency),   -- the full key the MERGE targets (LEGACY-002/049)
   foreign key (tenant_id, company_id)       references app.company(tenant_id, id),
   foreign key (tenant_id, account_id)       references app.account(tenant_id, id),
   foreign key (tenant_id, fiscal_period_id) references app.fiscal_period(tenant_id, id)
@@ -714,8 +714,8 @@ git commit -m "$(cat <<'EOF'
 feat(db): app.account_balance keyed on the full grain [1A T2]
 
 company, account, fiscal period and currency together are the primary key, so
-two tenants cannot collide (SAH-001) and a concurrent MERGE cannot lose an
-amount (SAH-049). Derived, audit-exempt, no DELETE for app_rw.
+two tenants cannot collide (LEGACY-001) and a concurrent MERGE cannot lose an
+amount (LEGACY-049). Derived, audit-exempt, no DELETE for app_rw.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 EOF
@@ -825,7 +825,7 @@ Expected: **FAIL** — the first test errors with `relation "app.posting_seq" do
 -- inventory_movement.posting_seq, cost_layer.sequence and tax_transaction.posting_seq are all NOT NULL in
 -- the slices that add them. Gaps are irrelevant — a rolled-back post burns a number and blocks nobody. What
 -- matters is a total order per company, which the unique below guarantees. Contrast document_series, which
--- is a locked per-period counter because a document NUMBER must be gapless-provable (spec:2222, SAH-051).
+-- is a locked per-period counter because a document NUMBER must be gapless-provable (spec:2222, LEGACY-051).
 create sequence app.posting_seq;
 grant usage on sequence app.posting_seq to app_rw;      -- 0001 grants default privileges on TABLES only (plan0A:2564)
 
@@ -2020,7 +2020,7 @@ Expected: `typecheck` PASS. `lint:rules` reports **only** the six `permission-ca
 
 spec:2008 makes the posting policy a JSON document validated against
 `packages/domain/posting-policy.schema.json`, and spec:1711 requires it to be diffable and version-controlled
-rather than an opaque blob (SAH-078). Two things follow: something must validate a policy against that schema,
+rather than an opaque blob (LEGACY-078). Two things follow: something must validate a policy against that schema,
 and TypeScript must have a type for it that cannot drift from the schema.
 
 ## Decision
@@ -2196,7 +2196,7 @@ describe("loadSnapshot and resolvePolicy — contracts §4.3.1", () => {
     ).rejects.toMatchObject({ code: "ERR_POLICY_NOT_FOUND" });
   });
 
-  it("raises ERR_POLICY_INVALID for a stored definition that fails the schema (SAH-013)", async () => {
+  it("raises ERR_POLICY_INVALID for a stored definition that fails the schema (LEGACY-013)", async () => {
     await expect(
       withTenant(db.rw, plain.tenant, plain.human, (tx) => resolvePolicy(tx, plain.docType, "2026-01-15")),
     ).rejects.toMatchObject({ code: "ERR_POLICY_INVALID" });
@@ -2297,7 +2297,7 @@ export async function loadSnapshot(tx: Sql, documentId: string): Promise<Documen
       ? { ...UNIT_RATE(baseCurrency), effectiveFrom: h.effective_date }
       : {
           from: docCurrency, to: baseCurrency,
-          rate: h.exchange_rate,                    // already "4.68350000" — ::text preserves numeric(19,8)'s scale; a parseFloat here would be SAH-012 in the new system
+          rate: h.exchange_rate,                    // already "4.68350000" — ::text preserves numeric(19,8)'s scale; a parseFloat here would be LEGACY-012 in the new system
           effectiveFrom: h.effective_date,
           source: h.rate_source ?? "unknown",
         };
@@ -2352,7 +2352,7 @@ export async function loadSnapshot(tx: Sql, documentId: string): Promise<Documen
 
 /** The policy effective for a document: the greatest effective_from <= effectiveDate, ties broken by the
  *  highest version (spec:2172, contracts §4.3.1). The definition is parsed against the schema on the way out,
- *  so a hand-edited or stale row is refused rather than evaluated (SAH-013). */
+ *  so a hand-edited or stale row is refused rather than evaluated (LEGACY-013). */
 export async function resolvePolicy(
   tx: Sql,
   documentTypeId: string,
@@ -2504,7 +2504,7 @@ The reading half of the posting service. The snapshot is built at its final
 3A, 3B or 5A add their columns. resolvePolicy takes the greatest effective_from
 and breaks a tie on the highest version, which is what lets seedTenantV2's
 policy v2 win over Plan 0A's stub at the same date, and it parses the stored
-definition so a hand-edited row is refused rather than evaluated (SAH-013).
+definition so a hand-edited row is refused rather than evaluated (LEGACY-013).
 
 PostingError carries the §4.3.8 codes; apps/api maps it in one branch beside the
 TenantContextError branch, because packages/db may import only @dulja/domain.
@@ -2521,7 +2521,7 @@ EOF
 
 ### Task 7 — `issueDocument`: numbering under the series advisory lock
 
-The point where a document stops being a draft and acquires a number nobody else can have. SAH-051 is the legacy system's numbering: a `max() + 1` with no lock, no uniqueness constraint and no record of a number that was issued and then abandoned. All three are fixed here — the counter is a row, the row is taken under an advisory lock keyed on `(company, series, period)`, and the database refuses a duplicate through `unique (company_id, series, fiscal_period_id, number)` even if the lock were somehow bypassed.
+The point where a document stops being a draft and acquires a number nobody else can have. LEGACY-051 is the legacy system's numbering: a `max() + 1` with no lock, no uniqueness constraint and no record of a number that was issued and then abandoned. All three are fixed here — the counter is a row, the row is taken under an advisory lock keyed on `(company, series, period)`, and the database refuses a duplicate through `unique (company_id, series, fiscal_period_id, number)` even if the lock were somehow bypassed.
 
 **Files:**
 - Create: `packages/db/src/posting/issue.ts`, `packages/db/test/posting/issue.test.ts`
@@ -2551,7 +2551,7 @@ import { withTenant as prodWithTenant } from "../../src/with-tenant";
 import { draftDocument, seedTenantV2, type Seed } from "../fixtures";
 import { startDb, uuidv7, withTenant, type Db } from "../harness";
 
-describe("issueDocument — contracts §4.3.6 (SAH-051, spec:2222)", () => {
+describe("issueDocument — contracts §4.3.6 (LEGACY-051, spec:2222)", () => {
   let db: Db;
   let a: Seed;
   const ctx = (s: Seed) => ({ tenantId: s.tenant, actorId: s.human, requestId: "req-issue" });
@@ -2747,7 +2747,7 @@ feat(db): issueDocument — numbering under the series advisory lock [1A T7]
 The counter is a row per (company, series, period) taken under
 pg_advisory_xact_lock('series:<company>/<series>/<period>'), so two connections
 racing the first document of a new period get 1 and 2 rather than a duplicate
-(SAH-051, test 16). The period is resolved from effective_date and must be open
+(LEGACY-051, test 16). The period is resolved from effective_date and must be open
 before the counter is touched. A rollback releases the lock and consumes no
 number, which is what makes the series gapless-provable (spec:2222).
 
@@ -2821,7 +2821,7 @@ async function draftWithLines(
   return id;
 }
 
-describe("postDocument — contracts §4.3.2 (SAH-003, 012, 031, 041, 044)", () => {
+describe("postDocument — contracts §4.3.2 (LEGACY-003, 012, 031, 041, 044)", () => {
   let db: Db;
   let a: Seed;
   let plain: Seed;
@@ -2855,7 +2855,7 @@ describe("postDocument — contracts §4.3.2 (SAH-003, 012, 031, 041, 044)", () 
     >`select status::text as status, posted_by::text as posted_by, posting_policy_id::text as posting_policy_id, posted_at
         from app.document where id = ${doc}`);
     expect(header!.status).toBe("posted");
-    expect(header!.posted_by).toBe(a.human);                    // stamped from the session, never a parameter (SAH-044)
+    expect(header!.posted_by).toBe(a.human);                    // stamped from the session, never a parameter (LEGACY-044)
     expect(header!.posting_policy_id).toBe(result.postingPolicyId);
     expect(header!.posted_at).not.toBeNull();
 
@@ -2881,7 +2881,7 @@ describe("postDocument — contracts §4.3.2 (SAH-003, 012, 031, 041, 044)", () 
     expect(balance).toMatchObject({ debit: "100.0000", base_debit: "100.0000" });
   });
 
-  it("accumulates the projection over two documents rather than replacing it (SAH-002)", async () => {
+  it("accumulates the projection over two documents rather than replacing it (LEGACY-002)", async () => {
     // The tenant is seeded once in beforeAll and the first test in this file posts 100.0000 to a.cash, so
     // the value is deterministic. Asserted as the exact numeric(19,4) STRING: converting a money column to
     // a JS float to compare it approximately is the thing spec:97-104 forbids, and this is a test, which is
@@ -2947,7 +2947,7 @@ describe("postDocument — contracts §4.3.2 (SAH-003, 012, 031, 041, 044)", () 
       .rejects.toMatchObject({ code: "ERR_DOC_NO_LINES" });
   });
 
-  it("refuses an unbalanced document before writing any row (SAH-003)", async () => {
+  it("refuses an unbalanced document before writing any row (LEGACY-003)", async () => {
     const doc = await draftWithLines(db, a, [
       { account: a.cash, debit: "100.0000" },
       { account: a.sales, credit: "90.0000" },
@@ -3149,7 +3149,7 @@ export async function postDocument(tx: Sql, ctx: TenantContext, input: { documen
                                    s.debit, s.credit, s.base_debit, s.base_credit)`;
 
   // 13. the header. posted_by is written explicitly — the column has no default and app.stamp_actor
-  //     overwrites a supplied value on the NULL → non-null transition but never invents one (SAH-044).
+  //     overwrites a supplied value on the NULL → non-null transition but never invents one (LEGACY-044).
   //     2B's AFTER UPDATE OF status trigger writes the document_event; at Phase 1 there is none.
   await tx`update app.document
               set status = 'posted', posting_policy_id = ${policyId}, posted_at = now(), posted_by = app.current_actor()
@@ -3383,9 +3383,9 @@ EOF
 
 ### Task 9 — `reverseDocument` and `voidDocument`: the two corrections D13 allows
 
-A posted document is never edited and never deleted (spec:2224, SAH-041). There are exactly two corrections: a **void**, for a number that was issued and will never post — recorded as a `document_number_void` row so the gap in the series is explained rather than merely present (SAH-051) — and a **reversal**, for a document that did post, which creates a mirror-image document, posts it through the same `postDocument`, and marks the original `reversed` (D13).
+A posted document is never edited and never deleted (spec:2224, LEGACY-041). There are exactly two corrections: a **void**, for a number that was issued and will never post — recorded as a `document_number_void` row so the gap in the series is explained rather than merely present (LEGACY-051) — and a **reversal**, for a document that did post, which creates a mirror-image document, posts it through the same `postDocument`, and marks the original `reversed` (D13).
 
-Acceptance test 3 lives here: post to account A, reverse, re-post to a never-used account B, and `sum(account_balance) = sum(ledger_entry)`. That is the direct answer to SAH-002, where re-keying a posting destroyed the amount because the aggregate's upsert never fired on UPDATE.
+Acceptance test 3 lives here: post to account A, reverse, re-post to a never-used account B, and `sum(account_balance) = sum(ledger_entry)`. That is the direct answer to LEGACY-002, where re-keying a posting destroyed the amount because the aggregate's upsert never fired on UPDATE.
 
 **Files:**
 - Create: `packages/db/src/posting/reverse.ts`, `packages/db/test/posting/reverse.test.ts`
@@ -3433,7 +3433,7 @@ async function draftWithLines(
   return id;
 }
 
-describe("reverseDocument and voidDocument — D13, spec:1745, SAH-002/041/051", () => {
+describe("reverseDocument and voidDocument — D13, spec:1745, LEGACY-002/041/051", () => {
   let db: Db;
   let a: Seed;
 
@@ -3508,7 +3508,7 @@ describe("reverseDocument and voidDocument — D13, spec:1745, SAH-002/041/051",
     const [wrongBalance] = await withTenant(db.rw, a.tenant, a.human, (tx) => tx<{ net: string }[]>`
       select (base_debit - base_credit)::text as net from app.account_balance
        where account_id = ${wrong} and fiscal_period_id = ${a.period} and currency = 'MYR'`);
-    expect(wrongBalance!.net).toBe("0.0000");           // the mis-keyed account nets to nothing (SAH-002)
+    expect(wrongBalance!.net).toBe("0.0000");           // the mis-keyed account nets to nothing (LEGACY-002)
     const [neverBalance] = await withTenant(db.rw, a.tenant, a.human, (tx) => tx<{ net: string }[]>`
       select (base_debit - base_credit)::text as net from app.account_balance
        where account_id = ${never} and fiscal_period_id = ${a.period} and currency = 'MYR'`);
@@ -3540,7 +3540,7 @@ describe("reverseDocument and voidDocument — D13, spec:1745, SAH-002/041/051",
     ).rejects.toMatchObject({ code: "ERR_PERIOD_NOT_OPEN" });
   });
 
-  it("voids an issued document and records the number so the gap is explained (SAH-051)", async () => {
+  it("voids an issued document and records the number so the gap is explained (LEGACY-051)", async () => {
     const doc = await draftWithLines(db, a, [
       { account: a.cash, debit: "9.0000" }, { account: a.sales, credit: "9.0000" },
     ]);
@@ -3668,7 +3668,7 @@ export async function reverseDocument(
 /**
  * spec:1745 — "Voiding an issued document sets status = 'void' AND inserts document_number_void in the same
  * transaction". The number is never re-issued; the row is what turns a gap in the series into an explained
- * gap (SAH-051). `voided_by` is stamped from the session by app.stamp_actor.
+ * gap (LEGACY-051). `voided_by` is stamped from the session by app.stamp_actor.
  */
 export async function voidDocument(
   tx: Sql,
@@ -3710,8 +3710,8 @@ feat(db): reverseDocument and voidDocument — the two corrections D13 allows [1
 A reversal is a mirror document posted through the same postDocument, so the
 projection stays a pure sum and acceptance test 3 holds: post to one account,
 reverse, re-post to a never-used account, and sum(account_balance) still equals
-sum(ledger_entry) (SAH-002). A void marks the document and records the number in
-document_number_void, so a gap in the series is an explained gap (SAH-051).
+sum(ledger_entry) (LEGACY-002). A void marks the document and records the number in
+document_number_void, so a gap in the series is an explained gap (LEGACY-051).
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 EOF
@@ -3722,7 +3722,7 @@ EOF
 
 ### Task 10 — The chart-of-accounts API
 
-`/v1/companies/{companyId}/accounts`. Accounts are archived, never deleted (spec:2049, SAH-021), and the tree is read with **one** recursive CTE rather than a per-row lookup — SAH-071 is the legacy system running a recursive tree check inside a trigger, once per row.
+`/v1/companies/{companyId}/accounts`. Accounts are archived, never deleted (spec:2049, LEGACY-021), and the tree is read with **one** recursive CTE rather than a per-row lookup — LEGACY-071 is the legacy system running a recursive tree check inside a trigger, once per row.
 
 **Files:**
 - Create: `packages/contracts/src/accounting/account.ts`, `apps/api/src/routes/accounting/accounts.ts`, `apps/api/test/routes/accounting/accounts.test.ts`
@@ -3745,7 +3745,7 @@ import type { Problem } from "@dulja/contracts";
 import { seedTenantV2, uuidv7, type Seed } from "@dulja/db/test";
 import { startApi, type StartedApi } from "../../support/app";
 
-describe("/v1/companies/{companyId}/accounts — spec:1673, SAH-021, SAH-071", () => {
+describe("/v1/companies/{companyId}/accounts — spec:1673, LEGACY-021, LEGACY-071", () => {
   let api: StartedApi;
   let a: Seed;
   let b: Seed;
@@ -3797,7 +3797,7 @@ describe("/v1/companies/{companyId}/accounts — spec:1673, SAH-021, SAH-071", (
     expect(((await res.json()) as Problem).code).toBe("ERR_CONFLICT_UNIQUE");
   });
 
-  it("archives rather than deletes, and an archived account is excluded from the default list (SAH-021)", async () => {
+  it("archives rather than deletes, and an archived account is excluded from the default list (LEGACY-021)", async () => {
     const created = (await (await api.request({
       method: "POST", path: `/v1/companies/${a.company}/accounts`, as: a.human,
       body: { code: "5990", nameEn: "Retired", type: "expense" },
@@ -3812,7 +3812,7 @@ describe("/v1/companies/{companyId}/accounts — spec:1673, SAH-021, SAH-071", (
     expect(all.items.map((i) => i.code)).toContain("5990");
   });
 
-  it("returns the tree in one recursive CTE with depth and path (SAH-071)", async () => {
+  it("returns the tree in one recursive CTE with depth and path (LEGACY-071)", async () => {
     const res = await api.request({ method: "GET", path: `/v1/companies/${a.company}/accounts/tree`, as: a.human });
     expect(res.status).toBe(200);
     const tree = (await res.json()) as { items: { code: string; depth: number; path: string[] }[] };
@@ -4017,13 +4017,13 @@ accountRoutes.openapi(
 
 accountRoutes.openapi(
   createRoute({
-    method: "get", path: "/tree", tags: ["accounting"], summary: "The chart as a tree, in one recursive CTE (SAH-071)",
+    method: "get", path: "/tree", tags: ["accounting"], summary: "The chart as a tree, in one recursive CTE (LEGACY-071)",
     request: { params: z.object({ companyId: UuidSchema }) },
     responses: { 200: { description: "Every account with its depth and code path", content: { "application/json": { schema: AccountTree } } } },
   }),
   async (c) => {
     const { companyId } = c.req.valid("param");
-    // One statement for the whole tree. SAH-071 is the legacy system running a recursive check per row inside
+    // One statement for the whole tree. LEGACY-071 is the legacy system running a recursive check per row inside
     // a trigger; the depth cap is a belt-and-braces guard, since the PATCH handler already refuses a cycle.
     const rows = await c.var.withTenant((tx) => tx<(Row & { depth: number; path: string[] })[]>`
       with recursive node as (
@@ -4088,7 +4088,7 @@ accountRoutes.openapi(
 accountRoutes.openapi(
   createRoute({
     method: "post", path: "/{accountId}/archive", tags: ["accounting"], middleware: [manage] as const,
-    summary: "Archive an account — accounts are never deleted (spec:2049, SAH-021)",
+    summary: "Archive an account — accounts are never deleted (spec:2049, LEGACY-021)",
     request: { params: z.object({ companyId: UuidSchema, accountId: UuidSchema }), headers: IdempotencyHeader,
                body: { content: { "application/json": { schema: z.object({}) } } } },
     responses: {
@@ -4147,8 +4147,8 @@ feat(api): the chart-of-accounts API [1A T10]
 
 Writes gated by accounting.account.manage, reads by membership — the catalogue
 has no accounts read code and spec:2158 gives the clerk read access. Accounts
-are archived, never deleted (SAH-021), and the tree is one recursive CTE with a
-depth cap rather than a per-row walk (SAH-071). A cycle is refused on re-parent.
+are archived, never deleted (LEGACY-021), and the tree is one recursive CTE with a
+depth cap rather than a per-row walk (LEGACY-071). A cycle is refused on re-parent.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 EOF
@@ -4569,7 +4569,7 @@ describe("/v1/companies/{companyId}/documents — contracts §4.2.7, spec:2287",
     expect(((await posted.json()) as Problem).code).toBe("ERR_RBAC_FORBIDDEN");
   });
 
-  it("surfaces ERR_LEDGER_UNBALANCED as a problem+json with the difference in the detail (SAH-003)", async () => {
+  it("surfaces ERR_LEDGER_UNBALANCED as a problem+json with the difference in the detail (LEGACY-003)", async () => {
     const doc = (await (await create(a.human, [
       { lineNo: 1, accountId: a.cash, debit: "100.0000" }, { lineNo: 2, accountId: a.sales, credit: "90.0000" },
     ])).json()) as { id: string };
@@ -4867,7 +4867,7 @@ documentRoutes.openapi(
       }
 
       // The series comes from the policy so a draft already shows the series it will be numbered in; the
-      // number itself is assigned at issue and never by the client (SAH-051).
+      // number itself is assigned at issue and never by the client (LEGACY-051).
       const [policy] = await tx<{ definition: { numbering: { series: string } } }[]>`
         select definition from app.posting_policy
          where document_type_id = ${type.id} and effective_from <= ${body.effectiveDate}::date
@@ -5056,7 +5056,7 @@ ledgerRoutes.openapi(
     const { cursor, limit, accountId, fiscalPeriodId, documentId, from, to } = c.req.valid("query");
     const after = cursor ? decodeCursor(cursor) : null;
     // Every filter is a declared field bound as a parameter — no field name reaches SQL as text (test 27).
-    // The index this uses is plan0A's ledger_entry (company_id, account_id, effective_date) — SAH-070.
+    // The index this uses is plan0A's ledger_entry (company_id, account_id, effective_date) — LEGACY-070.
     const rows = await c.var.withTenant((tx) => tx<Row[]>`
       select id, document_id, line_no, account_id, debit::text as debit, credit::text as credit, currency,
              exchange_rate::text as exchange_rate, base_debit::text as base_debit, base_credit::text as base_credit,
@@ -5152,7 +5152,7 @@ Contracts §3.4.8 makes 1A the owner of the `document-types` loader: 0C builds t
 - Modify: `packages/db/src/seed/index.ts` (Step 3's export **and** Step 4's `LOADERS` / `applied` entries — the seed barrel, because §3.1 forbids a `./seed` export on `packages/db/src/index.ts`); and, to register the sub-pack with 0C's dispatcher (Step 4), `packages/db/src/seed/types.ts`, `packages/db/src/seed/packs.ts`, `packages/db/test/seed-packs.test.ts`, `packages/db/test/seed-idempotent.test.ts`
 
 **Interfaces:**
-- Produces (TS), exported from `@dulja/db/seed` — the subpath, never the main barrel (§3.1, sah-039; Step 3):
+- Produces (TS), exported from `@dulja/db/seed` — the subpath, never the main barrel (§3.1, legacy-039; Step 3):
 
 ```ts
 export interface DocumentTypeSeedResult { code: string; documentTypeId: string; policyId: string; created: boolean }
@@ -5329,7 +5329,7 @@ interface Envelope {
  * and opens the tenant transaction itself. `documentTypesLoader` at the foot of this file is the same loader in
  * §4.2.13's `PackLoader` form, for callers that already hold a `tx` — which is every `--only` run. Per-tenant
  * rows cannot be written by a migration — FORCE ROW LEVEL SECURITY binds app_migrator too (spec:1366) — so every
- * document type and posting policy arrives this way, from version-controlled JSON, diffable in review (SAH-078).
+ * document type and posting policy arrives this way, from version-controlled JSON, diffable in review (LEGACY-078).
  *
  * `catalogue` is a parameter rather than an import because packages/db may import only @dulja/domain
  * (spec:2389, dependency-rule) — and both this file's callers, the loader below and the test, read the codes
@@ -5425,7 +5425,7 @@ export const documentTypesLoader: PackLoader = {
 
 Add `export { documentTypesLoader, loadDocumentTypes, type DocumentTypeSeedResult } from "./document-types";` to **`packages/db/src/seed/index.ts`** — 0C's seed barrel, reached as `@dulja/db/seed` (§4.2.12, §4.2.13).
 
-**Never `packages/db/src/index.ts`.** §3.1 settles it: the seed is reachable only through the `@dulja/db/seed` subpath, and 0C's `tests/regression/sah-039.test.ts` asserts the main barrel carries no `export … from "./seed…"` **at any depth** (`expect(barrel).not.toMatch(/from ["']\.\/seed/)`), so `export * from "./seed/document-types";` fails that regression even though this module imports no Supabase itself — `packages/db/src/seed/auth-admin.ts` does, and one re-export on the barrel would put the service-role admin client on the import graph of every `apps/api` and `apps/worker` module that imports `withTenant`. Nothing else in this task moves: Step 1's test imports the module by relative path, and 2C, 3C, 3D, 5A, 7A and 8A consume `loadDocumentTypes` through `@dulja/db/seed`.
+**Never `packages/db/src/index.ts`.** §3.1 settles it: the seed is reachable only through the `@dulja/db/seed` subpath, and 0C's `tests/regression/legacy-039.test.ts` asserts the main barrel carries no `export … from "./seed…"` **at any depth** (`expect(barrel).not.toMatch(/from ["']\.\/seed/)`), so `export * from "./seed/document-types";` fails that regression even though this module imports no Supabase itself — `packages/db/src/seed/auth-admin.ts` does, and one re-export on the barrel would put the service-role admin client on the import graph of every `apps/api` and `apps/worker` module that imports `withTenant`. Nothing else in this task moves: Step 1's test imports the module by relative path, and 2C, 3C, 3D, 5A, 7A and 8A consume `loadDocumentTypes` through `@dulja/db/seed`.
 
 - [ ] **Step 4: Register the sub-pack with 0C's `--only` dispatcher**
 
@@ -5503,8 +5503,8 @@ EOF
 The Phase 1 definition-of-done clause this slice owns — "Σdebit = Σcredit holds under fuzz testing" — and the two-tenant concurrency test. Then the Part I regression files: six created here, ten appended to.
 
 **Files:**
-- Create: `apps/api/test/routes/accounting/documents.fuzz.test.ts`, `tests/regression/sah-001.test.ts`, `sah-002.test.ts`, `sah-011.test.ts`, `sah-024.test.ts`, `sah-049.test.ts`, `sah-079.test.ts`
-- Modify: `tests/regression/sah-003.test.ts`, `sah-012.test.ts`, `sah-021.test.ts`, `sah-031.test.ts`, `sah-035.test.ts`, `sah-041.test.ts`, `sah-050.test.ts`, `sah-051.test.ts`, `sah-070.test.ts`, `sah-071.test.ts` (0B created all ten; this slice **appends** a `describe(… — 1A)` block to each and edits no earlier block — contracts §3.7.3)
+- Create: `apps/api/test/routes/accounting/documents.fuzz.test.ts`, `tests/regression/legacy-001.test.ts`, `legacy-002.test.ts`, `legacy-011.test.ts`, `legacy-024.test.ts`, `legacy-049.test.ts`, `legacy-079.test.ts`
+- Modify: `tests/regression/legacy-003.test.ts`, `legacy-012.test.ts`, `legacy-021.test.ts`, `legacy-031.test.ts`, `legacy-035.test.ts`, `legacy-041.test.ts`, `legacy-050.test.ts`, `legacy-051.test.ts`, `legacy-070.test.ts`, `legacy-071.test.ts` (0B created all ten; this slice **appends** a `describe(… — 1A)` block to each and edits no earlier block — contracts §3.7.3)
 
 **Interfaces:**
 - Consumes: `startApi`, `StartedApi` (§4.2.12); `seedTenantV2`, `seedAccount`, `uuidv7`, `Db`, `Seed` (§4.1, §4.17); production `withTenant`, `issueDocument`, `postDocument`, `voidDocument`, `reverseDocument`, `lintSchema` from `@dulja/db`; `sharedDb` from `tests/support/regression.ts` (0B — contracts §4.17.1; it returns `{ db: Db; rw: Sql; a: Seed; b: Seed }`, so every regression file below destructures it and never treats the result as a `Db`); `fc` from `fast-check`; `postgres` for the two-connection tests.
@@ -5522,7 +5522,7 @@ import { postDocument, withTenant } from "@dulja/db";
 import { seedAccount, seedTenantV2, uuidv7, type Seed } from "@dulja/db/test";
 import { startApi, type StartedApi } from "../../support/app";
 
-describe("acceptance test 1 — the ledger invariant under fuzz (spec:2419, SAH-003)", () => {
+describe("acceptance test 1 — the ledger invariant under fuzz (spec:2419, LEGACY-003)", () => {
   let api: StartedApi;
   let a: Seed;
   let accounts: string[];
@@ -5631,7 +5631,7 @@ describe("acceptance test 4 — two tenants post to the same account and currenc
   }, 180_000);
   afterAll(async () => { await api.stop(); });
 
-  it("each sees only its own balance, and neither loses an amount (SAH-001, SAH-035, SAH-049)", async () => {
+  it("each sees only its own balance, and neither loses an amount (LEGACY-001, LEGACY-035, LEGACY-049)", async () => {
     const draft = async (s: Seed, amount: string): Promise<string> => {
       const id = await uuidv7(api.db.admin);
       await withTenant(api.db.rw, { tenantId: s.tenant, actorId: s.human, requestId: "seed" }, async (tx) => {
@@ -5673,27 +5673,27 @@ describe("acceptance test 4 — two tenants post to the same account and currenc
 
 - [ ] **Step 2: Write the six regression files this slice creates**
 
-Each is one `describe("SAH-NNN <Part I heading> — 1A", …)` block. Later slices **append** blocks to the same file and never edit these (contracts §3.7.3).
+Each is one `describe("LEGACY-NNN <Part I heading> — 1A", …)` block. Later slices **append** blocks to the same file and never edit these (contracts §3.7.3).
 
 ```ts
-// tests/regression/sah-001.test.ts — "Denormalised currency balances are updated without the tenant key"
+// tests/regression/legacy-001.test.ts — "Denormalised currency balances are updated without the tenant key"
 import { describe, expect, it } from "vitest";
 import { withTenant } from "@dulja/db";
 import { seedTenantV2 } from "@dulja/db/test";
 import { sharedDb } from "../support/regression";
 
-describe("SAH-001 Denormalised currency balances updated without the tenant key — 1A", () => {
+describe("LEGACY-001 Denormalised currency balances updated without the tenant key — 1A", () => {
   it("account_balance carries tenant_id, is RLS-forced, and a second tenant can neither see nor update a row", async () => {
     const { db, rw } = await sharedDb();
-    const a = await seedTenantV2(db, "SAH001-A");
-    const b = await seedTenantV2(db, "SAH001-B");
-    await withTenant(rw, { tenantId: a.tenant, actorId: a.human, requestId: "sah001" }, (tx) => tx`
+    const a = await seedTenantV2(db, "LEGACY001-A");
+    const b = await seedTenantV2(db, "LEGACY001-B");
+    await withTenant(rw, { tenantId: a.tenant, actorId: a.human, requestId: "legacy001" }, (tx) => tx`
       insert into app.account_balance (tenant_id, company_id, account_id, fiscal_period_id, currency, debit, base_debit)
       values (${a.tenant}, ${a.company}, ${a.cash}, ${a.period}, 'MYR', 10.0000, 10.0000)`);
-    const seen = await withTenant(rw, { tenantId: b.tenant, actorId: b.human, requestId: "sah001" }, (tx) => tx<{ n: number }[]>`
+    const seen = await withTenant(rw, { tenantId: b.tenant, actorId: b.human, requestId: "legacy001" }, (tx) => tx<{ n: number }[]>`
       select count(*)::int as n from app.account_balance`);
     expect(seen[0]!.n).toBe(0);
-    const touched = await withTenant(rw, { tenantId: b.tenant, actorId: b.human, requestId: "sah001" }, async (tx) => {
+    const touched = await withTenant(rw, { tenantId: b.tenant, actorId: b.human, requestId: "legacy001" }, async (tx) => {
       const r = await tx`update app.account_balance set debit = debit + 1`;
       return r.count;
     });
@@ -5703,17 +5703,17 @@ describe("SAH-001 Denormalised currency balances updated without the tenant key 
 ```
 
 ```ts
-// tests/regression/sah-002.test.ts — "Upsert never fires on UPDATE; re-keying destroys the amount"
+// tests/regression/legacy-002.test.ts — "Upsert never fires on UPDATE; re-keying destroys the amount"
 import { describe, expect, it } from "vitest";
 import { postDocument, reverseDocument, withTenant } from "@dulja/db";
 import { seedAccount, seedTenantV2, uuidv7 } from "@dulja/db/test";
 import { sharedDb } from "../support/regression";
 
-describe("SAH-002 Upsert never fires on UPDATE; re-keying destroys the amount — 1A", () => {
+describe("LEGACY-002 Upsert never fires on UPDATE; re-keying destroys the amount — 1A", () => {
   it("re-keying a posting by reversal leaves sum(account_balance) equal to sum(ledger_entry) (test 3)", async () => {
     const { db, rw } = await sharedDb();
-    const s = await seedTenantV2(db, "SAH002");
-    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "sah002" };
+    const s = await seedTenantV2(db, "LEGACY002");
+    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "legacy002" };
     const wrong = await seedAccount(db, s, { code: "1100", nameEn: "Bank", type: "asset" });
     const right = await seedAccount(db, s, { code: "1300", nameEn: "Inventory control", type: "asset" });
     const draft = async (account: string): Promise<string> => {
@@ -5745,13 +5745,13 @@ describe("SAH-002 Upsert never fires on UPDATE; re-keying destroys the amount �
 ```
 
 ```ts
-// tests/regression/sah-011.test.ts — "NULL arithmetic irreversibly nulls balances and tax boxes"
+// tests/regression/legacy-011.test.ts — "NULL arithmetic irreversibly nulls balances and tax boxes"
 import { describe, expect, it } from "vitest";
 import { withTenant } from "@dulja/db";
 import { seedTenantV2 } from "@dulja/db/test";
 import { sharedDb } from "../support/regression";
 
-describe("SAH-011 NULL arithmetic irreversibly nulls balances — 1A", () => {
+describe("LEGACY-011 NULL arithmetic irreversibly nulls balances — 1A", () => {
   it("every amount column of account_balance and ledger_entry is NOT NULL with a zero default", async () => {
     const { db } = await sharedDb();
     const rows = await db.admin<{ table_name: string; column_name: string; is_nullable: string; column_default: string | null }[]>`
@@ -5768,8 +5768,8 @@ describe("SAH-011 NULL arithmetic irreversibly nulls balances — 1A", () => {
 
   it("a MERGE of a zero-amount group cannot null an existing balance", async () => {
     const { db, rw } = await sharedDb();
-    const s = await seedTenantV2(db, "SAH011");
-    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "sah011" };
+    const s = await seedTenantV2(db, "LEGACY011");
+    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "legacy011" };
     await withTenant(rw, ctx, (tx) => tx`
       insert into app.account_balance (tenant_id, company_id, account_id, fiscal_period_id, currency, debit, base_debit)
       values (${s.tenant}, ${s.company}, ${s.cash}, ${s.period}, 'MYR', 5.0000, 5.0000)`);
@@ -5784,7 +5784,7 @@ describe("SAH-011 NULL arithmetic irreversibly nulls balances — 1A", () => {
 ```
 
 ```ts
-// tests/regression/sah-024.test.ts — "Account codes are allocated with max() on a string, without locking"
+// tests/regression/legacy-024.test.ts — "Account codes are allocated with max() on a string, without locking"
 import { describe, it } from "vitest";
 
 /**
@@ -5804,7 +5804,7 @@ import { describe, it } from "vitest";
  * that `IncCodeNumber` zero-pads and the defect never existed, delete this file and remove its row from the
  * regression table in this plan's Self-Review.
  */
-describe("SAH-024 Account codes allocated with max() on a string, without locking — 1A", () => {
+describe("LEGACY-024 Account codes allocated with max() on a string, without locking — 1A", () => {
   it.skip("⚠️ pending OD-27 (Part VII #6, spec:427): the legacy DDL and IncCodeNumber's body are not in the corpus", () => {
     // Deliberately empty: this test is a placeholder for an owner decision, not for missing work.
   });
@@ -5812,18 +5812,18 @@ describe("SAH-024 Account codes allocated with max() on a string, without lockin
 ```
 
 ```ts
-// tests/regression/sah-049.test.ts — "Aggregate tables unkeyed; upsert race duplicates silently"
+// tests/regression/legacy-049.test.ts — "Aggregate tables unkeyed; upsert race duplicates silently"
 import { describe, expect, it } from "vitest";
 import postgres from "postgres";
 import { postDocument, withTenant } from "@dulja/db";
 import { seedTenantV2, uuidv7 } from "@dulja/db/test";
 import { sharedDb } from "../support/regression";
 
-describe("SAH-049 Aggregate tables unkeyed; upsert race duplicates silently — 1A", () => {
+describe("LEGACY-049 Aggregate tables unkeyed; upsert race duplicates silently — 1A", () => {
   it("two concurrent posts to the same account, period and currency produce ONE row holding both amounts", async () => {
     const { db, rw } = await sharedDb();
-    const s = await seedTenantV2(db, "SAH049");
-    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "sah049" };
+    const s = await seedTenantV2(db, "LEGACY049");
+    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "legacy049" };
     const draft = async (amount: string): Promise<string> => {
       const id = await uuidv7(db.admin);
       await withTenant(rw, ctx, async (tx) => {
@@ -5870,8 +5870,8 @@ describe("SAH-049 Aggregate tables unkeyed; upsert race duplicates silently — 
    */
   it("two concurrent posts of ALREADY-ISSUED documents still produce ONE row, and never ERR_CONFLICT_UNIQUE", async () => {
     const { db, rw } = await sharedDb();
-    const s = await seedTenantV2(db, "SAH049b");
-    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "sah049b" };
+    const s = await seedTenantV2(db, "LEGACY049b");
+    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "legacy049b" };
     const draftAndIssue = async (amount: string): Promise<string> => {
       const id = await uuidv7(db.admin);
       await withTenant(rw, ctx, async (tx) => {
@@ -5910,12 +5910,12 @@ describe("SAH-049 Aggregate tables unkeyed; upsert race duplicates silently — 
 The second test needs `issueDocument` in the import list, so the file's first import line from `@dulja/db` is `import { issueDocument, postDocument, withTenant } from "@dulja/db";`.
 
 ```ts
-// tests/regression/sah-079.test.ts — "44 repair objects, two ledgers, one broken guard"
+// tests/regression/legacy-079.test.ts — "44 repair objects, two ledgers, one broken guard"
 import { describe, expect, it } from "vitest";
 import { lintSchema } from "@dulja/db";
 import { sharedDb } from "../support/regression";
 
-describe("SAH-079 44 repair objects, two ledgers, one broken guard — 1A", () => {
+describe("LEGACY-079 44 repair objects, two ledgers, one broken guard — 1A", () => {
   it("there is exactly ONE ledger table and one projection derived from it — no repair object exists", async () => {
     const { db } = await sharedDb();
     const rows = await db.admin<{ table_name: string }[]>`
@@ -5939,12 +5939,12 @@ describe("SAH-079 44 repair objects, two ledgers, one broken guard — 1A", () =
 Add each block to the **end** of the named file. Do not edit the `— 0B` block above it.
 
 ```ts
-// tests/regression/sah-003.test.ts — append
-describe("SAH-003 Nothing enforces debits = credits — 1A", () => {
+// tests/regression/legacy-003.test.ts — append
+describe("LEGACY-003 Nothing enforces debits = credits — 1A", () => {
   it("the deferred constraint trigger refuses an unbalanced document at COMMIT, whatever the caller does", async () => {
     const { db, rw } = await sharedDb();
-    const s = await seedTenantV2(db, "SAH003-1A");
-    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "sah003" };
+    const s = await seedTenantV2(db, "LEGACY003-1A");
+    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "legacy003" };
     const doc = await uuidv7(db.admin);
     await expect(
       withTenant(rw, ctx, async (tx) => {
@@ -5962,12 +5962,12 @@ describe("SAH-003 Nothing enforces debits = credits — 1A", () => {
 ```
 
 ```ts
-// tests/regression/sah-012.test.ts — append
-describe("SAH-012 Base amounts never derived from value × rate — 1A", () => {
+// tests/regression/legacy-012.test.ts — append
+describe("LEGACY-012 Base amounts never derived from value × rate — 1A", () => {
   it("postDocument writes base = round(value × rate, 4) and the CHECK refuses anything else", async () => {
     const { db, rw } = await sharedDb();
-    const s = await seedTenantV2(db, "SAH012-1A");
-    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "sah012" };
+    const s = await seedTenantV2(db, "LEGACY012-1A");
+    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "legacy012" };
     const doc = await uuidv7(db.admin);
     await withTenant(rw, ctx, async (tx) => {
       await tx`insert into app.document (id, tenant_id, company_id, document_type_id, series, effective_date, currency, exchange_rate, rate_source, branch_id)
@@ -5989,8 +5989,8 @@ describe("SAH-012 Base amounts never derived from value × rate — 1A", () => {
 ```
 
 ```ts
-// tests/regression/sah-021.test.ts — append
-describe("SAH-021 Accounts deletable with postings; generator rewinds and reuses IDs — 1A", () => {
+// tests/regression/legacy-021.test.ts — append
+describe("LEGACY-021 Accounts deletable with postings; generator rewinds and reuses IDs — 1A", () => {
   it("app_rw holds no DELETE on account, and archiving is the only removal", async () => {
     const { db } = await sharedDb();
     const grants = await db.admin<{ privilege_type: string }[]>`
@@ -6005,8 +6005,8 @@ describe("SAH-021 Accounts deletable with postings; generator rewinds and reuses
 
   it("a posting_seq is never rewound: it is drawn once and the unique per company holds", async () => {
     const { db, rw } = await sharedDb();
-    const s = await seedTenantV2(db, "SAH021-1A");
-    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "sah021" };
+    const s = await seedTenantV2(db, "LEGACY021-1A");
+    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "legacy021" };
     const [a, b] = await withTenant(rw, ctx, async (tx) => {
       const [x] = await tx<{ n: string }[]>`select nextval('app.posting_seq')::text as n`;
       const [y] = await tx<{ n: string }[]>`select nextval('app.posting_seq')::text as n`;
@@ -6018,12 +6018,12 @@ describe("SAH-021 Accounts deletable with postings; generator rewinds and reuses
 ```
 
 ```ts
-// tests/regression/sah-031.test.ts — append
-describe("SAH-031 Period locks per-tier, on a sibling table, not on the lines — 1A", () => {
+// tests/regression/legacy-031.test.ts — append
+describe("LEGACY-031 Period locks per-tier, on a sibling table, not on the lines — 1A", () => {
   it("the lock is on ledger_entry itself: a locked period refuses the line, not merely the header", async () => {
     const { db, rw } = await sharedDb();
-    const s = await seedTenantV2(db, "SAH031-1A");
-    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "sah031" };
+    const s = await seedTenantV2(db, "LEGACY031-1A");
+    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "legacy031" };
     const doc = await uuidv7(db.admin);
     await withTenant(rw, ctx, (tx) => tx`
       insert into app.document (id, tenant_id, company_id, document_type_id, series, effective_date, currency, branch_id)
@@ -6039,13 +6039,13 @@ describe("SAH-031 Period locks per-tier, on a sibling table, not on the lines �
 ```
 
 ```ts
-// tests/regression/sah-035.test.ts — append
-describe("SAH-035 Tenant scoping is a client convention — 1A", () => {
+// tests/regression/legacy-035.test.ts — append
+describe("LEGACY-035 Tenant scoping is a client convention — 1A", () => {
   it("every Phase 1 table refuses a cross-tenant reference through its composite FK", async () => {
     const { db, rw } = await sharedDb();
-    const a = await seedTenantV2(db, "SAH035-A");
-    const b = await seedTenantV2(db, "SAH035-B");
-    const ctxA = { tenantId: a.tenant, actorId: a.human, requestId: "sah035" };
+    const a = await seedTenantV2(db, "LEGACY035-A");
+    const b = await seedTenantV2(db, "LEGACY035-B");
+    const ctxA = { tenantId: a.tenant, actorId: a.human, requestId: "legacy035" };
     const doc = await uuidv7(db.admin);
     await withTenant(rw, ctxA, (tx) => tx`
       insert into app.document (id, tenant_id, company_id, document_type_id, series, effective_date, currency, branch_id)
@@ -6065,12 +6065,12 @@ describe("SAH-035 Tenant scoping is a client convention — 1A", () => {
 ```
 
 ```ts
-// tests/regression/sah-041.test.ts — append
-describe("SAH-041 Hard deletes; anti-tampering triggers shipped disabled — 1A", () => {
+// tests/regression/legacy-041.test.ts — append
+describe("LEGACY-041 Hard deletes; anti-tampering triggers shipped disabled — 1A", () => {
   it("a posted document's ledger cannot be updated or deleted by anyone, and the trigger is enabled", async () => {
     const { db, rw } = await sharedDb();
-    const s = await seedTenantV2(db, "SAH041-1A");
-    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "sah041" };
+    const s = await seedTenantV2(db, "LEGACY041-1A");
+    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "legacy041" };
     const doc = await uuidv7(db.admin);
     await withTenant(rw, ctx, async (tx) => {
       await tx`insert into app.document (id, tenant_id, company_id, document_type_id, series, effective_date, currency, branch_id)
@@ -6092,12 +6092,12 @@ describe("SAH-041 Hard deletes; anti-tampering triggers shipped disabled — 1A"
 ```
 
 ```ts
-// tests/regression/sah-050.test.ts — append
-describe("SAH-050 NULL dimensions accumulate orphans and lose decrements — 1A", () => {
+// tests/regression/legacy-050.test.ts — append
+describe("LEGACY-050 NULL dimensions accumulate orphans and lose decrements — 1A", () => {
   it("every ledger line carries a BRANCH dimension; none is NULL and none is orphaned", async () => {
     const { db, rw } = await sharedDb();
-    const s = await seedTenantV2(db, "SAH050-1A");
-    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "sah050" };
+    const s = await seedTenantV2(db, "LEGACY050-1A");
+    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "legacy050" };
     const doc = await uuidv7(db.admin);
     await withTenant(rw, ctx, async (tx) => {
       await tx`insert into app.document (id, tenant_id, company_id, document_type_id, series, effective_date, currency, branch_id)
@@ -6121,12 +6121,12 @@ describe("SAH-050 NULL dimensions accumulate orphans and lose decrements — 1A"
 ```
 
 ```ts
-// tests/regression/sah-051.test.ts — append
-describe("SAH-051 Numbering races, no uniqueness, cannot be gapless — 1A", () => {
+// tests/regression/legacy-051.test.ts — append
+describe("LEGACY-051 Numbering races, no uniqueness, cannot be gapless — 1A", () => {
   it("a voided number is recorded, and the same (series, period, number) can never be issued twice", async () => {
     const { db, rw } = await sharedDb();
-    const s = await seedTenantV2(db, "SAH051-1A");
-    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "sah051" };
+    const s = await seedTenantV2(db, "LEGACY051-1A");
+    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "legacy051" };
     const doc = await uuidv7(db.admin);
     await withTenant(rw, ctx, (tx) => tx`
       insert into app.document (id, tenant_id, company_id, document_type_id, series, effective_date, currency, branch_id)
@@ -6149,8 +6149,8 @@ describe("SAH-051 Numbering races, no uniqueness, cannot be gapless — 1A", () 
 ```
 
 ```ts
-// tests/regression/sah-070.test.ts — append
-describe("SAH-070 Index coverage missing on the columns reports filter by — 1A", () => {
+// tests/regression/legacy-070.test.ts — append
+describe("LEGACY-070 Index coverage missing on the columns reports filter by — 1A", () => {
   it("the ledger read's filters are covered: (company_id, account_id, effective_date) and (company_id, effective_date)", async () => {
     const { db } = await sharedDb();
     const rows = await db.admin<{ indexdef: string }[]>`
@@ -6166,8 +6166,8 @@ describe("SAH-070 Index coverage missing on the columns reports filter by — 1A
 ```
 
 ```ts
-// tests/regression/sah-071.test.ts — append
-describe("SAH-071 Recursive tree check per row inside triggers — 1A", () => {
+// tests/regression/legacy-071.test.ts — append
+describe("LEGACY-071 Recursive tree check per row inside triggers — 1A", () => {
   it("the chart of accounts is read as ONE recursive CTE, and no trigger on account is recursive", async () => {
     const { db } = await sharedDb();
     const triggers = await db.admin<{ tgname: string }[]>`
@@ -6193,7 +6193,7 @@ Run: `bun run --cwd apps/api test -- test/routes/accounting/documents.fuzz.test.
 Expected: **PASS** (4 tests — three in the `acceptance test 1` describe and one in `acceptance test 4`; the fuzz `it` runs 250 generated documents and takes several minutes, so its per-test timeout is set to 600 s above).
 
 Run: `bun run --cwd tests test`
-Expected: PASS — the invariants suite plus every regression file, `sah-024`'s single `it` reported as skipped.
+Expected: PASS — the invariants suite plus every regression file, `legacy-024`'s single `it` reported as skipped.
 
 Run at the repository root: `bun run lint && bun run lint:rules && bun run format:check && bun run typecheck && bun run test`
 Expected: all green. This is the slice's gate.
@@ -6210,8 +6210,8 @@ Test 1 is fast-check over 250 generated balanced documents through the API, then
 compared against a fresh rebuild. Test 4 posts two tenants to the same account
 and currency on two real connections and asserts each sees only its own row.
 
-Creates sah-001, 002, 011, 024 (skipped pending OD-27), 049 and 079; appends a
-— 1A block to sah-003, 012, 021, 031, 035, 041, 050, 051, 070 and 071.
+Creates legacy-001, 002, 011, 024 (skipped pending OD-27), 049 and 079; appends a
+— 1A block to legacy-003, 012, 021, 031, 035, 041, 050, 051, 070 and 071.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 EOF
@@ -6224,7 +6224,7 @@ EOF
 
 > **This task is isolated for owner decision OD-24** (contracts §2.12: "Screenshots + operator description before any screen"; spec:79, 108, 2408 — "the UI is not specified"). It is the **only** task in this plan that depends on an owner decision, and dropping it changes nothing else.
 >
-> **Owner provides:** screenshots of the legacy Sahlisoft chart-of-accounts, journal-entry and fiscal-period screens, plus a two-minute description of how an operator actually uses each.
+> **Owner provides:** screenshots of the legacy chart-of-accounts, journal-entry and fiscal-period screens, plus a two-minute description of how an operator actually uses each.
 > **Verify:** the three screenshots and the description are attached to **1B's** screen tasks before those tasks are executed.
 > **Until provided:** nothing in this slice blocks. 1A ships no screen at all — the three Phase 1 screens are 1B's Delivers ("Back-office screens: chart of accounts, journal entry (keyboard-first, spec:2254), fiscal periods with close/reopen-with-reason"). This task's whole content is to record what 1A froze for those screens and what changes if the owner's material contradicts it.
 
@@ -6346,9 +6346,9 @@ Migration range 0011–0014 — four files, four names as expected, four PRs. AD
 9. **`balanceInBase` needs a currency.** A plan whose lines were all dropped as zero carries no `Money` to borrow one from, so the signature takes `baseCurrency` as a third parameter — stated in T5's deviations list.
 10. **The `posting-only-tables` rule would have flagged its own test fixtures.** `scripts/lint/rules/` is in the allow-list, with the reason in the comment.
 11. **The rule would also have flagged T11's own test.** An earlier draft of the fiscal-period admin-path test wrote `insert into app.ledger_entry` from `apps/api/test/`, which is inside the runner's `ROOTS` and outside every allowed prefix, so `lint:rules` would have gone red from T11 onward. The direct-SQL half of that assertion lives in **T8**'s `packages/db/test/posting/post.test.ts` (an allowed prefix), which already asserts `assert_period_open` refuses a raw `app_rw` insert into a locked period; T11 keeps the half that needs no raw DML — a direct `postDocument` call as `app_rw`, outside any route. `ALLOWED_PREFIXES` is unamended.
-12. **The `account_balance` `MERGE` could raise `ERR_CONFLICT_UNIQUE` on a legitimate post.** `MERGE … WHEN NOT MATCHED THEN INSERT` has no `ON CONFLICT`-style re-check, and the path that reaches it without the numbering advisory lock is reachable in this slice (issue in one request, post in another). T8 now takes one `pg_advisory_xact_lock` per planned balance key in sorted order before the `MERGE`, and `sah-049.test.ts` gains a second `it` that races two **already-issued** documents — the case the existing draft-and-draft race never exercised because `issueDocument`'s series lock serialised it. Amendment A4.
+12. **The `account_balance` `MERGE` could raise `ERR_CONFLICT_UNIQUE` on a legitimate post.** `MERGE … WHEN NOT MATCHED THEN INSERT` has no `ON CONFLICT`-style re-check, and the path that reaches it without the numbering advisory lock is reachable in this slice (issue in one request, post in another). T8 now takes one `pg_advisory_xact_lock` per planned balance key in sorted order before the `MERGE`, and `legacy-049.test.ts` gains a second `it` that races two **already-issued** documents — the case the existing draft-and-draft race never exercised because `issueDocument`'s series lock serialised it. Amendment A4.
 13. **The FX-rounding fixture left no residue.** One debit of `0.3335 USD` against credits of `0.1667` and `0.1668` at `4.68350000` converts to `1.5619` against `0.7807 + 0.7812 = 1.5619` — exactly balanced, so `balanceInBase` returned the plan untouched and three tests asserted a state they could never reach. The fixture is now `0.0003` against three credits of `0.0001` (base `0.0014` against `0.0005 × 3 = 0.0015`, residue `−0.0001`), which produces exactly one `fx_rounding` **debit** line.
-14. **Two base-conversion expectations were arithmetically wrong, the same typo twice.** `33.3350 × 4.68350000 = 156.1244725`, which rounds HALF_AWAY_FROM_ZERO at scale 4 to `156.1245`; both T5's `evaluate.test.ts` and T14's `tests/regression/sah-012.test.ts` asserted `156.1274` (two digits transposed). A correct `toBase` would have failed both, and the Global Constraints tell the implementer to stop rather than edit the expectation — so the plan would have deadlocked on its own typo, twice, in two different tasks.
+14. **Two base-conversion expectations were arithmetically wrong, the same typo twice.** `33.3350 × 4.68350000 = 156.1244725`, which rounds HALF_AWAY_FROM_ZERO at scale 4 to `156.1245`; both T5's `evaluate.test.ts` and T14's `tests/regression/legacy-012.test.ts` asserted `156.1274` (two digits transposed). A correct `toBase` would have failed both, and the Global Constraints tell the implementer to stop rather than edit the expectation — so the plan would have deadlocked on its own typo, twice, in two different tasks.
 15. **Three error codes were raised a task before they existed.** `ERR_DOC_STATUS_ILLEGAL`, `ERR_DOC_NO_LINES` and `ERR_PERIOD_NOT_FOUND` are members of `PostingErrorCode` from T6 Step 2, and T6 Step 5's `if (e instanceof PostingError) return new AppError(e.code, e.detail)` relies on `PostingErrorCode ⊆ ErrCode` with no cast — but the three rows were added to `ERRORS` in T8. All six of this slice's rows now land in T5 (two) and T6 (four), so T6's `apps/api typecheck` can pass. The `error-codes` check is satisfied at T6 because all four T6 codes appear as string literals in `packages/db/src/posting/errors.ts`, which is inside `packages/**/src/**`.
 16. **The seed CLI branch imported `PERMISSIONS` from `@dulja/contracts`.** Task 13's own prose says the catalogue is a parameter *because* `packages/db` may not import `@dulja/contracts`, and then Step 4's CLI case did exactly that — and `packages/db/src/cli.ts` is inside `packages/db`, which 0B's `dependency-rule` pins to `["@dulja/domain"]`. `lint:rules` would have gone red with a `dependency-rule` violation at Task 13, which Global Constraints forbid (the six `permission-catalogue` rows are the *only* documented exception, and they have cleared by Task 12). The CLI now reads `select code from app.permission` — the same source the test uses, global and RLS-free (plan0A:1313), written only by migration 0014 and asserted equal to `PERMISSIONS` in both directions by `permission-catalogue.test.ts`, so the two sets cannot disagree.
 17. **Three §4.4.2 additions had no amendment row.** `parsePolicy`, `validateDocumentTypeSeed` and `PolicyEvaluationError`'s body are named by Task 5's deviations list and consumed by Tasks 6 and 13, but contracts:1261 allows additions to a §4 block "only by amending this document" and contracts:1263 does not list `PolicyEvaluationError` among the five deliberately bodiless types. Amendment **A6** was added and the amendment count in the Assumptions block went from five to six. The Self-Review table's dangling "see *Contract additions*" cross-reference — a section that does not exist — now points at A6.
@@ -6358,7 +6358,7 @@ Migration range 0011–0014 — four files, four names as expected, four PRs. AD
 
 An independent auditor read this plan against the contracts document, plan 0A and the spec. Its findings, verified against the cited source and applied here:
 
-19. **Every Task 14 regression file called `sharedDb()` from the wrong module and destructured nothing — a blocker.** The Interfaces block said "`sharedDb` from `tests/invariants/probes.ts`" and all sixteen snippets wrote `import { sharedDb } from "../invariants/probes";` then `const db = await sharedDb();`. Both halves were wrong against the frozen 0B surface. 0B Task 13 Step 2 declares `export function sharedDb(): Promise<{ db: Db; rw: Sql; a: Seed; b: Seed }>` in **`tests/support/regression.ts`** (contracts §4.17.1 registers it at that path), while `tests/invariants/probes.ts` is 0B Task 13 Step 3 and exports only `PROBES` and `IsolationProbe` — so the import resolved to nothing, and even had it resolved, `db.admin` would have been `undefined` (every `uuidv7(db.admin)` and every `information_schema` read throws) and `db.url` would not have been a function (sah-049's and test 4's two-connection races cannot open a connection). Fixed at all nineteen call sites: the import is now `from "../support/regression"`, thirteen sites destructure `const { db, rw } = await sharedDb();` and six — the pure catalogue reads in sah-011's first test, sah-079, sah-021's first test, sah-070 and sah-071 — destructure `const { db } = await sharedDb();` so no unused binding trips lint. Every `withTenant(db.rw, …)` inside Task 14 became `withTenant(rw, …)`, because `rw` is the **production** `createDb` pool 0B's `ThinContext` documents ("`rw` is the production `createDb` pool and `withTenant` the production three-argument helper") and re-proving the defect through the production layer is the regression tier's whole purpose; `db.admin`, `db.url("app_rw")`, `seedTenantV2(db, …)`, `seedAccount(db, …)` and `uuidv7(db.admin)` keep the inner `Db`. The 70 occurrences of `withTenant(db.rw, …)` in Tasks 1–13 are **unchanged and correct**: those files call `startDb()` themselves and `Db.rw` is that harness's own `app_rw` pool (contracts:1305). 0B's `thinRegression` wrapper is deliberately **not** used — its `describe` title is hard-coded `… — 0B` — and the Interfaces block now says so. This closes contracts §4.18's round-1 open item (5) from the plan side: the use sites were wrong, §4.17.1 was right.
+19. **Every Task 14 regression file called `sharedDb()` from the wrong module and destructured nothing — a blocker.** The Interfaces block said "`sharedDb` from `tests/invariants/probes.ts`" and all sixteen snippets wrote `import { sharedDb } from "../invariants/probes";` then `const db = await sharedDb();`. Both halves were wrong against the frozen 0B surface. 0B Task 13 Step 2 declares `export function sharedDb(): Promise<{ db: Db; rw: Sql; a: Seed; b: Seed }>` in **`tests/support/regression.ts`** (contracts §4.17.1 registers it at that path), while `tests/invariants/probes.ts` is 0B Task 13 Step 3 and exports only `PROBES` and `IsolationProbe` — so the import resolved to nothing, and even had it resolved, `db.admin` would have been `undefined` (every `uuidv7(db.admin)` and every `information_schema` read throws) and `db.url` would not have been a function (legacy-049's and test 4's two-connection races cannot open a connection). Fixed at all nineteen call sites: the import is now `from "../support/regression"`, thirteen sites destructure `const { db, rw } = await sharedDb();` and six — the pure catalogue reads in legacy-011's first test, legacy-079, legacy-021's first test, legacy-070 and legacy-071 — destructure `const { db } = await sharedDb();` so no unused binding trips lint. Every `withTenant(db.rw, …)` inside Task 14 became `withTenant(rw, …)`, because `rw` is the **production** `createDb` pool 0B's `ThinContext` documents ("`rw` is the production `createDb` pool and `withTenant` the production three-argument helper") and re-proving the defect through the production layer is the regression tier's whole purpose; `db.admin`, `db.url("app_rw")`, `seedTenantV2(db, …)`, `seedAccount(db, …)` and `uuidv7(db.admin)` keep the inner `Db`. The 70 occurrences of `withTenant(db.rw, …)` in Tasks 1–13 are **unchanged and correct**: those files call `startDb()` themselves and `Db.rw` is that harness's own `app_rw` pool (contracts:1305). 0B's `thinRegression` wrapper is deliberately **not** used — its `describe` title is hard-coded `… — 0B` — and the Interfaces block now says so. This closes contracts §4.18's round-1 open item (5) from the plan side: the use sites were wrong, §4.17.1 was right.
 20. **`balance.property.test.ts` did not type-check.** Its local `base()` helper is annotated `: LineSnapshot` and omitted the required `lineNo: number` that the same task declares at §4.4.2 verbatim — TS2739, so Task 5 Step 7's `bun run --cwd packages/domain typecheck` could not pass and Global Constraints would have stopped the implementer on a defect of the plan's own making. (`evaluate.test.ts`'s sibling helper escaped it only because `...over` supplies `lineNo`.) `lineNo,` added; the shorthand also gives every generated line a correct `sourceLineNo`.
 21. **Task 10's cross-tenant case asserted 403 from a route with no gate.** `GET /v1/companies/{companyId}/accounts` carries no middleware — contracts §4.2.7: "Reads on `accounts`, `fiscal-periods` and `documents/{id}` are gated by membership only" — so a request from tenant A for tenant B's company runs the handler inside `withTenant(a.tenant)`, RLS reduces `app.account` to A, `where company_id = ${b.company}` matches nothing and the answer is `200 {"items":[],"next_cursor":null}`. Adding a `path:companyId` gate to make the 403 true would re-introduce the existence leak 0B removed from `GET /v1/companies/{companyId}` (0B Self-Review 8a). The case now asserts the honest outcome on both reads, keeps a 403 by exercising the **gated** `POST` — the shape this path's `PROBES` entry already probes — and states in a comment why gating the read would be wrong. Task 11's and Task 12's read tests were re-checked and carry no such assumption: their 403s are all on gated verbs (`/close`, `/reopen`, `/transitions`, `ledger-entries` under `accounting.ledger.read`).
 22. **No unsafe route declared `request.headers: IdempotencyHeader`.** Contracts §4.2.7 (spec:2055) makes it binding without exception on every `post`/`put`/`patch`/`delete` `createRoute` in every slice, and the string occurred zero times in this plan while 2A and 2B both set it — 2B on operations it mounts on **this slice's own `documentRoutes` module**, so the committed `openapi.json` would have documented the header on 2B's `reverse`/`overrides`/`DELETE` and not on the three 1A operations beside them, and a generated client would omit a required header. Runtime behaviour never changed (the §4.2.9 middleware is global, and Task 12's own test still asserts `ERR_IDEMPOTENCY_KEY_MISSING`), but the spec was wrong. `headers: IdempotencyHeader` added to all **eight** unsafe operations — accounts `POST /`, `PATCH /{accountId}`, `POST /{accountId}/archive`; fiscal-periods `POST /{periodId}/close`, `POST /{periodId}/reopen`; documents `POST /`, `PUT /{documentId}/lines`, `POST /{documentId}/transitions` — with `import { IdempotencyHeader } from "../index";` in each of the three route files. **The import is not from `@dulja/contracts`:** 0B Task 11 declares the schema in `apps/api/src/routes/index.ts`, and 2A's `admin/document-types.ts` imports it by the same relative path, so the routes-module cycle is the shape both already ship.
@@ -6427,7 +6427,7 @@ Five PRs, four migrations, **one migration per PR** (spec:2057). Commits 4 throu
 
 **What this slice changes in 0C's seed seam:** merging 1A widens 0C's `SubPack` union — `export type SubPack = "roles" | "dimensions" | "fiscal-periods" | "chart-of-accounts"` in **`packages/db/src/seed/types.ts`**, together with its ordered twin **`SUB_PACKS`** in the same file — to a fifth member, `"document-types"`, which is exactly the additive widening contracts §4.2.13's comment reserves for "each loader-owning slice"; Task 13 Step 4 lists the four further edits that follow from it (`LOADERS` and `runLoaders`' `applied` initialiser in `packages/db/src/seed/index.ts`, the `PHASE_0_SUB_PACK_DIRECTORIES` / `OWNED_ELSEWHERE` move in `packages/db/src/seed/packs.ts`, and the two 0C tests that carry the four literals), and the architect folds the new member into §4.2.13 and closes §4.18's first open item in the same PR.
 
-**Known-red until a later slice:** nothing. Every test this plan writes is green at the end of Task 14; `tests/regression/sah-024.test.ts` reports one **skipped** `it`, by design, until OD-27 lands.
+**Known-red until a later slice:** nothing. Every test this plan writes is green at the end of Task 14; `tests/regression/legacy-024.test.ts` reports one **skipped** `it`, by design, until OD-27 lands.
 
 **If a task's stated failure does not appear**, stop. A different failure means the repository differs from what this plan assumes — most likely a 0B/0D/0C interface that shipped with a different shape. Report the difference rather than editing the expectation; the contracts document is amended first, then this plan.
 

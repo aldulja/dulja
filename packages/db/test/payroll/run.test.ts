@@ -123,7 +123,7 @@ describe("calculatePayrollRun (§4.12.6, spec:2081)", () => {
     }
   });
 
-  it("a pinned line records the rate table it used, per line (SAH-013)", async () => {
+  it("a pinned line records the rate table it used, per line (LEGACY-013)", async () => {
     const r = await run();
     const rows = await db.admin<
       { rate_table_id: string | null; rate_table_version: number | null }[]

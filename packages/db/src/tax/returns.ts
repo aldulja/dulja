@@ -174,7 +174,7 @@ export async function listTaxReturns(
   return rows.map(toRow);
 }
 
-/** The transactions of one return's period and regime. **Both period bounds are always bound** — SAH-059's
+/** The transactions of one return's period and regime. **Both period bounds are always bound** — LEGACY-059's
  *  failure was a concatenated query that silently lost its date filter and reported every voucher ever
  *  posted; this is a tagged template and the bounds are parameters, so losing one is not expressible. */
 async function transactionsFor(tx: Sql, row: TaxReturnRow): Promise<TaxTransactionRow[]> {
@@ -520,7 +520,7 @@ export async function taxReturnTieOut(
          and p.ends_on   <= ${row.periodEnd}
          and not exists (select 1 from app.tax_transaction t
                           where t.document_id = e.document_id and t.regime_id = ${row.regimeId})`;
-    // `coalesce(..., 0)` is deliberate and is SAH-011's fix at this boundary: an account with no balance
+    // `coalesce(..., 0)` is deliberate and is LEGACY-011's fix at this boundary: an account with no balance
     // row must read 0.0000, never null, or the difference would be null and the DoD assertion vacuous.
     const ledger = Money.of(led!.base!, ccy).subtract(Money.of(untaxed!.base!, ccy));
     out.push({
@@ -610,7 +610,7 @@ export async function fileTaxReturn(
   }
   // ONE update, and that is load-bearing: the audit trigger writes a row per UPDATE, so a second
   // statement to default `filed_at` would put two audit rows behind one status change — the same
-  // SAH-041 shape the `for update` two lines above exists to prevent.
+  // LEGACY-041 shape the `for update` two lines above exists to prevent.
   await tx`
     update app.tax_return
        set status        = 'filed',

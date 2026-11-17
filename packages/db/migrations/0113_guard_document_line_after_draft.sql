@@ -1,7 +1,7 @@
 -- ── 0113 · app.document_line is frozen once its document leaves draft ──────────────────────────────────
 -- Phase 4 code-review pass (not a slice); allocated from the §3.4.1 tail (register row 0113–0115).
 --
--- spec:574 (SAH-041) "issued financial documents are immutable"; spec:501 and 2223 (SAH-031) "immutability is
+-- spec:574 (LEGACY-041) "issued financial documents are immutable"; spec:501 and 2223 (LEGACY-031) "immutability is
 -- enforced on the whole document aggregate (header + lines + projections)"; spec:2049 "Financial rows: never —
 -- reversal only"; spec:2173 makes the data layer, not the handler, the control. 0023 guarded DELETE at the
 -- draft boundary and nothing guarded INSERT or UPDATE, so an app_rw session could rewrite the amount and the

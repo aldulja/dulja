@@ -1,6 +1,6 @@
 -- 0045_alter_party_and_document_add_credit_terms.sql
 -- Slice 4A. Customer credit control (spec:1026 §3.0.3; spec:1042; contracts §4.5.7, §4.8.1) and the payment
--- term PINNED on a document (contracts §4.3.4; SAH-013 — a term is never re-read from the party).
+-- term PINNED on a document (contracts §4.3.4; LEGACY-013 — a term is never re-read from the party).
 -- EXPAND ONLY (§3.4.7, spec:2057): five nullable-or-defaulted columns, nothing renamed, nothing dropped —
 -- and, since the code review of 2026-09-29, a sixth: document_event.approved_base_total (§2c).
 
@@ -15,7 +15,7 @@ alter table app.party add column credit_hold     boolean not null default false;
 -- `app.price_list` is 3A's migration 0030, two ranges below this one, and carries `unique (tenant_id, id)`,
 -- so the composite FK §3.5.1 requires is available here.
 alter table app.party add column price_list_id   uuid;                     -- contracts §4.5.7, 6B amendment A10(b)
--- Composite FKs (§3.5.1, SAH-035): an FK check bypasses RLS, so a plain `references` would admit another
+-- Composite FKs (§3.5.1, LEGACY-035): an FK check bypasses RLS, so a plain `references` would admit another
 -- tenant's term or list if the uuid were known.
 alter table app.party
   add constraint party_credit_limit_check check (credit_limit is null or credit_limit >= 0),
@@ -33,17 +33,17 @@ comment on column app.party.price_list_id is
   'Read by 6B and 3D; NOTHING in 4A reads it — app.assert_credit_available() never touches it.';
 
 -- ── 2. app.document — the pinned term (§4.3.4) ────────────────────────────────────────────────────────
-alter table app.document add column payment_term_id uuid;                  -- SAH-013: pinned at draft, never re-read
+alter table app.document add column payment_term_id uuid;                  -- LEGACY-013: pinned at draft, never re-read
 alter table app.document
-  add constraint document_payment_term_fk                                 -- §3.5.1 composite FK (SAH-035)
+  add constraint document_payment_term_fk                                 -- §3.5.1 composite FK (LEGACY-035)
       foreign key (tenant_id, payment_term_id) references app.payment_term(tenant_id, id);
 comment on column app.document.payment_term_id is
-  'PINNED at draft from party.payment_term_id and never re-read (SAH-013). The due date is the derived '
+  'PINNED at draft from party.payment_term_id and never re-read (LEGACY-013). The due date is the derived '
   'effective_date + payment_term.due_days (app.payment_due_date) and has no column of its own; contracts §4.8.2.';
 
 -- ── 2a. a document's base total, as credit control measures it (code review 2026-09-29) ────────────────
 -- An unposted document has no ledger rows, so its contribution comes from its LINES at a rate — base =
--- round(value × rate, 4) PER LINE, the identity ledger_entry's CHECK enforces (spec:1816, SAH-012), so the
+-- round(value × rate, 4) PER LINE, the identity ledger_entry's CHECK enforces (spec:1816, LEGACY-012), so the
 -- figure is the ledger figure the document will become. The rate is a parameter because the credit trigger
 -- measures the row being updated (NEW.exchange_rate) while the other readers measure the stored document.
 -- ONE definition for the trigger, the exposure and the override's approved figure below: three spellings of
@@ -81,7 +81,7 @@ comment on function app.policy_extends_credit(jsonb) is
 -- accept any credit override event on the document, so a clerk could draft 1,050 against a limit of 1,000,
 -- have it approved, re-key the lines to 100,000 and issue. The event now carries the document's base total at
 -- the moment it was recorded, and the control admits a document whose base total is no greater than that.
--- The figure is STAMPED here, never taken from the caller — the same rule as actor_id (SAH-044) — and an
+-- The figure is STAMPED here, never taken from the caller — the same rule as actor_id (LEGACY-044) — and an
 -- override is refused once the document has left draft, submitted or approved: the control fires at
 -- → issued, so an override recorded after it approves nothing and is a record of an approval never used.
 -- 0021's table and its guard are not edited; this column, its check and this trigger are 0045's own.
@@ -123,14 +123,14 @@ create trigger document_event_credit_override_amount
   execute function app.stamp_credit_override();
 
 -- ── 3. the party open balance, in BASE currency ───────────────────────────────────────────────────────
--- One figure per party, one limit per party, so the comparison is in base (SAH-014: never compare a
+-- One figure per party, one limit per party, so the comparison is in base (LEGACY-014: never compare a
 -- foreign-currency amount against a base-currency figure). Posted rows only: a draft is not a debt.
 -- A NULL `p_as_of` is "everything posted, whatever its date" — the figure credit control compares (A6: a
 -- back-dated sale is not measured against what happened to be posted by its own date).
--- It FAILS CLOSED (SAH-042): `app.party.receivable_account_id` is NULLABLE (contracts §4.5.7), and a
+-- It FAILS CLOSED (LEGACY-042): `app.party.receivable_account_id` is NULLABLE (contracts §4.5.7), and a
 -- predicate `l.account_id = <null>` matches no row, so a party carrying a limit but no control account
 -- would report a 0.0000 exposure and every over-limit sale would issue — "an absent row makes a check
--- pass", which is SAH-042 exactly. This function therefore RAISES for that combination instead of
+-- pass", which is LEGACY-042 exactly. This function therefore RAISES for that combination instead of
 -- returning a zero. A party with no limit and no control account has no credit question to answer and
 -- gets 0 without a raise, which is why the guard tests both columns and not one.
 -- `stable` and unqualified reads, so it runs under the caller's RLS (spec:2053).
@@ -154,7 +154,7 @@ begin
       'party.receivable_account_id (§4.15 1200 trade receivables is the default) or clear the limit',
       p_party_id using errcode = 'check_violation';
   end if;
-  -- coalesce at the accumulation boundary (SAH-011): a party with no posted row owes 0, never NULL.
+  -- coalesce at the accumulation boundary (LEGACY-011): a party with no posted row owes 0, never NULL.
   return (
     select coalesce(sum(l.base_debit - l.base_credit), 0)::numeric(19,4)
       from app.ledger_entry l
@@ -166,7 +166,7 @@ end $$;
 comment on function app.party_open_balance(uuid, date) is
   'contracts §4.8.1: the party balance the credit-control trigger and creditStatus() both read. Base currency, '
   'posted rows only, on the party''s own receivable control account (§4.15 1200 by default); a NULL date is no '
-  'date cut. Raises ERR_POLICY_REQUIRES_MISSING when a party carries a limit and no control account — SAH-042, '
+  'date cut. Raises ERR_POLICY_REQUIRES_MISSING when a party carries a limit and no control account — LEGACY-042, '
   'never a silent 0.';
 
 -- ── 3a. the party's credit EXPOSURE, in BASE currency (A6) ───────────────────────────────────────────────
@@ -207,7 +207,7 @@ declare
 begin
   -- Guard 1: no party, no credit question; and a party with neither a limit nor a hold has none either —
   -- WHATEVER its kind (A7: a limit or a hold configured on a dealer or a vendor is a control, not a no-op).
-  -- Both are named guards rather than a fall-through of three-valued logic (SAH-042).
+  -- Both are named guards rather than a fall-through of three-valued logic (LEGACY-042).
   if new.party_id is null then return new; end if;
   select * into v_party from app.party where id = new.party_id;
   if v_party.id is null then return new; end if;
@@ -218,7 +218,7 @@ begin
   -- PURCHASE_CREDIT_NOTE are outbound too, and a vendor on hold could not be paid). An internal or inbound
   -- document is ignored, and a policy that cannot be resolved is ignored here — 2B's trigger is what refuses
   -- an unresolvable policy. `is distinct from true`, never `not`: an unknown answer is ignored, not negated
-  -- (SAH-042).
+  -- (LEGACY-042).
   if app.policy_extends_credit(app.effective_policy(new.document_type_id, new.effective_date))
        is distinct from true then
     return new;
@@ -254,14 +254,14 @@ begin
 
   -- 3. The document's own contribution, computed at guard 3 above. It is not posted yet, so it comes from its
   --    LINES at its own rate — app.document_base_total, the identity ledger_entry's CHECK enforces (spec:1816,
-  --    SAH-012). Do not "simplify" it into one query over the ledger — this document has no ledger rows at
+  --    LEGACY-012). Do not "simplify" it into one query over the ledger — this document has no ledger rows at
   --    `→ issued`.
 
   -- 4. A second principal's override event, already authorised by 2B's document_event_override_guard
   --    (§4.5.3, spec:2179), that APPROVED at least this figure (code review 2026-09-29): the event carries
   --    the document's base total when it was recorded (§2c above), so a draft re-keyed upwards after the
   --    approval is compared like any other. This trigger asks nothing further about authority: two authority
-  --    questions, asked differently, is how two answers appear (SAH-032).
+  --    questions, asked differently, is how two answers appear (LEGACY-032).
   if exists (select 1 from app.document_event e
               where e.document_id = new.id
                 and e.event_kind = 'override'
@@ -297,9 +297,9 @@ create trigger document_credit_control
   when (new.status = 'issued' and old.status is distinct from 'issued')
   execute function app.assert_credit_available();
 
--- ── 4a. a payment term's days are fixed once a document is aged on them (A8, SAH-013) ────────────────────
+-- ── 4a. a payment term's days are fixed once a document is aged on them (A8, LEGACY-013) ────────────────────
 -- The document PINS its term (§4.3.4) so the ageing cuts on what was agreed; editing the term's days in place
--- re-aged every issued and posted document pinned to it, which is SAH-013 by the back door. Once any document
+-- re-aged every issued and posted document pinned to it, which is LEGACY-013 by the back door. Once any document
 -- other than a draft names the term, due_days / discount_days / discount_pct are refused — the remedy is a
 -- new term. Names and archiving stay free, and a re-save of the same days is not a change. It lives in this
 -- file, not 0044, because the column it reads (document.payment_term_id) is this file's.
@@ -312,13 +312,13 @@ begin
   if exists (select 1 from app.document d where d.payment_term_id = old.id and d.status <> 'draft') then
     raise exception
       'ERR_CONFLICT_REFERENCE: payment term % is pinned on a document that is no longer a draft; its days and '
-      'discount are what that document is aged on (SAH-013) — create a new term instead', old.code
+      'discount are what that document is aged on (LEGACY-013) — create a new term instead', old.code
       using errcode = 'check_violation';
   end if;
   return new;
 end $$;
 comment on function app.assert_payment_term_days_unpinned() is
-  'Phase 4 review A8, SAH-013: refuses changing due_days, discount_days or discount_pct of a payment term that '
+  'Phase 4 review A8, LEGACY-013: refuses changing due_days, discount_days or discount_pct of a payment term that '
   'a non-draft document pins (ERR_CONFLICT_REFERENCE).';
 create trigger payment_term_days_pinned
   before update of due_days, discount_days, discount_pct on app.payment_term
@@ -462,7 +462,7 @@ begin
     end if;
   end if;
 
-  -- ── 2c. R2 authority at transition time (spec:2173). NULL branch never fails open (SAH-042, SAH-050). ─
+  -- ── 2c. R2 authority at transition time (spec:2173). NULL branch never fails open (LEGACY-042, LEGACY-050). ─
   if new.status = 'approved' then
     v_gate := coalesce(v_approve, v_post);          -- for approval.required = false types approve is null
   elsif new.status in ('posted', 'void') then

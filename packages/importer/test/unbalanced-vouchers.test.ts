@@ -21,7 +21,7 @@ const credit = (id: string, amount: string) => ({
 const run = async (corpus: LegacyCorpus = loadCorpus()) =>
   reconcile(await createReader(new FixtureLegacyDriver(corpus)), "unbalanced_vouchers");
 
-describe("reconcile('unbalanced_vouchers') — §5.1 #2, SAH-003 'nothing enforces debits = credits'", () => {
+describe("reconcile('unbalanced_vouchers') — §5.1 #2, LEGACY-003 'nothing enforces debits = credits'", () => {
   it("names each unbalanced voucher, signs the imbalance, and dates it from its header", async () => {
     const report = await run();
     expect(report.kind).toBe("unbalanced_vouchers");

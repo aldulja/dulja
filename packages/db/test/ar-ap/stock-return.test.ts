@@ -247,7 +247,7 @@ describe("the DELIVERY_ORDER reversal — 3d:2723's deferred proof, ADR 0045, §
 
   // The plan's sixth case — "a HAND-DRAFTED negated delivery cannot be accepted on the wire" — asserts 2A's
   // `DocumentLineInput` schema, which lives in `@dulja/contracts`, and this directory may not import that
-  // package (dependency-rule). It is asserted where it can be: `tests/regression/sah-018.test.ts`'s 4A block.
+  // package (dependency-rule). It is asserted where it can be: `tests/regression/legacy-018.test.ts`'s 4A block.
   // The schema bounds the money fields only — a quantity is signed — so the data-layer half, a negated
   // delivery drafted by any path and refused at post, is the M1-X block below (code review 2).
 });

@@ -18,7 +18,7 @@
 The till answers *"That enrolment code was not accepted. Check it against the back office; if it has expired or
 was already used, ask for a new one."* (*"لم يُقبل رمز التسجيل هذا. تحقّق منه مقابل مكتب الإدارة؛ وإن كانت صلاحيته
 قد انتهت أو استُخدم من قبل، فاطلب رمزًا جديدًا."*). The server gives the same answer for a code that is mistyped,
-expired or already used, and does not say which (SAH-025). **Retype the code first**: while a mistyped original
+expired or already used, and does not say which (LEGACY-025). **Retype the code first**: while a mistyped original
 is still live, a second code for the same terminal code is refused (below). If it still fails, issue a new code. The same terminal code may be used again: an enrolment code nobody redeemed in time stops
 holding its terminal code when it expires. While a code is still live, or once a till has enrolled with it,
 its terminal code is taken and a second code for it is refused (409, `ERR_CONFLICT_UNIQUE`).

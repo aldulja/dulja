@@ -41,7 +41,7 @@ function decimal(row: LegacyRow, column: string, site: string, what: string) {
   if (value === null)
     throw new LoadError(
       "ERR_VALIDATION_FAILED",
-      `${site}: ${column} is NULL; a NULL legacy ${what} is never read as zero (SAH-007, SAH-011)`,
+      `${site}: ${column} is NULL; a NULL legacy ${what} is never read as zero (LEGACY-007, LEGACY-011)`,
     );
   if (!DECIMAL.test(value))
     throw new LoadError(
@@ -57,7 +57,7 @@ export function requireText(row: LegacyRow, column: string, site: string): strin
   if (value === null)
     throw new LoadError(
       "ERR_VALIDATION_FAILED",
-      `${site}: ${column} is empty; the loader will not guess a value (SAH-007)`,
+      `${site}: ${column} is empty; the loader will not guess a value (LEGACY-007)`,
     );
   return value;
 }
@@ -68,11 +68,11 @@ export function optionalText(row: LegacyRow, column: string): string | null {
 }
 
 /**
- * spec:2041 — a legacy amount becomes `Money` here or nowhere. A NULL is REFUSED, never coerced to zero: SAH-007 and
- * SAH-011 are exactly the defect of reading a NULL balance or cost as a zero one. A loader whose source may genuinely
+ * spec:2041 — a legacy amount becomes `Money` here or nowhere. A NULL is REFUSED, never coerced to zero: LEGACY-007 and
+ * LEGACY-011 are exactly the defect of reading a NULL balance or cost as a zero one. A loader whose source may genuinely
  * lack the amount checks `optionalText` first and returns `{ skip }`, so the row reaches the skip register.
  *
- * Rounded once, at scale 4 and HALF_AWAY_FROM_ZERO, through the domain's one rounding function (SAH-019); the source
+ * Rounded once, at scale 4 and HALF_AWAY_FROM_ZERO, through the domain's one rounding function (LEGACY-019); the source
  * hash covers the raw text, so nothing is lost to the rounding. `currencyCode` is the COMPANY's base currency —
  * `baseCurrency()` inside a run — never a literal, so the `Money` a `map` mints and the `Money.zero` its `load` adds it
  * to are one type.
@@ -136,7 +136,7 @@ const FALSE_FLAGS: ReadonlySet<string> = new Set(["0", "F", "FALSE", "N", "NO"])
 /**
  * A legacy flag — a Firebird `D_BOOLEAN` or smallint cast to text (dossier §3.1: `IsCustomer`, `IsService`, …). NULL or
  * an absent column answers `null`, so the caller states its own default; any value outside the two closed sets is
- * REFUSED, never read as false — a flag of `2` silently turning a service into a product is SAH-007's shape.
+ * REFUSED, never read as false — a flag of `2` silently turning a service into a product is LEGACY-007's shape.
  */
 export function flagOf(row: LegacyRow, column: string, site: string): boolean | null {
   const value = text(row, column);
@@ -156,14 +156,14 @@ const BIGINT_MAX = 9_223_372_036_854_775_807n;
 const RATIO_SCALE_LIMIT = 40;
 
 /**
- * SAH-066 — `MatUnits.Exchange` is `double precision` in the source while quantities are numeric(18,4), and nothing
+ * LEGACY-066 — `MatUnits.Exchange` is `double precision` in the source while quantities are numeric(18,4), and nothing
  * rejected `Exchange = 0` or NULL. A legacy factor becomes Dulja's exact `Rational` (spec:2043; `app.unit_conversion`'s
  * `bigint` numerator and denominator) HERE and nowhere else, and never `Money` or a JavaScript `number`.
  *
  * The decimal text Firebird prints for the float is converted EXACTLY — `0.333333333333333` is
  * `333333333333333/10^15`, not `1/3`: the stored float is what the source holds, and recovering the ratio the operator
  * meant is a guess this boundary refuses to make (the owner enters the true ratio after cut-over). A NULL is refused,
- * never read as `1` (a silent identity is SAH-066 with a different sign); so is zero, a negative factor, and one whose
+ * never read as `1` (a silent identity is LEGACY-066 with a different sign); so is zero, a negative factor, and one whose
  * reduced ratio does not fit `bigint`. The scale, the comparison and the reduction are all `bigint` arithmetic.
  *
  * Not yet called by a registered loader: no MatUnits loader is registered until OD-17 names the table's material and
@@ -174,7 +174,7 @@ export function rationalOf(row: LegacyRow, column: string, site: string): Ration
   if (value === null)
     throw new LoadError(
       "ERR_VALIDATION_FAILED",
-      `${site}: ${column} is NULL; a missing conversion factor is never read as 1 (SAH-066)`,
+      `${site}: ${column} is NULL; a missing conversion factor is never read as 1 (LEGACY-066)`,
     );
   const parts = /^([+-]?)(\d+)(?:\.(\d+))?(?:[eE]([+-]?\d+))?$/.exec(value);
   if (!parts)
@@ -187,7 +187,7 @@ export function rationalOf(row: LegacyRow, column: string, site: string): Ration
   if (sign === "-" || digits === 0n)
     throw new LoadError(
       "ERR_VALIDATION_FAILED",
-      `${site}: ${column} is ${value}; a unit conversion factor must be positive (SAH-066)`,
+      `${site}: ${column} is ${value}; a unit conversion factor must be positive (LEGACY-066)`,
     );
   const tooWide = new LoadError(
     "ERR_VALIDATION_FAILED",
@@ -218,7 +218,7 @@ export function payMoneyOf<C extends CurrencyCode>(
   if (value === null)
     throw new LoadError(
       "ERR_VALIDATION_FAILED",
-      `${site}: ${column} is NULL; a NULL legacy pay figure is never read as zero (SAH-007)`,
+      `${site}: ${column} is NULL; a NULL legacy pay figure is never read as zero (LEGACY-007)`,
     );
   const refused = new LoadError(
     "ERR_VALIDATION_FAILED",

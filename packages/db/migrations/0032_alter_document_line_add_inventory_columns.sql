@@ -4,7 +4,7 @@
 -- expand/contract (spec:2057) and no live row needs a backfill.
 -- spec:2043: "Quantity is stored once, in the item's base unit; the entered unit and quantity are kept
 -- for display." unit_id/unit_quantity are that display pair, and the trigger below is what makes the
--- sentence true on every write path rather than in the one handler that remembers (SAH-066).
+-- sentence true on every write path rather than in the one handler that remembers (LEGACY-066).
 -- Nothing in this migration writes a row: hazard 10, and FORCE ROW LEVEL SECURITY binds app_migrator
 -- too (spec:1366), so a migration with no tenant set could not insert one in any case.
 
@@ -17,7 +17,7 @@ alter table app.document_line add column lot_id        uuid;           -- NULLAB
 alter table app.document_line add column unit_id       uuid;
 alter table app.document_line add column unit_quantity numeric(19,6);  -- the quantity AS ENTERED
 
--- ── 2. the four foreign keys, all composite (tenant_id, x) (spec:106, SAH-073) ──────────────────
+-- ── 2. the four foreign keys, all composite (tenant_id, x) (spec:106, LEGACY-073) ──────────────────
 -- §4.3.4: "3A's 0032 adds (tenant_id, item_id) → app.item … and adds its field to DocumentLineInput in
 -- the same PR as its key, never before". 2A's own tests wrote arbitrary uuids into item_id, which was
 -- legal exactly until this statement; they are fixed in this PR.
@@ -34,7 +34,7 @@ create index document_line_warehouse_idx on app.document_line (warehouse_id) whe
 -- No branch_isolation policy on this table, now or ever: §3.5.1 step 7 and §4.5.6 both say a
 -- warehouse_id alone does not qualify, and document_line is isolated through its parent document.
 
--- ── 3. the base quantity, derived in SQL so no write path can skip it (SAH-066) ─────────────────
+-- ── 3. the base quantity, derived in SQL so no write path can skip it (LEGACY-066) ─────────────────
 -- Behaviour, in three branches:
 --   * no entered pair (unit_id or unit_quantity null) -> quantity is left exactly as written. A JOURNAL
 --     line has neither, and a line typed directly in base units has neither.

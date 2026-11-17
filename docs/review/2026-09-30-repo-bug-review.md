@@ -63,7 +63,7 @@ The two costing failures already recorded in `AGENTS.md` remain owner decisions:
 - `tests/invariants/test-07-one-costing-answer.test.ts`: the back-dated AVCO tie-out disagrees because
   issues use a rounded running average while valuation sums rounded per-layer amounts. Resolving the
   valuation/value rule changes accounting semantics and involves ADR 0039.
-- `tests/regression/sah-004.test.ts`: reversing the second AVCO purchase retains unit cost `15.0000`
+- `tests/regression/legacy-004.test.ts`: reversing the second AVCO purchase retains unit cost `15.0000`
   where the regression expects `10.0000`. Selecting the reversal cost rule also changes accounting semantics.
 
 `AGENTS.md` explicitly says: “Do not decide items marked ⚠️, Confirm, Decide, or OD-## on the owner's behalf”

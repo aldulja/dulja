@@ -4,7 +4,7 @@
 
 ## Context
 
-Two documents describe the product: `docs/spec/sahlisoft-accounting-analysis.md` (kept out of the public repository) explains the legacy system, while `docs/spec/rebuild-spec.md` defines Dulja and its implementation. The 2026-09-04 review corrected blocking RLS defects and inconsistencies; the 2026-09-05 v1.2 pass brought HR & Payroll into v1, added the nine-role catalogue, and completed adversarial verification.
+Two documents describe the product: `docs/spec/legacy-system-analysis.md` (kept out of the public repository) explains the legacy system, while `docs/spec/rebuild-spec.md` defines Dulja and its implementation. The 2026-09-04 review corrected blocking RLS defects and inconsistencies; the 2026-09-05 v1.2 pass brought HR & Payroll into v1, added the nine-role catalogue, and completed adversarial verification.
 
 ## Decision
 

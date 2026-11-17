@@ -275,7 +275,7 @@ describe("FX over HTTP (§4.14 FX_REVALUATION, ADR 0047)", () => {
     expect((await problemOf(empty)).code).toBe("ERR_VALIDATION_FAILED");
   });
 
-  it("a missing rate for an exposed currency is 422 ERR_RATE_NOT_FOUND naming the pair (SAH-012)", async () => {
+  it("a missing rate for an exposed currency is 422 ERR_RATE_NOT_FOUND naming the pair (LEGACY-012)", async () => {
     const gbp = await seedTenantV2(api.db, "RevaluationNoRate");
     const g = await arApFixture(api.db, gbp);
     await seedCurrency(api.db, gbp, { code: "GBP" });

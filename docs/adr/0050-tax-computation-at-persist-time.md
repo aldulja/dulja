@@ -6,7 +6,7 @@
 
 ## Context
 
-SAH-019 records inconsistent rounding; SAH-020 records hard-coded rates without provenance or a regime discriminator. The tax engine must supply one stored answer shared by posting and returns.
+LEGACY-019 records inconsistent rounding; LEGACY-020 records hard-coded rates without provenance or a regime discriminator. The tax engine must supply one stored answer shared by posting and returns.
 
 ## Decision
 
@@ -123,7 +123,7 @@ amendment above. The rules live in `packages/db/src/inventory/fulfilment.ts`, `p
     delivery) the share pro rata to that line's quantity — `Money.multiply` by the exact micro-unit `Rational`,
     rounded once HALF_AWAY_FROM_ZERO — and the line that completes the order line takes the residue: the order
     discount less what earlier lines of this call and earlier deliveries of that order line already carry.
-    Earlier deliveries are read after the per-line `document_link:<line>` advisory locks (SAH-017's order), over
+    Earlier deliveries are read after the per-line `document_link:<line>` advisory locks (LEGACY-017's order), over
     both order → delivery kinds (the service's `converts_to` and a client-drafted `fulfils`), counted as
     `app.document_open_quantity` counts a claim. Before this, a 6 + 4 split of 10 × 10.0000 less 5.0000 was
     invoiced 90.0000, and since decision 5 it was also taxed on 90; it now invoices 95.0000, taxed on 95.0000.
@@ -289,7 +289,7 @@ a contract change to `TaxReturnTieOutRow`?
 Tests: `packages/db/test/tax/direction.test.ts`, `packages/domain/test/tax/engine.test.ts`,
 `packages/domain/test/tax/malaysia.test.ts`, `packages/domain/test/posting/evaluate.full.test.ts`,
 `apps/api/test/routes/accounting/tax-codes.test.ts` (MON-13, a 200 archive whose replay is not a 500) and
-`tests/regression/sah-020.test.ts`.
+`tests/regression/legacy-020.test.ts`.
 
 ## Phase 6 historical POS refunds — 2026-10-08
 

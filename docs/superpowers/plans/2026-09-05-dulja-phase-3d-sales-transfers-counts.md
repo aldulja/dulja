@@ -8,7 +8,7 @@
 
 **Tech Stack:** Bun 1.4 (install, scripts, the API entrypoint) · Node 24 LTS (runs Vitest) · TypeScript strict · PostgreSQL 18 (Testcontainers `postgres:18`) · `postgres` (postgres.js) tagged templates · Drizzle ORM mirrors for reads · Hono + `@hono/zod-openapi` · Zod · `decimal.js` behind `@dulja/domain`'s `Money`/`Quantity` · React 19 + `@dulja/ui` + i18next (the OD-24 screens) · Vitest + Testcontainers · Playwright (the both-directions re-run of test 23) · oxlint + oxfmt · Turborepo.
 
-**Spec:** `docs/spec/rebuild-spec.md` v1.2 — §0.2 (spec:97–108), §3.0.3 rows Multi-branch stock and Batch/lot (spec:1021–1022), §3.0.4 rows 1050–1054 and the Inventory core row (spec:1048), §3.4 costing in full (spec:1208–1228), §3.7.3 Stock paragraph (spec:1308), §3.8 immutable and derived lists (spec:1370, 1979–1993), §3.9 Quantities/Naming/Deletion/Error codes (spec:2037–2053), §4.2.1 `inventory.*` codes and the `warehouse` / `branch_manager` rows (spec:2148, 2159–2160), §4.2.2 R1 STOCK_COUNT and R2 (spec:2172–2173), §4.11 engineering practice (spec:2258–2266), Part V Phase 3 row and the reporting sequencing note (spec:2289, 2300), Part VI tests 7, 15, 18, 23, 31 (spec:2425, 2433, 2436, 2441, 2449), Part I SAH-009 (spec:286), SAH-017 (spec:361), SAH-018 (spec:374), SAH-048.
+**Spec:** `docs/spec/rebuild-spec.md` v1.2 — §0.2 (spec:97–108), §3.0.3 rows Multi-branch stock and Batch/lot (spec:1021–1022), §3.0.4 rows 1050–1054 and the Inventory core row (spec:1048), §3.4 costing in full (spec:1208–1228), §3.7.3 Stock paragraph (spec:1308), §3.8 immutable and derived lists (spec:1370, 1979–1993), §3.9 Quantities/Naming/Deletion/Error codes (spec:2037–2053), §4.2.1 `inventory.*` codes and the `warehouse` / `branch_manager` rows (spec:2148, 2159–2160), §4.2.2 R1 STOCK_COUNT and R2 (spec:2172–2173), §4.11 engineering practice (spec:2258–2266), Part V Phase 3 row and the reporting sequencing note (spec:2289, 2300), Part VI tests 7, 15, 18, 23, 31 (spec:2425, 2433, 2436, 2441, 2449), Part I LEGACY-009 (spec:286), LEGACY-017 (spec:361), LEGACY-018 (spec:374), LEGACY-048.
 
 ## Assumptions and contracts (from docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md)
 
@@ -20,7 +20,7 @@
 - **Interfaces consumed:** §4.1 (the Plan 0A surface), §4.2.2 (`withTenant`, `TenantContext`), §4.2.3 (`AppEnv`, `Logger`), §4.2.4 (`Problem`, `ERRORS`, `AppError`, `fromDatabaseError`, `PostingError`), §4.2.5 (`PERMISSION`, `PermissionCode`, `requirePermission`, `ROLES`, `INCOMPATIBLE_PAIRS`), §4.2.7 (`RouteModule`, `buildRoutes`, `IdempotencyHeader`, `createApp`), §4.2.8 (the common schemas, the list envelope, the one filter convention), §4.2.9 (`idempotency`), §4.2.12 (`startApi`, `ApiRequest`, `StartedApi`), §4.2.13 (`SubPack`, `readPackFile`), §4.3.1 (`postDocument`, `loadSnapshot`, `resolvePolicy`, `reverseDocument`, `transitionDocument`, `recordOverride`), §4.3.2 (the fixed posting algorithm, steps 6, 8, 9, 10, 12), §4.3.4 (`document_line` and the `document` header additions), §4.3.5 (`posting_seq`), §4.3.6 (numbering at issue), §4.3.7 (the document-type seed envelope), §4.4.1 (`posting-policy.schema.json` — consumed **unchanged**, same `$id`, same `"version": 1`), §4.4.2 (`evaluatePolicy`, `DocumentSnapshot`, `LineSnapshot`, `PlannedLedgerLine`, `PlannedMovement`, sign normalisation A9), §4.5.1 (legal transitions), §4.5.2 (`document_event`), §4.5.3 (overrides, `app.principal_has`), §4.5.4 (`requireDocumentPermission`, `DOCUMENT_STAGE_CODES`), §4.5.6 (Form A″ and Form C — consumed as a *future* attachment by 6C; 3D attaches nothing), §4.6.1 (the table register), §4.7.1 (`CostingEngine`), §4.7.2 (`applyMovements`), §4.7.3 (`inventory_movement`, `stock_on_hand`, `cost_layer`, `cost_consumption` and the `stock_on_hand` MERGE), §4.11.1 (`ReportDefinition` — for the shape 7B re-expresses these three reports into), §4.14 (document-type codes), §4.15 (account codes), §4.16.1 / §4.16.3 (report codes and the Phase 1 report surface), §4.17 / §4.17.1 (the two helper registers).
 - **Interfaces produced:** the six §4.14 rows `SALES_ORDER`, `DELIVERY_ORDER`, `TRANSFER`, `TRANSFER_RECEIPT`, `STOCK_COUNT`, `EXPIRY_WRITE_OFF` as seed-pack envelopes; the §4.3.4 `document_line` additions `counted_quantity` and `expected_quantity` (migration 0040); the §4.15 rows `1250` and `5110`; the §3.6.2 codes `inventory.transfer.create`, `inventory.transfer.post`, `inventory.count.create`, `inventory.adjustment.create`, `inventory.adjustment.approve`, `accounting.sales.create`; the §4.16.1 report codes `inventory.stock_on_hand`, `inventory.valuation`, `inventory.sales_by_item` and the read functions behind them. Everything else is listed under *Contract additions* in the Self-Review and lands through **Task 0**.
 - **Owner decisions:** **OD-05** (every ⚠️ row in §3.0.3/§3.0.4 — for this slice the **Multi-branch stock** row, spec:1021) → **Task 12**, isolated; default: the spec text as written (a warehouse per branch, transfers between them, stock and margin per branch), built as designed. **OD-24** (screenshots + a two-minute operator description before any screen) → **Task 13**, isolated; default: the screen task is blocked, the slice is not. **OD-06** (costing method) is 3B's and is consumed here through `company.costing_method` without re-gating; **OD-07** (serials) is 3A's and no line of this slice references `serial_unit`.
-- **Part VI tests owned / re-run:** **owns 7** (one costing answer — Task 11). **Re-runs:** **31** (segregation of duties on `STOCK_COUNT` — Task 8), **18** (the negative-stock override path on a real sale — Task 6), **15** (a document type added with zero code, in the inventory domain — Task 8), **23** (screens in both text directions — Task 13), **2** and **36** (the projection rebuild and the permission catalogue, over this slice's rows and codes — Tasks 2 and 14). **§3.0.4 rows owned:** spec:1050 (sales/purchase orders — the sales half; 3C contributed `PURCHASE_ORDER`), spec:1051 (delivery order, document half; 4A adds the invoice link), spec:1052 (stock count), spec:1053 (two-step transfer), spec:1054 (expiry write-off). **Regression files created / appended:** **creates `tests/regression/sah-018.test.ts`** (returned and delivered quantity as a projection, never a stored column — 3D is the first slice in execution order to touch SAH-018, §6.3; 4A appends); **appends** a `— 3D` block to `tests/regression/sah-009.test.ts` (created by 3B), `tests/regression/sah-017.test.ts` (created by 3B) and `tests/regression/sah-048.test.ts` (created by 3A).
+- **Part VI tests owned / re-run:** **owns 7** (one costing answer — Task 11). **Re-runs:** **31** (segregation of duties on `STOCK_COUNT` — Task 8), **18** (the negative-stock override path on a real sale — Task 6), **15** (a document type added with zero code, in the inventory domain — Task 8), **23** (screens in both text directions — Task 13), **2** and **36** (the projection rebuild and the permission catalogue, over this slice's rows and codes — Tasks 2 and 14). **§3.0.4 rows owned:** spec:1050 (sales/purchase orders — the sales half; 3C contributed `PURCHASE_ORDER`), spec:1051 (delivery order, document half; 4A adds the invoice link), spec:1052 (stock count), spec:1053 (two-step transfer), spec:1054 (expiry write-off). **Regression files created / appended:** **creates `tests/regression/legacy-018.test.ts`** (returned and delivered quantity as a projection, never a stored column — 3D is the first slice in execution order to touch LEGACY-018, §6.3; 4A appends); **appends** a `— 3D` block to `tests/regression/legacy-009.test.ts` (created by 3B), `tests/regression/legacy-017.test.ts` (created by 3B) and `tests/regression/legacy-048.test.ts` (created by 3A).
 - **Shared namespaces this slice writes into:** **document-type codes (§4.14)** — `SALES_ORDER` (`inventory`, `SO`), `DELIVERY_ORDER` (`inventory`, `DO`), `TRANSFER` (`inventory`, `TRF`), `TRANSFER_RECEIPT` (`inventory`, `TRR`), `STOCK_COUNT` (`inventory`, `SC`), `EXPIRY_WRITE_OFF` (`inventory`, `EWO`), all six seeded, plus **`COUNT_TEST` (`inventory`, `CT`) — test only, never a file under `packages/db/seed/my/document-types/`**, registered by Task 0 exactly as 2A's `POLICY_TEST` and 2B's `GAP_TEST` are. **Account codes (§4.15)** — **seeds `1250` goods delivered not invoiced and `5110` stock-count variance** in `packages/db/seed/my/chart-of-accounts/3d-adjustments.json`; **consumes without re-seeding `1310` goods in transit and `5100` inventory write-off — expiry loss (both 3C's)**, `1300` inventory control / `5000` cost of goods sold / `5920` FX rounding (0C's), and resolves each with an explicit assertion in Task 2 (hazard 33). **Report codes (§4.16.1)** — `inventory.stock_on_hand`, `inventory.valuation`, `inventory.sales_by_item`, seeded as routes over hand-written dataset queries under §4.16.3's rules; **`DatasetId` members (§4.16.2) — none**: 7A creates `datasets.ts` and this slice adds no member. **`fixtures.ts` helpers (§4.17) — none added.** §4.17 assigns 3D no row and hazard 9 forbids inventing one beside the register; every row this slice's tests need comes from `seedTenantV2`, `seedAccount`, `seedBranch`, `seedParty`, `seedDocumentType`, `grantCodes`, `seedUnit`, `seedItem`, `seedWarehouse`, `seedLot`, **3C's `draftTypedDocument`** (the generic typed-document draft builder, whose §4.17 row names 3D as a consumer) or a **file-local** function. **Shared test helpers (§4.17.1) — one word, and it is a Task 0 amendment, not a new file:** `secondPrincipal(db, s, label)` is **exported** from 3B's `tests/invariants/support/post-inventory.ts`, where it is currently module-private. Tasks 6, 8, 9 and 11 all need a second principal for an override or an R1 approval, `postOverriddenIssue` cannot serve them (it drafts no party, and `DELIVERY_ORDER` `requires: ["party", …]`), and writing a file-local copy in four test files is the duplication hazard 9 forbids. Nothing else in that file changes. The file-local `receiveStock` this plan repeats is named in the Self-Review as a further §4.17.1 candidate for the catalogue to place.
 - **Four `Seed` and fixture facts every test in this plan depends on, stated once because getting one wrong is a silent failure.** (1) **`Seed` has no `branch` member.** It is `{ tenant; system; human; company; period; closedPeriod; lockedPeriod; cash; sales; docType; policy; branchType; hq }` (§4.1); the BRANCH dimension *value* is **`hq`**, `app.document.branch_id` is NOT NULL, so every `branchId:` in this plan is `<seed>.hq` unless a second value came from `seedBranch`. (2) **`seedTenant` grants `s.human` nothing** (§4.1, pinned) and 2B's R2 evaluates `policy.approval.post` *inside* the posting transaction, so **every posting test calls `grantCodes` first**. (3) **`seedTenantV2` creates only `1000 Cash` and `4000 Sales`.** Every inventory account this slice's policies name (`1250`, `1300`, `1310`, `5000`, `5100`, `5110`, `5920`) is created in a test by 1A's `seedAccount(db, s, { code, nameEn, type })` — `type ∈ ('asset','liability','equity','income','expense')` — through the file-local `seedInventoryAccounts` this plan repeats where it is needed. (4) **`seedItem` returns `{ itemId, baseUnitId }`**, not a bare string, and creates the item's sentinel lot `NONE` (§4.7.3); `seedWarehouse(db, s, { kind: 'in_transit' })` is how an in-transit warehouse is created (§4.17).
 - **Never re-decide:** D1–D27 (spec:114–142); every name in the contracts document is frozen — a needed change goes to that document first (that is what Task 0 is).
@@ -30,14 +30,14 @@
 
 Copied verbatim from the spec and the contracts document; every task's requirements implicitly include this section.
 
-1. **Never**, at any phase, for any reason (spec:97–104): write to a ledger or movement table outside the posting service; represent money as a float, anywhere, including in TypeScript; build SQL by string concatenation (SAH-036/037/069); issue DDL from application code (SAH-053); disable an invariant, constraint or trigger "temporarily" (SAH-027, 041, 053); gate an audit write on any flag (SAH-030); hard-code a package version into a source file — the lockfile owns versions.
+1. **Never**, at any phase, for any reason (spec:97–104): write to a ledger or movement table outside the posting service; represent money as a float, anywhere, including in TypeScript; build SQL by string concatenation (LEGACY-036/037/069); issue DDL from application code (LEGACY-053); disable an invariant, constraint or trigger "temporarily" (LEGACY-027, 041, 053); gate an audit write on any flag (LEGACY-030); hard-code a package version into a source file — the lockfile owns versions.
 2. **Always**, for every new table (spec:106): `tenant_id`, an RLS policy, `created_at`, a migration, and a test that a second tenant cannot see it. For every new endpoint: Zod schema, OpenAPI entry, idempotency on unsafe methods, and a tenant-isolation test. For every UI screen: verified in both text directions before merge. **This slice creates no table** — every migration is an `alter` or an index — so clause 2's table half is satisfied by re-running `lintSchema` to zero after each migration.
 3. **Nothing outside `packages/db/src/posting/` and `packages/db/src/costing/` writes `ledger_entry`, `ledger_entry_dimension`, `inventory_movement`, `cost_layer`, `cost_consumption`, `account_balance`, `stock_on_hand` or `tax_transaction`** (§4.3.2, the `posting-only-tables` lint, hazard 22). Every one of this slice's drafting services writes `document` and `document_line` rows and then calls `postDocument`. **`document_line.cost` is written only by `applyMovements`** (§4.7.2) — a drafting service never sets it.
 4. **Money** is `numeric(19,4)` in Postgres and the opaque `Money` type in `@dulja/domain` in TypeScript; **quantities** are `numeric(19,6)` and the opaque `Quantity`; no `number` ever holds a monetary value or a quantity that crosses a boundary (spec:2041–2043, §3.7.5 `no-number-money`). Every wire amount is `{ amount, currency }` and every wire quantity a 6-dp string.
 5. **`Money.toBase` rounds `HALF_AWAY_FROM_ZERO` at scale 4** (hazard 23), the only mode satisfying `base_debit = round(debit * exchange_rate, 4)`. No task in this slice performs a base conversion of its own — `evaluatePolicy` and `balanceInBase` do it.
 6. **`PlannedLedgerLine.amount` is never negative and `side` is the sole carrier of direction** (§4.4.2 A9). ⚠️ **§4.4.2 names 3D explicitly** as a slice whose natural expression is negative; every ledger direction in this slice is chosen by the policy (a fixed `side`, or `when: { "line.quantity_sign": … }`) and **no line of code in this slice tests the sign of an amount to decide a direction**. `PlannedTaxLine.amount` stays signed and this slice plans no tax line (`tax.applies: false` on all six types).
 7. **Every query, reads included, runs inside `withTenant`** (spec:2053). `db.` is a lint violation; only a `tx` obtained from `withTenant` may tag SQL. `sql.unsafe` has exactly three homes and none is in this slice (§3.3).
-8. **One migration per PR** (spec:2057); each file runs whole in one transaction (so no `create index concurrently`); every statement carries a comment naming the SAH-/spec reference it serves; SQL keywords lowercase; section banners `-- ── N. title ───`; a hand-written `NNNN.down.sql` that drops only what the up added (§3.4.5).
+8. **One migration per PR** (spec:2057); each file runs whole in one transaction (so no `create index concurrently`); every statement carries a comment naming the LEGACY-/spec reference it serves; SQL keywords lowercase; section banners `-- ── N. title ───`; a hand-written `NNNN.down.sql` that drops only what the up added (§3.4.5).
 9. **Expand only on a live table** (spec:2057, 2236, §3.4.7): migration 0040 adds two nullable columns and nothing else; no column is renamed and none is dropped.
 10. **Deletion** (spec:2049): financial rows never — reversal only; master data `archived_at`. §3.5.4's pinned `app_rw` DELETE list is **unchanged** by this slice and Task 14 re-asserts it.
 11. **Error codes** are `ERR_<DOMAIN>_<REASON>` enumerated in `packages/contracts/src/errors.ts`, and a code no code raises fails the build (spec:2051). **This slice adds no new registry code** — it raises `ERR_VALIDATION_FAILED`, `ERR_NOT_FOUND`, `ERR_DOC_STATUS_ILLEGAL`, `ERR_DOC_NO_LINES`, `ERR_POLICY_REQUIRES_MISSING`, `ERR_STOCK_INSUFFICIENT`, `ERR_DOC_LINK_OVER_FULFILLED`, `ERR_SOD_NO_SUBMISSION`, `ERR_SOD_MAKER_IS_CHECKER`, `ERR_OVERRIDE_NOT_AUTHORISED` (2B, contracts:1561 — asserted by name in Task 6's two override cases) and `ERR_RBAC_FORBIDDEN`, all already shipped by 0B, 2B, 3A or 3C. **This list is closed: a token in any test of this slice that is not on it is either a typo or an unregistered code, and both fail the `error-codes` lint.**
@@ -170,11 +170,11 @@ apps/backoffice/test/
 packages/i18n/src/locales/{en,ar}.json  EDIT the `inventory.transfer.*` / `inventory.count.*` keys    T13
 
 tests/
-├─ regression/sah-018.test.ts   NEW  created by 3D (§3.7.3); at T6, not T5, because its behavioural
+├─ regression/legacy-018.test.ts   NEW  created by 3D (§3.7.3); at T6, not T5, because its behavioural
 │                                    case seeds DELIVERY_ORDER from the pack                      T6
-├─ regression/sah-009.test.ts   EDIT append a `— 3D` block                                        T11
-├─ regression/sah-017.test.ts   EDIT append a `— 3D` block                                        T5
-├─ regression/sah-048.test.ts   EDIT append a `— 3D` block                                        T6
+├─ regression/legacy-009.test.ts   EDIT append a `— 3D` block                                        T11
+├─ regression/legacy-017.test.ts   EDIT append a `— 3D` block                                        T5
+├─ regression/legacy-048.test.ts   EDIT append a `— 3D` block                                        T6
 ├─ invariants/test-07-one-costing-answer.test.ts   NEW  acceptance test 7                          T11
 └─ e2e/inventory-transfers.spec.ts                 NEW  test 23 re-run, both directions            T13
 ```
@@ -218,13 +218,13 @@ This task writes **no application code**. It lands the amendments the rest of th
 |---|---|
 | `linkFulfilment`, `listLinks`, `openQuantity`, `OpenQuantityRow` exported from `packages/db/src/documents/link.ts` | Task 5's conversion writes links through `linkFulfilment` and reads open quantity through `openQuantity`. **`createDocumentLink` and `documentOpenQuantity` do not exist** — the second is 3C's Drizzle *view mirror* name |
 | `app.document_link` has a column named **`quantity`** | §4.6.1's DDL says `quantity`; the 3C card's prose said `linked_quantity`. 3C resolved it in favour of the register, and `linked_quantity` is the derived column of the `document_open_quantity` **view** |
-| the view `app.document_open_quantity` exists with `open_quantity` | Task 5 reads open quantity through 3C's function over this view; a stored counter here would be SAH-017 |
+| the view `app.document_open_quantity` exists with `open_quantity` | Task 5 reads open quantity through 3C's function over this view; a stored counter here would be LEGACY-017 |
 | `app.pick_lots_fefo` returns `table (lot_id uuid, quantity numeric(19,6))` | Task 5 consumes the rows by those two names; the 3A card registers the function's arguments only |
 | `pickLotsFefo` and `FefoPick` exported from **`packages/db/src/inventory/lots.ts`** | Task 5 imports the TypeScript wrapper by path, so a correct SQL function alone does not save it. 3A puts both in `lots.ts` (3a:114, 3a:6534) and the barrel re-export is `export { pickLotsFefo, type FefoPick } from "./inventory/lots";` (3a:6795). **There is no `packages/db/src/inventory/fefo.ts`** — an earlier draft of this plan named one, and the failure would have surfaced at Task 5 Step 5 as a module-not-found |
 | `draftTypedDocument` exported from `packages/db/test/fixtures.ts` | every DB-tier test from Task 5 on drafts a typed document with item lines; `draftDocument` (§4.1) is JOURNAL-only |
 | `postInventoryDocument`, `postOverriddenIssue`, `recordingJobs`, `ensureOpenPeriods` exported from `tests/invariants/support/post-inventory.ts` | Tasks 6 and 11 post inventory documents and open an authorised shortfall through the one door F-6 admits |
 | `packages/db/src/costing/apply-movements.ts` mentions `negative_stock.override` | **the load-bearing one.** §4.7.2 costs through `costingEngine.cost()` *before* the movement insert, so an over-issue dies in the engine before `assert_stock_available` ever reads the override event. 3B closes this with `CostingInput.allowShortfall`, set when the event exists. If the string is absent, 3B shipped no override path and Tasks 6 and 11 are blocked on a **3B correction** — never a 3D workaround |
-| `openLayersFor` and `valuationAsOf` exported from `packages/db/src/costing/` | Task 10's valuation report and Task 11's tie-out read them; re-deriving a valuation is SAH-009 |
+| `openLayersFor` and `valuationAsOf` exported from `packages/db/src/costing/` | Task 10's valuation report and Task 11's tie-out read them; re-deriving a valuation is LEGACY-009 |
 | `GOODS_RECEIPT.json` exists and its policy needs **no** `document_link` to post | every test in this plan creates stock with a `GOODS_RECEIPT`; if a receipt requires a purchase order this plan's fixtures all grow one |
 | `PURCHASE_RETURN.json` exists; `1310` and `5100` are rows of `packages/db/seed/my/chart-of-accounts/3c-purchasing.json` | test 7's supplier-return leg; hazard 33: 3D consumes those two codes and must not re-seed them |
 
@@ -401,7 +401,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
   - `LineSnapshot.countedQuantity: Quantity | null` and `LineSnapshot.expectedQuantity: Quantity | null` filled by `loadSnapshot` (declared at 2A, stubbed until now).
   - `DocumentLineInput` gains `countedQuantity?: string` and `expectedQuantity?: string` (6-dp strings, `QuantitySchema`); `DocumentLineSchema` returns both as nullable.
 
-**Why these two columns and not three.** §4.4.2 declares `countedQuantity` and `expectedQuantity` on `LineSnapshot` and nothing else; the *variance value* needs no column, because it is filled at post from the movement values and told apart from the line cost by `PlannedLedgerLine.fill` (Task 0 amendment 5). A `document_line.variance_value` column would be a second store of a derived number — SAH-018's exact shape.
+**Why these two columns and not three.** §4.4.2 declares `countedQuantity` and `expectedQuantity` on `LineSnapshot` and nothing else; the *variance value* needs no column, because it is filled at post from the movement values and told apart from the line cost by `PlannedLedgerLine.fill` (Task 0 amendment 5). A `document_line.variance_value` column would be a second store of a derived number — LEGACY-018's exact shape.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -502,7 +502,7 @@ Expected: FAIL — the first test reports `expect(received).toEqual(["counted_qu
 -- spec:1052 "Stock count / cycle count with variance posted through a STOCK_COUNT document".
 -- spec:1053 "dispatched into an in-transit warehouse, received at the branch, variance on receipt".
 -- Expand only (spec:2057, §3.4.7): two nullable columns, no rename, no drop, no backfill.
--- SAH-018: the VARIANCE itself gets no column — document_line.quantity carries
+-- LEGACY-018: the VARIANCE itself gets no column — document_line.quantity carries
 -- counted_quantity - expected_quantity and every consumer derives from that one number.
 
 alter table app.document_line
@@ -594,7 +594,7 @@ git commit -m "feat(db): document_line counted_quantity and expected_quantity [3
 
 Migration 0040 expands document_line with the two count columns §4.3.4 assigns 3D,
 fills the two LineSnapshot fields 2A stubbed, and adds both to the wire shapes in
-the same PR as the columns (§4.2.8). The variance itself gets no column (SAH-018).
+the same PR as the columns (§4.2.8). The variance itself gets no column (LEGACY-018).
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
@@ -1352,7 +1352,7 @@ Four resolution rules inside `evaluatePolicy`, over references the schema alread
 - A variance's direction is a *policy* decision (`when` on the sign), never a sign test in code — which is
   what §4.4.2's warning about 3D demands.
 - The variance is never stored: `document_line.quantity` is the one number and every consumer derives from
-  it. That is SAH-018's fix stated in the schema rather than in a trigger.
+  it. That is LEGACY-018's fix stated in the schema rather than in a trigger.
 - 3B's `costingEngine` needs two pins to make rule 2 total: a receipt with no value is costed at
   `average(openLayers)`, and `allowNegative` suppresses the uncovered-quantity refusal. Both are Task 0.
 ```
@@ -1732,7 +1732,7 @@ export const GRN_POLICY = {
  *  | |issue.value| − |receipt.value| |) between 1310 and 5110, in whichever direction the variance's sign
  *  says. Net effect on 1310 across all four: a credit of |issue.value| — the exact figure the dispatch
  *  debited — so the corridor clears to zero on every receipt, short or over. That is the arithmetic the DoD
- *  clause's second half rests on, and it is why `variance_value` needs no column (SAH-018). */
+ *  clause's second half rests on, and it is why `variance_value` needs no column (LEGACY-018). */
 export const TRANSFER_RECEIPT_POLICY = {
   version: 1, documentType: "TRANSFER_RECEIPT", direction: "internal", requires: ["warehouse", "to_warehouse"],
   lines: [
@@ -1903,9 +1903,9 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 ---
 
-### Task 5: `SALES_ORDER`, the order-to-delivery conversion with FEFO, and SAH-018
+### Task 5: `SALES_ORDER`, the order-to-delivery conversion with FEFO, and LEGACY-018
 
-The first of the six types, and the one that carries the conversion service the next task's `DELIVERY_ORDER` is drafted by. `SALES_ORDER` is the sales twin of 3C's `PURCHASE_ORDER`: `direction: none`, `lines: []`, nothing posts, and its open quantity is 3C's derived view — never a stored counter (SAH-017, SAH-018).
+The first of the six types, and the one that carries the conversion service the next task's `DELIVERY_ORDER` is drafted by. `SALES_ORDER` is the sales twin of 3C's `PURCHASE_ORDER`: `direction: none`, `lines: []`, nothing posts, and its open quantity is 3C's derived view — never a stored counter (LEGACY-017, LEGACY-018).
 
 **Files:**
 - Create: `packages/db/seed/my/document-types/SALES_ORDER.json`
@@ -1918,10 +1918,10 @@ The first of the six types, and the one that carries the conversion service the 
 - Modify: `packages/db/src/index.ts` (re-export `./inventory`)
 - Modify: `packages/contracts/src/index.ts` (re-export `./inventory/fulfilment`)
 - Modify: `apps/api/src/routes/accounting/documents.ts` (one sub-path)
-- Modify: `tests/regression/sah-017.test.ts` (append a `— 3D` block)
+- Modify: `tests/regression/legacy-017.test.ts` (append a `— 3D` block)
 
 **Interfaces:**
-- Consumes: `linkFulfilment(tx, ctx, input)`, `openQuantity(tx, documentId)`, `listLinks(tx, documentId)`, `LinkFulfilmentInput`, `FulfilmentLineInput`, `OpenQuantityRow`, `DocumentLinkRow`, `LinkKind`, `ERR_DOC_LINK_OVER_FULFILLED` (§4.18, 3C, `packages/db/src/documents/link.ts`); `pickLotsFefo(tx, params)` and `FefoPick` (3A, **`packages/db/src/inventory/lots.ts`** — 3A ships no `fefo.ts`; its file structure puts `createLot`, `listLots`, `sentinelLotId`, `pickLotsFefo` and `FefoPick` in `lots.ts` (3a:114, 3a:6534) and the barrel line is `export { pickLotsFefo, type FefoPick } from "./inventory/lots";` at 3a:6795); `resolvePolicy` (§4.3.1, 1A); `requireDocumentPermission("create")`, `requireDocumentModuleRead()` (§4.5.4, 2A/2C); `AppError`, `ERRORS`, `fromDatabaseError` (§4.2.4); `IdempotencyHeader`, `RouteModule` (§4.2.7); `UuidSchema`, `QuantitySchema`, `ListEnvelope`, `ProblemSchema` (§4.2.8); `Quantity` (§4.2.1); `withTenant` (test) / `TenantContext` (§4.2.2); `draftTypedDocument`, `DraftLine`, `seedTenantV2`, `seedAccount`, `seedDocumentType`, `seedParty`, `seedItem`, `seedUnit`, `seedWarehouse`, `seedLot`, `grantCodes` (§4.17); `startApi`, `sharedApi`, `grantAdmin`, `problemOf` (§4.2.12, §4.17.1); `sourceFiles` (0B, §4.17.1 — the `sah-017` block's only dependency; this task calls neither `sharedDb` nor `thinRegression`).
+- Consumes: `linkFulfilment(tx, ctx, input)`, `openQuantity(tx, documentId)`, `listLinks(tx, documentId)`, `LinkFulfilmentInput`, `FulfilmentLineInput`, `OpenQuantityRow`, `DocumentLinkRow`, `LinkKind`, `ERR_DOC_LINK_OVER_FULFILLED` (§4.18, 3C, `packages/db/src/documents/link.ts`); `pickLotsFefo(tx, params)` and `FefoPick` (3A, **`packages/db/src/inventory/lots.ts`** — 3A ships no `fefo.ts`; its file structure puts `createLot`, `listLots`, `sentinelLotId`, `pickLotsFefo` and `FefoPick` in `lots.ts` (3a:114, 3a:6534) and the barrel line is `export { pickLotsFefo, type FefoPick } from "./inventory/lots";` at 3a:6795); `resolvePolicy` (§4.3.1, 1A); `requireDocumentPermission("create")`, `requireDocumentModuleRead()` (§4.5.4, 2A/2C); `AppError`, `ERRORS`, `fromDatabaseError` (§4.2.4); `IdempotencyHeader`, `RouteModule` (§4.2.7); `UuidSchema`, `QuantitySchema`, `ListEnvelope`, `ProblemSchema` (§4.2.8); `Quantity` (§4.2.1); `withTenant` (test) / `TenantContext` (§4.2.2); `draftTypedDocument`, `DraftLine`, `seedTenantV2`, `seedAccount`, `seedDocumentType`, `seedParty`, `seedItem`, `seedUnit`, `seedWarehouse`, `seedLot`, `grantCodes` (§4.17); `startApi`, `sharedApi`, `grantAdmin`, `problemOf` (§4.2.12, §4.17.1); `sourceFiles` (0B, §4.17.1 — the `legacy-017` block's only dependency; this task calls neither `sharedDb` nor `thinRegression`).
 - Produces:
 
 ```ts
@@ -1962,7 +1962,7 @@ export interface ConvertResult {
   lines: ConvertResultLine[];
   links: DocumentLinkRow[];           // 3C's rows, linkKind "converts_to"
   /** The source order's open quantity AFTER the links were written — read back from 3C's view, never
-   *  computed here (SAH-017/SAH-018: the remaining quantity is a projection, never a stored column). */
+   *  computed here (LEGACY-017/LEGACY-018: the remaining quantity is a projection, never a stored column). */
   remaining: OpenQuantityRow[];
 }
 /** Drafts one DELIVERY_ORDER from one SALES_ORDER inside the caller's transaction and links the two through
@@ -1986,7 +1986,7 @@ export const ConvertResultSchema: z.ZodObject<{ documentId; lines; links; remain
 
 **Why the *source* order is the path parameter and the target type is in the body.** 3C put the target in the path because its caller already had a draft receipt. Here the target does not exist yet, so there is nothing to name — and §4.5.4 covers exactly this: for the `create` stage `requireDocumentPermission` resolves the policy of **"the type named in the body"**. The gate therefore asks `DELIVERY_ORDER`'s `approval.create` (`inventory.transfer.create`), not `SALES_ORDER`'s, which is the right question: the authority being requested is "may this principal raise a delivery", and a salesperson who may raise orders must not thereby be able to ship stock. The route body carries `targetDocumentTypeCode` (a code, resolved to an id by the handler) so a client never sends a `document_type` uuid it has no way to know.
 
-**Open quantity is read, never stored (SAH-018).** `ConvertResult.remaining` comes from a `select` on `app.document_open_quantity` after the links are inserted. This slice adds no column anywhere that holds a delivered, returned or remaining quantity, and `tests/regression/sah-018.test.ts` proves it by scanning `information_schema` for one. **That file is created by Task 6, not here**, because its third case converts a real order and therefore needs `DELIVERY_ORDER` configured — and `DELIVERY_ORDER.json` is written by Task 6 Step 3. Creating it here would either read a seed file that does not yet exist or fork a third copy of the policy into the `tests` workspace, which is the duplication hazard 9 forbids.
+**Open quantity is read, never stored (LEGACY-018).** `ConvertResult.remaining` comes from a `select` on `app.document_open_quantity` after the links are inserted. This slice adds no column anywhere that holds a delivered, returned or remaining quantity, and `tests/regression/legacy-018.test.ts` proves it by scanning `information_schema` for one. **That file is created by Task 6, not here**, because its third case converts a real order and therefore needs `DELIVERY_ORDER` configured — and `DELIVERY_ORDER.json` is written by Task 6 Step 3. Creating it here would either read a seed file that does not yet exist or fork a third copy of the policy into the `tests` workspace, which is the duplication hazard 9 forbids.
 
 - [ ] **Step 1: Write the failing DB-tier test**
 
@@ -2340,7 +2340,7 @@ export async function convertOrderToDelivery(
   for (const wanted of input.lines) {
     const src = byId.get(wanted.sourceLineId)!;
     // One (lotId, quantity) pair per drafted line. FEFO off, or an item with no lot-tracked stock, gives
-    // exactly one pair with a null lot — applyMovements resolves the item's 'NONE' sentinel (SAH-050).
+    // exactly one pair with a null lot — applyMovements resolves the item's 'NONE' sentinel (LEGACY-050).
     let pairs: { lotId: string | null; quantity: string }[] = [{ lotId: null, quantity: wanted.quantity }];
     if ((input.fefo ?? true) && src.item_id !== null) {
       const asked = Quantity.of(wanted.quantity);
@@ -2352,7 +2352,7 @@ export async function convertOrderToDelivery(
         // FEFO returns FEWER rows than asked when the warehouse cannot cover the quantity (3A: "the refusal
         // is the trigger's job"). The requested quantity is NEVER reduced here: the uncovered remainder
         // becomes one final pair with a null lot, which `applyMovements` resolves to the item's `NONE`
-        // sentinel (SAH-050) so `app.assert_stock_available` sees the true over-issue and either raises
+        // sentinel (LEGACY-050) so `app.assert_stock_available` sees the true over-issue and either raises
         // ERR_STOCK_INSUFFICIENT or admits it against an `inventory.negative_stock.override` event
         // (§4.5.3). Capping the draft to on-hand would make test 18's re-run and test 7's "gone negative"
         // leg vacuous, and would link only the capped quantity to the order line.
@@ -2566,12 +2566,12 @@ No `PROBES` entry and no new `RouteModule`: this is a sub-path of 1A's `document
   });
 ```
 
-- [ ] **Step 8: Append a `— 3D` block to `tests/regression/sah-017.test.ts`**
+- [ ] **Step 8: Append a `— 3D` block to `tests/regression/legacy-017.test.ts`**
 
 3B created the file and 3C appended to it; this slice appends a third block and edits neither. A plain `describe` beside the existing blocks — **not** a `thinRegression` call: that wrapper runs its body inside a single `it` (0b:5317–5326), which is a nested-test error, and 3B's Self-Review finding 7 records the same correction (3b:6801). This block needs no database at all, so it destructures nothing from `sharedDb()`; `sourceFiles` comes from `../support/source` (§4.17.1, 0B):
 
 ```ts
-describe("SAH-017 Open quantity defined once — 3D", () => {
+describe("LEGACY-017 Open quantity defined once — 3D", () => {
   it("the SALES_ORDER side reads the same view the PURCHASE_ORDER side does", async () => {
     // One definition serves both directions: exactly one file in `packages/db/src` READS the view, and no
     // file computes open quantity a second way.
@@ -2586,7 +2586,7 @@ describe("SAH-017 Open quantity defined once — 3D", () => {
     const readers = files.filter((f) => /from app\.document_open_quantity/.test(f.text));
     expect(readers.map((f) => f.path).sort()).toEqual(["packages/db/src/documents/link.ts"]);
     // …and nothing anywhere re-derives it. The view's own expression is `ordered_quantity − coalesce(Σ
-    // link.quantity, 0)`; that shape appearing in `src` at all would be the second definition SAH-017 names.
+    // link.quantity, 0)`; that shape appearing in `src` at all would be the second definition LEGACY-017 names.
     const rederivers = files.filter((f) => /ordered_quantity\s*-\s*coalesce\(/.test(f.text));
     expect(rederivers.map((f) => f.path)).toEqual([]);
   });
@@ -2595,7 +2595,7 @@ describe("SAH-017 Open quantity defined once — 3D", () => {
 
 - [ ] **Step 9: Apply the sub-pack against the test tenant and run everything**
 
-Run: `bun run --cwd packages/db test inventory/fulfilment && bun run --cwd apps/api test document-fulfilment && bun run --cwd packages/db seed --tenant "$TEST_TENANT" --only document-types && bun run --cwd packages/db test seed/document-types && bun run test tests/regression/sah-017.test.ts`
+Run: `bun run --cwd packages/db test inventory/fulfilment && bun run --cwd apps/api test document-fulfilment && bun run --cwd packages/db seed --tenant "$TEST_TENANT" --only document-types && bun run --cwd packages/db test seed/document-types && bun run test tests/regression/legacy-017.test.ts`
 Expected: PASS. The seed run is idempotent on `(document_type_id, version)` (§3.4.8) and loads `SALES_ORDER.json` for the first time; `seed/document-types.test.ts` (1A) validates every envelope in the directory against `document-type-seed.schema.json` and every `policy` against the catalogue, so a bad `approval` code fails here and not at post (F-21).
 
 - [ ] **Step 10: Commit**
@@ -2607,13 +2607,13 @@ git add packages/db/seed/my/document-types/SALES_ORDER.json \
         packages/db/test/inventory/policies.ts packages/db/test/inventory/fulfilment.test.ts \
         apps/api/src/routes/accounting/documents.ts \
         apps/api/test/routes/accounting/document-fulfilment.test.ts \
-        tests/regression/sah-017.test.ts
+        tests/regression/legacy-017.test.ts
 git commit -m "feat(inventory): SALES_ORDER and the order-to-delivery conversion with FEFO [3D T5]
 
 SALES_ORDER as configuration (direction none, lines []); convertOrderToDelivery drafts a
 DELIVERY_ORDER from an issued order through 3C's linkFulfilment, splitting one order line
 into one line per lot via app.pick_lots_fefo. Back-orders stay open because the remaining
-quantity is 3C's view and no column; tests/regression/sah-018.test.ts proves that at Task 6,
+quantity is 3C's view and no column; tests/regression/legacy-018.test.ts proves that at Task 6,
 once DELIVERY_ORDER.json exists to seed the conversion's target type from the pack.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
@@ -2628,9 +2628,9 @@ The type that makes stock leave before an invoice exists (spec:1051, F-19). Its 
 **Files:**
 - Create: `packages/db/seed/my/document-types/DELIVERY_ORDER.json`
 - Create: `packages/db/test/inventory/delivery-order.test.ts`
-- Create: `tests/regression/sah-018.test.ts` (3D creates it, §3.7.3 — here rather than at Task 5 because its third case seeds `DELIVERY_ORDER` from the pack file Step 3 writes)
+- Create: `tests/regression/legacy-018.test.ts` (3D creates it, §3.7.3 — here rather than at Task 5 because its third case seeds `DELIVERY_ORDER` from the pack file Step 3 writes)
 - Modify: `packages/db/test/inventory/policies.ts` (nothing — `DELIVERY_ORDER_POLICY` landed at Task 5)
-- Modify: `tests/regression/sah-048.test.ts` (append a `— 3D` block)
+- Modify: `tests/regression/legacy-048.test.ts` (append a `— 3D` block)
 
 **Interfaces:**
 - Consumes: `postDocument`, `issueDocument`, `loadSnapshot`, `PostResult`, `PostingError` (§4.3.1, 1A); `applyMovements` with the Task 4 fill (§4.7.2); `costingEngine`, `CostingInput.allowShortfall` (§4.7.1, 3B); `recordOverride` (§4.3.1, 2B); `app.assert_stock_available`, `app.assert_override_authorised` (3A, 2B); `secondPrincipal` (§4.17.1, exported at Task 0); `convertOrderToDelivery` (Task 5); `draftTypedDocument`, `grantCodes`, `seedAccount`, `seedDocumentType`, `seedItem`, `seedLot`, `seedParty`, `seedUnit`, `seedWarehouse`, `seedTenantV2` (§4.17); `ensureOpenPeriods` (§4.17.1, 3B); `Money`, `Quantity` (§4.2.1); and for the two regression files, `sharedDb` and `REPO_ROOT` (§4.17.1, 0B) — **not** `thinRegression`, for the reason Step 4 gives.
@@ -2872,11 +2872,11 @@ Four choices worth stating, because each has an alternative a reader will reach 
 - **`approval.required: false`.** spec:1050's "no approval workflow (that stays Phase 10)" covers the order; the delivery inherits it. R1 is therefore vacuous on this type by design, and the R1 proof lives on `STOCK_COUNT` (Task 8), where spec:2026 requires it.
 - **`reversal.producesType: "DELIVERY_ORDER"`.** A cancelled delivery is a delivery with negated quantities, which amendment A2's effect flip turns into a *receipt* automatically — the returned stock goes back to the same lot, and no `DELIVERY_RETURN` type is needed or registered. ⚠️ **That claim is about the movement only, and this plan asserts nothing about the reversal's ledger direction.** Both legs address `amount: "line.cost"` with a **fixed** `side`, 3C copies `document_line.cost` onto the reversal line **unnegated** (3c:219 — "`cost` is a magnitude, so it is copied and not negated"), and §4.7.2's fill rules never alter `side`; so A9's sign flip has no negative amount to act on and the reversal would debit `1250` a second time. Reversing that needs either `reverseDocument` to negate `cost` or the evaluator to read `line.cost` on a negative-quantity line as negative — **a 2A/3C amendment, not a 3D change**, and it must land before Phase 4 relies on a `DELIVERY_ORDER` reversal to clear `1250`. No test in this slice reverses a `DELIVERY_ORDER`, and none should be added here.
 
-- [ ] **Step 4: Create `tests/regression/sah-018.test.ts` and append a `— 3D` block to `tests/regression/sah-048.test.ts`**
+- [ ] **Step 4: Create `tests/regression/legacy-018.test.ts` and append a `— 3D` block to `tests/regression/legacy-048.test.ts`**
 
-**Both blocks are plain `describe`s, and neither calls `thinRegression`.** 0B's `thinRegression(sah, heading, cites: string, body)` runs its body **inside a single `it`** (0b:5317–5326), so declaring cases in it is a nested-test error; its `cites` is a `string`, not an array; and the body's parameter is 0B's `ThinContext` — stated verbatim as `{ db, rw, a, b, withTenant, expect }` (3b:5971) — which carries no `s`, no document-type ids and none of this slice's services. 3B's Self-Review finding 7 records having made exactly this mistake and having fixed it the same way, and 2A appended to 0B's files the same way (2a:4664). `sharedDb()` gives the shared container and its shape is destructured as **`const { db } = await sharedDb();` then `db.admin`** (3b:6022) — there is no `rw.db`. The module is **`tests/support/regression.ts`** (§4.17.1), never `../support/shared`.
+**Both blocks are plain `describe`s, and neither calls `thinRegression`.** 0B's `thinRegression(legacyDefect, heading, cites: string, body)` runs its body **inside a single `it`** (0b:5317–5326), so declaring cases in it is a nested-test error; its `cites` is a `string`, not an array; and the body's parameter is 0B's `ThinContext` — stated verbatim as `{ db, rw, a, b, withTenant, expect }` (3b:5971) — which carries no `s`, no document-type ids and none of this slice's services. 3B's Self-Review finding 7 records having made exactly this mistake and having fixed it the same way, and 2A appended to 0B's files the same way (2a:4664). `sharedDb()` gives the shared container and its shape is destructured as **`const { db } = await sharedDb();` then `db.admin`** (3b:6022) — there is no `rw.db`. The module is **`tests/support/regression.ts`** (§4.17.1), never `../support/shared`.
 
-`tests/regression/sah-018.test.ts` — 3D is the first slice in execution order to touch SAH-018 (§6.3), so it **creates** the file; 4A appends its own block for returned quantity once credit notes exist. The file gets its own tenant on the shared container, for 3B's reason (3b:5973): the shared `a`/`b` seeds come from Plan 0A's `seedTenant`, which wires neither `fx_rounding_account_id` nor the `1000`/`4000` accounts.
+`tests/regression/legacy-018.test.ts` — 3D is the first slice in execution order to touch LEGACY-018 (§6.3), so it **creates** the file; 4A appends its own block for returned quantity once credit notes exist. The file gets its own tenant on the shared container, for 3B's reason (3b:5973): the shared `a`/`b` seeds come from Plan 0A's `seedTenant`, which wires neither `fx_rounding_account_id` nor the `1000`/`4000` accounts.
 
 ```ts
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -2901,11 +2901,11 @@ const packPolicy = (code: string): unknown =>
   )) as { policy: unknown }).policy;
 
 /**
- * SAH-018 — the legacy system stored a returned/delivered quantity as a column on the order row and it drifted
+ * LEGACY-018 — the legacy system stored a returned/delivered quantity as a column on the order row and it drifted
  * from the movements within weeks. The fix is structural: a fulfilled, delivered or returned quantity is a
  * PROJECTION over `document_link` and `inventory_movement`, and no table holds one.
  */
-describe("SAH-018 Delivered and returned quantity as a projection, never a stored column — 3D", () => {
+describe("LEGACY-018 Delivered and returned quantity as a projection, never a stored column — 3D", () => {
   let s: Seed;
   let soType: string; let doType: string;
   let itemId: string; let unitId: string; let warehouseId: string; let partyId: string;
@@ -2913,8 +2913,8 @@ describe("SAH-018 Delivered and returned quantity as a projection, never a store
 
   beforeAll(async () => {
     const { db } = await sharedDb();
-    s = await seedTenantV2(db, "sah-018");
-    ctx = { tenantId: s.tenant, actorId: s.human, requestId: "sah-018" };
+    s = await seedTenantV2(db, "legacy-018");
+    ctx = { tenantId: s.tenant, actorId: s.human, requestId: "legacy-018" };
     await grantCodes(db, s);
     await seedAccount(db, s, { code: "1250", nameEn: "Goods delivered not invoiced", type: "asset" });
     soType = await seedDocumentType(db, s, { code: "SALES_ORDER", module: "inventory", policy: packPolicy("SALES_ORDER") });
@@ -2992,10 +2992,10 @@ describe("SAH-018 Delivered and returned quantity as a projection, never a store
 });
 ```
 
-Then `tests/regression/sah-048.test.ts`. 3A created it (negative-stock controls that were per-user, opt-in and bypassable four ways); this slice appends the "on a real sale" block and edits none of 3A's three cases. Both cases below are pure reads of the catalogue and the function source, so the block needs no tenant of its own:
+Then `tests/regression/legacy-048.test.ts`. 3A created it (negative-stock controls that were per-user, opt-in and bypassable four ways); this slice appends the "on a real sale" block and edits none of 3A's three cases. Both cases below are pure reads of the catalogue and the function source, so the block needs no tenant of its own:
 
 ```ts
-describe("SAH-048 Negative stock rejected by the data layer on a real sale — 3D", () => {
+describe("LEGACY-048 Negative stock rejected by the data layer on a real sale — 3D", () => {
   it("the DELIVERY_ORDER policy's allowNegative alone admits nothing without the event", async () => {
     // The legacy control was a per-user flag: setting it was enough. Here the flag is on the TYPE and it is
     // necessary but not sufficient — the second condition is a document_event by a second principal, and
@@ -3033,25 +3033,25 @@ describe("SAH-048 Negative stock rejected by the data layer on a real sale — 3
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
-Run: `bun run --cwd packages/db test inventory/delivery-order && bun run --cwd packages/db seed --tenant "$TEST_TENANT" --only document-types && bun run --cwd packages/db test seed/document-types && bun run test tests/regression/sah-018.test.ts tests/regression/sah-048.test.ts`
+Run: `bun run --cwd packages/db test inventory/delivery-order && bun run --cwd packages/db seed --tenant "$TEST_TENANT" --only document-types && bun run --cwd packages/db test seed/document-types && bun run test tests/regression/legacy-018.test.ts tests/regression/legacy-048.test.ts`
 
-The regression command is `bun run test <file>` from the repository root, which is the `@dulja/tests` workspace's own `test` script — `node ../node_modules/vitest/vitest.mjs run` (§3.7.1, contracts:1189), the form Task 11 Step 4 also uses. An earlier draft of this line read `bun run --cwd node --test tests/regression/sah-048.test.ts`, which passes `node` as the **working directory** and invokes Node's own test runner; `tests/` is a Vitest workspace and has neither.
+The regression command is `bun run test <file>` from the repository root, which is the `@dulja/tests` workspace's own `test` script — `node ../node_modules/vitest/vitest.mjs run` (§3.7.1, contracts:1189), the form Task 11 Step 4 also uses. An earlier draft of this line read `bun run --cwd node --test tests/regression/legacy-048.test.ts`, which passes `node` as the **working directory** and invokes Node's own test runner; `tests/` is a Vitest workspace and has neither.
 
-Expected: PASS — six cases in the delivery-order suite, the three new `sah-018` cases and both new `sah-048` cases. The three tests 3A wrote in `sah-048` are untouched.
+Expected: PASS — six cases in the delivery-order suite, the three new `legacy-018` cases and both new `legacy-048` cases. The three tests 3A wrote in `legacy-048` are untouched.
 
 - [ ] **Step 6: Commit**
 
 ```bash
 git add packages/db/seed/my/document-types/DELIVERY_ORDER.json \
         packages/db/test/inventory/delivery-order.test.ts \
-        tests/regression/sah-018.test.ts tests/regression/sah-048.test.ts
+        tests/regression/legacy-018.test.ts tests/regression/legacy-048.test.ts
 git commit -m "feat(inventory): DELIVERY_ORDER posts stock out to 1250 [3D T6]
 
 The type is configuration only - two legs at line.cost, debit 1250 credit the item's
 inventory account, so no revenue is recognised at dispatch (F-19). allowNegative is true
 and, with a second principal's override event, admits an authorised shortfall; the
 uncovered quantity has no cost_consumption row. Test 18 re-run on a real sale.
-tests/regression/sah-018.test.ts is created here (§3.7.3), once DELIVERY_ORDER.json
+tests/regression/legacy-018.test.ts is created here (§3.7.3), once DELIVERY_ORDER.json
 exists for its conversion case to seed the target type from the pack.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
@@ -3347,7 +3347,7 @@ export async function resolveInTransitWarehouse(tx: Sql, toWarehouseId: string):
  * ultimate destination goes into `custom_fields.final_warehouse_id`: Task 8's receipt reads it to know where
  * the goods finally belong, and one uuid does not earn a column (§4.2.11).
  *
- * `document_line.lot_id` may be null — `applyMovements` resolves the item's `NONE` sentinel (SAH-050). A
+ * `document_line.lot_id` may be null — `applyMovements` resolves the item's `NONE` sentinel (LEGACY-050). A
  * lot-tracked item's caller passes the lot it physically loaded; FEFO is a picking decision that belongs to
  * whatever drafts the line, exactly as it does for a delivery.
  */
@@ -5390,7 +5390,7 @@ export async function salesByItem(tx: Sql, params: SalesByItemParams): Promise<S
 
 **Why every name here carries `Report`, and what would break without it.** 3A already ships **`StockOnHandRow`** from `packages/db/src/inventory/stock.ts`, re-exported from the flat `packages/db/src/index.ts` barrel (`export { listStockOnHand, type StockOnHandRow } from "./inventory/stock";`, 3a:7730), and **`StockOnHandSchema` / `StockOnHandQuery` / `StockOnHandList`** from `packages/contracts/src/inventory/stock.ts` for its `GET …/stock-on-hand` list route (3a:7845, 3a:7853–7867). Re-using any of those five names here is a duplicate export from the same barrel — a TypeScript error — and, for the two Zod ones, a duplicate `.openapi(...)` component name in the generated document. So 3D's report types are `StockOnHandReportParams` / `StockOnHandReportRow` / `StockOnHandReportRowSchema` / `StockOnHandReportQuery` / `StockOnHandReportList`, and the read function is `stockOnHand` (3A's is `listStockOnHand`, so the functions do not collide).
 
-**And the two reads are not a duplication (hazard 9), for a reason worth stating.** 3A's `listStockOnHand` is a **master-data list endpoint** on the `stock-on-hand` module — every key, `nonZeroOnly` optional, no notion of a corridor. 3D's `stockOnHand` is the **`inventory.stock_on_hand` report code** of §4.16.1: it excludes `warehouse.kind = 'in_transit'` by default because the definition-of-done clause says in-transit stock is in neither warehouse's on-hand, it carries `warehouseKind` on every row, and 7B replaces its body under the same report code. Both read the same projection and neither re-aggregates `inventory_movement`, which is the property SAH-009 actually names. If a later slice wants one of them gone, it is a §4.16.3 amendment and 7B's call, not something to resolve by renaming here.
+**And the two reads are not a duplication (hazard 9), for a reason worth stating.** 3A's `listStockOnHand` is a **master-data list endpoint** on the `stock-on-hand` module — every key, `nonZeroOnly` optional, no notion of a corridor. 3D's `stockOnHand` is the **`inventory.stock_on_hand` report code** of §4.16.1: it excludes `warehouse.kind = 'in_transit'` by default because the definition-of-done clause says in-transit stock is in neither warehouse's on-hand, it carries `warehouseKind` on every row, and 7B replaces its body under the same report code. Both read the same projection and neither re-aggregates `inventory_movement`, which is the property LEGACY-009 actually names. If a later slice wants one of them gone, it is a §4.16.3 amendment and 7B's call, not something to resolve by renaming here.
 
 **Why `cost` comes from `cost_consumption` and not from `document_line.cost`.** Both hold the same figure for a clean delivery, but only `cost_consumption` is layer-accurate after a replay: 3B's `inventory.cost.replay` rewrites consumptions and posts a `COST_ADJUSTMENT`, and a report reading `document_line.cost` would show the pre-recost figure forever. spec:1228's "one costing implementation" means one *source* too. The consequence, stated because Task 11 depends on it: an override-admitted shortfall has no consumption row (§4.7.3's NOT NULL `layer_id`), so its uncovered quantity contributes quantity but **no** cost — and that is the honest answer, not a gap.
 
@@ -5820,7 +5820,7 @@ reportsRoutes.openapi(stockOnHandRoute, async (c) => {
 
 The `inventory.valuation` route is the same shape over **3B's** `valuationAsOf` with `ValuationQuery`/`ValuationList` and `INVENTORY_PERMISSION.costRead`; the `inventory.sales_by_item` route is the same shape over `salesByItem` with `INVENTORY_PERMISSION.stockRead`.
 
-**3B's own `valuationRouteModule` stays exactly as it is, and this is not a second mount of one thing.** 3B's amendment **A8** (3b:42) registers `/v1/companies/:companyId/valuation` → `valuationRoutes` with its own `PROBES` entry and two sub-paths (`GET …/valuation` and `GET …/valuation/layers`, the raw open layers 7B's `inventory.stock_ageing` reads), and it says in terms: *"This is **not** the `inventory.valuation` report code of §4.16.1 — that is 3D's, mounted on 1B's `reports` module — and the two never collide because they are different modules on different paths."* So the two routes are a **module** and a **report code**, one function behind both (`valuationAsOf`), and hazard 9's duplication rule is satisfied where it matters: there is exactly one valuation read in `packages/db/src`, which is what Task 11's `sah-009` block greps for. 3D neither retires nor aliases 3B's module, and Step 7's route test asserts that both still exist. Then:
+**3B's own `valuationRouteModule` stays exactly as it is, and this is not a second mount of one thing.** 3B's amendment **A8** (3b:42) registers `/v1/companies/:companyId/valuation` → `valuationRoutes` with its own `PROBES` entry and two sub-paths (`GET …/valuation` and `GET …/valuation/layers`, the raw open layers 7B's `inventory.stock_ageing` reads), and it says in terms: *"This is **not** the `inventory.valuation` report code of §4.16.1 — that is 3D's, mounted on 1B's `reports` module — and the two never collide because they are different modules on different paths."* So the two routes are a **module** and a **report code**, one function behind both (`valuationAsOf`), and hazard 9's duplication rule is satisfied where it matters: there is exactly one valuation read in `packages/db/src`, which is what Task 11's `legacy-009` block greps for. 3D neither retires nor aliases 3B's module, and Step 7's route test asserts that both still exist. Then:
 
 ```ts
 export const reportsRouteModule: RouteModule = {
@@ -5884,15 +5884,15 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 ### Task 11: Acceptance test 7 — one costing answer for a transferred, override-negative, supplier-returned item
 
-**Part VI test 7 (spec:2425), verbatim:** *"One costing answer. Stock valuation and profit reports tie to the cent for an item that has been transferred, gone negative, and had a supplier return."* Regression source **SAH-009**. This is the only acceptance test this slice **owns**, and it is the reason the slice exists at the end of Phase 3: it needs every earlier slice's machinery and one item that has been through all three excursions.
+**Part VI test 7 (spec:2425), verbatim:** *"One costing answer. Stock valuation and profit reports tie to the cent for an item that has been transferred, gone negative, and had a supplier return."* Regression source **LEGACY-009**. This is the only acceptance test this slice **owns**, and it is the reason the slice exists at the end of Phase 3: it needs every earlier slice's machinery and one item that has been through all three excursions.
 
 **Files:**
 - Create: `tests/invariants/test-07-one-costing-answer.test.ts`
-- Modify: `tests/regression/sah-009.test.ts` (append a `— 3D` block)
+- Modify: `tests/regression/legacy-009.test.ts` (append a `— 3D` block)
 
 **Interfaces:**
 - Consumes: `valuationAsOf` (3B); `stockOnHand`, `stockOnHandTotals`, `salesByItem` (Task 10); `openLayersFor` (3B); `postDocument`, `issueDocument`, `transitionDocument`, `reverseDocument` (§4.3.1); `draftTransfer`, `draftTransferReceipt` (Task 7/8), `convertOrderToDelivery` (Task 5), `snapshotCountSheet`, `recordCounts` (Task 8); `secondPrincipal`, `recordingJobs`, `ensureOpenPeriods` (§4.17.1); `recordOverride` (2B); `grantCodes`, `draftTypedDocument`, `seedParty`, `seedBranch` and the 3A seeders (§4.17); `Money`, `Quantity`, `currency` (§4.2.1, 0D — every tie-out sums through these and `currency("MYR")` is what makes `openLayersFor`'s branded `baseCurrency` assignable, contracts:1329); the production `withTenant(sql, ctx, fn)` (§4.2.2 — root `tests/` use the production one, hazard 15).
-- Produces: nothing exported. One invariant suite, and the `— 3D` block on `sah-009`.
+- Produces: nothing exported. One invariant suite, and the `— 3D` block on `legacy-009`.
 
 **Hazard 17 is the binding constraint on how "gone negative" is produced.** F-6 admits exactly one route: an issue that exceeds the open layers, authorised by an `inventory.negative_stock.override` `document_event` written by a **second** principal (§4.5.3). A test that toggles a flag, writes a movement directly or relaxes a trigger is invalid and this suite must not contain one. Task 6 proved the mechanism on one delivery; this suite uses it as one step of a longer story.
 
@@ -5936,14 +5936,14 @@ const MYR = currency("MYR");
 
 /**
  * Acceptance test 7 (spec:2425) — "Stock valuation and profit reports tie to the cent for an item that has
- * been transferred, gone negative, and had a supplier return." SAH-009.
+ * been transferred, gone negative, and had a supplier return." LEGACY-009.
  *
  * At Phase 3 "profit" is the COST side only: quantity times unit cost from `cost_consumption`. No document
  * type posts revenue before 4A's SALES_INVOICE, so there is no sales value to tie to (hazard 4, and the 3D
  * card says so in the same words). 7B re-runs this test against the revenue-bearing `item_profitability`
  * projection once 4A and 4B exist, under the same report codes.
  */
-describe("acceptance test 7 — one costing answer (spec:2425, SAH-009)", () => {
+describe("acceptance test 7 — one costing answer (spec:2425, LEGACY-009)", () => {
   let db: Db;
   let ctx: { tenantId: string; actorId: string; requestId: string };
   let s: Seed;
@@ -6248,7 +6248,7 @@ describe("acceptance test 7 — one costing answer (spec:2425, SAH-009)", () => 
 
   /** Dispatch `dispatched` from `from` to `to`, then receive `received` — the two-step transfer end to end.
    *  **`lotId` is explicit.** `TransferInput.lines[].lotId` is optional and `applyMovements` resolves a null
-   *  lot to the item's `NONE` sentinel (SAH-050), which holds nothing, so a lot-tracked item transferred
+   *  lot to the item's `NONE` sentinel (LEGACY-050), which holds nothing, so a lot-tracked item transferred
    *  without a lot raises ERR_STOCK_INSUFFICIENT before step 4 of the story is ever reached (3A's own
    *  assumption 7 says so in those words). */
   async function dispatchAndReceive(
@@ -6406,7 +6406,7 @@ describe("acceptance test 7 — one costing answer (spec:2425, SAH-009)", () => 
 **Three things the helpers must get exactly right, because each one fails the suite in a way that looks like a different bug.**
 
 1. **`deliverWithOverride`'s override event takes the shape Task 6 Step 1 shows, and only that shape:** `recordOverride(tx, ctx, { documentId, code: "inventory.negative_stock.override", reason, attributedTo: supervisor })` — the ctx is the **same `s.human` ctx the document was created under**, and the supervisor is the **attributed** principal. `document_event.actor_id` defaults to `app.current_actor()`, so it is `s.human` however the ctx is flavoured (3b:2631–2634), and `assert_override_authorised` refuses when `coalesce(attributed_to, actor_id)` equals `created_by` (§4.5.3). Handing it a supervisor-flavoured ctx with no `attributedTo` raises `ERR_OVERRIDE_NOT_AUTHORISED` and step 4 of the story never happens.
-2. **`dispatchAndReceive` and `countShort` pass an explicit `lotId`.** `TransferInput.lines[].lotId` is optional and `applyMovements` resolves a null lot to the item's `NONE` sentinel (SAH-050) — and 3A's own assumption 7 says an issue with no lot then "usually fails loudly on `ERR_STOCK_INSUFFICIENT` because the sentinel holds nothing". `SKU-07` is lot-tracked with `LOT-A` and `LOT-B`, so a transfer drafted without a lot raises before the override step is reached. Pass `lotA`.
+2. **`dispatchAndReceive` and `countShort` pass an explicit `lotId`.** `TransferInput.lines[].lotId` is optional and `applyMovements` resolves a null lot to the item's `NONE` sentinel (LEGACY-050) — and 3A's own assumption 7 says an issue with no lot then "usually fails loudly on `ERR_STOCK_INSUFFICIENT` because the sentinel holds nothing". `SKU-07` is lot-tracked with `LOT-A` and `LOT-B`, so a transfer drafted without a lot raises before the override step is reached. Pass `lotA`.
 3. **`totals` is `stockOnHandTotals`**, whose three figures come from one query (Task 10), so `onShelves` and `total` cannot be read at two different instants.
 
 - [ ] **Step 2: Run it to verify it fails**
@@ -6414,12 +6414,12 @@ describe("acceptance test 7 — one costing answer (spec:2425, SAH-009)", () => 
 Run: `bun run test tests/invariants/test-07-one-costing-answer.test.ts`
 Expected: FAIL — the `beforeAll` completes and **tie-out C** is the first content failure, reporting `reported` as the full 125 units' worth of cost against a `1250` balance covering 120: the uncovered quantity has no consumption row, so the two figures differ until `salesByItem`'s `left join` is in place (Task 10 Step 5). If tie-out **A** fails instead, the discrepancy is a real one between `valuationAsOf` and the ledger and it belongs to whichever slice owns the account the difference lands in — read the failure's per-account breakdown before touching anything. If tie-out **B** fails by exactly `5.000000`, someone has restated it against `stockOnHandTotals(...).total`: `qty_remaining >= 0` means the layers cannot carry the override's negative, and the case's own comment says so — restore the `greatest(quantity, 0)` form rather than adjusting the expectation.
 
-- [ ] **Step 3: Append the `— 3D` block to `tests/regression/sah-009.test.ts`**
+- [ ] **Step 3: Append the `— 3D` block to `tests/regression/legacy-009.test.ts`**
 
 3B created the file. This slice appends the "one answer across three excursions" block:
 
 ```ts
-describe("SAH-009 One costing answer across a transfer, an override and a return — 3D", () => {
+describe("LEGACY-009 One costing answer across a transfer, an override and a return — 3D", () => {
   it("exactly one module computes a valuation, and every report imports it", async () => {
     // The legacy system recomputed stock value in four places with three different answers. Here
     // `valuationAsOf` is the one read (spec:1228) and `costingEngine` the one calculator.
@@ -6442,11 +6442,11 @@ describe("SAH-009 One costing answer across a transfer, an override and a return
 
 - [ ] **Step 4: Run everything and commit**
 
-Run: `bun run test tests/invariants/test-07-one-costing-answer.test.ts && bun run test tests/regression/sah-009.test.ts && bun run --cwd packages/db test costing`
-Expected: PASS — **ten** cases in the acceptance suite (no-replay-enqueued, tie-outs A, B and C, the override's uncovered units, the landed cost, the transfer shortfall, the supplier return, the stock count, and the back-dated recost — the last of which runs the replay and re-asserts all three tie-outs), both new `sah-009` cases, and 3B's costing suites unchanged.
+Run: `bun run test tests/invariants/test-07-one-costing-answer.test.ts && bun run test tests/regression/legacy-009.test.ts && bun run --cwd packages/db test costing`
+Expected: PASS — **ten** cases in the acceptance suite (no-replay-enqueued, tie-outs A, B and C, the override's uncovered units, the landed cost, the transfer shortfall, the supplier return, the stock count, and the back-dated recost — the last of which runs the replay and re-asserts all three tie-outs), both new `legacy-009` cases, and 3B's costing suites unchanged.
 
 ```bash
-git add tests/invariants/test-07-one-costing-answer.test.ts tests/regression/sah-009.test.ts
+git add tests/invariants/test-07-one-costing-answer.test.ts tests/regression/legacy-009.test.ts
 git commit -m "test: acceptance test 7 - one costing answer (spec:2425) [3D T11]
 
 One item through a landed-cost receipt, a two-step transfer with a shortfall, an
@@ -6721,19 +6721,19 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 **Five things this review changed, and they were all in the file before this pass.** (1) Task 0's gate script grepped `secondPrincipal` in a file Task 0's Files list did not name, so Step 4 could never pass — the file is now listed and Step 4 exports the keyword. (2) "Eleven amendments" appeared three times against thirteen numbered items and fifteen grep literals; all three now say thirteen and the count discrepancy is explained where the list starts. (3) The File Structure named `convertSourceToTarget` while the DoD table named `convertOrderToDelivery`; the second name won, because `transfer.ts` owns the transfer drafting and `fulfilment.ts` is order-to-delivery only. (4) The back-office block named `src/screens/*.tsx` and a `routes.tsx`, neither of which exists — 0E ships `router.tsx` and 3A put its screens at `src/routes/inventory/*.tsx`. (5) That block also created a `WarehouseList.tsx` and a `tests/e2e/inventory-screens.spec.ts` that **3A already ships**; both were dropped, and the card's "warehouse screens" is served by the in-transit worklist inside `transfers.tsx`, which is the view 3A's list cannot show.
 
-**Eighteen review findings applied in a later pass, and the four that were blockers.** Recorded so a reader does not "simplify" any of them back. (1) **FEFO no longer caps the drafted quantity** — `app.pick_lots_fefo` returns fewer rows than asked, so `convertOrderToDelivery` appends a null-lot shortfall pair; without it the 500-unit refusal, the override path, test 18's re-run and test 7's "gone negative" leg were all vacuous, and 3C's over-fulfilment guard never fired. (2) **The override event is attributed, not acted** — `recordOverride` takes `actor_id` from `app.current_actor()`, so the supervisor is `attributedTo` and the poster stays `s.human`; the negative case now attributes to the creator so the two cases differ by exactly the control under test. (3) **`TRANSFER_RECEIPT` declares `reversal.allowed: false`** — a variance-shaped line's negated `quantity` is a *forward* move of the variance, and the two amendments that would fix it are 1A's and 2A's, not this slice's; the ledger-balance assertion that would have passed either way is replaced by per-movement warehouse and quantity assertions. (4) **Task 14's `app_rw` DELETE list is §3.5.4's five rows** (contracts:1119), not the six-entry mixture an earlier draft carried. Then: the `fillTaggedLedgerLines` rule is chosen by the source line's **tags** rather than by how many movements survived, so a total loss in transit no longer debits the destination and relieves `1310` twice; tie-out B is stated over `greatest(quantity, 0)` because `cost_layer.qty_remaining >= 0` cannot represent the override's negative; the DoD case asserts WH-BR2's **absence** from `stock_on_hand` rather than a zero row the MERGE never inserts; SAH-017's scan matches the view's `from` clause, not the column name 3C's Drizzle mirror also contains; `stock_on_hand_report_idx` is gone (it duplicated the projection's primary key) and 0042 ships one index; every tie-out sums through `Money`/`Quantity` and `sum(…)::text` instead of `Number()` and `.toFixed()`; the six permission codes reach `POLICY_RESOLVED_CODES` in Task 2's own commit instead of behind a conditional; and 0041's down comment, two import blocks, `openLayersFor`'s branded currency, Global Constraint 11's code list, the File Structure's `count.ts`/`transfer.ts` rows and Task 4's Interfaces block are corrected.
+**Eighteen review findings applied in a later pass, and the four that were blockers.** Recorded so a reader does not "simplify" any of them back. (1) **FEFO no longer caps the drafted quantity** — `app.pick_lots_fefo` returns fewer rows than asked, so `convertOrderToDelivery` appends a null-lot shortfall pair; without it the 500-unit refusal, the override path, test 18's re-run and test 7's "gone negative" leg were all vacuous, and 3C's over-fulfilment guard never fired. (2) **The override event is attributed, not acted** — `recordOverride` takes `actor_id` from `app.current_actor()`, so the supervisor is `attributedTo` and the poster stays `s.human`; the negative case now attributes to the creator so the two cases differ by exactly the control under test. (3) **`TRANSFER_RECEIPT` declares `reversal.allowed: false`** — a variance-shaped line's negated `quantity` is a *forward* move of the variance, and the two amendments that would fix it are 1A's and 2A's, not this slice's; the ledger-balance assertion that would have passed either way is replaced by per-movement warehouse and quantity assertions. (4) **Task 14's `app_rw` DELETE list is §3.5.4's five rows** (contracts:1119), not the six-entry mixture an earlier draft carried. Then: the `fillTaggedLedgerLines` rule is chosen by the source line's **tags** rather than by how many movements survived, so a total loss in transit no longer debits the destination and relieves `1310` twice; tie-out B is stated over `greatest(quantity, 0)` because `cost_layer.qty_remaining >= 0` cannot represent the override's negative; the DoD case asserts WH-BR2's **absence** from `stock_on_hand` rather than a zero row the MERGE never inserts; LEGACY-017's scan matches the view's `from` clause, not the column name 3C's Drizzle mirror also contains; `stock_on_hand_report_idx` is gone (it duplicated the projection's primary key) and 0042 ships one index; every tie-out sums through `Money`/`Quantity` and `sum(…)::text` instead of `Number()` and `.toFixed()`; the six permission codes reach `POLICY_RESOLVED_CODES` in Task 2's own commit instead of behind a conditional; and 0041's down comment, two import blocks, `openLayersFor`'s branded currency, Global Constraint 11's code list, the File Structure's `count.ts`/`transfer.ts` rows and Task 4's Interfaces block are corrected.
 
 **A third pass against an independent audit, and the five things it caught that would have stopped execution.** Recorded so none is re-introduced.
 
 1. **`pickLotsFefo` was imported from a `packages/db/src/inventory/fefo.ts` that 3A does not ship.** 3A puts `pickLotsFefo` and `FefoPick` in **`lots.ts`** (3a:114, 3a:6534) and re-exports them from there (3a:6795). Task 5 Step 5 would have died on a module-not-found, and Task 0's gate could not have caught it because it grepped only migration 0031 for the SQL function. The import is corrected, and the gate now carries a `need_grep` on the TypeScript export path — eleven checks, not ten.
 2. **Task 4's two hand-rolled `insert into app.document` statements omitted `series`**, which plan0A:1780 declares `text not null` with no default, and its `GOODS_RECEIPT` insert omitted `party_id`, which `GRN_POLICY`'s `requires: ["party", …]` makes mandatory at step 4 of §4.3.2. Both raise before any assertion runs, and both failures read like costing bugs. Both columns are now in the inserts, with a comment saying why.
 3. **Task 4's fixture called `Bun.file()` inside a Vitest file.** §3.7.1 runs the test tier under **Node 24 via Vitest** ("Bun runs everything else") and `packages/db`'s `test` script is `node …/vitest.mjs run` (plan0A:321), so `Bun` is undefined there. The deeper problem was that it read `TRANSFER_RECEIPT.json`, which **Task 8 writes four tasks later** — so no reader of any kind would have worked. `packages/db/test/inventory/policies.ts` is therefore created by **Task 4**, the first task that configures a document type, and Tasks 5, 7, 8 and 9 append to it; Task 9 Step 6 still asserts every constant against its shipped seed file.
-4. **Both regression blocks misused 0B's shared surface, in the exact way 3B's own Self-Review finding 7 records.** They imported from `../support/shared` (it is `tests/support/regression.ts`, §4.17.1), destructured `const { rw } = await sharedDb()` and then read `rw.db.admin` (it is `const { db } = …` then `db.admin`, 3b:6022), called `thinRegression` with a body that declares cases **inside the single `it` that wrapper runs** and with a `ThinContext` that has none of the named members (3b:5971), left five identifiers unimported, and selected `document_line.updated_at` — a column §4.3.4's DDL does not have (contracts:2200–2217). Both are now plain `describe`s with full import blocks and their own tenants, and the immutability assertion is on `quantity` plus the line's `app.audit_log` UPDATE rows, which is a stronger claim than a timestamp. `sah-018.test.ts` also moved from Task 5 to **Task 6**, because its conversion case needs `DELIVERY_ORDER.json` to exist.
+4. **Both regression blocks misused 0B's shared surface, in the exact way 3B's own Self-Review finding 7 records.** They imported from `../support/shared` (it is `tests/support/regression.ts`, §4.17.1), destructured `const { rw } = await sharedDb()` and then read `rw.db.admin` (it is `const { db } = …` then `db.admin`, 3b:6022), called `thinRegression` with a body that declares cases **inside the single `it` that wrapper runs** and with a `ThinContext` that has none of the named members (3b:5971), left five identifiers unimported, and selected `document_line.updated_at` — a column §4.3.4's DDL does not have (contracts:2200–2217). Both are now plain `describe`s with full import blocks and their own tenants, and the immutability assertion is on `quantity` plus the line's `app.audit_log` UPDATE rows, which is a stronger claim than a timestamp. `legacy-018.test.ts` also moved from Task 5 to **Task 6**, because its conversion case needs `DELIVERY_ORDER.json` to exist.
 5. **Four `beforeAll` blocks and thirteen helpers were prose.** Task 11 — the slice's only owned acceptance test — declared two `let`s and assigned nineteen, and named eight helpers it never wrote. Task 8's stock-count suite, Task 9 and Task 10 were the same shape. All four `beforeAll`s and every named helper are now written out, every `let` the fences assign is declared, and `approvedAndPosted()` drafts its own document per call rather than writing the same ten units off three times.
 
 Then, from the same audit: `priceTransferReceipt` takes the issue value whole when the quantities are equal, because `10.0000 ÷ 3 × 3` is `9.9999` and two legs of one line carrying two values strand a cent on `1310` for ever (a sixth case in Task 4 proves it, and the §4.7.3 residual it does *not* fix is stated rather than hidden); the "test 31 by API" case moved out of `packages/db` into the API tier, where §3.1's `dependency-rule` allows `sharedApi`/`problemOf`; three `order by` clauses gained the tie-breaking third key their `toEqual`s needed; Task 9's "lot with no stock" case expects **WH-HQ**, the warehouse the call names, which is the only one the implementation can print; Task 10's source scan resolves its path from `process.cwd()`; four test-count claims were recounted from the blocks; Task 6's regression command is `bun run test <file>`; the gate script's amendment labels are `3D-1`…`3D-13` so no label collides with §4.4.2's frozen **A9**; amendment 2 says `quantity.negate()`, which is a member §4.2.1's `Quantity` actually has; and line 65's Phase 3 exit list carries Task 14 Step 2's own OD-24 caveat.
 
-**Six neighbour shapes this pass verified by grep rather than by memory, four of which were wrong when first written out.** Every one is a `beforeAll` failure that reads like a costing bug. (a) Task 11's `receiveWithLandedCost` linked a freight-only `SHIPMENT` to a separate receipt with `linkKind: "allocates_to"` — **there is no such `LinkKind`** (the five are `"fulfils" | "converts_to" | "receives_against" | "returns" | "settles"`, 3c:1493) and landed cost is not a link at all: 3C puts the goods line and the freight `account` line on **one** SHIPMENT and calls `allocateLandedCostForDocument(tx, ctx, { documentId, allocations })` while it is still a draft (3c:3042, 3c:3936–3948). The helper is rewritten to 3C's mechanism. (b) `replay` is `(sql, job: JobEnvelope<{ companyId }>, ctx)` (3b:4050), not `(tx, ctx, payload)`, and `recordingJobs()`'s `enqueued` is a **readonly** array of `{ name, payload, singletonKey }` (3b:2294, 3b:2458) with nowhere to mark an entry drained — `runReplayToCompletion` now rebuilds the envelope (contracts:1707) and keeps its own `Set` of indices. (c) `app.audit_log.action` is lower case (`check (action in ('insert','update','delete'))`, plan0A:2269) and `row_id` is `text` (plan0A:2268); the `sah-018` immutability case was written against `'UPDATE'` and an untyped uuid. (d) `app.actor_has` takes `(code, company_id, branch_id)` (plan0A:1203, 1212), not one argument, so the count-sheet `GET` handler passes the company and a null branch. (e) `LinkKind`'s `"converts_to"` and `"receives_against"` — the two this slice actually writes — are on that list. (f) `Money.abs()` exists (contracts:1360) and `Quantity.abs()` does not (contracts:1377–1386), which is why Task 4 may use the first and amendment 2 must say `negate()`.
+**Six neighbour shapes this pass verified by grep rather than by memory, four of which were wrong when first written out.** Every one is a `beforeAll` failure that reads like a costing bug. (a) Task 11's `receiveWithLandedCost` linked a freight-only `SHIPMENT` to a separate receipt with `linkKind: "allocates_to"` — **there is no such `LinkKind`** (the five are `"fulfils" | "converts_to" | "receives_against" | "returns" | "settles"`, 3c:1493) and landed cost is not a link at all: 3C puts the goods line and the freight `account` line on **one** SHIPMENT and calls `allocateLandedCostForDocument(tx, ctx, { documentId, allocations })` while it is still a draft (3c:3042, 3c:3936–3948). The helper is rewritten to 3C's mechanism. (b) `replay` is `(sql, job: JobEnvelope<{ companyId }>, ctx)` (3b:4050), not `(tx, ctx, payload)`, and `recordingJobs()`'s `enqueued` is a **readonly** array of `{ name, payload, singletonKey }` (3b:2294, 3b:2458) with nowhere to mark an entry drained — `runReplayToCompletion` now rebuilds the envelope (contracts:1707) and keeps its own `Set` of indices. (c) `app.audit_log.action` is lower case (`check (action in ('insert','update','delete'))`, plan0A:2269) and `row_id` is `text` (plan0A:2268); the `legacy-018` immutability case was written against `'UPDATE'` and an untyped uuid. (d) `app.actor_has` takes `(code, company_id, branch_id)` (plan0A:1203, 1212), not one argument, so the count-sheet `GET` handler passes the company and a null branch. (e) `LinkKind`'s `"converts_to"` and `"receives_against"` — the two this slice actually writes — are on that list. (f) `Money.abs()` exists (contracts:1360) and `Quantity.abs()` does not (contracts:1377–1386), which is why Task 4 may use the first and amendment 2 must say `negate()`.
 
 **Two collisions with 3A that the audit did not raise and this pass found while fixing it.** (a) 3A ships **`StockOnHandRow`** from `packages/db/src/inventory/stock.ts` through the flat `packages/db/src/index.ts` barrel (3a:7730) and **`StockOnHandSchema` / `StockOnHandQuery` / `StockOnHandList`** from `packages/contracts/src/inventory/stock.ts` (3a:7853–7867). This slice's report types would have been duplicate exports from both barrels — a TypeScript error — and duplicate `.openapi(...)` component names; they are now `StockOnHandReportParams` / `StockOnHandReportRow` / `StockOnHandReportRowSchema` / `StockOnHandReportQuery` / `StockOnHandReportList`, and Task 10 states why the two reads are a list endpoint and a report code rather than a duplication. (b) The **two transfer endpoints named in this Self-Review had no task**, while Task 13's `transfer-api.ts` called both against a `TransferDraftSchema` defined nowhere. `POST …/documents/transfers` is now Task 7 Step 7 and `POST …/{documentId}/receipt` Task 8 Step 8, both with their Zod bodies, `IdempotencyHeader`, gates and route tests; the four places that gave four different sub-path counts all say **six**.
 
@@ -6782,7 +6782,7 @@ Then, from the same audit: `priceTransferReceipt` takes the issue value whole wh
 - **A test that reverses a `DELIVERY_ORDER`, a `TRANSFER` or an `EXPIRY_WRITE_OFF` and asserts the ledger direction.** All three address `amount: "line.cost"` with a fixed `side`, and 3C copies `cost` unnegated, so the reversal's ledger legs land on the same side as the original. That is a 2A/3C reversal-mechanism gap (see Task 6 Step 3's note); raise it there rather than adding a policy rule or a sign test here — Global Constraint 6 forbids the sign test outright.
 - **The 500-unit case in Task 6 passing, or the override case reading `stock_on_hand` as `0`.** Task 5's shortfall pair is missing; see Task 6 Step 2.
 - A `permission-catalogue` failure at Task 2 reading "code introduced in 3D has no reference" — **Task 2 Step 6** already adds the six codes to `POLICY_RESOLVED_CODES` in that task's own commit, so this can only mean that step was skipped. Run it; never defer it and never add a `// eslint-disable`.
-- Any temptation to add a `document_line.variance_value`, a `delivered_quantity` or a second `open_quantity` expression. All three are SAH-017/SAH-018 by construction and `tests/regression/sah-018.test.ts` fails on the first two mechanically.
+- Any temptation to add a `document_line.variance_value`, a `delivered_quantity` or a second `open_quantity` expression. All three are LEGACY-017/LEGACY-018 by construction and `tests/regression/legacy-018.test.ts` fails on the first two mechanically.
 - **A sub-cent difference between `valuationAsOf` and the `1300`/`1310` balances on an UNEQUAL transfer.** `app.cost_layer` stores `qty_in` and a `unit_cost numeric(19,4)` and **no `value` column** (§4.7.3, contracts:3076–3079), so a layer whose value does not divide by its quantity is representable only to the nearest cent — on every document type, not only a transfer. Task 4's equal-quantity branch in `priceTransferReceipt` closes the part that is 3D's (two legs of one line disagreeing with each other); the residual is 3B's and §4.7.3's. Raise it there. **Do not round in `fillTaggedLedgerLines`** to make a tie-out pass — that moves the discrepancy into the ledger, where it is much harder to find.
 - **`sharedDb()`'s return shape differing from `{ db, rw, a, b }`.** §4.18's open item 5 records that §4.17.1's declaration and 1A's use sites disagree, and this slice's two regression files destructure `db` and read `db.admin`, following 3B (3b:6022) and 3A (3a:942). If the merged 0B file exports another shape, **follow the merged file** and change the destructuring line — it is one line in each of two files, and §4.18 already names the discrepancy as plan-side.
 - **`recordingJobs()` returning frozen entries**, which Task 11's `runReplayToCompletion` mutates with a `drained` flag. Track the drained set in a local `Set<string>` keyed by job id instead; that is a two-line change in this slice's own helper and never a change to 3B's recorder.

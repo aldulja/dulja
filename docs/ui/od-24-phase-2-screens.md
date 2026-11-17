@@ -15,7 +15,7 @@ test -s docs/owner/od-24/document-entry.md && ls -1 docs/owner/od-24/*.png | wc 
 ```
 
 It must print a count of at least 2 — one screenshot per screen, the document **list** and the document
-**entry** screen of any Sahlisoft module — with `document-entry.md` non-empty. Run on 2026-09-19 against
+**entry** screen of any legacy module — with `document-entry.md` non-empty. Run on 2026-09-19 against
 this tree it fails on its first clause: `docs/owner/` does not exist. Task 12 Step 1 then reads, verbatim:
 *"If it fails, stop: mark the task blocked in the PR, and proceed to Task 13. Do not build a screen against
 a guess (hazard 29)."*

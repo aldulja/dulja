@@ -7,7 +7,7 @@ import { hasColumns } from "./probe";
 
 /** spec:2332 verbatim, with where its decision lives. The report carries it and proposes no treatment. */
 export const SUSPENSE_QUESTION = [
-  "Expect unbalanced vouchers. Nothing prevented them (SAH-003). Detect them, quantify them, and agree a",
+  "Expect unbalanced vouchers. Nothing prevented them (LEGACY-003). Detect them, quantify them, and agree a",
   "treatment (suspense account) with the customer *before* migrating. (spec:2332, §5.1 #2; the decision is",
   "OD-25 and belongs to 9B's cut-over task — this report is its input.)",
 ].join(" ");

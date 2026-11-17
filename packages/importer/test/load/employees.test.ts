@@ -469,8 +469,8 @@ describe("§5.1 #11 — an opening that does not reconcile to the employee's own
     try {
       const report = await runLoad(db.rw, await ctxFor(own2, { only: ONLY_HR }));
       expect(report.skips.map((k) => k.reason)).toEqual([
-        "employee 5001 carries no current-tax-year YTD (EMPYTDGROSS and EMPYTDNET are NULL or absent), so no opening is loaded — a NULL is never read as zero (§5.1 #11, SAH-007)",
-        "employee 5002 carries EMPYTDGROSS without EMPYTDNET; a half opening is not loaded — a NULL is never read as zero (§5.1 #11, SAH-007)",
+        "employee 5001 carries no current-tax-year YTD (EMPYTDGROSS and EMPYTDNET are NULL or absent), so no opening is loaded — a NULL is never read as zero (§5.1 #11, LEGACY-007)",
+        "employee 5002 carries EMPYTDGROSS without EMPYTDNET; a half opening is not loaded — a NULL is never read as zero (§5.1 #11, LEGACY-007)",
       ]);
       expect((await people(own2)).map((p) => p.employee_number)).toEqual(["E-001", "E-002"]);
       expect(await openings(own2)).toEqual([]);

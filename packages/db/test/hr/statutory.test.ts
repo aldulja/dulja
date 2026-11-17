@@ -95,7 +95,7 @@ describe("migration 0084 — schemes as rows, rate tables as verified data", () 
     expect(col!.data_type).toBe("text");
   });
 
-  it("loaded_by is stamped from the session, never from the caller (SAH-044)", async () => {
+  it("loaded_by is stamped from the session, never from the caller (LEGACY-044)", async () => {
     const id = await withTenant(db.rw, a.tenant, loader, (tx) =>
       loadRateTable(tx, {
         schemeId,
@@ -172,7 +172,7 @@ describe("migration 0084 — schemes as rows, rate tables as verified data", () 
     ).rejects.toThrow(/ERR_HR_SELF_VERIFY/);
   });
 
-  it("a verified table is frozen — definition, version, effective_from and source cannot change (SAH-041)", async () => {
+  it("a verified table is frozen — definition, version, effective_from and source cannot change (LEGACY-041)", async () => {
     const [verified] = (
       await withTenant(db.rw, a.tenant, loader, (tx) => listRateTables(tx, schemeId))
     ).filter((t) => t.verifiedAt !== null);
@@ -209,7 +209,7 @@ describe("migration 0084 — schemes as rows, rate tables as verified data", () 
     );
   });
 
-  it("rateTableOn returns only a VERIFIED table covering the date (spec:2080, SAH-020)", async () => {
+  it("rateTableOn returns only a VERIFIED table covering the date (spec:2080, LEGACY-020)", async () => {
     expect(
       (await withTenant(db.rw, a.tenant, loader, (tx) => rateTableOn(tx, schemeId, "2026-06-30")))!
         .version,

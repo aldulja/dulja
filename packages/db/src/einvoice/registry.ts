@@ -19,7 +19,7 @@ export const TRANSMITTER_CODES: readonly TransmitterCode[] = ["synthetic", "myin
  * Every profile version of a code this process can serve, and the one a NEW submission uses.
  *
  * ADR 0053, "Also open" (PR 11 review): a row is pinned to the `profile_version` it was submitted
- * under (SAH-013), and its poll and cancel must be interpreted against that file. One transmitter
+ * under (LEGACY-013), and its poll and cancel must be interpreted against that file. One transmitter
  * per code, built from the highest file, stranded every `submitted` or `accepted` row of v1 the day
  * `<code>.v2.json` shipped. `latest` is the highest version the deployment SHIPS — not the highest
  * that happened to build — so a broken newest file refuses new submissions (fail closed, ADR 0052)

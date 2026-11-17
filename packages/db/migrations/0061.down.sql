@@ -32,7 +32,7 @@ declare
 begin
   -- Guard 1: no party, no credit question; and a party with neither a limit nor a hold has none either —
   -- WHATEVER its kind (A7: a limit or a hold configured on a dealer or a vendor is a control, not a no-op).
-  -- Both are named guards rather than a fall-through of three-valued logic (SAH-042).
+  -- Both are named guards rather than a fall-through of three-valued logic (LEGACY-042).
   if new.party_id is null then return new; end if;
   select * into v_party from app.party where id = new.party_id;
   if v_party.id is null then return new; end if;
@@ -43,7 +43,7 @@ begin
   -- PURCHASE_CREDIT_NOTE are outbound too, and a vendor on hold could not be paid). An internal or inbound
   -- document is ignored, and a policy that cannot be resolved is ignored here — 2B's trigger is what refuses
   -- an unresolvable policy. `is distinct from true`, never `not`: an unknown answer is ignored, not negated
-  -- (SAH-042).
+  -- (LEGACY-042).
   if app.policy_extends_credit(app.effective_policy(new.document_type_id, new.effective_date))
        is distinct from true then
     return new;
@@ -79,14 +79,14 @@ begin
 
   -- 3. The document's own contribution, computed at guard 3 above. It is not posted yet, so it comes from its
   --    LINES at its own rate — app.document_base_total, the identity ledger_entry's CHECK enforces (spec:1816,
-  --    SAH-012). Do not "simplify" it into one query over the ledger — this document has no ledger rows at
+  --    LEGACY-012). Do not "simplify" it into one query over the ledger — this document has no ledger rows at
   --    `→ issued`.
 
   -- 4. A second principal's override event, already authorised by 2B's document_event_override_guard
   --    (§4.5.3, spec:2179), that APPROVED at least this figure (code review 2026-09-29): the event carries
   --    the document's base total when it was recorded (§2c above), so a draft re-keyed upwards after the
   --    approval is compared like any other. This trigger asks nothing further about authority: two authority
-  --    questions, asked differently, is how two answers appear (SAH-032).
+  --    questions, asked differently, is how two answers appear (LEGACY-032).
   if exists (select 1 from app.document_event e
               where e.document_id = new.id
                 and e.event_kind = 'override'

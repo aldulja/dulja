@@ -75,7 +75,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
   app.use("/v1/*", (c, next) => (authMode(c.req.path) === "public" ? next() : idempotent(c, next)));
   app.onError((error, context) => {
     const response = toProblemResponse(context, error);
-    // The problem body deliberately withholds driver text from the caller (SAH-083). Without this the
+    // The problem body deliberately withholds driver text from the caller (LEGACY-083). Without this the
     // cause would be withheld from the operator too, and an unmapped SQLSTATE would vanish entirely.
     if (response.status >= 500)
       context.get("logger")?.error(

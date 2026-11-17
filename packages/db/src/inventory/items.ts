@@ -35,7 +35,7 @@ export interface ItemAccountOverrides {
  * NULL and only revenue and expense are resolved (§4.15's `5900` row: "item.expense_account_id default
  * for kind ∈ service | asset"). An explicit override wins — including an explicit `null`, which means
  * "this item deliberately has no such account". A default code the company's chart does not contain is
- * an `ItemAccountUnresolvedError` naming the code, never a silent NULL: SAH-064 is exactly a guard that
+ * an `ItemAccountUnresolvedError` naming the code, never a silent NULL: LEGACY-064 is exactly a guard that
  * looked like it defaulted a value and did not, and a NULL `inventory_account_id` would surface much
  * later as `ERR_POLICY_REQUIRES_MISSING` at post, in the slice that did not write it.
  */
@@ -151,7 +151,7 @@ const toItem = (r: DbItem): ItemRow => ({
 });
 
 /** `ctx` is taken for the log/enqueue envelope symmetry every §4.3.1 writer has; the acting principal
- *  is always `app.current_actor()` from the session, never a parameter (SAH-044). */
+ *  is always `app.current_actor()` from the session, never a parameter (LEGACY-044). */
 export async function createItem(tx: Sql, ctx: TenantContext, input: NewItem): Promise<ItemRow> {
   await assertItemTaxCode(tx, input.companyId, input.taxCodeId ?? null);
   // `exactOptionalPropertyTypes` is on: an absent override set is omitted, never passed as `undefined`.
@@ -188,7 +188,7 @@ export async function getItem(tx: Sql, itemId: string): Promise<ItemRow | null> 
 /**
  * `code` and `kind` are immutable after create: `code` is the natural key a price list, a legacy_ref
  * and every import batch point at, and `kind` decides whether the item holds stock at all — changing
- * it under existing movements is SAH-007's shape. A rename is `name_en`/`name_ar`.
+ * it under existing movements is LEGACY-007's shape. A rename is `name_en`/`name_ar`.
  */
 export async function updateItem(
   tx: Sql,

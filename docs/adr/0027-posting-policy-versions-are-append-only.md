@@ -8,7 +8,7 @@
 ## Context
 
 `app.posting_policy` is keyed `unique (document_type_id, version)` and every posted document pins the
-`posting_policy_id` that produced it (spec:1753, SAH-013). The legacy system's failure was that a reversal read
+`posting_policy_id` that produced it (spec:1753, LEGACY-013). The legacy system's failure was that a reversal read
 the *current* document-type flags rather than the ones originally applied.
 
 Pinning the id is necessary but not sufficient: if the row a pinned id points at can be rewritten, the pin
@@ -27,7 +27,7 @@ raises SQLSTATE 23505 → `ERR_CONFLICT_UNIQUE`. A correction is a new version w
 update set definition = …, effective_from = …`, and which is deliberately the *only* path that rewrites a
 version. Its reason is stated there: a placeholder policy seeded on staging in an early phase would otherwise
 silently survive the real definition arriving later, and the phase's tests would pass locally and fail on
-staging. That path is a reviewed diff of a version-controlled file under an operator's hand (SAH-078); the API
+staging. That path is a reviewed diff of a version-controlled file under an operator's hand (LEGACY-078); the API
 path is a tenant's admin clicking a button.
 
 ## Alternatives considered

@@ -208,7 +208,7 @@ describe("acceptance test 31 — segregation of duties on the money-out types (s
 });
 
 describe("acceptance test 39 — the payroll-batch clause (spec:2457)", () => {
-  /** A sha256 over every ledger_entry column that could be tampered with (SAH-031, SAH-041 — test-39's own form). */
+  /** A sha256 over every ledger_entry column that could be tampered with (LEGACY-031, LEGACY-041 — test-39's own form). */
   const ledgerFingerprint = async (): Promise<string> => {
     const [row] = await api.db.admin<{ h: string }[]>`
       select coalesce(encode(sha256(convert_to(string_agg(t, '|' order by t), 'UTF8')), 'hex'), '') as h
@@ -273,7 +273,7 @@ describe("acceptance test 39 — the payroll-batch clause (spec:2457)", () => {
         amount: Money.of(amount, MYR), // a MAGNITUDE; the direction is the kind's (§4.8.3)
       }),
     );
-    expect(await ledgerFingerprint()).toBe(before); // matching altered no ledger entry (SAH-031/041)
+    expect(await ledgerFingerprint()).toBe(before); // matching altered no ledger entry (LEGACY-031/041)
 
     const r = await as(s.human, (tx) =>
       reconciledBalance(tx, {

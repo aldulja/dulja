@@ -4,7 +4,7 @@
 // `Reconcilable` registry, `match`, `unmatch`, `unmatchedStatementLines` and `reconciledBalance`. NOTHING in
 // this file writes, updates or deletes a ledger_entry, an account_balance or a document row: the only table
 // the matching half writes is app.bank_match, the posting-only-tables lint (§3.7.5) makes the rest
-// mechanical, and it is the whole of SAH-031's and SAH-041's fix applied to reconciliation (ADR 0048).
+// mechanical, and it is the whole of LEGACY-031's and LEGACY-041's fix applied to reconciliation (ADR 0048).
 //
 // No file under packages/db/src imports decimal.js (§4.2.1): `D` is 0D's cloned precision-40 constructor,
 // exported from the domain barrel. CSV amounts are parsed and summed with it and leave as 4-dp strings.
@@ -72,7 +72,7 @@ export class ImportError extends Error {
 }
 
 /** The one other refusal an import raises: the statement already exists. Same coded shape, fixed detail —
- *  the driver's own text quotes the rejected key straight back (SAH-083). */
+ *  the driver's own text quotes the rejected key straight back (LEGACY-083). */
 function conflict(detail: string): Error {
   return Object.assign(new Error(`ERR_CONFLICT_UNIQUE: ${detail}`), {
     code: "ERR_CONFLICT_UNIQUE" as const,
@@ -166,7 +166,7 @@ function toIsoDate(raw: string, format: CsvMapping["dateFormat"]): string | null
 }
 
 /** An amount of at most 4 dp, or null. Finer figures are refused, not rounded: a stored line that differs
- *  from the file is a silent correction (SAH-019), and the balance check below could not see it. */
+ *  from the file is a silent correction (LEGACY-019), and the balance check below could not see it. */
 function toDecimal(raw: string, decimalComma: boolean): Dec | null {
   const cleaned = raw.trim().replace(/\s/g, "");
   if (cleaned === "") return new D(0);
@@ -198,7 +198,7 @@ interface ParsedLine {
  * naming the difference, because a statement that does not add up is a bad file or a bad mapping and
  * importing it would make every later "reconciled == ledger" assertion meaningless (ADR 0048) — and writes
  * one `bank_statement` and its lines. The actor reaches `imported_by` through `app.current_actor()`'s
- * default and `stamp_imported_by`, never through a parameter (SAH-044); hence `_ctx` is unread.
+ * default and `stamp_imported_by`, never through a parameter (LEGACY-044); hence `_ctx` is unread.
  */
 export async function importStatement(
   tx: Sql,
@@ -639,8 +639,8 @@ const opposite = (d: "in" | "out"): "in" | "out" => (d === "in" ? "out" : "in");
  * Matches `amount` of a statement line to one document. It writes ONE `app.bank_match` row and nothing else
  * (acceptance test 39): there is no period check because there is nothing for a period lock to protect — a
  * match in a locked period succeeds and that period's ledger rows are byte-identical afterwards (ADR 0048,
- * the SAH-031 4B block). The actor reaches `matched_by` through the column default and its stamp trigger,
- * never through a parameter (SAH-044), hence `_ctx` is unread.
+ * the LEGACY-031 4B block). The actor reaches `matched_by` through the column default and its stamp trigger,
+ * never through a parameter (LEGACY-044), hence `_ctx` is unread.
  *
  * Refused with `ERR_BANK_MATCH_AMOUNT`, in this order: a non-positive amount; a line not visible in
  * `companyId`; an amount in another currency than the statement's; a document not visible in `companyId`, or
@@ -819,7 +819,7 @@ export async function match(
 
 /**
  * Sets `unmatched_at`, `unmatched_by` (stamped) and `unmatch_reason` on a live match of `companyId`. It never
- * alters a ledger entry and never removes the row (spec:2457, SAH-041): the row survives with both audit
+ * alters a ledger entry and never removes the row (spec:2457, LEGACY-041): the row survives with both audit
  * images, and 0050's `bank_match_guard` refuses every other change to it. The reason is a column because
  * app.audit_row writes `to_jsonb(new)` and a value never written to a column is not in that image.
  */

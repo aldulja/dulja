@@ -1,6 +1,6 @@
 // packages/db/test/document-header-guard.test.ts — code review 3, R10: app.document's header is frozen once the
-// document leaves draft (migration 0117). spec:574 (SAH-041) "issued financial documents are immutable";
-// spec:501, 2223 (SAH-031) "the whole document aggregate (header + lines + projections)"; spec:2049 "Financial
+// document leaves draft (migration 0117). spec:574 (LEGACY-041) "issued financial documents are immutable";
+// spec:501, 2223 (LEGACY-031) "the whole document aggregate (header + lines + projections)"; spec:2049 "Financial
 // rows: never — reversal only"; spec:2173 the data layer is the control. 0113 froze the lines; this is the
 // header. Every case runs as `app_rw` inside `withTenant`, the role every route and job writes through, so a
 // refusal here is a refusal for every path. Each red case is accepted on 381bb34, where nothing guarded it.
@@ -202,14 +202,14 @@ afterAll(async () => {
   await db?.stop();
 });
 
-describe("R10 — a document's header is frozen once it leaves draft (0117, SAH-041, SAH-031)", () => {
+describe("R10 — a document's header is frozen once it leaves draft (0117, LEGACY-041, LEGACY-031)", () => {
   it("a POSTED invoice's header cannot be rewritten, column by column, and its ledger stands", async () => {
     const documentId = await postedSale();
     const other = await postedSale();
     const ledger = await ledgerOf(documentId);
     await expectFrozen(documentId, "posted", other);
     // The columns only postDocument writes are frozen too once it has written them: the pin, the sequence,
-    // the posting stamp. Re-pinning is SAH-013 by another route — reverseDocument reads this pin.
+    // the posting stamp. Re-pinning is LEGACY-013 by another route — reverseDocument reads this pin.
     const [pin] = await db.admin<{ id: string }[]>`
       select p.id from app.posting_policy p
        where p.document_type_id = ${f.documentTypeIds["PAYMENT"]!} limit 1`;

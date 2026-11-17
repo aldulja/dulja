@@ -427,7 +427,7 @@ describe("PURCHASE_RETURN — contracts §4.14, spec:1698, ADR 0041", () => {
       postDocument(tx, ctx(s), { documentId: ret.documentId, jobs: recordingJobs() }),
     );
 
-    // ONE costing answer (SAH-009): the valuation read, the layer residues and the consumption rows all agree.
+    // ONE costing answer (LEGACY-009): the valuation read, the layer residues and the consumption rows all agree.
     // `ValuationParams` is 3B's frozen shape: `{ companyId; asOf; itemId?; warehouseId?; cursor?; limit }`.
     // There is no `itemIds`, and `limit` is REQUIRED — an excess property on an object literal is a
     // TypeScript error and a missing required one is another, so this call is the shape or the suite does
@@ -483,7 +483,7 @@ describe("PURCHASE_RETURN — contracts §4.14, spec:1698, ADR 0041", () => {
     expect(who.map((r) => r.id)).toContain(s.human);
   });
 
-  it("links a return to the receipt it reverses, and the receipt's open quantity falls (SAH-018)", async () => {
+  it("links a return to the receipt it reverses, and the receipt's open quantity falls (LEGACY-018)", async () => {
     const { itemId, baseUnitId } = await seedItem(db, s, { code: "PR-ITEM-5", trackLots: false });
     const order = await draftTypedDocument(db, s, {
       documentTypeId: await typeId("PURCHASE_ORDER"),
@@ -562,7 +562,7 @@ describe("PURCHASE_RETURN — contracts §4.14, spec:1698, ADR 0041", () => {
       ],
     });
     // link_kind 'returns' against the POSTED receipt: the guard admits a posted source (Task 1) and the
-    // returned quantity is a projection over these rows, never a column on the receipt line (SAH-018).
+    // returned quantity is a projection over these rows, never a column on the receipt line (LEGACY-018).
     await withTenant(db.rw, s.tenant, s.human, (tx) =>
       linkFulfilment(tx, ctx(s), {
         sourceDocumentId: receipt.documentId,
@@ -587,6 +587,6 @@ describe("PURCHASE_RETURN — contracts §4.14, spec:1698, ADR 0041", () => {
     const [returnedColumn] = await db.admin<{ n: number }[]>`
       select count(*)::int as n from information_schema.columns
        where table_schema = 'app' and table_name = 'document_line' and column_name like '%returned%'`;
-    expect(returnedColumn!.n).toBe(0); // SAH-018 asserted structurally, not by inspection
+    expect(returnedColumn!.n).toBe(0); // LEGACY-018 asserted structurally, not by inspection
   });
 });

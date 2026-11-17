@@ -451,7 +451,7 @@ describe("the transmission log's state machine (ADR 0053)", () => {
     await submitTransmission(db.rw, ctx, { transmissionId: id });
     const open = await pollTransmission(db.rw, ctx, { transmissionId: id });
     expect(open.status).toBe("submitted");
-    expect(open.lastError).toContain("in_review"); // SAH-020: the label is visible…
+    expect(open.lastError).toContain("in_review"); // LEGACY-020: the label is visible…
     expect(open.acceptedAt).toBeNull(); // …and nothing is treated as accepted
     expect(open.qrPayload).toBeNull();
     expect(open.claimedAt).toBeNull();
@@ -658,7 +658,7 @@ describe("the transmission log's state machine (ADR 0053)", () => {
     expect(row.lastError).toContain("503");
   });
 
-  it("an UNMAPPED remote label on an ACKNOWLEDGED submit is recorded submitted, never resubmittable (SAH-020)", async () => {
+  it("an UNMAPPED remote label on an ACKNOWLEDGED submit is recorded submitted, never resubmittable (LEGACY-020)", async () => {
     // A 2xx that returned an external id is the authority acknowledging intake. ADR 0053's 2026-10-06
     // amendment records it `submitted` (pollable) rather than `error` (resubmittable): the label is
     // still visible and nothing is treated as accepted, but the document is never sent twice.

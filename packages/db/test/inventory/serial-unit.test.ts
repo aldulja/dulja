@@ -29,12 +29,12 @@ describe("app.serial_unit — ⚠️ OD-07, default NOT BUILT (spec:1032, 1310)"
     // one assertion. `dependency-rule` lints `import` statements, so reading the tree by path needs no
     // allowance and no tsconfig `include` entry.
     const files = readdirSync(resolve(import.meta.dirname, "../../../../tests/regression"));
-    // 3A is the NAMED creator of sah-052, 056 and 057 (§3.7.3), so their absence is this slice's statement
+    // 3A is the NAMED creator of legacy-052, 056 and 057 (§3.7.3), so their absence is this slice's statement
     // that the decision has not landed — not an oversight by a later slice. 6A appends to 052 when it does.
-    for (const sah of ["sah-052", "sah-056", "sah-057"]) {
+    for (const legacyDefect of ["legacy-052", "legacy-056", "legacy-057"]) {
       expect(
-        files.some((f) => f.startsWith(sah)),
-        sah,
+        files.some((f) => f.startsWith(legacyDefect)),
+        legacyDefect,
       ).toBe(false);
     }
   });

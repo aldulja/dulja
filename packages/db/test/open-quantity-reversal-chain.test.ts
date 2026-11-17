@@ -3,7 +3,7 @@
 // 0037's app.document_open_quantity and the over-fulfilment guard released a reversed return outright, so once
 // the return's reversal was itself reversed (depth 2 — 0048's "an ordinary live document of its kind") the
 // receipt showed all ten units open while three were out with the vendor, and a second return was linked
-// against the three already taken (SAH-017). reverseDocument's guard follows the chain since code review 2
+// against the three already taken (LEGACY-017). reverseDocument's guard follows the chain since code review 2
 // (F1); this is the data layer's half. A claim that comes back by a status flip — reversing R1 after a second
 // return took the released quantity — is bounded too, in either order of a race, and so is one brought back by
 // a draft that joins the chain. The rollback case proves 0116.down.sql restores 0037's view and 0110's guard
@@ -355,7 +355,7 @@ describe("R9 — open quantity follows the fulfilment's reversal chain (0116)", 
     });
   });
 
-  // SAH-017's concurrency face, both ways round. Each side takes the source line's advisory lock before it
+  // LEGACY-017's concurrency face, both ways round. Each side takes the source line's advisory lock before it
   // reads, so whichever commits second sees the other's work and refuses.
   it("a link racing the reinstating reversal: the reversal waits for the link, then refuses", async () => {
     const sc = await returnedAndNetted("R9-RACE-LINK");

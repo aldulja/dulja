@@ -8,7 +8,7 @@
 
 ## Context
 
-spec:1303–1305 requires safe batch retries, good tickets surviving a bad neighbour, and a retained payload for every refused ticket. SAH-051's shared numbering race is avoided by till-created UUIDv7 `client_ref` values. The authenticated terminal supplies the actor; the server must independently verify the cashier's current authority rather than accept a stale offline snapshot.
+spec:1303–1305 requires safe batch retries, good tickets surviving a bad neighbour, and a retained payload for every refused ticket. LEGACY-051's shared numbering race is avoided by till-created UUIDv7 `client_ref` values. The authenticated terminal supplies the actor; the server must independently verify the cashier's current authority rather than accept a stale offline snapshot.
 
 ## Decision
 

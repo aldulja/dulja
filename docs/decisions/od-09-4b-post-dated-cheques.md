@@ -88,7 +88,7 @@ Four places mention the feature. None of them imports anything, and none of them
   `0c-base.json` has no `1150` row, and that the only 4B chart file allowed to exist is `4b-pdc.json`. It
   passes now, and it still passes after a "yes".
 - `tests/invariants/support/ar-ap.ts:148-149`. A comment: `1150` is absent unless OD-09 lands.
-- `tests/regression/sah-041.test.ts:167-168`. This test names `pdc` among the tables on which `app_rw` must
+- `tests/regression/legacy-041.test.ts:167-168`. This test names `pdc` among the tables on which `app_rw` must
   hold no DELETE. With no table the check passes trivially. After a "yes" it becomes a real check.
 - `scripts/check/contracts-4b-amendments.sh:35`. This checks that amendment 8's `1150` row is in the
   contracts document. That row stays under either answer (below).
@@ -189,7 +189,7 @@ does change:
     becomes free for 4A's credit-control contract migration.
   - Against the two rules above, taking 0051 for that migration would be a register question for the owner
     under §3.4.1's ⚠️ proposal for branches that are not slices. It is not a number either record can take.
-- **Tree.** Of the four mentions above, the `sah-041` IN list and the two comments can be tidied in the same
+- **Tree.** Of the four mentions above, the `legacy-041` IN list and the two comments can be tidied in the same
   PR. `permission-phase4b.test.ts`'s allowance for `4b-pdc.json` becomes "no 4B chart file at all".
 
 ## What does not change under either answer

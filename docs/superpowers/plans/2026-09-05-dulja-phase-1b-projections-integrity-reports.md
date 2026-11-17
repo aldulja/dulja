@@ -4,11 +4,11 @@
 
 **Goal:** Close Phase 1 by making the ledger *provably* correct and *readable* — a nightly integrity job that rebuilds `account_balance` from `ledger_entry` and compares it row for row, the three invariant suites, the two minimal reports (`accounting.trial_balance`, `accounting.ledger`), the three back-office screens, the month-end job, and the first PITR restore drill written up as a runbook.
 
-**Architecture:** Everything that *checks* the ledger lives in one new directory, `packages/db/src/integrity/`, as `withTenant`-scoped read functions with no I/O of their own; `apps/worker` supplies the two pg-boss handlers that call them and the incident path. Everything that *reads* the ledger for a human lives in `packages/db/src/reports/`, as named `withTenant` read queries — never SQL text from a client (test 27) — behind two Hono routes in `apps/api/src/routes/accounting/reports.ts`. The back office adds three screens and two report views against those routes. Nothing in this slice writes to a ledger, movement or projection table: the integrity job is a *detector*, never a repairer (the direct answer to SAH-079).
+**Architecture:** Everything that *checks* the ledger lives in one new directory, `packages/db/src/integrity/`, as `withTenant`-scoped read functions with no I/O of their own; `apps/worker` supplies the two pg-boss handlers that call them and the incident path. Everything that *reads* the ledger for a human lives in `packages/db/src/reports/`, as named `withTenant` read queries — never SQL text from a client (test 27) — behind two Hono routes in `apps/api/src/routes/accounting/reports.ts`. The back office adds three screens and two report views against those routes. Nothing in this slice writes to a ledger, movement or projection table: the integrity job is a *detector*, never a repairer (the direct answer to LEGACY-079).
 
 **Tech Stack:** Bun 1.4 · TypeScript strict · PostgreSQL 18 (Testcontainers locally, Supabase on staging) · `postgres.js` tagged templates · Drizzle mirrors as the migration diff source · Hono + `@hono/zod-openapi` + Zod · pg-boss · Vitest (under Node 24) + Testcontainers · React 19 + Vite + TanStack + Tailwind in `apps/backoffice` · Playwright for the RTL/LTR parity re-run.
 
-**Spec:** `docs/spec/rebuild-spec.md` v1.2 — §3.3 (projections, spec:1204), §3.8 (`account_balance` contract and audit verification, spec:1963–1964, 2031), §3.9, §4.8 (spec:2231–2239), §4.9 (spec:2241–2247), §4.10 (spec:2249–2256), §4.11 (spec:2258–2274), §5.0 row 0.11 (spec:2321), Part V Phase 1 row (spec:2287) and the reports sequencing note (spec:2300), Part VI tests 2, 9, 24 (spec:2420, 2427, 2442), Part I SAH-001, 002, 049, 070, 079, 081.
+**Spec:** `docs/spec/rebuild-spec.md` v1.2 — §3.3 (projections, spec:1204), §3.8 (`account_balance` contract and audit verification, spec:1963–1964, 2031), §3.9, §4.8 (spec:2231–2239), §4.9 (spec:2241–2247), §4.10 (spec:2249–2256), §4.11 (spec:2258–2274), §5.0 row 0.11 (spec:2321), Part V Phase 1 row (spec:2287) and the reports sequencing note (spec:2300), Part VI tests 2, 9, 24 (spec:2420, 2427, 2442), Part I LEGACY-001, 002, 049, 070, 079, 081.
 
 ## Assumptions and contracts (from docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md)
 
@@ -18,7 +18,7 @@
 - **Interfaces consumed:** §4.1 (the whole Plan 0A surface), §4.2.2 `withTenant`/`TenantContext`/`systemContext`, §4.2.3 `AppEnv`/`Logger`, §4.2.4 error envelope, `AppError(code, detail, extra?)` and `ERRORS`, §4.2.5 `PERMISSION`/`requirePermission`/`RoleSeed`/`ROLES`, §4.2.6 `JOBS`/`JobEnvelope` (from `@dulja/db`) and `JobHandler`/`registerHandler` (from `apps/worker/src/handler.ts`), §4.2.7 `RouteModule`/`ROUTES`/`createApp`/`PROBES`, §4.2.8 common Zod schemas and the cursor grammar, §4.2.12 `startApi`, §4.3.1 `postDocument`, §4.3.2 the fixed algorithm (steps 5, 8, 10, 12), §4.3.3 `account_balance` DDL, `MERGE` and the rebuild, §4.3.4 `document_line`, §4.3.5 `document.posting_seq`, §4.16.1 the report-code register, §4.17 the `fixtures.ts` register.
 - **Interfaces produced:** §3.5.2 the `relkind_partition` linter rule; §4.3.3's rebuild-and-compare as executable code; the report codes §4.16.1 assigns 1B (`accounting.trial_balance`, `accounting.ledger`); the `accounting.report.read` catalogue entry (§3.6.2); the `accounting.ledger.integrity_check` and `accounting.period.month_end` handlers for the two `JOBS` names §4.2.6 assigns 1B.
 - **Owner decisions:** **OD-19** (Supabase organisation access, PITR billing — spec:2398) → **Task 12** only, isolated, with its stated local equivalent; default: the drill runs against Testcontainers. **OD-24** (screenshots + a two-minute operator description before any screen — spec:79, 108, 2408) → **Task 11** only, isolated; default: the screen task is blocked, not the slice. No other OD item touches 1B. This plan decides none of them (contracts §2.12).
-- **Part VI tests owned / re-run:** owns **2** (deterministic projections, for `account_balance`), **9** (period lock — this slice ships the background-job path; 1A holds the API and admin paths, 9B the import path), **24** (restore drill). Re-runs **13** (the audit-chain walk as a job) and **23** (screens and both text directions). **§3.0.4 rows owned:** spec:1040 (Accounting core — closed here by the integrity checker; 1A contributes). **Regression files created / appended:** appends to `sah-001`, `sah-002`, `sah-049`, `sah-070`, `sah-079`, `sah-081`. **No file is created by this slice** — see *Contract deviations recorded here* below.
+- **Part VI tests owned / re-run:** owns **2** (deterministic projections, for `account_balance`), **9** (period lock — this slice ships the background-job path; 1A holds the API and admin paths, 9B the import path), **24** (restore drill). Re-runs **13** (the audit-chain walk as a job) and **23** (screens and both text directions). **§3.0.4 rows owned:** spec:1040 (Accounting core — closed here by the integrity checker; 1A contributes). **Regression files created / appended:** appends to `legacy-001`, `legacy-002`, `legacy-049`, `legacy-070`, `legacy-079`, `legacy-081`. **No file is created by this slice** — see *Contract deviations recorded here* below.
 - **Shared namespaces this slice writes into:** document-type codes (§4.14) **none**. Account codes (§4.15) **none seeded into a pack and none named by a policy** — the reports read whatever accounts the tenant has, and the only fixture accounts a posting uses are Plan 0A's `1000` and `4000` (0C seeds the real chart). Two test-only leaf codes, **`1900`** (Task 4's orphan-projection row) and **`1960`** (Task 6's cold-start concurrency row), are created through `seedAccount` inside two invariant suites and are deliberately outside the register, which covers seed-pack and policy literals only (hazard 32's mechanical test is "the string appears in a seed file or a policy", and neither does). Report codes (§4.16.1) **`accounting.trial_balance` and `accounting.ledger`**, both module `accounting`, both gated by `accounting.report.read`; `DatasetId` members (§4.16.2) **none** — 7A creates `packages/db/src/reports/datasets.ts` and this slice does not. `fixtures.ts` helpers (§4.17) **none** — §4.17 assigns 1B no helper, so `packages/db/test/fixtures.ts` is not touched; the one helper these tests need lives in the test tier at `tests/invariants/support/post-journal.ts`.
 - **Never re-decide:** D1–D27 (spec:114–142); every name in the contracts document is frozen — a needed change goes to that document first.
 - **Contracts version:** 2026-09-05.
@@ -70,7 +70,7 @@ Every assumption below is stated so a reviewer can reject it in one place instea
 
 ### Contract deviations recorded here (each needs a one-line amendment to the contracts document)
 
-- **`sah-070` is an append, not a create.** The 1B card says "creates sah-070 (report filter indexes)", but the 0B card lists `070` among the twenty-one thin files 0B creates for Plan 0A-proven defects, and contracts §3.7.3's rule is "the first slice in execution order that touches a defect creates the file". 0B always precedes 1B (§6.3), so **Task 9 appends** `describe("SAH-070 … — 1B", …)` to the existing `tests/regression/sah-070.test.ts` and creates nothing. Amend the 1B card's last line to "appends to sah-001, 002, 049, 070, 079, 081".
+- **`legacy-070` is an append, not a create.** The 1B card says "creates legacy-070 (report filter indexes)", but the 0B card lists `070` among the twenty-one thin files 0B creates for Plan 0A-proven defects, and contracts §3.7.3's rule is "the first slice in execution order that touches a defect creates the file". 0B always precedes 1B (§6.3), so **Task 9 appends** `describe("LEGACY-070 … — 1B", …)` to the existing `tests/regression/legacy-070.test.ts` and creates nothing. Amend the 1B card's last line to "appends to legacy-001, 002, 049, 070, 079, 081".
 - **§4.2.6's Rules paragraph and its `JobHandler` signature disagree about who iterates `pgboss.tenant_registry`.** The Rules sentence (§4.2.6, the paragraph beginning "Rules: every handler runs as the tenant's **system principal**") says "their handlers iterate `pgboss.tenant_registry` … running each tenant's work under that tenant's `systemContext`"; the frozen signature in the same section's `apps/worker/src/handler.ts` code block is `(sql, job, ctx: TenantContext /* systemContext(sql, tenantId, requestId) */) => Promise<void>` — one tenant's context, singular, with no way to express a fan-out. **The signature wins**, because it is the code block and §4 says a code block is the contract; 0D's `runJob(sql, name, job)` resolves the tenant and hands the handler that triple, and 0D's own `eachTenant(sql, fn)` is where the fan-out lives. This plan's two handlers therefore do **one tenant's** work and never read `pgboss.tenant_registry`. Amend the Rules sentence to read "the scheduled dispatcher iterates `pgboss.tenant_registry` … and invokes each handler once per tenant under that tenant's `systemContext`". If 0D shipped the other reading, the change is one file: `apps/worker/src/handlers/accounting.ts` wraps each handler body in a loop over the registry, and no interface in this plan moves. (Line numbers are deliberately not cited: the contracts document is edited continuously and its line numbers shift.)
 - **§4.16.3 names two of the three files that carry the pinned `projections.checked` assertion.** Its sentence is "1B's two assertions on that array — in `tests/invariants/audit-chain.test.ts` and `apps/worker/test/handlers/integrity-check.test.ts` — are updated in the same PR as the registration". Both of those files do carry one (Task 5 Step 1 and Task 6 Step 2), and so does a **third**: `tests/invariants/projection-rebuild.test.ts`, whose registry assertion `expect(projectionChecks().map((c) => c.name)).toEqual(["account_balance"])` (Task 4 Step 1) goes red on exactly the same 2B commit. All three carry a comment saying so. Amend §4.16.3's sentence to "1B's **three** assertions on that array — in `tests/invariants/projection-rebuild.test.ts`, `tests/invariants/audit-chain.test.ts` and `apps/worker/test/handlers/integrity-check.test.ts`".
 - **§3.1's `tests` tier gains a second allowance.** §3.1 grants the `tests` tier "any package and `apps/api` **only** through its exported `createApp()`". Task 8 needs the *real* month-end handler to prove test 9's job path, so it widens the rule to admit `apps/worker/src/handlers/**` — pure handler factories, no server, no pg-boss, no network, the same shape as `createApp()`. Amend §3.1's `tests` row to "any package, `apps/api` through its exported `createApp()`, and `apps/worker/src/handlers/**`". This is a fifth amendment beside the four in Self-Review §6, and it is listed there too.
@@ -86,15 +86,15 @@ Copied verbatim from the spec. Every task's requirements implicitly include this
 **Never** (spec:97–104), at any phase, for any reason:
 - write to a ledger or movement table outside the posting service;
 - represent money as a float, anywhere, including in TypeScript;
-- build SQL by string concatenation (SAH-036/037/069);
-- issue DDL from application code (SAH-053);
-- disable an invariant, constraint or trigger "temporarily" (SAH-027, 041, 053);
-- gate an audit write on any flag (SAH-030);
+- build SQL by string concatenation (LEGACY-036/037/069);
+- issue DDL from application code (LEGACY-053);
+- disable an invariant, constraint or trigger "temporarily" (LEGACY-027, 041, 053);
+- gate an audit write on any flag (LEGACY-030);
 - hard-code a package version into a source file — the lockfile owns versions.
 
 **Always** (spec:106), for every new table: `tenant_id`, an RLS policy, `created_at`, a migration, and a test that a second tenant cannot see it. For every new endpoint: Zod schema, OpenAPI entry, idempotency on unsafe methods, and a tenant-isolation test. For every UI screen: verified in both text directions before merge.
 
-**Identifiers** (spec:2037): `uuidv7()` server-side for everything. Never a sequential integer as a public identifier; never reuse; never rewind (SAH-021).
+**Identifiers** (spec:2037): `uuidv7()` server-side for everything. Never a sequential integer as a public identifier; never reuse; never rewind (LEGACY-021).
 
 **Time and dates** (spec:2039): all timestamps `timestamptz`, stored in UTC. **`effective_date` is a `date`, entered by the user, and is the accounting date** — it is never derived from `posted_at`. Fiscal period is resolved from `effective_date` at posting and stored on the row. Hijri display is a presentation concern via `Intl`; storage is always Gregorian.
 
@@ -110,7 +110,7 @@ Copied verbatim from the spec. Every task's requirements implicitly include this
 
 **API** (spec:2055): `/v1/…`. Cursor pagination. `Idempotency-Key` header required on POST/PUT/PATCH/DELETE. `application/problem+json` errors. OpenAPI generated from Zod, committed, diffed in CI.
 
-**Migrations** (spec:2057, contracts §3.4.2–§3.4.5): one migration per PR; up file `packages/db/migrations/NNNN_<verb>_<noun>.sql` matching `/^(\d{4})_([a-z0-9_]+)\.sql$/`, hand-written down file `packages/db/migrations/NNNN.down.sql`; each file runs whole in one transaction, so no `create index concurrently`; every object the up creates has a drop in the down, in reverse dependency order; SQL keywords lowercase; section banners `-- ── N. title ───`; every statement carries a comment naming the SAH-/spec reference it serves.
+**Migrations** (spec:2057, contracts §3.4.2–§3.4.5): one migration per PR; up file `packages/db/migrations/NNNN_<verb>_<noun>.sql` matching `/^(\d{4})_([a-z0-9_]+)\.sql$/`, hand-written down file `packages/db/migrations/NNNN.down.sql`; each file runs whole in one transaction, so no `create index concurrently`; every object the up creates has a drop in the down, in reverse dependency order; SQL keywords lowercase; section banners `-- ── N. title ───`; every statement carries a comment naming the LEGACY-/spec reference it serves.
 
 **Localisation** (spec:2061) and **Logging** (spec:2063) apply verbatim; no plan widens the `no-console` override glob `packages/*/src/cli.ts`.
 
@@ -135,7 +135,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 | Path | Responsibility |
 |---|---|
 | `packages/db/migrations/0015_seed_permission_phase1b.sql` · `0015.down.sql` | the one Phase 1B permission code, `accounting.report.read` |
-| `packages/db/migrations/0016_add_ledger_report_indexes.sql` · `0016.down.sql` | the three report-filter indexes EXPLAIN shows missing (SAH-070) |
+| `packages/db/migrations/0016_add_ledger_report_indexes.sql` · `0016.down.sql` | the three report-filter indexes EXPLAIN shows missing (LEGACY-070) |
 | `packages/db/src/integrity/types.ts` | `IntegrityReport`, `LedgerImbalance`, `ProjectionMismatch`, `PeriodReopen`, `AuditChainResult`, `ProjectionCheck` — the shapes every other integrity file and the worker share |
 | `packages/db/src/integrity/balance.ts` | `checkLedgerBalance` — Σbase debit = Σbase credit per company/period and per document (spec:2246) |
 | `packages/db/src/integrity/projections.ts` | `checkAccountBalanceProjection` — the §4.3.3 rebuild-and-compare; `registerProjectionCheck` / `projectionChecks`, the registry 3A (`stock_on_hand`) and 8C (`employee_ytd`) add to |
@@ -195,7 +195,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 | `scripts/lint/rules/dependency-rule.ts` | **two** allowances, added in two tasks: `apps/*/test/**` → `tests/invariants/support/**` (Task 6 Step 1(b)) and `tests/**` → `apps/worker/src/handlers/**` (Task 8 Step 3). Each carries its reason on the line |
 | `apps/worker/tsconfig.json` (Task 6) · `apps/api/tsconfig.json` (Task 10) | one `include` entry each for `../../tests/invariants/support/**/*.ts`; no `package.json` dependency is added in this direction — that would close a cycle in the workspace graph turbo walks |
 | `tests/package.json` · `tests/tsconfig.json` | `@dulja/worker` as `workspace:*`, and one `include` entry `../apps/worker/src/handlers/**/*.ts` — no path alias, because the import is relative — so the test tier can import the real month-end handler (Task 8 explains why) |
-| `tests/regression/sah-001.test.ts` · `sah-002.test.ts` · `sah-049.test.ts` · `sah-070.test.ts` · `sah-079.test.ts` · `sah-081.test.ts` | one appended `describe(… — 1B)` block each; **no earlier block is edited** (§3.7.3) |
+| `tests/regression/legacy-001.test.ts` · `legacy-002.test.ts` · `legacy-049.test.ts` · `legacy-070.test.ts` · `legacy-079.test.ts` · `legacy-081.test.ts` | one appended `describe(… — 1B)` block each; **no earlier block is edited** (§3.7.3) |
 | `packages/contracts/openapi.json` | regenerated after the routes land |
 | `.gitignore` | `drill-capture.json` — the drill's inter-phase artifact, never committed (Task 12) |
 | `CLAUDE.md` | "Current phase" rewritten — Phase 1 complete, Phase 2 (2A) next (§3.8) |
@@ -540,7 +540,7 @@ import { checkLedgerBalance, withTenant } from "@dulja/db";
 import { seedRate, seedTenantV2, startDb, uuidv7, type Db, type Seed } from "@dulja/db/test";
 import { postJournal } from "./support/post-journal";
 
-describe("ledger balance invariant — Σbase debit = Σbase credit (spec:2246, 2419; SAH-003)", () => {
+describe("ledger balance invariant — Σbase debit = Σbase credit (spec:2246, 2419; LEGACY-003)", () => {
   let db: Db; let a: Seed; let b: Seed;
 
   beforeAll(async () => { db = await startDb(); a = await seedTenantV2(db, "Alpha"); b = await seedTenantV2(db, "Beta"); });
@@ -555,7 +555,7 @@ describe("ledger balance invariant — Σbase debit = Σbase credit (spec:2246, 
     expect(result).toEqual({ byPeriod: [], byDocument: [] });
   });
 
-  it("sees only its own tenant's entries — Beta's postings never enter Alpha's totals (SAH-035)", async () => {
+  it("sees only its own tenant's entries — Beta's postings never enter Alpha's totals (LEGACY-035)", async () => {
     await postJournal(db, b, [{ account: b.cash, debit: "999.0000" }, { account: b.sales, credit: "999.0000" }]);
     const result = await withTenant(db.rw, await ctxFor(a), (tx) => checkLedgerBalance(tx));
     expect(result).toEqual({ byPeriod: [], byDocument: [] });
@@ -704,7 +704,7 @@ export interface LedgerBalanceOptions {
  * The ledger-integrity SLI of spec:2246: "Σdebit = Σcredit per tenant/period/company".
  * The tenant half is RLS — this runs inside withTenant, so app.ledger_entry already shows one tenant's
  * rows and no query below mentions tenant_id (contracts §4.2.2). That is the structural answer to
- * SAH-001, where the aggregate was keyed without the tenant.
+ * LEGACY-001, where the aggregate was keyed without the tenant.
  *
  * The comparison is in BASE amounts. A revaluation journal legitimately balances only in base
  * (plan0A:2078), and base is what the deferred ledger_entry_balanced constraint checks per document;
@@ -815,7 +815,7 @@ EOF
 
 **Files:**
 - Create: `packages/db/src/integrity/projections.ts`, `packages/db/src/integrity/index.ts`, `tests/invariants/projection-rebuild.test.ts`, `docs/adr/0024-ledger-integrity-check-composition.md`
-- Modify: `packages/db/src/index.ts`, `tests/regression/sah-001.test.ts`, `tests/regression/sah-002.test.ts`, `tests/regression/sah-049.test.ts`
+- Modify: `packages/db/src/index.ts`, `tests/regression/legacy-001.test.ts`, `tests/regression/legacy-002.test.ts`, `tests/regression/legacy-049.test.ts`
 - Test: `tests/invariants/projection-rebuild.test.ts`
 
 **Interfaces:**
@@ -835,7 +835,7 @@ import { checkAccountBalanceProjection, projectionChecks, reverseDocument, withT
 import { seedAccount, seedTenantV2, startDb, uuidv7, type Db, type Seed } from "@dulja/db/test";
 import { postJournal } from "./support/post-journal";
 
-describe("deterministic projections — acceptance test 2 (spec:2420; SAH-001, 002, 013, 049, 050)", () => {
+describe("deterministic projections — acceptance test 2 (spec:2420; LEGACY-001, 002, 013, 049, 050)", () => {
   let db: Db; let a: Seed; let b: Seed;
 
   beforeAll(async () => { db = await startDb(); a = await seedTenantV2(db, "Alpha"); b = await seedTenantV2(db, "Beta"); });
@@ -874,13 +874,13 @@ describe("deterministic projections — acceptance test 2 (spec:2420; SAH-001, 0
     expect(await check(a)).toEqual([]);
   });
 
-  it("Beta's postings never enter Alpha's rebuild (SAH-001 — the tenant key is RLS, not a column in the query)", async () => {
+  it("Beta's postings never enter Alpha's rebuild (LEGACY-001 — the tenant key is RLS, not a column in the query)", async () => {
     await postJournal(db, b, [{ account: b.cash, debit: "5000.0000" }, { account: b.sales, credit: "5000.0000" }]);
     expect(await check(a)).toEqual([]);
     expect(await check(b)).toEqual([]);
   });
 
-  it("a hand-edited amount is reported as amount_differs, naming the column and both values (SAH-002)", async () => {
+  it("a hand-edited amount is reported as amount_differs, naming the column and both values (LEGACY-002)", async () => {
     const ctx = await ctxFor(a);
     await withTenant(db.rw, ctx, (tx) => tx`
       update app.account_balance set base_debit = base_debit + 1
@@ -932,7 +932,7 @@ describe("deterministic projections — acceptance test 2 (spec:2420; SAH-001, 0
     expect(await check(a)).toEqual([]);
   });
 
-  it("the check never repairs — running it twice leaves account_balance byte-identical (SAH-079)", async () => {
+  it("the check never repairs — running it twice leaves account_balance byte-identical (LEGACY-079)", async () => {
     const before = await snapshot(a);
     await check(a);
     await check(a);
@@ -941,7 +941,7 @@ describe("deterministic projections — acceptance test 2 (spec:2420; SAH-001, 0
 });
 ```
 
-What the two consecutive `check(a)` calls in the last case prove is exactly what SAH-079 asks for and
+What the two consecutive `check(a)` calls in the last case prove is exactly what LEGACY-079 asks for and
 nothing more: **two runs leave `app.account_balance` byte-identical**, so the checker is a detector and
 never a repairer. They are deliberately *not* a proof that the scratch table is dropped between runs —
 each `check` is its own `withTenant` transaction, so `on commit drop` has already fired before the second
@@ -1009,7 +1009,7 @@ const AMOUNT_COLUMNS = ["debit", "credit", "base_debit", "base_credit"] as const
  * and the comparison is exact — "bit-identically" in the Phase 1 DoD means exactly this.
  *
  * Runs inside withTenant, so both sides are already one tenant's rows (contracts §4.2.2) — the
- * structural answer to SAH-001, where the aggregate was keyed without the tenant.
+ * structural answer to LEGACY-001, where the aggregate was keyed without the tenant.
  *
  * `create temporary table` needs only the database-level TEMPORARY privilege Postgres grants PUBLIC;
  * Plan 0A revokes object creation in schema `app` from app_rw (plan0A:2498) and nothing else.
@@ -1131,10 +1131,10 @@ Expected: PASS, nine cases (the eight of Step 1's block plus the re-entrancy cas
 
 - [ ] **Step 7: Append the three regression blocks**
 
-Append to `tests/regression/sah-001.test.ts` (0B created it — never edit an earlier `describe`, §3.7.3):
+Append to `tests/regression/legacy-001.test.ts` (0B created it — never edit an earlier `describe`, §3.7.3):
 
 ```ts
-describe("SAH-001 Denormalised currency balances are updated without the tenant key — 1B", () => {
+describe("LEGACY-001 Denormalised currency balances are updated without the tenant key — 1B", () => {
   let db: Db; let a: Seed; let b: Seed;
   beforeAll(async () => { db = await startDb(); a = await seedTenantV2(db, "Alpha"); b = await seedTenantV2(db, "Beta"); });
   afterAll(async () => { await db.stop(); });
@@ -1159,10 +1159,10 @@ describe("SAH-001 Denormalised currency balances are updated without the tenant 
 });
 ```
 
-Append to `tests/regression/sah-002.test.ts`:
+Append to `tests/regression/legacy-002.test.ts`:
 
 ```ts
-describe("SAH-002 The upsert never fires on UPDATE, so re-keying a posting destroys the amount — 1B", () => {
+describe("LEGACY-002 The upsert never fires on UPDATE, so re-keying a posting destroys the amount — 1B", () => {
   let db: Db; let a: Seed;
   beforeAll(async () => { db = await startDb(); a = await seedTenantV2(db, "Alpha"); });
   afterAll(async () => { await db.stop(); });
@@ -1186,10 +1186,10 @@ describe("SAH-002 The upsert never fires on UPDATE, so re-keying a posting destr
 });
 ```
 
-Append to `tests/regression/sah-049.test.ts`:
+Append to `tests/regression/legacy-049.test.ts`:
 
 ```ts
-describe("SAH-049 Aggregate tables have no unique key, so the upsert race creates duplicates — 1B", () => {
+describe("LEGACY-049 Aggregate tables have no unique key, so the upsert race creates duplicates — 1B", () => {
   let db: Db; let a: Seed;
   beforeAll(async () => { db = await startDb(); a = await seedTenantV2(db, "Alpha"); });
   afterAll(async () => { await db.stop(); });
@@ -1237,7 +1237,7 @@ Four read functions in `packages/db/src/integrity/`, each usable on its own, com
 `runIntegrityCheck` into one `IntegrityReport`. Projections join through
 `registerProjectionCheck({ name, run })` — the same registry shape as `registerReconcilableSource`
 (contracts §4.8.3) — so no later slice edits this slice's file. The job never writes to a projection:
-it detects and records an incident. SAH-079's root cause is a system that repaired instead of detecting.
+it detects and records an incident. LEGACY-079's root cause is a system that repaired instead of detecting.
 
 ## Consequences
 
@@ -1253,7 +1253,7 @@ PostgreSQL's `MERGE` can raise a **unique violation (23505)** when two transacti
 the `when not matched then insert` branch for the *same brand-new* key. §4.3.3's `account_balance`
 MERGE has that shape and §4.2.2's `withTenant` retries only `40P01`/`40001`. The warm-key path — two
 posts to a key that already exists — takes `when matched then update`, locks the row and is safe, and
-that is the path SAH-049 describes. The cold-start race is nevertheless real for the first document
+that is the path LEGACY-049 describes. The cold-start race is nevertheless real for the first document
 ever posted to an (account, period, currency) from two connections at once. **This ADR proposes no
 change** (spec:95 — a money-semantics change is proposed and asked, never implemented first): the
 proposal is either to add `23505` to the `withTenant` retry set in contracts §4.2.2, or to have
@@ -1268,8 +1268,8 @@ Expected: PASS.
 
 ```bash
 git add packages/db/src/integrity/projections.ts packages/db/src/integrity/index.ts packages/db/src/index.ts \
-        tests/invariants/projection-rebuild.test.ts tests/regression/sah-001.test.ts \
-        tests/regression/sah-002.test.ts tests/regression/sah-049.test.ts \
+        tests/invariants/projection-rebuild.test.ts tests/regression/legacy-001.test.ts \
+        tests/regression/legacy-002.test.ts tests/regression/legacy-049.test.ts \
         docs/adr/0024-ledger-integrity-check-composition.md
 git commit -m "$(cat <<'EOF'
 feat(db): rebuild account_balance and compare row for row (acceptance test 2) [1B T4]
@@ -1291,7 +1291,7 @@ EOF
 
 **Files:**
 - Create: `packages/db/src/integrity/audit-chain.ts`, `packages/db/src/integrity/period-reopen.ts`, `tests/invariants/audit-chain.test.ts`
-- Modify: `packages/db/src/integrity/index.ts`, `packages/db/src/index.ts`, `tests/regression/sah-079.test.ts`
+- Modify: `packages/db/src/integrity/index.ts`, `packages/db/src/index.ts`, `tests/regression/legacy-079.test.ts`
 - Test: `tests/invariants/audit-chain.test.ts`
 
 **Interfaces:**
@@ -1551,7 +1551,7 @@ export interface IntegrityCheckOptions {
 /**
  * One tenant's nightly integrity run (spec:2246 — the SLI "single most valuable thing you can build").
  * Every part is a READ; the only write in this module is recordIntegrityIncident below, and it writes to
- * app.audit_log and nothing else. The job never repairs a projection: SAH-079 is a system that
+ * app.audit_log and nothing else. The job never repairs a projection: LEGACY-079 is a system that
  * accumulated forty-four repair objects instead of detecting drift at source.
  *
  * The caller supplies the transaction, so a handler can run this and the incident insert in one
@@ -1642,10 +1642,10 @@ export {
 Run: `bun run --cwd tests test -- invariants/audit-chain.test.ts`
 Expected: PASS, six cases.
 
-- [ ] **Step 8: Append the regression block to `tests/regression/sah-079.test.ts`**
+- [ ] **Step 8: Append the regression block to `tests/regression/legacy-079.test.ts`**
 
 ```ts
-describe("SAH-079 44 repair objects, two parallel idempotency ledgers, and one broken guard — 1B", () => {
+describe("LEGACY-079 44 repair objects, two parallel idempotency ledgers, and one broken guard — 1B", () => {
   let db: Db; let a: Seed;
   beforeAll(async () => { db = await startDb(); a = await seedTenantV2(db, "Alpha"); });
   afterAll(async () => { await db.stop(); });
@@ -1685,7 +1685,7 @@ describe("SAH-079 44 repair objects, two parallel idempotency ledgers, and one b
 ```bash
 git add packages/db/src/integrity/audit-chain.ts packages/db/src/integrity/period-reopen.ts \
         packages/db/src/integrity/index.ts packages/db/src/index.ts \
-        tests/invariants/audit-chain.test.ts tests/regression/sah-079.test.ts
+        tests/invariants/audit-chain.test.ts tests/regression/legacy-079.test.ts
 git commit -m "$(cat <<'EOF'
 feat(db): audit-chain walk, period-reopen report and runIntegrityCheck [1B T5]
 
@@ -2051,7 +2051,7 @@ describe("account_balance under concurrency — the pin behind ADR 0024's open q
     const rejected = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
     // PostgreSQL's MERGE takes `when not matched then insert` in BOTH sessions for a key that does not
     // yet exist, so one may raise 23505. §4.2.2's withTenant retries only 40P01/40001. Whatever happens,
-    // a DUPLICATE ROW must be impossible — that is what SAH-049 was, and the primary key forbids it.
+    // a DUPLICATE ROW must be impossible — that is what LEGACY-049 was, and the primary key forbids it.
     expect(rejected.length).toBeLessThanOrEqual(1);
     for (const r of rejected) expect(String(r.reason)).toMatch(/23505|duplicate key|ERR_CONFLICT_UNIQUE/);
 
@@ -2403,7 +2403,7 @@ const silentLogger = (() => {
   return logger as unknown as import("@dulja/contracts").Logger;
 })();
 
-describe("period lock — acceptance test 9, the background-job path (spec:2427; SAH-031, 041)", () => {
+describe("period lock — acceptance test 9, the background-job path (spec:2427; LEGACY-031, 041)", () => {
   let db: Db; let a: Seed;
 
   beforeAll(async () => { db = await startDb(); a = await seedTenantV2(db, "Alpha"); });
@@ -2564,18 +2564,18 @@ EOF
 
 ---
 
-### Task 9: Migration 0016 — the report-filter indexes (SAH-070)
+### Task 9: Migration 0016 — the report-filter indexes (LEGACY-070)
 
 **Files:**
 - Create: `packages/db/migrations/0016_add_ledger_report_indexes.sql`, `packages/db/migrations/0016.down.sql`, `packages/db/test/report-indexes.test.ts`
-- Modify: `packages/db/src/schema/account_balance.ts`, `packages/db/src/schema/fiscal_period.ts`, `packages/db/src/schema/document.ts`, `tests/regression/sah-070.test.ts`
+- Modify: `packages/db/src/schema/account_balance.ts`, `packages/db/src/schema/fiscal_period.ts`, `packages/db/src/schema/document.ts`, `tests/regression/legacy-070.test.ts`
 - Test: `packages/db/test/report-indexes.test.ts`
 
 **Interfaces:**
 - Consumes: `app.account_balance` (§4.3.3, 1A), `app.fiscal_period` and `app.document` (plan0A:1467, 1773); `listPeriodsAwaitingClose` (Task 7); `startDb`, `seedTenantV2`, the test `withTenant` (§4.1).
 - Produces: three btree indexes — `account_balance_company_period_idx (company_id, fiscal_period_id, currency)`, `fiscal_period_company_status_ends_idx (company_id, status, ends_on)`, `document_company_period_status_idx (company_id, fiscal_period_id, status)`. 7B's EXPLAIN sweep re-runs this test's structural assertion over the whole catalogue.
 
-**Which indexes, and why exactly these three.** SAH-070 is "index coverage is thin on exactly the columns reports filter by" — `Journal`, the legacy general-ledger header, had one declared index and it was not on date. Plan 0A already answered the ledger half: `ledger_entry_account_date_idx (company_id, account_id, effective_date)` and `ledger_entry_company_date_idx (company_id, effective_date)` (plan0A:2038–2039). What this slice's own readers add, and what nothing covers today:
+**Which indexes, and why exactly these three.** LEGACY-070 is "index coverage is thin on exactly the columns reports filter by" — `Journal`, the legacy general-ledger header, had one declared index and it was not on date. Plan 0A already answered the ledger half: `ledger_entry_account_date_idx (company_id, account_id, effective_date)` and `ledger_entry_company_date_idx (company_id, effective_date)` (plan0A:2038–2039). What this slice's own readers add, and what nothing covers today:
 
 | Reader | Filter | Cover today | Added |
 |---|---|---|---|
@@ -2609,7 +2609,7 @@ async function indexColumns(db: Db, table: string): Promise<Record<string, strin
   return Object.fromEntries(rows.map((r) => [r.index_name, r.cols]));
 }
 
-describe("report filter indexes — SAH-070, migration 0016", () => {
+describe("report filter indexes — LEGACY-070, migration 0016", () => {
   let db: Db; let s: Seed;
   beforeAll(async () => { db = await startDb(); s = await seedTenant(db, "Alpha"); });
   afterAll(async () => { await db.stop(); });
@@ -2706,7 +2706,7 @@ Expected: a generated SQL file containing exactly three `CREATE INDEX` statement
 Rename the generated file into this slice's range and hand-edit it to the text below (lowercase keywords, section banner, one comment per statement naming its reference — contracts §3.4.3):
 
 ```sql
--- ── 1. Report filter indexes (SAH-070: "index coverage is thin on exactly the columns reports
+-- ── 1. Report filter indexes (LEGACY-070: "index coverage is thin on exactly the columns reports
 --       filter by"; spec:766–784) ───────────────────────────────────────────────────────────────
 -- Plan 0A already indexed the ledger itself (ledger_entry_account_date_idx, ledger_entry_company_date_idx —
 -- plan0A:2038–2039). These three cover the readers this slice adds. `create index concurrently` is not
@@ -2744,12 +2744,12 @@ drop index if exists app.account_balance_company_period_idx;
 Run: `bun run --cwd packages/db test -- test/report-indexes.test.ts test/privileges.test.ts`
 Expected: PASS. `privileges.test.ts` matters here: `schemaFingerprint` includes `pg_indexes`, so the up → down → up assertion (§3.4.6) proves the down really removes all three.
 
-- [ ] **Step 7: Append the regression block to `tests/regression/sah-070.test.ts`**
+- [ ] **Step 7: Append the regression block to `tests/regression/legacy-070.test.ts`**
 
-**This is an append, not a create.** The 1B catalogue card says "creates sah-070", but the 0B card lists `070` among the twenty-one thin files 0B creates for Plan 0A-proven defects, and §3.7.3's rule is that the first slice in execution order creates the file. 0B precedes 1B, so 0B created it and this slice appends its own `describe` block without touching the earlier one.
+**This is an append, not a create.** The 1B catalogue card says "creates legacy-070", but the 0B card lists `070` among the twenty-one thin files 0B creates for Plan 0A-proven defects, and §3.7.3's rule is that the first slice in execution order creates the file. 0B precedes 1B, so 0B created it and this slice appends its own `describe` block without touching the earlier one.
 
 ```ts
-describe("SAH-070 Index coverage is thin on exactly the columns reports filter by — 1B", () => {
+describe("LEGACY-070 Index coverage is thin on exactly the columns reports filter by — 1B", () => {
   let db: Db; let s: Seed;
   beforeAll(async () => { db = await startDb(); s = await seedTenant(db, "Alpha"); });
   afterAll(async () => { await db.stop(); });
@@ -2793,14 +2793,14 @@ describe("SAH-070 Index coverage is thin on exactly the columns reports filter b
 ```bash
 git add packages/db/migrations/0016_add_ledger_report_indexes.sql packages/db/migrations/0016.down.sql \
         packages/db/src/schema/account_balance.ts packages/db/src/schema/fiscal_period.ts \
-        packages/db/src/schema/document.ts packages/db/test/report-indexes.test.ts tests/regression/sah-070.test.ts
+        packages/db/src/schema/document.ts packages/db/test/report-indexes.test.ts tests/regression/legacy-070.test.ts
 git commit -m "$(cat <<'EOF'
 feat(db): index the columns the Phase 1 reports and jobs filter by [1B T9]
 
 Migration 0016 adds account_balance (company_id, fiscal_period_id, currency),
 fiscal_period (company_id, status, ends_on) — a sequential scan until now — and
 document (company_id, fiscal_period_id, status). Generated from the Drizzle
-mirrors per ADR-0002 and hand-edited. SAH-070.
+mirrors per ADR-0002 and hand-edited. LEGACY-070.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 EOF
@@ -3602,9 +3602,9 @@ EOF
 
 ### Task 11: **OD-24 (isolated)** — the back-office screens and the two report views
 
-> **This task is the only place OD-24 (spec:79, 108, 2408 — screenshots of the equivalent Sahlisoft screen and a two-minute description of how a fast operator uses it) is touched.** Every other task in this plan is green without it.
+> **This task is the only place OD-24 (spec:79, 108, 2408 — screenshots of the equivalent legacy screen and a two-minute description of how a fast operator uses it) is touched.** Every other task in this plan is green without it.
 >
-> **Owner provides:** for each of *chart of accounts*, *journal entry* and *fiscal periods*, a screenshot of the Sahlisoft screen and a two-minute description of the keyboard path a fast operator takes through it. **Verify with the exact command:** `ls -1 docs/spec/screens/1b/` prints `accounts.png`, `journal-entry.png`, `periods.png` and `operator-notes.md`, and `wc -w docs/spec/screens/1b/operator-notes.md` prints at least 300.
+> **Owner provides:** for each of *chart of accounts*, *journal entry* and *fiscal periods*, a screenshot of the legacy screen and a two-minute description of the keyboard path a fast operator takes through it. **Verify with the exact command:** `ls -1 docs/spec/screens/1b/` prints `accounts.png`, `journal-entry.png`, `periods.png` and `operator-notes.md`, and `wc -w docs/spec/screens/1b/operator-notes.md` prints at least 300.
 > **Until provided:** the task does not start. spec:108 — "Do not invent workflows from this document." The layout, field order and shortcut map below are the *structure* the data requires; the owner's notes decide tab order, defaults and which fields a fast operator never touches. **If the owner declines entirely:** this task alone is dropped, Task 13's DoD roll-up records the screens as outstanding, and Phase 1's other three DoD clauses still close. No other task and no source file outside `apps/backoffice/` changes.
 
 **Files:**
@@ -3949,7 +3949,7 @@ import type { AccountDto } from "../../lib/accounting-schemas";
 
 interface TreeNode { account: AccountDto; depth: number }
 
-/** Flattens the tree the API returns (built there by a recursive CTE — SAH-071, never a per-row walk). */
+/** Flattens the tree the API returns (built there by a recursive CTE — LEGACY-071, never a per-row walk). */
 function flatten(accounts: readonly AccountDto[], parentId: string | null, depth: number): TreeNode[] {
   return accounts
     .filter((a) => a.parentId === parentId)
@@ -4516,13 +4516,13 @@ EOF
 >
 > **Owner provides:** PITR enabled on the staging Supabase project, and two connection URLs — the live staging database and, after performing the restore in Step 8's runbook, the restored one. **Verify with the exact command:**
 > `psql "$DRILL_LIVE_URL" -Atc "select current_setting('wal_level', true), current_setting('archive_mode', true)"`
-> prints `replica|on` (`logical|on` is also acceptable — Supabase enables logical replication on some plans; what the drill needs is `archive_mode = on`). 0C's `tests/regression/sah-081.test.ts` already asserts this *setting* against staging; this task asserts the *drill*.
+> prints `replica|on` (`logical|on` is also acceptable — Supabase enables logical replication on some plans; what the drill needs is `archive_mode = on`). 0C's `tests/regression/legacy-081.test.ts` already asserts this *setting* against staging; this task asserts the *drill*.
 > **Until provided:** the identical assertions run against `startDb()`, over a snapshot taken by `pg_dump` inside the container and restored into a second database, and print the identical five lines. The verdict is produced by one shared function in both modes, so the staging run adds no new assertion — only a different way of obtaining the restored database.
 > **If the owner declines entirely:** this task still merges and still runs in CI in local mode; what stays outstanding is the *staging* half of the Phase 1 DoD sentence ("has been run against staging"), which Task 13's roll-up records as outstanding with this task named as the one that closes it. No other task changes.
 
 **Files:**
 - Create: `tests/invariants/support/restore-drill.ts`, `tests/invariants/restore-drill.test.ts`, `docs/runbooks/restore-drill.md`, `docs/adr/0025-restore-drill-procedure.md`
-- Modify: `tests/regression/sah-081.test.ts`
+- Modify: `tests/regression/legacy-081.test.ts`
 - Test: `tests/invariants/restore-drill.test.ts`
 
 **Interfaces:**
@@ -4551,7 +4551,7 @@ import {
 /**
  * Acceptance test 24 (spec:2442): "Restore to an arbitrary point in time; the trial balance computed
  * from the restored ledger equals the trial balance the live system reported at that timestamp, and the
- * audit chain verifies up to that point." SAH-081: backup and restore were manual, whole-file and
+ * audit chain verifies up to that point." LEGACY-081: backup and restore were manual, whole-file and
  * destructive, and were never rehearsed.
  *
  * Three modes, one set of assertions. `DRILL_PHASE` selects; `describe.runIf` means the modes that do
@@ -4595,7 +4595,7 @@ function assertDrillVerdict(verdict: DrillVerdict, capture: DrillCapture): void 
   console.info(lines.join("\n"));                       // the five lines the runbook records
 }
 
-describe.runIf(phase === "local")("restore drill — local equivalent (acceptance test 24; SAH-081)", () => {
+describe.runIf(phase === "local")("restore drill — local equivalent (acceptance test 24; LEGACY-081)", () => {
   let db: Db; let s: Seed; let restored: Sql | undefined;
 
   beforeAll(async () => { db = await startDb(); s = await seedTenantV2(db, "Drill"); }, 180_000);
@@ -4930,15 +4930,15 @@ Two failures are worth naming because they are diagnoses, not flakes:
 - `pg_restore: error: could not execute query: ERROR: permission denied` — the restore is running as a role that is not the container superuser. `PostgreSqlContainer`'s user is a superuser; check that `c.getUsername()` is what reached the command and that no `--no-owner` was added.
 - `audit-chain: BROKEN` on the restored database while it is verified on the live one — the triggers fired during the data load. That means `pg_restore` was given `--data-only` or the schema was created separately; restore the whole dump in one pass, as Step 5 does.
 
-- [ ] **Step 7: Append the regression block to `tests/regression/sah-081.test.ts`**
+- [ ] **Step 7: Append the regression block to `tests/regression/legacy-081.test.ts`**
 
-**This is an append.** 0C creates `sah-081` for "PITR enabled" (contracts §2.1 0C card: "sah-081 (PITR enabled — the drill itself is 1B)"); 0C precedes 1B in §6.3, so the file exists and §3.7.3 forbids editing its block.
+**This is an append.** 0C creates `legacy-081` for "PITR enabled" (contracts §2.1 0C card: "legacy-081 (PITR enabled — the drill itself is 1B)"); 0C precedes 1B in §6.3, so the file exists and §3.7.3 forbids editing its block.
 
 ```ts
-describe("SAH-081 Backup and restore are manual, whole-file and destructive — 1B", () => {
+describe("LEGACY-081 Backup and restore are manual, whole-file and destructive — 1B", () => {
   it("a restore is rehearsed, not assumed: the drill's verdict has five assertions and all pass", async () => {
     // The drill itself lives in tests/invariants/restore-drill.test.ts and runs there; this block is
-    // the defect's regression face. It asserts the property SAH-081 names — that restoring is an
+    // the defect's regression face. It asserts the property LEGACY-081 names — that restoring is an
     // exercised, verified procedure with a written runbook — by requiring the runbook to exist, to
     // carry a drill log, and to name the exact verify command an operator types.
     // Vitest runs this workspace with cwd `tests/`, so every path here is relative to it — which is
@@ -4951,7 +4951,7 @@ describe("SAH-081 Backup and restore are manual, whole-file and destructive — 
 
   it("the drill is destructive to nothing: it reads the restored database and writes only its own file", async () => {
     const source = await readFile("invariants/support/restore-drill.ts", "utf8");
-    // SAH-081's second half is that the old restore overwrote the live database. Nothing in the drill
+    // LEGACY-081's second half is that the old restore overwrote the live database. Nothing in the drill
     // may write to a database at all — the only writes are the capture JSON and the scratch temp table
     // checkAccountBalanceProjection creates and drops on commit.
     for (const forbidden of ["insert into", "update app.", "delete from", "dropdb -U '${c.getUsername()}' --if-exists '${c.getDatabase()}"]) {
@@ -5082,7 +5082,7 @@ measured against and records that those targets are a proposal awaiting the owne
 
 ## Context
 
-spec:2233 asks for "RPO/RTO stated as numbers, tested quarterly by an actual restore drill (SAH-081)"
+spec:2233 asks for "RPO/RTO stated as numbers, tested quarterly by an actual restore drill (LEGACY-081)"
 and spec:2234 for restore "verified automatically, not assumed". Acceptance test 24 (spec:2442) fixes
 what verification means: the trial balance from the restored ledger equals the one the live system
 reported at that timestamp, and the audit chain verifies to that point. The Phase 1 definition of done
@@ -5127,7 +5127,7 @@ log. A stale click path in a runbook is worse than none.
 - `checkAccountBalanceProjection` is now load-bearing for two acceptance tests, 2 and 24. A change to
   its comparison key changes what a restore is allowed to be.
 - The drill writes to no database. Its only output is the capture file and the temp table Task 4's
-  check drops on commit — SAH-081's second half was a restore procedure that overwrote the live system.
+  check drops on commit — LEGACY-081's second half was a restore procedure that overwrote the live system.
 
 ## Proposal referred to the owner, not decided here
 
@@ -5143,7 +5143,7 @@ credits stays deferred (spec:2234). Nothing in the code depends on either number
 
 ```bash
 bun run --cwd tests test -- invariants/restore-drill.test.ts
-bun run --cwd tests test -- regression/sah-081.test.ts
+bun run --cwd tests test -- regression/legacy-081.test.ts
 bun run typecheck && bun run lint && bun run lint:rules
 ```
 
@@ -5152,7 +5152,7 @@ covered, in this commit.
 
 ```bash
 git add tests/invariants/support/restore-drill.ts tests/invariants/restore-drill.test.ts \
-        tests/regression/sah-081.test.ts docs/runbooks/restore-drill.md \
+        tests/regression/legacy-081.test.ts docs/runbooks/restore-drill.md \
         docs/adr/0025-restore-drill-procedure.md .gitignore
 git commit -m "$(cat <<'EOF'
 test(invariants): rehearse the restore, verify it, write it down (acceptance test 24) [1B T12]
@@ -5271,7 +5271,7 @@ _(the four-row table from Step 2, with the State column filled from the run)_
 |---|---|
 | 0021 | `document_line` base shape (1A) |
 | 0022, 0023 | _(1A's — copy their titles from `docs/adr/`)_ |
-| 0024 | The ledger-integrity check is four independent read functions and one registry; the job detects and never repairs (SAH-079) |
+| 0024 | The ledger-integrity check is four independent read functions and one registry; the job detects and never repairs (LEGACY-079) |
 | 0025 | The restore drill is two phases and one shared verdict; the local equivalent is a snapshot, not a WAL replay |
 
 ## What we are asking
@@ -5286,7 +5286,7 @@ _(the four-row table from Step 2, with the State column filled from the run)_
 4. **The cold-start `MERGE` race** referred by ADR 0024: whether `23505` joins the `withTenant` retry
    set or `postDocument` retries step 12. `tests/invariants/account-balance-concurrency.test.ts` pins
    today's behaviour so the answer is visible the day it lands.
-5. **Three amendments to the contracts document**, each one line: `sah-070` is an append for 1B, not a
+5. **Three amendments to the contracts document**, each one line: `legacy-070` is an append for 1B, not a
    create (0B creates it); the 1B card's task target of 10–12 becomes 13; and the names this slice had
    to define — listed in the plan's header and in its Self-Review §4 — join the interface registry.
 ```
@@ -5368,10 +5368,10 @@ are fixed inline above; what follows is the record.
 | Part VI **24** | 12 | **owned** |
 | Part VI 13, 23 | 5, 11 | re-runs |
 | §3.0.4 row spec:1040 | 13 | **owned**; closed by the integrity checker, recorded in the phase report |
-| SAH-001, 002, 049 | 4 | appended |
-| SAH-079 | 5 | appended — the job detects and never repairs |
-| SAH-070 | 9 | appended, not created (deviation recorded in the header) |
-| SAH-081 | 12 | appended (0C creates it — contracts §2.1 0C card) |
+| LEGACY-001, 002, 049 | 4 | appended |
+| LEGACY-079 | 5 | appended — the job detects and never repairs |
+| LEGACY-070 | 9 | appended, not created (deviation recorded in the header) |
+| LEGACY-081 | 12 | appended (0C creates it — contracts §2.1 0C card) |
 
 **Deliberately not here, with where it closes:** the import path of test 9 (9B); `ReportDefinition`s for
 the two report codes (7A/7B, same codes); `packages/db/src/reports/datasets.ts` and any `DatasetId`
@@ -5410,7 +5410,7 @@ Every name used in more than one task, checked against its definition:
 | Name | Defined | Used |
 |---|---|---|
 | `LedgerImbalance`, `ProjectionMismatch`, `AuditChainResult`, `PeriodReopen`, `ProjectionCheck`, `IntegrityReport` | T3 (`integrity/types.ts`) | T4, T5, T6, T12 |
-| `checkLedgerBalance`, `LedgerBalanceOptions` | T3 | T5 (`runIntegrityCheck`), sah-003 clause of T13's gate |
+| `checkLedgerBalance`, `LedgerBalanceOptions` | T3 | T5 (`runIntegrityCheck`), legacy-003 clause of T13's gate |
 | `postJournal`, `JournalLine`, `PostJournalOptions` | T3 (`tests/invariants/support/post-journal.ts`) | T4, T5, **T6**, T7, T8, **T10**, T12 — T6, T7 and T10 reach it from `apps/*/test/**`, which is what the `dependency-rule.ts` allowance of T6 Step 1(b) and the two tsconfig `include` entries exist for |
 | `checkAccountBalanceProjection`, `registerProjectionCheck`, `projectionChecks`, `ACCOUNT_BALANCE_CHECK` | T4 | T5, T12, and every later slice with a projection |
 | `checkAuditChain` | T5 | T6, T12 |
@@ -5427,7 +5427,7 @@ Every name used in more than one task, checked against its definition:
 | `createAccountingApi`, `AccountingClient`, `useAccountingApi` | T11 (`lib/accounting-api.ts`) | T11's five screens |
 | `PageHeader`, `Modal`, `ReportTable`, `ReportColumn` | T11 (`src/components/`) | T11's five screens; every later UI slice that re-runs test 23 |
 | `AccountsRoute`, `JournalEntryRoute`, `PeriodsRoute`, `TrialBalanceRoute`, `LedgerRoute` | T11 | `apps/backoffice/src/router.tsx` |
-| `DrillCapture`, `DrillVerdict`, `VerifyOptions`, `captureDrillPoint`, `verifyRestore`, `formatDrillVerdict`, `writeCapture`, `readCapture`, `snapshotDatabase`, `restoreDatabase` | T12 | T12's test, the runbook, sah-081 |
+| `DrillCapture`, `DrillVerdict`, `VerifyOptions`, `captureDrillPoint`, `verifyRestore`, `formatDrillVerdict`, `writeCapture`, `readCapture`, `snapshotDatabase`, `restoreDatabase` | T12 | T12's test, the runbook, legacy-081 |
 | Plan 0A `Seed.cash`, `Seed.sales`, `Seed.period`, `Seed.company`, `Seed.human`, `Seed.system`, `Db.container`, `Db.url` | plan0A | T3, T4, T5, T7, T8, T12 |
 
 **Nine mismatches were found and fixed inline.** The first four are the original pass; the last five come
@@ -5566,8 +5566,8 @@ a row that is already in §4.18.
    `systemContext`". 0D's shipped `apps/worker/src/index.ts` is already written that way — it schedules
    `${name}.fanout` and calls `eachTenant` — so this amendment records what the code does. Recorded in full
    in the header's *Contract deviations* block.
-2. **MERGED (§4.18 round 1) — `sah-070` is an append for 1B, not a create** (0B creates it; §3.7.3's
-   first-in-execution-order rule). The 1B card already reads "appends to sah-001, 002, 049, **070**, 079,
+2. **MERGED (§4.18 round 1) — `legacy-070` is an append for 1B, not a create** (0B creates it; §3.7.3's
+   first-in-execution-order rule). The 1B card already reads "appends to legacy-001, 002, 049, **070**, 079,
    081". Nothing to do.
 3. **OUTSTANDING — the 1B card's target size becomes 13 tasks**, not 10–12. The three above the target are
    the two isolated owner-gate tasks §2.0 itself requires (T11, T12) and the `relkind_partition` linter
@@ -5642,7 +5642,7 @@ exceptions and one warning:
 
 **Before Task 1 starts.** Merge the **five outstanding** contracts amendments of Self-Review §6 — numbers
 **1, 3, 5, 6 and 7**. Numbers **2 and 4 are already folded into §4.18 round 1** and must not be re-applied:
-the 1B card already reads "appends to sah-001, 002, 049, 070, 079, 081", and §4.16.3 and §4.17.1 already
+the 1B card already reads "appends to legacy-001, 002, 049, 070, 079, 081", and §4.16.3 and §4.17.1 already
 carry this slice's registered names (all that is left inside number 4 is the `DRILL_*` test-tier note and
 the two document paths).
 

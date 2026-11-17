@@ -56,7 +56,7 @@ export interface ReceiptPayload {
  *
  * `documentNumber` is `null` until the server has acknowledged the ticket and the till has learned the number
  * from a `TicketResult`. A receipt printed before that carries the client ref, which is what the shop quotes
- * on the phone — and printing a *guessed* number would be SAH-051 in a new place.
+ * on the phone — and printing a *guessed* number would be LEGACY-051 in a new place.
  *
  * `catalogueRevision` and `catalogueAt` are on the receipt because spec:1356 asks the indicator to be honest
  * and a printed receipt outlives the screen: a customer disputing a price and a manager reading the receipt

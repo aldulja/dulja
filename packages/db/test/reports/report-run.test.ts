@@ -129,7 +129,7 @@ describe("app.report_run — contracts §4.11.2; the status resource spec:2206 r
 
   it("moves queued → running → done and records the artefact", async () => {
     const { id } = await insertRun("pdf", "ar", "queued");
-    // The key comes from the one composer (`reportObjectKeyFor`), never a template literal here: SAH-038's
+    // The key comes from the one composer (`reportObjectKeyFor`), never a template literal here: LEGACY-038's
     // source scan refuses an object key composed anywhere else.
     const key = reportObjectKeyFor(a.tenant, id, "pdf", 1);
     await withTenant(db.rw, a.tenant, a.human, async (tx) => {

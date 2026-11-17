@@ -48,7 +48,7 @@ const validator = (): ValidateFunction<RateTable> =>
     .compile<RateTable>(schema));
 
 /** An additionalProperties error points at the parent, so the offending key is appended (the report validator's
- *  rule, SAH-084: name the specific offending entity). */
+ *  rule, LEGACY-084: name the specific offending entity). */
 function pointerOf(e: ErrorObject): string {
   if (e.keyword === "additionalProperties") {
     const extra = (e.params as { additionalProperty: string }).additionalProperty;

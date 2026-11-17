@@ -85,7 +85,7 @@ describe("terminal enrolment (§4.10.3, spec:1322)", () => {
     expect(((await second.json()) as Problem).code).toBe("ERR_TERMINAL_ENROLMENT_INVALID");
   });
 
-  it("an unknown code answers the SAME problem — a probe learns nothing (SAH-025)", async () => {
+  it("an unknown code answers the SAME problem — a probe learns nothing (LEGACY-025)", async () => {
     const res = await api.request({
       method: "POST",
       path: "/v1/sync/enrol",

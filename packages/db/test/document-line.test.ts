@@ -4,7 +4,7 @@ import { lintSchema } from "../src/lint-schema";
 import { draftDocument, seedTenant, type Seed } from "./fixtures";
 import { startDb, uuidv7, withTenant, type Db } from "./harness";
 
-describe("app.document_line — contracts §4.3.4 (spec:1748, SAH-021, 035)", () => {
+describe("app.document_line — contracts §4.3.4 (spec:1748, LEGACY-021, 035)", () => {
   let db: Db;
   let a: Seed;
   let b: Seed;
@@ -88,7 +88,7 @@ describe("app.document_line — contracts §4.3.4 (spec:1748, SAH-021, 035)", ()
     ).rejects.toThrow(/document_line_document_id_line_no_key/);
   });
 
-  it("cannot borrow another tenant's account through the composite FK (SAH-035)", async () => {
+  it("cannot borrow another tenant's account through the composite FK (LEGACY-035)", async () => {
     const doc = await draftDocument(db, a);
     await expect(
       withTenant(

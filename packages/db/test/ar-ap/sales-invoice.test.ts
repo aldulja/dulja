@@ -269,7 +269,7 @@ describe("SALES_INVOICE — §4.14, ADR 0044, spec:2009–2028", () => {
     );
   });
 
-  it("base = round(value × rate, 4) on every line — SAH-012, in a foreign currency", async () => {
+  it("base = round(value × rate, 4) on every line — LEGACY-012, in a foreign currency", async () => {
     // A USD charge invoice, so the identity has a rate other than 1 to be wrong about. A charge line, not a
     // product line: `document_line.cost` is BASE currency (3B amendment A4) and converting a copied cost on a
     // foreign-currency invoice is the conversion service's question (Task 6), not this type's.
@@ -309,8 +309,8 @@ describe("SALES_INVOICE — §4.14, ADR 0044, spec:2009–2028", () => {
     expect(src!.src).toBe(`manual:${s.human}`);
   });
 
-  it("every posted invoice carries a rate_source — a base figure with no provenance is SAH-012", async () => {
-    // This is the NON-VACUOUS half of Task 14's sah-012 block: that block runs against the thin regression
+  it("every posted invoice carries a rate_source — a base figure with no provenance is LEGACY-012", async () => {
+    // This is the NON-VACUOUS half of Task 14's legacy-012 block: that block runs against the thin regression
     // database, which holds no 4A document, so its count of null rate_sources is 0 for the wrong reason. THIS
     // database holds nothing but documents `postArDocument` built, so the same assertion here has rows to be
     // wrong about. `draftTypedDocument` (3C) does not write the column and `app.document.rate_source` has no

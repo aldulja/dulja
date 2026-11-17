@@ -24,7 +24,7 @@ const validator = (): ValidateFunction<ReportDefinition> =>
   (compiled ??= new Ajv2020({ allErrors: true, strict: true }).compile<ReportDefinition>(schema));
 
 /** Ajv's instancePath is already a JSON Pointer; an additionalProperties error points at the parent, so the
- *  offending key is appended to make the message actionable (SAH-084: name the specific offending entity). */
+ *  offending key is appended to make the message actionable (LEGACY-084: name the specific offending entity). */
 function pointerOf(e: ErrorObject): string {
   if (e.keyword === "additionalProperties") {
     const extra = (e.params as { additionalProperty: string }).additionalProperty;
@@ -133,7 +133,7 @@ export function validateReportDefinition(
   });
 
   // 5. every filter must name a declared parameter — this is what makes a value a bound parameter and never
-  //    text spliced into SQL (test 27, SAH-069's root cause)
+  //    text spliced into SQL (test 27, LEGACY-069's root cause)
   def.dataset.filters.forEach((f, i) => {
     if (!seenParams.has(f.param)) {
       errors.push({

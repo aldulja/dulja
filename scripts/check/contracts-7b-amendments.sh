@@ -145,7 +145,7 @@ need_repo scripts/lint/rules/dependency-rule.ts 'packages/db/test/**' \
   '3B amendment A21(c) — without it every 7B group test is a lint violation'
 need_repo tests/invariants/test-07-one-costing-answer.test.ts 'acceptance test 7' \
   '3D T11 — 7B Task 7 re-runs it UNCHANGED'
-need_repo tests/regression/sah-055.test.ts 'SAH-055' \
+need_repo tests/regression/legacy-055.test.ts 'LEGACY-055' \
   '3B §3.7.3 — 7B Task 14 APPENDS to it'
 
 # ── Three facts, reported and not failed on ────────────────────────────────────────────────────────────

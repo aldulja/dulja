@@ -342,7 +342,7 @@ describe("inventory.sales_by_item gains revenue and margin — §4.16.1's one co
 
   it("a foreign-currency invoice reports round(amount × ITS OWN rate, 4) in base — the ledger's own figure", async () => {
     // 18.0000 USD × 4.68351234 = 84.30322212, which rounds to 84.3032: a figure that is neither the document
-    // amount (the rate-1 answer SAH-014's legacy report printed) nor an unrounded product.
+    // amount (the rate-1 answer LEGACY-014's legacy report printed) nor an unrounded product.
     const d = await deliver("2.000000", "18.0000", "2026-01-25", {
       currency: "USD",
       exchangeRate: "4.68351234",

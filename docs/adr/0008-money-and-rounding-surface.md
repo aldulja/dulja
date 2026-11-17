@@ -8,14 +8,14 @@
 
 Spec §3.9 requires `numeric(19,4)` in Postgres and an opaque `Money` type over `decimal.js` in TypeScript that
 carries its currency and makes MYR + USD a compiler error. Spec §4.6 requires exactly one rounding function with an
-explicit mode, symmetric across sign, applied at persist time (SAH-019). SAH-008 is the failure this prevents: a
+explicit mode, symmetric across sign, applied at persist time (LEGACY-019). LEGACY-008 is the failure this prevents: a
 unit cost of 500,020.00 produced by a rounding residue in `double precision`.
 
 ## Decision
 
 1. `decimal.js` behind a cloned constructor at **precision 40**; no global `Decimal.set`.
 2. Four rounding modes, all symmetric across sign: `HALF_AWAY_FROM_ZERO`, `HALF_EVEN`, `TOWARD_ZERO`,
-   `AWAY_FROM_ZERO`. No CEIL/FLOOR — an asymmetric mode on a signed amount is SAH-019.
+   `AWAY_FROM_ZERO`. No CEIL/FLOOR — an asymmetric mode on a signed amount is LEGACY-019.
 3. `Money.multiply` and `Money.divide` **require** an explicit `RoundingMode` parameter; there is no implicit default.
 4. Base conversion is always `HALF_AWAY_FROM_ZERO` at scale 4, because that is what Postgres `round(numeric, int)`
    does and the `ledger_entry` CHECK `base_debit = round(debit * exchange_rate, 4)` (spec §3.8) must hold by

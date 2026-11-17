@@ -65,7 +65,7 @@ describe("/v1/companies/{companyId}/role-assignments — spec:2049, 2166, 2179 R
     expect(((await list.json()) as { items: unknown[] }).items).toHaveLength(1);
   });
 
-  it("grantedBy is stamped from the session, not from the body (SAH-044)", async () => {
+  it("grantedBy is stamped from the session, not from the body (LEGACY-044)", async () => {
     const [row] = await api.db.admin<{ granted_by: string }[]>`
       select granted_by from app.role_assignment
        where principal_id = ${invited} and role_id = ${clerkRole}`;

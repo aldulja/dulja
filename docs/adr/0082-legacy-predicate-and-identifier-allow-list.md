@@ -11,7 +11,7 @@
 
 ## Context
 
-spec:100 forbids building SQL by string concatenation (SAH-036/037/069), and contracts §4.13.1 requires that
+spec:100 forbids building SQL by string concatenation (LEGACY-036/037/069), and contracts §4.13.1 requires that
 `LegacyReader.read`'s `where` be "a typed structure, never SQL text". But the legacy source is Firebird, where a
 table or column name cannot be a bound parameter: some identifier must reach the statement as text, and the tables
 the profiler walks are named at run time from the catalogue, not at compile time.

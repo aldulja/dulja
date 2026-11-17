@@ -446,11 +446,11 @@ export const employeeYtdOpeningLoader: Loader<LegacyRow, EmployeeYtdTarget> = {
     const netText = optionalText(row, "EMPYTDNET");
     if (grossText === null && netText === null)
       return {
-        skip: `employee ${legacyKey} carries no current-tax-year YTD (EMPYTDGROSS and EMPYTDNET are NULL or absent), so no opening is loaded — a NULL is never read as zero (§5.1 #11, SAH-007)`,
+        skip: `employee ${legacyKey} carries no current-tax-year YTD (EMPYTDGROSS and EMPYTDNET are NULL or absent), so no opening is loaded — a NULL is never read as zero (§5.1 #11, LEGACY-007)`,
       };
     if (grossText === null || netText === null)
       return {
-        skip: `employee ${legacyKey} carries ${grossText === null ? "EMPYTDNET without EMPYTDGROSS" : "EMPYTDGROSS without EMPYTDNET"}; a half opening is not loaded — a NULL is never read as zero (§5.1 #11, SAH-007)`,
+        skip: `employee ${legacyKey} carries ${grossText === null ? "EMPYTDNET without EMPYTDGROSS" : "EMPYTDGROSS without EMPYTDNET"}; a half opening is not loaded — a NULL is never read as zero (§5.1 #11, LEGACY-007)`,
       };
     const base = baseCurrency();
     const gross = payMoneyOf(row, "EMPYTDGROSS", base, site);

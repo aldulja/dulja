@@ -2,7 +2,7 @@ import type Decimal from "decimal.js";
 import { D } from "./decimal";
 import { round, type RoundingMode } from "./rounding";
 
-/** Exact rational for unit conversions (spec §3.9 Quantities; SAH-066). `denominator` is always > 0. */
+/** Exact rational for unit conversions (spec §3.9 Quantities; LEGACY-066). `denominator` is always > 0. */
 export interface Rational {
   readonly numerator: bigint;
   readonly denominator: bigint;

@@ -62,8 +62,8 @@ Each is a row in `docs/review/2026-11-13-phase-9-decisions.md`.
 
 - `bun run --cwd packages/importer test`: 32 passed, 1 skipped (the live OD-17 case; `LEGACY_ODBC_DSN` unset), in 5
   files — `fixture-driver` 6, `sql` 11, `scope` 4, `odbc` 6 + 1 skipped, `reader` 5.
-- `bun run --cwd packages/contracts test`: 69. `scripts/lint/lint.test.ts`, `tests/regression/sah-036`, `sah-083`,
-  `sah-084`, `tests/lint/*`, `tests/invariants/lint-rules` and `type-resolution`: all pass.
+- `bun run --cwd packages/contracts test`: 69. `scripts/lint/lint.test.ts`, `tests/regression/legacy-036`, `legacy-083`,
+  `legacy-084`, `tests/lint/*`, `tests/invariants/lint-rules` and `type-resolution`: all pass.
 - `bun run typecheck` (turbo): 15/15 workspaces — the fourteen and `@dulja/importer`. `bun run lint`,
   `bun run lint:rules` (11 rules, 0 violations), `bun run format:check`, the seventeen `scripts/check/*.sh` gates,
   and a regenerated `openapi.json` with no diff.
@@ -135,7 +135,7 @@ Each is a row in `docs/review/2026-11-13-phase-9-decisions.md`.
   6, `sql` 11, `scope` 4, `odbc` 6 + 1 skipped, `reader` 5, `profile` 10, `mpos-scope` 4, `aggregate-drift` 9,
   `unbalanced-vouchers` 5.
 - `bun run --cwd packages/contracts test` 69; `tests` `invariants/lint-rules`, `invariants/type-resolution`,
-  `lint/*`, `regression/sah-036` 77; `scripts/lint` 12.
+  `lint/*`, `regression/legacy-036` 77; `scripts/lint` 12.
 - `bun run typecheck` 15/15, `bun run lint`, `bun run lint:rules` (11 rules, 0 violations), `bun run format:check`,
   and the seventeen `scripts/check/*.sh` gates. No route or schema changed, so `openapi.json` is untouched.
 - Against the corpus: `bun run legacy profile --fixture base` → `tables: 3`, `modules in use: standard`, three
@@ -160,8 +160,8 @@ Each is a row in `docs/review/2026-11-13-phase-9-decisions.md`.
   not in this database. Summary: `rules`, `skipped`, `clean`, `orphanedValues`, `orphanedRows`, `note`.
 - **T10** — `src/reconcile/null-poison.ts` (`NULL_POISON_TARGETS`, `NullPoisonTarget`, `nullPoison`) and
   `src/reconcile/duplicate-aggregates.ts` (`DUPLICATE_TARGETS`, `DuplicateTarget`, `duplicateAggregates`), both
-  9A-internal, and their two cases. The corpus: `ACCTOTALS` account 11's `CREDIT` is NULL (SAH-011) and
-  `MATOBJECTS` (no key columns, SAH-049) holds key `5|1` twice and one NULL `QNT`. `null_poison` is one row per
+  9A-internal, and their two cases. The corpus: `ACCTOTALS` account 11's `CREDIT` is NULL (LEGACY-011) and
+  `MATOBJECTS` (no key columns, LEGACY-049) holds key `5|1` twice and one NULL `QNT`. `null_poison` is one row per
   target column in declared order (`poisoned`/`clean`/`source_absent`), four poisoned columns and four NULLs in the
   corpus; `duplicate_aggregates` one row per duplicated key, else one `clean` or `source_absent` row per table, each
   carrying `tableRows`. `aggregate-drift.test.ts` moves `drifting` to `"2"` and its rows to 23, and gains a case
@@ -240,7 +240,7 @@ Each is a row in `docs/review/2026-11-13-phase-9-decisions.md`.
   marked; the name, owner and blob columns discovered from the catalogue. `ReportWriter.write` creates the
   artefact's subdirectory. The base corpus gains `REPORTS` (five rows, blobs as base64 with `0xFF` bytes, one
   null). CLI: `templates` writes `templates.json`, `templates.csv`, the blobs and `index.json`. Barrel: the
-  template-catalogue group (§4.13.1). `tests/package.json` gains `@dulja/importer`; `tests/regression/sah-077.test.ts`
+  template-catalogue group (§4.13.1). `tests/package.json` gains `@dulja/importer`; `tests/regression/legacy-077.test.ts`
   gains its `— 9A` block below the untouched 7A and 7C blocks.
 - **T13 (OD-27, ⚠️ open)** — `LegacyConstraint` and `LegacyDriver.constraints(table)` in `src/legacy/types.ts`,
   implemented by `FixtureLegacyDriver` (declared constraints, plus the PRIMARY KEY its `keyColumns` imply; corpus
@@ -300,7 +300,7 @@ Each is a row in `docs/review/2026-11-13-phase-9-decisions.md`.
   `odbc` is unchanged at 6 + 1 skipped. `questions`, `snapshot` and `cli` each failed first (missing module, then
   seven failing `cli` cases before the commands existed); `templates` first failed on a parse error in the new
   module (a `*/` inside a doc comment), then passed.
-- `tests`: `regression/sah-077` 7 (7A, 7C and 9A blocks), and `invariants/lint-rules`, `type-resolution`,
+- `tests`: `regression/legacy-077` 7 (7A, 7C and 9A blocks), and `invariants/lint-rules`, `type-resolution`,
   `logical-properties`, `lint/*` — 85 in 9 files. `bun run --cwd packages/contracts test` 69; `scripts/lint` 12.
 - `bun run typecheck` 15/15 (the `tests` workspace now type-checks against `@dulja/importer`), `bun run lint`,
   `bun run lint:rules` (11 rules, 0 violations), `bun run format:check`, and the seventeen `scripts/check/*.sh`
@@ -324,12 +324,12 @@ Each is a row in `docs/review/2026-11-13-phase-9-decisions.md`.
 **Built:** `@dulja/importer` — the `LegacyDriver` port with its fixture and live ODBC drivers, one SQL renderer over
 catalogue-validated identifiers and bound values (ADR 0082), `LegacyReader` verbatim from §4.13.1, `scope` and
 `profile`, the hashed artefact format (ADR 0083), the OD-16 `mpos` decision input, the six reconciliation reports of
-§5.1 (#1–#5 and #12, with OD-25's input), the report-template catalogue (§5.1 #9, SAH-077), the OD-27 open-question
+§5.1 (#1–#5 and #12, with OD-25's input), the report-template catalogue (§5.1 #9, LEGACY-077), the OD-27 open-question
 probe with `LegacyDriver.constraints`, the anonymised staging snapshot (spec:2272), and the `legacy` CLI's seven
 commands and exit codes, with `docs/runbooks/legacy-extraction.md`. The barrel is §4.13.1's list exactly; 9B
 consumes nothing by a deep path. One error code (`ERR_IMPORT_SOURCE_UNREADABLE`); no migration (0100 stays unused),
 route, permission, job or screen. **Verified** against the three committed synthetic corpora only: 142 importer
-tests and one skipped live case, the SAH-077 `— 9A` block, typecheck in fifteen workspaces, lint, the eleven custom
+tests and one skipped live case, the LEGACY-077 `— 9A` block, typecheck in fifteen workspaces, lint, the eleven custom
 rules, format and the seventeen gates. **Owner-gated, and not decided here:** **OD-17** — read access to the live
 database and its Firebird version; nothing in 9A has read a live byte, and ADR 0081's three decisions stay blank
 until the owner's scoping run; **OD-16** — whether historical POS data migrates (default built: start clean;
@@ -357,7 +357,7 @@ equivalents; its live half waits on OD-17.
   `party`, `item`, `account`, `employee`, `lot`, each with a partial, non-unique `<table>_legacy_ref_idx` on
   `(company_id, legacy_ref) where legacy_ref is not null`. The six Drizzle mirrors gain `legacyRef` and the index;
   the six tenant-export rows (`EXPORT_TABLES`) gain `legacy_ref`. `packages/db/test/import/legacy-ref.test.ts` (6
-  cases); `tests/regression/sah-051.test.ts` gains a `— 9B` block.
+  cases); `tests/regression/legacy-051.test.ts` gains a `— 9B` block.
 - **T2** — migration `0102_create_import_batch.sql` / `0102.down.sql`: `app.import_batch` (forced RLS and
   `tenant_isolation`, composite `(tenant_id, company_id)` FK, `audit_row`, `stamp_loaded_by`, `loaded_by` → 
   `app.principal`, four CHECKs, `import_batch_natural_key unique (company_id, source_table, source_key)`, two
@@ -377,7 +377,7 @@ equivalents; its live half waits on OD-17.
 - **`containerSecrets` is `apps/edge/src/container-env.ts`**, not `infra/src/secrets.ts` (C16 item 1) — for Task 9.
 - **`NEVER_READ` is not in the importer barrel** (C16 item 13); 9B's gate checks `src/snapshot.ts`.
 - **Mirrors** use the tree's array-form extra-config callback; `employee.ts` gains its first callback.
-- **SAH-051 `— 9B`** is written through `sliceRegression` and asserts behaviour (two drafts share one legacy number,
+- **LEGACY-051 `— 9B`** is written through `sliceRegression` and asserts behaviour (two drafts share one legacy number,
   neither numbered), not only the catalogue.
 - **`import_batch`** — beyond the plan: UPDATE revoked from `app_rw` (the mapping never moves, in the data layer);
   `loaded_by` references `app.principal`; the natural key is named; four negative CHECK cases, a cross-tenant write
@@ -402,7 +402,7 @@ equivalents; its live half waits on OD-17.
 - Focused: `test/import/legacy-ref.test.ts` 6, `test/import/batch.test.ts` 13, `schema-mirror`, `privileges` (the
   up → down → up fingerprint case), `export/*`, `schema-lint`, `migrations`, `migrate`, `expand-contract`,
   `document-header-guard`, `party`, `tenant-isolation`, `audit`: all pass.
-- `tests`: `regression/sah-051` 7 (the `— 9B` block included), `sah-047`, `sah-083`, `sah-084`,
+- `tests`: `regression/legacy-051` 7 (the `— 9B` block included), `legacy-047`, `legacy-083`, `legacy-084`,
   `invariants/report-catalogue-pins`, `invariants/export-audit`, `invariants/hr-sensitive-side-channels`: pass.
   `apps/api` `routes/admin/exports*.test.ts` 16 and `apps/worker`'s export handler test 9: pass.
 - `bun run --cwd packages/contracts test`: 69. `bun run typecheck` 15/15, `bun run lint`, `bun run lint:rules` (11
@@ -432,7 +432,7 @@ equivalents; its live half waits on OD-17.
   the framework's own suite runs against the tenant every later suite uses); the `cut-over` corpus
   (`catalog.json`, `UNITS.json`); `test/load/preflight.test.ts` (8), `scalar.test.ts` (6), `registry.test.ts` (5),
   `run.test.ts` (19, PostgreSQL 18 Testcontainers), two `load` cases in `test/cli.test.ts`.
-- **ADR 0084** (Proposed) and a `— 9B` block in `tests/regression/sah-049.test.ts` (two cases: `recordBatch`'s skip,
+- **ADR 0084** (Proposed) and a `— 9B` block in `tests/regression/legacy-049.test.ts` (two cases: `recordBatch`'s skip,
   and `runLoad` loading a twice-held key once with the second sighting in the register, and refusing a third
   different one).
 - **CI:** `@dulja/importer` leaves the Windows `checks` job's turbo filter and joins the Linux `database` matrix; its
@@ -446,7 +446,7 @@ equivalents; its live half waits on OD-17.
   `load`, then `recordBatch` with the target id `load` answered — one transaction per page. The guarantee the plan
   wanted (a changed source refused before anything is written; nothing partial committed) holds; `EMPTY_TARGET` keeps
   only its committed meaning. A `recordBatch` that finds the key taken meanwhile (a concurrent load) refuses the page.
-- **In-run duplicates (SAH-049).** The plan's order would have recorded the first sighting and then — on a duplicate
+- **In-run duplicates (LEGACY-049).** The plan's order would have recorded the first sighting and then — on a duplicate
   key in the same page — handed both rows to `load`. `runLoad` now remembers each key's hash per loader for the run:
   an identical second sighting is loaded once and reported in the skip register; a different one refuses with
   `ERR_IMPORT_DUPLICATE_SOURCE_KEY`, across pages and in a dry run.
@@ -470,7 +470,7 @@ equivalents; its live half waits on OD-17.
 - **CLI exit for skips is 1, not the plan's 3** — 3 is 9A's `ERR_IMPORT_SOURCE_UNREADABLE`. Flags are 9A's
   `--key value` form; `load` opens its own source through `setLoadSource` (the driver is not opened twice).
 - **`seedLoadableTenant`/`loadContextFor`** land at T3 (the plan's T4 Step 3), as the brief scopes them here.
-- **SAH-049 `— 9B`** drives `runLoad` through the `@dulja/importer` barrel as well as the plan's `recordBatch` case,
+- **LEGACY-049 `— 9B`** drives `runLoad` through the `@dulja/importer` barrel as well as the plan's `recordBatch` case,
   and runs the `recordBatch` case as the system principal.
 - **ADR 0084 is Proposed**, not Accepted, with two owner questions; decisions 8–12 record what the plan's text left
   implicit or the tree changed.
@@ -479,7 +479,7 @@ equivalents; its live half waits on OD-17.
 
 - `bun run --cwd packages/importer test`: **182 passed, 1 skipped (the pre-existing OD-17 live-ODBC case) in 21
   files**; `test/load/` alone 38. Each new file failed first (module not found) before `src/load/` existed.
-- `tests`: `regression/sah-049.test.ts` 6 (the `— 9B` block's two included).
+- `tests`: `regression/legacy-049.test.ts` 6 (the `— 9B` block's two included).
 - `bun run typecheck` 15/15, `bun run lint`, `bun run lint:rules` (11 rules, 0 violations — `ci-test-filters` with
   the importer's new exclusion), `scripts/lint/lint.test.ts` 12, `bun run format:check`, and all eighteen
   `scripts/check/*.sh` gates.
@@ -510,7 +510,7 @@ equivalents; its live half waits on OD-17.
   `readAccountMap`, `assertAccountMap`, `treatmentOf`) and **`load/accounts.ts`** (`accountLoader`, `setAccountMap`,
   `accountMap`, `clearAccountMap`). **`load/units.ts`** exports `codeFromName` (N14).
 - **`load/scalar.ts`** gains `flagOf` (a legacy flag; NULL → `null`, an unknown value refused) and `rationalOf`
-  (SAH-066: a legacy float factor → exact `Rational`, never a number or `Money`; NULL, zero, negative and
+  (LEGACY-066: a legacy float factor → exact `Rational`, never a number or `Money`; NULL, zero, negative and
   non-`bigint`-fitting factors refused).
 - **`packages/db`**: `createItem` (`NewItem.legacyRef`) and `createLot` (`legacyRef`) take an optional `legacy_ref`
   (additive; API callers unchanged); `seed/my/chart-of-accounts/9b-cut-over.json` seeds **`3900`** Opening-balance
@@ -523,7 +523,7 @@ equivalents; its live half waits on OD-17.
   plan's rows verbatim); `test/fixtures/account-map.json`.
 - **Tests**: `test/load/accounts.test.ts` (13, pure), `test/load/master.test.ts` (13, PostgreSQL 18), `scalar.test.ts`
   +2, `registry.test.ts` (the empty-registry case becomes the six-loader pin), `cli.test.ts` +1. Regression blocks
-  `— 9B` in `sah-007` (2 cases), `sah-073` (1) and `sah-066` (1).
+  `— 9B` in `legacy-007` (2 cases), `legacy-073` (1) and `legacy-066` (1).
 
 ### Deviations from the plan text
 
@@ -533,7 +533,7 @@ equivalents; its live half waits on OD-17.
   column name (`Accounts.AccName` …)"; T3's `UNTID` already followed it) in the separate `cut-over` corpus, and leaves
   9A's corpus and readers alone. Both stay `hypothesis`; pre-flight against the live catalogue (OD-17, Task 14) names
   every missing required column, and whichever spelling is wrong is corrected there. No `SITE` column is invented: a
-  multi-site source whose `ACCID` repeats with different data is refused by T3's in-run SAH-049 check, never merged.
+  multi-site source whose `ACCID` repeats with different data is refused by T3's in-run LEGACY-049 check, never merged.
 - **`legacy_ref` on `item` and `lot` is the human code** (`MATCODE`, `BATCODE` verbatim), not the plan's surrogate
   `MATID`/`BATID`: 0101's own column comments say "material code" and "batch code", and the party/account pair
   already carries the human `ACCCODE` (plan R28's reasoning). The `import_batch` source key stays the surrogate id, so
@@ -553,11 +553,11 @@ equivalents; its live half waits on OD-17.
   legacy codes on one Dulja code with different treatments, an `ar_control`/`ap_control` on more than one Dulja code
   (the plan's test title said "exactly one" while its code only checked "at least one"), unreadable or non-JSON files
   as `LoadError`s, and reads `type` as implied by the code's first digit once checked.
-- **Test adjustments** forced by registering real loaders: `run.test.ts`'s `registered` and SAH-049's `— 9B` block (a
+- **Test adjustments** forced by registering real loaders: `run.test.ts`'s `registered` and LEGACY-049's `— 9B` block (a
   T3 block of this slice) now make their test loader the whole registry and restore it, instead of pushing beside a
-  real `unit_of_measure` loader (`orderLoaders` refuses two). The plan's SAH-007 DB case runs on a fresh tenant: on the
+  real `unit_of_measure` loader (`orderLoaders` refuses two). The plan's LEGACY-007 DB case runs on a fresh tenant: on the
   already-loaded one T3's framework refuses the changed `ACCOUNTS` row before `map` (`ERR_IMPORT_DUPLICATE_SOURCE_KEY`).
-- **SAH-073 `— 9B`** is written now as a pure `map` case through the barrel; Task 5 may add the corpus-level case
+- **LEGACY-073 `— 9B`** is written now as a pure `map` case through the barrel; Task 5 may add the corpus-level case
   through `loadFromCorpus` as the plan says. Plan path `fixtures/account-map.json` read via `fileURLToPath`.
 - **No MATUNITS loader.** The plan has none, and neither the plan nor the dossier names MatUnits' material or unit
   reference columns (9A's `questions` corpus has `SITE`, `ID`, `UNIT`, `EXCHANGE`); inventing one is hazard 3.
@@ -570,7 +570,7 @@ equivalents; its live half waits on OD-17.
 - `packages/db`: `seed-chart`, `seed-idempotent`, `test/seed/**`, `test/inventory/**`, `payroll/accounts`,
   `hr/predecessors`, `phase-6d-pins`, `posting/code-review-c`, `currency-fk`, `schema-mirror`, `export/**` — all pass.
   `apps/api`: `routes/accounting/{accounts,document-transfer,landed-cost}` 28 pass.
-- `tests`: `regression/sah-007`, `sah-066`, `sah-073`, `sah-049` (6), `sah-051`, `golden/payroll`,
+- `tests`: `regression/legacy-007`, `legacy-066`, `legacy-073`, `legacy-049` (6), `legacy-051`, `golden/payroll`,
   `invariants/tax-permissions-5a` — pass.
 - `bun run typecheck` 15/15, `bun run lint`, `bun run lint:rules` (11 rules, 0 violations), `bun run format:check`, and
   all eighteen `scripts/check/*.sh` gates.
@@ -596,7 +596,7 @@ equivalents; its live half waits on OD-17.
 - **`load/opening-balance.ts`** (N8, N10): `openingBalanceLoader` (`ACCTOTALS` → `opening_balance`, `wholeTable`, source
   key the bare `ACTACC`, `dependsOn: ["account"]`), `SUSPENSE_CODE = "3900"`, `OpeningBalanceTarget`. `map` reports an
   unmapped code, an `exclude` code and the three control treatments (their openings are Tasks 6 and 7's), refuses a NULL
-  total (SAH-007) and resolves the account through `refs.byLegacyRef("account", ACTACC)`. `load` posts ONE document: one
+  total (LEGACY-007) and resolves the account through `refs.byLegacyRef("account", ACTACC)`. `load` posts ONE document: one
   line per `balance` account at its net (an account netting flat opens nothing), the residue on `3900`; all-flat answers
   `EMPTY_TARGET` per row; a residue with no live leaf `3900` raises **`ERR_IMPORT_UNBALANCED_SOURCE`**; a source that grew
   after its opening was posted (and not reversed) raises `ERR_IMPORT_DUPLICATE_SOURCE_KEY` instead of posting a second.
@@ -611,8 +611,8 @@ equivalents; its live half waits on OD-17.
   undo). `test/routes/accounting/opening-balance-generic.test.ts` (3; 2 fail before the change).
 - **`tests/invariants/support/cut-over.ts`** (C6, N15): `CutOverFixture`, `cutOverFixture(name)`, `loadFromCorpus`
   (both overloads), `assertExplained(fixture, tolerance?)`. `reconcileFor` is Task 10's.
-- **Regression**: `— 9B` blocks appended to `sah-003` (the corpus load leaves `1000` Dr 5000 / `3900` Cr 5000 and
-  `assertExplained` holds) and `sah-073` (the whole load's skip register names the orphaned batch 9001).
+- **Regression**: `— 9B` blocks appended to `legacy-003` (the corpus load leaves `1000` Dr 5000 / `3900` Cr 5000 and
+  `assertExplained` holds) and `legacy-073` (the whole load's skip register names the orphaned batch 9001).
 - **Tests**: `packages/importer/test/load/opening-balance.test.ts` (13, PostgreSQL 18): one posted `OB 1` on
   2026-01-31 in `HQ` by the system principal; only `balance` lines plus `3900`; the batch row and the three control
   skips; an idempotent re-run; a dry run; **acceptance test 9 re-run** — a cut-over date in 0A's closed 2026-02 is
@@ -625,7 +625,7 @@ equivalents; its live half waits on OD-17.
   the list of tables a loader resolves into. With it, `orderLoaders` readies `opening_balance` in `item`'s wave, so the
   registry places it between `item` and `lot` (the T3 invariant "the registry is its own topological order");
   `registry.test.ts` pins the seven, and `master.test.ts`'s six-loader pin filters the document loader out.
-- **`map` parses the amounts before resolving the account**, so a NULL total is refused at its row (SAH-007) even on a
+- **`map` parses the amounts before resolving the account**, so a NULL total is refused at its row (LEGACY-007) even on a
   tenant whose chart is not linked yet; the plan resolved first, which hides it behind a "never linked" skip.
 - **`draftAndPost`** uses 1A's `resolvePolicy` (the plan hand-queried `posting_policy`), `baseCurrency()` (the plan read
   `company.base_currency` again), `exchange_rate '1.00000000'` and `rate_source` omitted; lines are numbered
@@ -643,7 +643,7 @@ equivalents; its live half waits on OD-17.
 - **The plan calls `ACCTOTALS` "unbalanced by 5000"**: its four rows are out by 8300; 5000 is what the one `balance`
   account nets to, and the 3300 the controls carry is posted against `3900` by Tasks 6 and 7, so after the whole load
   `3900` holds the legacy imbalance only. Task 10 should read it that way.
-- **The SAH-073 block** is a second `— 9B` block (T4 wrote the `map`-level one); the SAH-003 block uses
+- **The LEGACY-073 block** is a second `— 9B` block (T4 wrote the `map`-level one); the LEGACY-003 block uses
   `sliceRegression`, as the file's earlier blocks do.
 
 ### Verification (2026-11-13, Linux, Node 22, Bun 1.4.4, PostgreSQL 18 Testcontainers)
@@ -653,7 +653,7 @@ equivalents; its live half waits on OD-17.
 - `packages/db`: `seed-idempotent`, `test/seed/**`, `posting/reverse`, `ar-ap/item-profitability`, `schema-mirror` — 14
   files, 127 passed. `packages/contracts`: 69.
 - `apps/api`: `routes/accounting/opening-balance-generic` (3), `fx-revaluation-generic`, `documents` — 35 passed.
-- `tests`: `regression/sah-003`, `sah-073`, `sah-049`, `sah-007`, `sah-066`, `sah-051`, `sah-083`, `sah-084` — 34
+- `tests`: `regression/legacy-003`, `legacy-073`, `legacy-049`, `legacy-007`, `legacy-066`, `legacy-051`, `legacy-083`, `legacy-084` — 34
   passed.
 - `bun run typecheck` 15/15, `bun run lint`, `bun run lint:rules` (11 rules, 0 violations), `bun run format:check`, all
   eighteen `scripts/check/*.sh` gates, and a regenerated `openapi.json` with no diff.
@@ -675,7 +675,7 @@ equivalents; its live half waits on OD-17.
   pool keyed as `applyMovements` keys it (item × warehouse; never per lot), stock counted per batch, issues valued at
   the base-currency zero, and the survivors laid onto the batches holding stock with `remainingLayerValue` (exact).
   AVCO merges a batch's parts into one position; FIFO keeps one position per surviving layer, oldest first. A batch an
-  issue overdraws is a `negatives` entry and its whole pool opens nothing; a receipt with no value is refused (SAH-011);
+  issue overdraws is a `negatives` entry and its whole pool opens nothing; a receipt with no value is refused (LEGACY-011);
   a zero/negative quantity, a foreign-currency value and any `CostingError` refuse naming the row.
 - **`load/opening-stock.ts`** (N8): `openingStockLoader` (`BILLITEMS` → `opening_stock`, `wholeTable`, source key the
   bare `BTMID`, `dependsOn: ["item", "warehouse", "lot"]`, ten `hypothesis` columns) and
@@ -695,7 +695,7 @@ equivalents; its live half waits on OD-17.
 - **`apps/api`**: `OPENING_STOCK` joins `SERVICE_ONLY`; `test/routes/accounting/opening-stock-generic.test.ts` (2; the
   refusal case failed before the change).
 - **`tests`**: `assertExplained` (C6) explains an `OPENING_STOCK`'s `3900` rows by its described item lines (it has no
-  `3900` account line — the credit is the policy's leg); a `— 9B` block in `regression/sah-011.test.ts` (2). SAH-003's
+  `3900` account line — the credit is the policy's leg); a `— 9B` block in `regression/legacy-011.test.ts` (2). LEGACY-003's
   `— 9B` case now loads `OPENING_STOCK` too and still passes `assertExplained`.
 - **Tests**: `packages/importer/test/load/recost.test.ts` (12, pure — acceptance test 5 re-run: the history re-costed by
   the engine) and `opening-stock.test.ts` (17, PostgreSQL 18 — **acceptance test 18 re-run through the import path**: a
@@ -720,7 +720,7 @@ equivalents; its live half waits on OD-17.
   value never read, quantity a positive magnitude; never `{ skip }`.
 - **`dependsOn: ["item", "warehouse", "lot"]`**, not `+ "opening_balance"` (T5's rule: the tables `load` resolves).
 - **`SERVICE_ONLY`**, the `assertExplained` OS branch and `NON_SALE_MOVEMENT_TYPES` are beyond the plan's file list.
-- **SAH-011's MATCOSTS check** is scoped to `src/load` and the registry: 9A's profiling names the table legitimately.
+- **LEGACY-011's MATCOSTS check** is scoped to `src/load` and the registry: 9A's profiling names the table legitimately.
 - **Two assertions are strings, not regex literals**: `scripts/lint/rules/dependency-rule.ts`'s token scanner stalls
   forever on `#6` inside a regex literal that also holds an escaped `\/` (`bun run lint:rules` hung at 100% CPU). A
   defect of that rule, not fixed here (out of scope); recorded for a follow-up.
@@ -741,8 +741,8 @@ equivalents; its live half waits on OD-17.
   `posting/reverse`, `costing/valuation`, `schema-mirror` — 24 files, 238 passed.
 - `apps/api`: `openapi`, `routes/accounting/{print,document-count,opening-balance-generic,opening-stock-generic,
   inventory-reports,documents,document-transfer,fx-revaluation-generic,document-lifecycle}` — 10 files, 101 passed.
-- `tests`: `regression/sah-011` (16, the `— 9B` block's two included), `sah-003`, `sah-073`, `sah-049`, `sah-007`,
-  `sah-066`, `sah-051` — 44 passed; `sah-048`, `sah-018`, `sah-031`, `sah-013`, `sah-032` pass;
+- `tests`: `regression/legacy-011` (16, the `— 9B` block's two included), `legacy-003`, `legacy-073`, `legacy-049`, `legacy-007`,
+  `legacy-066`, `legacy-051` — 44 passed; `legacy-048`, `legacy-018`, `legacy-031`, `legacy-013`, `legacy-032` pass;
   `invariants/zero-code-document-type` fails only test 15's known PDF-hyphen case.
 - `bun run typecheck` 15/15, `bun run lint`, `bun run lint:rules` (11 rules, 1509 files, 0 violations),
   `bun run format:check`, and all eighteen `scripts/check/*.sh` gates. No route or schema changed, so `openapi.json`
@@ -757,8 +757,8 @@ equivalents; its live half waits on OD-17.
 - **`load/open-items.ts`** (N10): `openItemLoader` (`BILLS` → `open_item`, paged, source key the bare `BILID`,
   `dependsOn: ["party"]`, six required `hypothesis` columns `BILID`, `BILNUMBER`, `BILACC`, `BILDATE`, `BILOPEN`,
   `BILKIND`) and `OpenItemTarget`. `map` reads the kind (`1` receivable, `2` payable, anything else refused naming the
-  row), the amount (NULL refused, SAH-007) and the date before the party (`refs.byLegacyRef("party", "ACC:<BILACC>")`;
-  an orphan is reported, SAH-073), reports a zero open amount, and takes the map's `ar_control`/`ap_control` code. The
+  row), the amount (NULL refused, LEGACY-007) and the date before the party (`refs.byLegacyRef("party", "ACC:<BILACC>")`;
+  an orphan is reported, LEGACY-073), reports a zero open amount, and takes the map's `ar_control`/`ap_control` code. The
   amount is a magnitude and `side` carries the direction (a negative `BILOPEN` opens on the other side). `load` refuses
   a legacy document dated after the cut-over date, resolves the control and `3900` codes to live leaf accounts once per
   page, reads each party's `app.party_control_account`, **refuses** an item whose control is not that account, and posts
@@ -781,7 +781,7 @@ equivalents; its live half waits on OD-17.
   document refused; and **allocation on day one** — a `RECEIPT` through 4A's `draftSettlement` allocated 1000 against
   the opening, `openBalance` 800, ageing 800, tie-out zero. `registry.test.ts`, `reader.test.ts`, `cli.test.ts` and
   `master.test.ts` pins grow by the new loader.
-- **Regression**: a second `— 9B` block in `tests/regression/sah-051.test.ts` — the whole corpus load gives the two
+- **Regression**: a second `— 9B` block in `tests/regression/legacy-051.test.ts` — the whole corpus load gives the two
   `INV/2025/0417` documents two distinct `OB` numbers (it fails with the loader unregistered).
 
 ### Deviations from the plan text
@@ -801,7 +801,7 @@ equivalents; its live half waits on OD-17.
 - **Test reads run as the system principal** (T5); the plan's `agedBalance` call lacked the required `limit`; the
   revenue check is "no income or expense account on any open-item row" rather than `4000` alone.
 - **This slice's earlier tests were scoped to the trial-balance opening** (`and d.legacy_ref is null`) in
-  `opening-balance.test.ts` and SAH-003's T5 block — both selected every `OPENING_BALANCE` row, and the open items are
+  `opening-balance.test.ts` and LEGACY-003's T5 block — both selected every `OPENING_BALANCE` row, and the open items are
   `OPENING_BALANCE` documents too. T4's precedent: this slice's own blocks, no other slice's edited.
 - **ADR 0085 is Proposed**, not Accepted; it adds decisions 3, 5 and 6 and the consequences the tree forces (ageing
   buckets from the cut-over date; a legacy credit cannot be allocated; base currency only).
@@ -810,8 +810,8 @@ equivalents; its live half waits on OD-17.
 
 - `bun run --cwd packages/importer test`: **27 files, 268 passed, 1 skipped** (the OD-17 live-ODBC case);
   `open-items` 15.
-- `tests`: `regression/sah-051` (8, the new block failing first with the loader unregistered), `sah-003`, `sah-073`,
-  `sah-049`, `sah-011`, `sah-007` — 42 passed.
+- `tests`: `regression/legacy-051` (8, the new block failing first with the loader unregistered), `legacy-003`, `legacy-073`,
+  `legacy-049`, `legacy-011`, `legacy-007` — 42 passed.
 - `bun run typecheck` 15/15, `bun run lint`, `bun run lint:rules` (11 rules, 1511 files, 0 violations),
   `bun run format:check`, and all eighteen `scripts/check/*.sh` gates. No route or schema changed, so `openapi.json`
   was not regenerated; `packages/db`, `apps/api` and `apps/worker` are untouched.
@@ -840,7 +840,7 @@ equivalents; its live half waits on OD-17.
   - **`SENSITIVE_SOURCES`** (typed `Partial<Record<SensitiveField, SourceColumn>>`), **`setKeyRing`** /
     **`clearKeyRing`** (module state, the account map's shape), `EmployeeTarget`, `EmployeeYtdTarget`.
 - **Framework** (`load/types.ts`, `load/run.ts`): `SourceColumn.sensitive?` — such a value enters the PERSISTED
-  `import_batch.source_hash` as presence only (a fixed marker), while the in-run SAH-049 check keeps a full digest in
+  `import_batch.source_hash` as presence only (a fixed marker), while the in-run LEGACY-049 check keeps a full digest in
   memory; non-sensitive loaders hash exactly as before. **`cutOverDate()`**, `baseCurrency()`'s twin. `Loader.map`'s
   doc admits a read of the run's own source (`loadSource()`).
 - **`load/scalar.ts`**: **`payMoneyOf`** (`moneyOf` that never prints the value), **`sensitiveOf`** (`text` ≤ 120,
@@ -893,7 +893,7 @@ equivalents; its live half waits on OD-17.
   the column comment wins). The employee's party carries no `legacy_ref` (its comment is the account/customer/vendor
   code, and no link to a legacy account is known).
 - **Tree names**: `EmployeeYtdOpeningInput.year` / `listEmployeeYtdOpening(tx, { companyId, year })` (not `taxYear` —
-  `no-number-money`), source `legacy:<run>` (8C's form; the plan wrote `sahlisoft:`), `createEmployee` rather than raw
+  `no-number-money`), source `legacy:<run>` (8C's form), `createEmployee` rather than raw
   inserts (T4's services rule). `assertYtdReconciles` takes `{ legacyKey, gross, net }` and `year`.
 - **`dependsOn: []`** (T5's rule: nothing is resolved — the employee creates its own party), so `employee` sits after
   `party`, not last.
@@ -930,7 +930,7 @@ equivalents; its live half waits on OD-17.
 
 - `bun run --cwd packages/importer test`: **28 files, 288 passed, 1 skipped** (the OD-17 live-ODBC case);
   `employees` 19.
-- `tests`: `regression/sah-003`, `sah-049`, `sah-051`, `sah-073`, `sah-007`, `sah-011`, `sah-066` — 7 files, 45 passed
+- `tests`: `regression/legacy-003`, `legacy-049`, `legacy-051`, `legacy-073`, `legacy-007`, `legacy-011`, `legacy-066` — 7 files, 45 passed
   (the cut-over fixture now loads the two employees).
 - `packages/db`: `test/staff/**`, `test/hr/employee-ytd-opening`, `test/hr/sensitive`, `schema-mirror` — 11 files, 92
   passed. `apps/api`: `routes/hr/employees`, `routes/hr/sensitive` — 18 passed.
@@ -1043,7 +1043,7 @@ equivalents; its live half waits on OD-17.
 - `tests`: `invariants/tenant-isolation` (both new route probes), `invariants/job-isolation` (the new job probe),
   `invariants/projection-rebuild` (the after-the-load case) — 77 passed; `report-catalogue-pins`, `phase-6c-pinned`,
   `phase-6d-pins`, `phase-5-exit`, `phase-5a-pinned`, `hr-sensitive-side-channels`, `export-audit`, `golden/tax-einvoice`,
-  `regression/sah-003`, `-039`, `-046`, `-047`, `-049`, `-051` — 103 passed; `tests/lint` and `invariants/lint-rules` 70.
+  `regression/legacy-003`, `-039`, `-046`, `-047`, `-049`, `-051` — 103 passed; `tests/lint` and `invariants/lint-rules` 70.
 - `packages/importer` 288 passed, 1 skipped (OD-17); `packages/contracts` 69; `apps/edge` `containers` 10 (the C10 case
   failed first); `infra` 25 (five failed first on the importer copy); `scripts/lint/lint.test.ts` 12.
 - `bun run typecheck` 15/15, `bun run lint`, `bun run lint:rules` (11 rules, 1,524 files, 0 violations),
@@ -1083,7 +1083,7 @@ equivalents; its live half waits on OD-17.
     or which figure disagrees.
   - Refusals: a map entry on `3900`; a source without the `BILLS`/`BILLITEMS` the map's controls need
     (`ERR_IMPORT_SOURCE_UNREADABLE`); a duplicated source key with different values (`ERR_IMPORT_DUPLICATE_SOURCE_KEY`,
-    the load's SAH-049 rule); a `BILLITEMS` movement after the cut-over date; an unreadable `BILKIND`.
+    the load's LEGACY-049 rule); a `BILLITEMS` movement after the cut-over date; an unreadable `BILKIND`.
 - **`explain`**: subset search over the reports' SIGNED trial-balance effects — `unbalanced_vouchers`' `netImbalance`
   and `aggregate_drift`'s `ACCTOTALS.DEBIT` − `ACCTOTALS.CREDIT` drift (a missing stored row counting as a stored
   zero) — returning the matched reports' sentences or `null`; the four row-counting kinds are never candidates.
@@ -1172,7 +1172,7 @@ equivalents; its live half waits on OD-17.
 - `bun run --cwd packages/importer test`: **29 files, 310 passed, 1 skipped** (the OD-17 live-ODBC case);
   `reconcile-cut-over` 21, `cli` 20.
 - `tests`: `invariants/cut-over-reconciliation` (5), `invariants/projection-rebuild`, `invariants/lint-rules`,
-  `regression/sah-003`, `sah-007`, `sah-011`, `sah-049`, `sah-051`, `sah-066`, `sah-073` — 10 files, 88 passed (the
+  `regression/legacy-003`, `legacy-007`, `legacy-011`, `legacy-049`, `legacy-051`, `legacy-066`, `legacy-073` — 10 files, 88 passed (the
   corpus's new table changes none of them).
 - `apps/worker`: `test/handlers/import-run.test.ts` 13 (`run.ts` gained a function).
 - `bun run typecheck` 15/15, `bun run lint`, `bun run lint:rules` (11 rules, 1,526 files, 0 violations),
@@ -1231,7 +1231,7 @@ makes the absence a test.
 
 ### Built
 
-- **`tests/regression/sah-028.test.ts`**, a `— 9B, the import path` block (four cases, through the `@dulja/importer`
+- **`tests/regression/legacy-028.test.ts`**, a `— 9B, the import path` block (four cases, through the `@dulja/importer`
   barrel): no registered loader's source table is `USERS`; no declared source column matches `PASSWORD`, `PASSWD` or
   `PIN`; no file under `packages/importer/src` names `USERPASSWORD`, `USRPASSWORD`, `USRPIN` or `USERPIN`, and no file
   under `packages/importer/src/load` names a password or a PIN at all; the invite body (`InviteUserBody`) has exactly
@@ -1244,7 +1244,7 @@ makes the absence a test.
 ### Deviations from the plan text
 
 - **`NEVER_READ` is asked inside the package**, not from `tests/`: the barrel does not re-export it (C16 item 13; the
-  T0 decisions row says Task 12 imports it inside the package). The plan's third SAH-028 case moved to the importer's
+  T0 decisions row says Task 12 imports it inside the package). The plan's third LEGACY-028 case moved to the importer's
   registry test and gained the cross-check the plan's pair of cases implied (no declared column is on the list).
 - **The invite case asserts the tree's behaviour**: the plan expected `ERR_VALIDATION_FAILED` for a body carrying
   `password`; `InviteUserBody` is a non-strict Zod object, so the extra member is dropped and the invite answers 201 —
@@ -1259,7 +1259,7 @@ makes the absence a test.
 
 ### Verification (2026-11-13, Linux, Node 22, PostgreSQL 18 Testcontainers)
 
-- `tests`: `regression/sah-028.test.ts` **11 passed** (7 + the four 9B cases).
+- `tests`: `regression/legacy-028.test.ts` **11 passed** (7 + the four 9B cases).
 - `packages/importer`: `test/load/registry.test.ts` **6 passed** (5 + 1).
 - `bun run typecheck`, `bun run lint`, `bun run lint:rules`, `bun run format:check`: pass.
 - **Not verified:** the owner's answer to Part VII #4 (OD-26).
@@ -1381,7 +1381,7 @@ Task 8 and reports what it finds, as the plan's default says.
   corpus pin. `opening-stock.test.ts` +1 (PostgreSQL 18): the partitioned source refused, no `OPENING_STOCK`, no
   `BILLITEMS` key recorded. `employees.test.ts` +2: an empty `EMPLOYEES` loads zero employees and openings and the rest
   loads; an absent one fails pre-flight with the remedy, and the same source with `only` minus the two HR loaders loads.
-  `tests/regression/sah-022.test.ts` `— 9B` block (the partitioned corpus refused; `cut-over` loads with no such skip).
+  `tests/regression/legacy-022.test.ts` `— 9B` block (the partitioned corpus refused; `cut-over` loads with no such skip).
 - **Records**: `docs/decisions/od-27-9b-part-vii-7-and-13.md` (on 7B/7C's `od-27-…` precedent);
   `docs/runbooks/cut-over.md` step 3 gains the #13 and #7 items.
 
@@ -1398,14 +1398,14 @@ Task 8 and reports what it finds, as the plan's default says.
 - **A dry run does not ask #7** (`load` is never called in one); the runbook's #7 item says to read 9A's `part7-7`
   first. Recorded as a limit, not changed: moving the guard into pre-flight would widen the generic pre-flight with a
   loader-specific read.
-- **The partitioned corpus is a committed copy** (the plan's instruction) guarded by an equality test; the SAH-022
+- **The partitioned corpus is a committed copy** (the plan's instruction) guarded by an equality test; the LEGACY-022
   block uses `sliceRegression` with a renamed `expect` (`no-shadow`), and string matchers.
 - **Error messages are assembled with `join`** where `no-sql-concat` read a template string as SQL.
 
 ### Verification (2026-11-14, Linux, Node 22, PostgreSQL 18 Testcontainers)
 
 - `bun run --cwd packages/importer test` (full): **31 files, 331 passed, 2 skipped** (9A's and T14's OD-17 live cases).
-- `tests`: `regression/sah-022` 2, `regression/sah-028` 11.
+- `tests`: `regression/legacy-022` 2, `regression/legacy-028` 11.
 - `bun run typecheck`, `bun run lint`, `bun run lint:rules` (11 rules, 1,530 files, 0 violations),
   `bun run format:check`, all `scripts/check/*.sh` gates.
 - **Not verified:** the customer's `MATOPENS` and Salaries row counts (OD-27, OD-17).
@@ -1568,7 +1568,7 @@ decisions **21–24** (Proposed, owner questions 6–7), decision rows in `docs/
 - `packages/importer` full: **339 passed, 2 skipped in 32 files** (OD-17's live cases). `packages/db`
   `test/import` + `test/jobs`: 6 files, 67 passed. `packages/contracts` 69, `apps/edge` 49.
 - `tests`: `invariants/tenant-isolation`, `job-isolation`, `projection-rebuild`, `cut-over-reconciliation`,
-  `lint-rules`, `regression/sah-049`, `-083`, `-084` — 8 files, 120 passed; after finding 4 also `sah-003`, `-007`,
+  `lint-rules`, `regression/legacy-049`, `-083`, `-084` — 8 files, 120 passed; after finding 4 also `legacy-003`, `-007`,
   `-011`, `-022`, `-028`, `-051`, `-066`, `-073`, `-077` — 12 files, 82 passed.
 - `bun run typecheck` 15/15, `bun run lint`, `bun run lint:rules` (11 rules, 0 violations), `bun run format:check`, all
   eighteen `scripts/check/*.sh` gates (the 9B gate with C19–C22's literals), `openapi.json` regenerated with no diff.
@@ -1672,7 +1672,7 @@ decisions **25–27** (Proposed, owner question 8); ADR 0086 decisions **8–9**
 ### Verification (2026-11-14, Linux, Node 22, Bun 1.4, PostgreSQL 18 Testcontainers)
 
 - `packages/importer` full: **357 passed, 2 skipped in 32 files** (OD-17's live cases; was 339 + 2).
-- `tests`: `invariants/cut-over-reconciliation`, `lint-rules`, `type-resolution`, `regression/sah-003`, `-007`, `-011`,
+- `tests`: `invariants/cut-over-reconciliation`, `lint-rules`, `type-resolution`, `regression/legacy-003`, `-007`, `-011`,
   `-022`, `-028`, `-049`, `-051`, `-073`, `-077` — **12 files, 95 passed**.
 - `apps/worker` `test/handlers/import-run.test.ts` 18; `packages/contracts` 69.
 - `bun run typecheck` 15/15, `bun run lint`, `bun run lint:rules` (11 rules, 0 violations), `bun run format:check`, all

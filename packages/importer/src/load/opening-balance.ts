@@ -65,7 +65,7 @@ const COLUMNS: readonly SourceColumn[] = [
  *   `inventory_control` — supplied by `OPENING_STOCK` at a RECOMPUTED cost (Task 6), because §5.1 #6 forbids importing
  *                         the legacy cost figures at all.
  * `exclude` accounts and codes the map does not name are reported and not loaded. Every other row is a `balance` line at
- * its NET, and whatever the exclusions and the legacy imbalance (SAH-003) leave over lands on `3900`, where it is visible
+ * its NET, and whatever the exclusions and the legacy imbalance (LEGACY-003) leave over lands on `3900`, where it is visible
  * and where Task 10's reconciliation explains it — never dropped and never spread over a real account.
  *
  * Source key: the bare `ACTACC`, which is also how `map` resolves the account (`refs.byLegacyRef("account", ACTACC)` —
@@ -98,7 +98,7 @@ export const openingBalanceLoader: Loader<LegacyRow, OpeningBalanceTarget> = {
         skip: `legacy account ${legacyCode} is the ${entry.treatment}; its opening is supplied by the sub-ledger load, not by the trial-balance opening`,
       };
     const site = `ACCTOTALS/${legacyCode}`;
-    // The amounts before the reference: a NULL total is refused at the row that has it (SAH-007), whether or not the
+    // The amounts before the reference: a NULL total is refused at the row that has it (LEGACY-007), whether or not the
     // account was linked, rather than hidden behind a "never linked" skip on a rehearsal.
     const debit = moneyOf(row, "ACTDEBIT", baseCurrency(), site);
     const credit = moneyOf(row, "ACTCREDIT", baseCurrency(), site);
@@ -168,7 +168,7 @@ export const openingBalanceLoader: Loader<LegacyRow, OpeningBalanceTarget> = {
         kind: "account",
         accountId: suspense.id,
         description:
-          "Opening-balance suspense — the residue of the legacy trial balance the balance accounts leave (§5.1 #2, SAH-003)",
+          "Opening-balance suspense — the residue of the legacy trial balance the balance accounts leave (§5.1 #2, LEGACY-003)",
         debit: residue.isNegative() ? residue.negate() : Money.zero(base),
         credit: residue.isNegative() ? Money.zero(base) : residue,
       });

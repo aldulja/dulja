@@ -29,7 +29,7 @@ top of it otherwise.
 - **Every workspace ran in full at `621e8b5`, after the code review's second pass.** `packages/db` 130 files, 1,178/1,178; `apps/api` 62 files, 550/550; `apps/worker` 9 files, 34/34, plus its two `bun test` cases; `tests` 500 passed, **2 failed**, 5 skipped (507); `packages/domain` 219, `packages/contracts` 35, `packages/i18n` 31, `packages/ui` 22, `apps/backoffice` 117, `apps/edge` 37, `apps/desktop` 37; `bun run e2e` 10/10 (with a local Chromium shim); `bun run typecheck` 12/12, `lint`, `lint:rules` (11 rules, 0 violations), `format:check`, a regenerated `openapi.json` with no diff, and all four `contracts-*.sh` gates green.
   The only red cases in the whole tree are two Phase 3 costing cases that each wait on an owner decision
   (below), failing on exactly the figures they failed on before the review. No Phase 4 test is red. (The
-  first full run after the review's three streams merged had one more red case, `sah-023`, whose check for a
+  first full run after the review's three streams merged had one more red case, `legacy-023`, whose check for a
   counter column caught 0045's new money column; `d6d0b27` narrows it to whole-number types.)
 
 ## How this was verified
@@ -311,7 +311,7 @@ for its window; and the removal of `inventory.cost.read` from two roles is seed-
 | Case | Why | Closes by |
 |---|---|---|
 | `tests/invariants/test-07-one-costing-answer.test.ts`, *"a BACK-DATED purchase recosts forward only, and all three tie-outs hold again afterwards"* — tie-out A reads 167.0589, expected 167.0570 | AVCO prices an issue at the running average rounded to 4 dp times the quantity, while the valuation sums each layer's rounded value. The 3B plan names this its fourth blocker and says to stop and raise it; its proposed fix (`cost_layer.value`, inside ADR 0039) was never written | an owner decision on 3B's ADR 0039 |
-| `tests/regression/sah-004.test.ts` — reversing the second purchase leaves unit cost 15.0000, expected 10.0000 | Contract §4.7.1 makes an AVCO issue a proportional slice at the running average, and a receipt's reversal is such an issue; the ledger meanwhile credits `1300` at the receipt's own amount. spec:231's failure scenario ("delete the second purchase … cost stays 15") argues that a reversal should cancel the reversed receipt's own layer | an ADR (money semantics): consume the reversed receipt's layer, or book the difference |
+| `tests/regression/legacy-004.test.ts` — reversing the second purchase leaves unit cost 15.0000, expected 10.0000 | Contract §4.7.1 makes an AVCO issue a proportional slice at the running average, and a receipt's reversal is such an issue; the ledger meanwhile credits `1300` at the receipt's own amount. spec:231's failure scenario ("delete the second purchase … cost stays 15") argues that a reversal should cancel the reversed receipt's own layer | an ADR (money semantics): consume the reversed receipt's layer, or book the difference |
 
 Two procedural gaps, recorded: **reversing any approval-required type is impossible** (`reverseDocument` posts
 its draft mirror at once and §4.5.1 forbids draft → issued when approval is required — `PAYMENT`, `STOCK_COUNT`,

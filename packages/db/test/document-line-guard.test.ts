@@ -1,6 +1,6 @@
 // packages/db/test/document-line-guard.test.ts — code review 2 (Phase 4), finding P1: app.document_line is
-// frozen once its document leaves draft (migration 0113). spec:574 (SAH-041) "issued financial documents are
-// immutable"; spec:501, 2223 (SAH-031) "the whole document aggregate (header + lines + projections)";
+// frozen once its document leaves draft (migration 0113). spec:574 (LEGACY-041) "issued financial documents are
+// immutable"; spec:501, 2223 (LEGACY-031) "the whole document aggregate (header + lines + projections)";
 // spec:2049 "Financial rows: never — reversal only"; spec:2173 the data layer is the control. Every case runs
 // as `app_rw` inside `withTenant`, the role every route and job writes through, so a refusal here is a
 // refusal for every path. Each red case fails on e8df83b, where 0023 guarded DELETE only.
@@ -101,7 +101,7 @@ afterAll(async () => {
   await db?.stop();
 });
 
-describe("P1 — a document's lines are frozen once it leaves draft (0113, SAH-041, SAH-031)", () => {
+describe("P1 — a document's lines are frozen once it leaves draft (0113, LEGACY-041, LEGACY-031)", () => {
   it("a POSTED line's amount, total, description and account cannot be rewritten", async () => {
     const { documentId, lineId } = await postedSale();
     await expect(

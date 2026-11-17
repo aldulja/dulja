@@ -4,7 +4,7 @@
 
 -- ── 1. the table ───────────────────────────────────────────────────────────────────────────────────────
 create table app.payment_term (
-  id             uuid primary key default uuidv7(),                       -- §3.2 identifiers (SAH-021)
+  id             uuid primary key default uuidv7(),                       -- §3.2 identifiers (LEGACY-021)
   tenant_id      uuid not null references app.tenant(id),
   company_id     uuid not null,
   code           text not null,
@@ -23,7 +23,7 @@ create table app.payment_term (
     or (discount_days is not null and discount_pct is not null and discount_days >= 0 and discount_days <= due_days)),
   constraint payment_term_company_id_code_key unique (company_id, code),   -- contracts §4.6.1
   unique (tenant_id, id),                                                  -- the target of 0045's composite FKs
-  -- composite: an FK check bypasses RLS, so a plain `references` would admit another tenant's company (SAH-035)
+  -- composite: an FK check bypasses RLS, so a plain `references` would admit another tenant's company (LEGACY-035)
   foreign key (tenant_id, company_id) references app.company(tenant_id, id)
 );
 

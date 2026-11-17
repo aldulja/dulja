@@ -8,7 +8,7 @@
 
 **Tech Stack:** Bun 1.4 (install, scripts, both container entrypoints) · Node 24 LTS (runs Vitest) · TypeScript strict · PostgreSQL 18 (Supabase in the cloud; `postgres:18` in Testcontainers) · Cloudflare Containers + Workers + R2 (`wrangler`, `@cloudflare/containers`) · Docker (the container image) · `postgres` (postgres.js) · `@supabase/supabase-js` (the seed CLI's admin client only) · OpenTelemetry (`@opentelemetry/sdk-node`, `@opentelemetry/exporter-trace-otlp-http`) · Sentry (`@sentry/node`) · Vitest + Testcontainers · GitHub Actions · Renovate · oxlint + oxfmt · Turborepo.
 
-**Spec:** `docs/spec/rebuild-spec.md` v1.2. Sections this plan implements: §3.0 (the confirmed deployment decisions table, spec:971–987), §3.2 (the stack, §3.2.1 the Cloudflare resolution, §3.2.2 the stack table, §3.2.4 container topology — spec:1080–1162), §3.8 (roles and connections header spec:1366; the six-step bootstrap sequence and the MFA note spec:1996–2004), §3.9 (Logging spec:2063; Naming, Identifiers, Time, Database access), §4.2 (identity — the "principal is created only from a Supabase-obtained `sub`" rule, spec:2132), §4.2.1 (the nine-role table, spec:2152–2166), §4.3 (bootstrap is the offline CLI, never an endpoint — spec:2188), §4.8 (reliability and operations — PITR, restore verified not assumed, spec:2231–2239), §4.9 (observability, spec:2241–2247), §4.11 (environments and secrets, spec:2272–2273), §5.0 rows 0.2, 0.5, 0.7, 0.7b, 0.14 (spec:2311–2324), §5.2 (`apps/edge`, `infra/`, `packages/db/seed/`), §5.3 rows "Before 0.2" through "0.14". Companion: `docs/spec/sahlisoft-accounting-analysis.md`.
+**Spec:** `docs/spec/rebuild-spec.md` v1.2. Sections this plan implements: §3.0 (the confirmed deployment decisions table, spec:971–987), §3.2 (the stack, §3.2.1 the Cloudflare resolution, §3.2.2 the stack table, §3.2.4 container topology — spec:1080–1162), §3.8 (roles and connections header spec:1366; the six-step bootstrap sequence and the MFA note spec:1996–2004), §3.9 (Logging spec:2063; Naming, Identifiers, Time, Database access), §4.2 (identity — the "principal is created only from a Supabase-obtained `sub`" rule, spec:2132), §4.2.1 (the nine-role table, spec:2152–2166), §4.3 (bootstrap is the offline CLI, never an endpoint — spec:2188), §4.8 (reliability and operations — PITR, restore verified not assumed, spec:2231–2239), §4.9 (observability, spec:2241–2247), §4.11 (environments and secrets, spec:2272–2273), §5.0 rows 0.2, 0.5, 0.7, 0.7b, 0.14 (spec:2311–2324), §5.2 (`apps/edge`, `infra/`, `packages/db/seed/`), §5.3 rows "Before 0.2" through "0.14". Companion: `docs/spec/legacy-system-analysis.md`.
 
 ## Assumptions and contracts (from docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md)
 
@@ -19,7 +19,7 @@
 - **Interfaces produced:** the §2.1 0C card verbatim — `packages/db/provision/verify-supabase.ts`, `infra/` (Dockerfile, `wrangler.jsonc`, Renovate), `apps/edge`, the staging deploy workflow, `bun run seed` (`packages/db/src/cli.ts seed`, the `--only <sub-pack>` flag of §3.4.8, the `chart-of-accounts`, `dimensions`, `fiscal-periods` and `roles` loaders), `packages/db/seed/my/chart-of-accounts/0c-base.json` (§4.15's eleven 0C leaf rows), the per-tenant role-grant applier (§3.6.4), and the observability wiring of spec:2324.
 - **Contracts amendment (hazard 32, §4.2.4's "amends this table first") — already folded in; Task 1 Step 0 is the *verification* that it is:** every name this slice introduces into a frozen register was folded into `docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md` by **§4.18 "Amendments from written plans", round 1**, which records each of them against slice 0C: §2.12 (OD-04's 0C column), §3.1 (the two new sub-pack directories, `infra` in the root `workspaces` array and in the workspace table), §3.4.8 (the Phase 0 loader names), §2.1 + §3.9 (ADR 0013 = observability), §3.11 (`OTEL_EXPORTER_OTLP_ENDPOINT`), §4.2.2 (`DbOptions.debug`), §4.2.12 (the `"./seed"` and `"./provision/verify-supabase"` subpath exports), §4.2.3 (the middleware order gains `otel` in front), §4.2.4 (`ERR_RATE_LIMITED`), §4.15 (`isGroup?: boolean` in the declared file shape). **Task 1 Step 0 greps for all fourteen strings and must find every one** (§3.1 contributes three of them and §4.2.4 two); it amends only what has drifted, and commits only if it changed something. The full list is Self-Review §5.
 - **Owner decisions (one isolated task each):** **OD-19** Supabase organisation + PITR billing → **Task 2**; **OD-20** Cloudflare account with Containers + a domain → **Task 4**; **OD-21** owner login e-mail, legal name, MYR, fiscal-year start, service-role key → **Task 9**; **OD-22** Sentry organisation → **Task 13**; **OD-04** the nine role names → **Task 8**. Defaults per §2.12: Testcontainers, `wrangler dev`, fixture values, a stub DSN, the spec's role names. **OD-24 does not apply — 0C ships no screen.**
-- **Part VI tests owned / re-run:** **owned: none new.** 0C **runs 12, 13 and 14 in CI against staging** as the Phase 0 exit gate (Task 14). **Re-runs:** the seed clauses of **36** — nine roles present, `admin` holds every present code except `pos.ticket.sell` and `pos.sync.*` (Task 8). **§3.0.4 rows owned:** none. **Regression files created:** `tests/regression/sah-039.test.ts` (bootstrap is an offline idempotent CLI, Task 6) and `tests/regression/sah-081.test.ts` (PITR enabled — the restore drill itself is 1B's, Task 2). **Appended to:** `sah-025` (Task 12), `sah-080` (Task 5), `sah-087` (Task 5) — each with a new `describe("… — 0C", …)` block beside 0B's, never editing 0B's block (§3.7.3).
+- **Part VI tests owned / re-run:** **owned: none new.** 0C **runs 12, 13 and 14 in CI against staging** as the Phase 0 exit gate (Task 14). **Re-runs:** the seed clauses of **36** — nine roles present, `admin` holds every present code except `pos.ticket.sell` and `pos.sync.*` (Task 8). **§3.0.4 rows owned:** none. **Regression files created:** `tests/regression/legacy-039.test.ts` (bootstrap is an offline idempotent CLI, Task 6) and `tests/regression/legacy-081.test.ts` (PITR enabled — the restore drill itself is 1B's, Task 2). **Appended to:** `legacy-025` (Task 12), `legacy-080` (Task 5), `legacy-087` (Task 5) — each with a new `describe("… — 0C", …)` block beside 0B's, never editing 0B's block (§3.7.3).
 - **Shared namespaces this slice writes into:** document-type codes (§4.14) — **none** (`JOURNAL` is 1A's, §4.3.7). Account codes (§4.15) — **seeded: `1000`, `1100`, `1200`, `1300`, `2100`, `4000`, `4900`, `5000`, `5900`, `5910`, `5920`** (the eleven leaves §4.15 marks 0C) plus five unregistered `is_group = true` presentation parents `1`, `2`, `3`, `4`, `5`; **consumed but seeded elsewhere: none.** Report codes (§4.16.1) and `DatasetId` members (§4.16.2) — **none**. `fixtures.ts` helpers (§4.17) — **none added**; 0C's tests drive the real loaders against `startDb()` and `seedTenant`, which is what they are testing. `ERR_*` (§4.2.4) — **exactly one added: `ERR_RATE_LIMITED` (429, raised by the edge Worker, Task 3)**, because §4.2.4's allocated space held no 429 code before it and spec:2204 requires rate limiting in v1; the contracts table already carries the row (§4.18 round 1) and Task 1 Step 0 verifies it before Task 3 raises the code (hazard 32). The seed CLI adds none — its `SeedError` carries the already-registered `ERR_VALIDATION_FAILED`.
 - **Never re-decide:** D1–D27 (spec:114–142); every name in the contracts document is frozen — a needed change goes to that document first.
 - **Contracts version:** 2026-09-08 — the contracts document as of "§4.18 Amendments from written plans (2026-09-07, extended 2026-09-08)", with rounds 1–3 folded into §§2–4. Round 1 carries this slice's own amendments (the `| … | 0C | plan |` rows); §4.18 **overrides anything earlier in that document that contradicts it**.
@@ -38,7 +38,7 @@ Each is stated once here so no task has to hedge. If one is false at execution t
 8. **`no-console` is `error` everywhere except `packages/*/src/cli.ts` and `**/*.test.ts` (plan0A:301), and no plan widens that glob.** So: `packages/db/provision/verify-supabase.ts` and every `packages/db/src/seed/*.ts` write through `process.stdout.write` or return a result the CLI prints; `packages/db/src/cli.ts` may use `console`; and `apps/edge/src/log.ts` — a Workers runtime with no `process.stdout` — carries **one** `// oxlint-disable-next-line no-console` with a reason. That inline disable is the only one in the slice.
 9. **Docker Desktop (WSL2 backend) is available**, as for Plan 0A, and `docker build` runs locally. Task 1's image proof is a real build; Task 4's `wrangler dev` proof needs the Cloudflare CLI but no account (OD-20).
 10. **Staging is a real Supabase project and a real Cloudflare deploy.** Until OD-19 and OD-20 arrive, every task's verification runs against `startDb()` / `wrangler dev` and must print the *same* lines; the cloud command is written out beside it so the executor runs one line when the account exists.
-11. **`bun run seed` is `packages/db/src/cli.ts seed`, never an endpoint.** SAH-039 is the defect: `procInitDatabase` created an administrator, unauthenticated, with no already-initialised guard. Task 6's regression asserts mechanically that no `ROUTES` path matches `/seed|init|bootstrap/` and that the CLI refuses to run on `DATABASE_URL` (it requires `DATABASE_URL_MIGRATOR`).
+11. **`bun run seed` is `packages/db/src/cli.ts seed`, never an endpoint.** LEGACY-039 is the defect: `procInitDatabase` created an administrator, unauthenticated, with no already-initialised guard. Task 6's regression asserts mechanically that no `ROUTES` path matches `/seed|init|bootstrap/` and that the CLI refuses to run on `DATABASE_URL` (it requires `DATABASE_URL_MIGRATOR`).
 12. **The seed is re-run after every deploy** (§3.4.8: "re-applying the seed against staging after deploy is a release-runbook step"), so idempotency is not a nicety — Task 12 proves it by snapshotting the row count of every table the seed touches **plus `app.audit_log` plus `pgboss.tenant_registry`** across two runs.
 
 ### A note on this plan's length and shape
@@ -53,11 +53,11 @@ It carries five owner gates — more than any other Phase 0 slice — and §2.0 
 
 Copied from the spec; every task's requirements include these.
 
-- **Never**, at any phase, for any reason (spec:97–104): write to a ledger or movement table outside the posting service; represent money as a float, anywhere, including in TypeScript; build SQL by string concatenation (SAH-036/037/069); issue DDL from application code (SAH-053); disable an invariant, constraint or trigger "temporarily" (SAH-027, 041, 053); gate an audit write on any flag (SAH-030); hard-code a package version into a source file — the lockfile owns versions.
+- **Never**, at any phase, for any reason (spec:97–104): write to a ledger or movement table outside the posting service; represent money as a float, anywhere, including in TypeScript; build SQL by string concatenation (LEGACY-036/037/069); issue DDL from application code (LEGACY-053); disable an invariant, constraint or trigger "temporarily" (LEGACY-027, 041, 053); gate an audit write on any flag (LEGACY-030); hard-code a package version into a source file — the lockfile owns versions.
 - **Always** (spec:106), for every new table: `tenant_id`, an RLS policy, `created_at`, a migration, and a test that a second tenant cannot see it. *(0C creates no table — its migration number 0009 is reserved and unused.)* For every new endpoint: Zod schema, OpenAPI entry, idempotency on unsafe methods, and a tenant-isolation test. *(0C adds no `/v1` route; `apps/edge` is a proxy, and its only origin-terminated paths are `/healthz` and `/updates/*`, which are public and read-only.)* For every UI screen: verified in both text directions before merge. *(0C ships no screen.)*
-- **Never an initialisation procedure callable on a running system** (spec:2188, SAH-039). Bootstrap is the offline `bun run seed` CLI, run as `app_migrator`.
+- **Never an initialisation procedure callable on a running system** (spec:2188, LEGACY-039). Bootstrap is the offline `bun run seed` CLI, run as `app_migrator`.
 - **Per-tenant rows cannot be written by a migration** (spec:1366, §3.4.8, hazard 10): `FORCE ROW LEVEL SECURITY` binds `app_migrator`, and a migration file has no `set_config`. Roles, role grants, chart of accounts, dimensions and fiscal periods are seed-pack data.
-- **Identifiers** (spec:2037): `uuidv7()` server-side for everything; never a sequential integer as a public identifier; never reuse; never rewind (SAH-021). The seed mints ids with `select uuidv7()::text` on the migrator connection, never with a client-side generator.
+- **Identifiers** (spec:2037): `uuidv7()` server-side for everything; never a sequential integer as a public identifier; never reuse; never rewind (LEGACY-021). The seed mints ids with `select uuidv7()::text` on the migrator connection, never with a client-side generator.
 - **Time** (spec:2039): all timestamps `timestamptz` in UTC; `effective_date` is a `date`; every company has a `timezone` (`Asia/Kuala_Lumpur` for the first customer).
 - **Money** (spec:2041): `numeric(19,4)`; no `number` ever holds a monetary value. *(0C writes no monetary value; the chart of accounts carries codes and names only.)*
 - **Naming** (spec:2045): `snake_case` in SQL, singular table names; TypeScript `camelCase`, types `PascalCase`; bilingual master data as `name_en` / `name_ar` columns, never a JSON blob — the seed pack's `nameEn` / `nameAr` members land in exactly those columns.
@@ -158,11 +158,11 @@ docs/adr/0013-observability-otel-sentry.md      NEW
 docs/runbooks/supabase-provisioning.md          NEW — OWNER GATE OD-19; PITR; the staging project
 docs/runbooks/deploy.md                         NEW — deploy, jobs:install, re-seed, rollback
 
-tests/regression/sah-039.test.ts                NEW (created by this slice)
-tests/regression/sah-081.test.ts                NEW (created by this slice)
-tests/regression/sah-025.test.ts                MODIFIED — one appended describe block
-tests/regression/sah-080.test.ts                MODIFIED — one appended describe block
-tests/regression/sah-087.test.ts                MODIFIED — one appended describe block
+tests/regression/legacy-039.test.ts                NEW (created by this slice)
+tests/regression/legacy-081.test.ts                NEW (created by this slice)
+tests/regression/legacy-025.test.ts                MODIFIED — one appended describe block
+tests/regression/legacy-080.test.ts                MODIFIED — one appended describe block
+tests/regression/legacy-087.test.ts                MODIFIED — one appended describe block
 tests/staging/                                  NEW — a directory INSIDE the existing `tests` workspace (not a new
                                                 workspace): its own Vitest config, run against a deployed URL by the
                                                 root script `test:staging`; `tests/vitest.config.ts`'s `include`
@@ -749,11 +749,11 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 > **Owner provides:** access to a Supabase organisation with two projects in **Singapore** — `dulja-production` and `dulja-staging` — with **billing enabled so PITR can be turned on**, and, for each, the `postgres` connection string plus the passwords chosen for `app_migrator` and `app_rw`.
 > **Verify with:** `DATABASE_URL="postgres://app_rw:…@db.<ref>.supabase.co:5432/postgres" DATABASE_URL_MIGRATOR="postgres://app_migrator:…@db.<ref>.supabase.co:5432/postgres" bun run --cwd packages/db provision:verify` — it must print exactly four lines: `rls-forced: ok`, `bypassrls-probe: refused`, `app_auth-login: refused`, `pooler-url: absent`.
 > **Default written into this plan (executed until the owner answers):** the identical script runs against `startDb()` in `packages/db/test/provision-verify.test.ts` and must print the same four lines. **Nothing in this slice blocks on OD-19** — every later task's local verification uses Testcontainers.
-> **If the owner declines PITR:** delete the PITR section of `docs/runbooks/supabase-provisioning.md`, change `tests/regression/sah-081.test.ts`'s second `it` to `it.skip` with the reason, and tell 1B (whose restore drill is acceptance test 24) that its Task cannot run. Nothing else changes.
+> **If the owner declines PITR:** delete the PITR section of `docs/runbooks/supabase-provisioning.md`, change `tests/regression/legacy-081.test.ts`'s second `it` to `it.skip` with the reason, and tell 1B (whose restore drill is acceptance test 24) that its Task cannot run. Nothing else changes.
 > **If the owner supplies one project instead of two:** `docs/runbooks/supabase-provisioning.md`'s staging section and `.github/workflows/deploy-staging.yml`'s `DATABASE_URL` secret are the only places `dulja-staging` is named.
 
 **Files:**
-- Create: `packages/db/provision/verify-supabase.ts`, `docs/runbooks/supabase-provisioning.md`, `tests/regression/sah-081.test.ts`
+- Create: `packages/db/provision/verify-supabase.ts`, `docs/runbooks/supabase-provisioning.md`, `tests/regression/legacy-081.test.ts`
 - Modify: `packages/db/package.json` (script `provision:verify`, and the `exports` entry `"./provision/verify-supabase"` Task 14 needs), `tests/support/regression.ts` (the one additive `repoFile` helper of Step 5, over 0B's `REPO_ROOT` imported from `./source`)
 - Test: `packages/db/test/provision-verify.test.ts`
 
@@ -989,9 +989,9 @@ Expected: PASS — 4 tests.
 
 If `bypassrls-probe` reports `app_rw could set role postgres`, `provision/roles.sql` granted membership it should not have — re-read plan0A Task 3 Step 1; the role is created `nosuperuser nobypassrls nocreaterole` and is a member of nothing.
 
-- [ ] **Step 5: Write `tests/regression/sah-081.test.ts`**
+- [ ] **Step 5: Write `tests/regression/legacy-081.test.ts`**
 
-`sah-081` is *Backup and restore are manual, whole-file and destructive*. The **restore drill itself is 1B's** (acceptance test 24); 0C proves only that the mechanism the drill needs is enabled.
+`legacy-081` is *Backup and restore are manual, whole-file and destructive*. The **restore drill itself is 1B's** (acceptance test 24); 0C proves only that the mechanism the drill needs is enabled.
 
 First, one additive export in 0B's `tests/support/regression.ts` — Vitest runs the `tests` workspace with its own directory as the cwd, so **every** repository path a regression file reads must be resolved, not written relative. All five 0C regression files use it:
 
@@ -1010,13 +1010,13 @@ import { REPO_ROOT } from "./source";
 export function repoFile(relativePath: string): string { return readFileSync(join(REPO_ROOT, relativePath), "utf8"); }
 ```
 
-`tests/regression/sah-081.test.ts`:
+`tests/regression/legacy-081.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
 import { repoFile, sharedDb } from "../support/regression";
 
-describe("SAH-081 Backup and restore are manual, whole-file and destructive — 0C", () => {
+describe("LEGACY-081 Backup and restore are manual, whole-file and destructive — 0C", () => {
   it("continuous WAL archiving is possible: wal_level is not 'minimal' (spec:2234)", async () => {
     const { db } = await sharedDb();
     const [row] = await db.admin<{ wal_level: string }[]>`show wal_level`;
@@ -1036,7 +1036,7 @@ describe("SAH-081 Backup and restore are manual, whole-file and destructive — 
 
 Run it now, before the runbook exists — the same red-first order every other task in this slice follows.
 
-Run: `cd tests && bun run test -- regression/sah-081.test.ts`
+Run: `cd tests && bun run test -- regression/legacy-081.test.ts`
 Expected: FAIL — the second case throws `ENOENT: no such file or directory, open '…/docs/runbooks/supabase-provisioning.md'` from `repoFile`. The first case (`wal_level`) passes already: it asserts a property of the database, not of this slice's work. A run in which **both** cases pass means `repoFile` resolved a path it should not have — check that it joins `REPO_ROOT` and not `process.cwd()`.
 
 - [ ] **Step 6: Write `docs/runbooks/supabase-provisioning.md`**
@@ -1102,7 +1102,7 @@ created later in this slice — `infra/wrangler.jsonc` at Task 4 and `.github/wo
 Task 5 — so between Tasks 2 and 5 the scan covers `.github/workflows/ci.yml` alone and still prints `absent`.
 If none of the three exists the command exits 1 rather than printing a false pass.
 
-## 5. Point-in-time recovery (SAH-081)
+## 5. Point-in-time recovery (LEGACY-081)
 
 Enable **Point-in-time recovery** on the production project (Database → Backups → PITR). It requires billing,
 which is the OD-19 half only the owner can supply.
@@ -1123,7 +1123,7 @@ Repeat sections 1–4 for `dulja-staging`. PITR is not required there. Staging i
 
 - [ ] **Step 7: Run everything and commit**
 
-Run: `bun run lint && bun run typecheck && cd packages/db && bun run test -- test/provision-verify.test.ts && cd ../../tests && bun run test -- regression/sah-081.test.ts`
+Run: `bun run lint && bun run typecheck && cd packages/db && bun run test -- test/provision-verify.test.ts && cd ../../tests && bun run test -- regression/legacy-081.test.ts`
 Expected: PASS — 4 + 2 tests.
 
 ```bash
@@ -1349,7 +1349,7 @@ describe("apps/edge/src/updates — the electron-builder feed from R2 (spec:1104
     expect(await res.text()).toBe("not found");
   });
 
-  it("refuses path traversal and an empty key — the feed is not a file browser (SAH-038)", async () => {
+  it("refuses path traversal and an empty key — the feed is not a file browser (LEGACY-038)", async () => {
     for (const p of ["/updates/../wrangler.jsonc", "/updates/a/../../b", "/updates/"]) {
       expect((await serveUpdate(bucket({}), p)).status).toBe(400);
     }
@@ -1421,7 +1421,7 @@ describe("apps/edge/src/router — routing (spec §3.2.1, §5.2)", () => {
     expect(forward).not.toHaveBeenCalled();
   });
 
-  it("strips client-supplied identity headers before forwarding — the edge never asserts identity (SAH-026)", async () => {
+  it("strips client-supplied identity headers before forwarding — the edge never asserts identity (LEGACY-026)", async () => {
     const { env, deps, forward } = harness();
     await handleFetch(new Request("https://api.example/v1/companies", {
       headers: { Authorization: good, "X-Tenant-Id": "0192-forged", "X-Actor-Id": "0192-forged" },
@@ -1595,7 +1595,7 @@ const SAFE_KEY = /^[A-Za-z0-9][A-Za-z0-9._-]*(\/[A-Za-z0-9][A-Za-z0-9._-]*)*$/;
 
 /**
  * The electron-builder update feed (spec §5.2, §3.2.1). Read-only, keyed, never a listing: attachments and
- * artefacts are addressed by opaque server-generated keys, never by a client-supplied path (SAH-038). 0E's
+ * artefacts are addressed by opaque server-generated keys, never by a client-supplied path (LEGACY-038). 0E's
  * auto-updater points at `https://<domain>/updates/`.
  */
 export async function serveUpdate(bucket: R2Bucket, pathname: string): Promise<Response> {
@@ -1656,7 +1656,7 @@ export interface RouterDeps {
 }
 
 /** Headers a client must never be able to assert. The container derives tenant and actor from the verified JWT
- *  alone (spec §3.8); forwarding a client-supplied value would be SAH-026 rebuilt at the edge. */
+ *  alone (spec §3.8); forwarding a client-supplied value would be LEGACY-026 rebuilt at the edge. */
 const STRIPPED = ["x-tenant-id", "x-actor-id", "x-principal-id", "x-forwarded-authorization"] as const;
 
 const hex = (bytes: number): string =>
@@ -2078,8 +2078,8 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 **Files:**
 - Create: `.github/workflows/deploy-staging.yml`, `docs/runbooks/deploy.md`, `apps/edge/src/container-env.ts`
-- Modify: `apps/edge/src/containers.ts` (assign the secrets in the constructor), `apps/edge/src/env.ts` (the secret members), `tests/regression/sah-080.test.ts` (append one describe block), `tests/regression/sah-087.test.ts` (append one describe block)
-- Test: `apps/edge/test/containers.test.ts`, `tests/regression/sah-080.test.ts`, `tests/regression/sah-087.test.ts`
+- Modify: `apps/edge/src/containers.ts` (assign the secrets in the constructor), `apps/edge/src/env.ts` (the secret members), `tests/regression/legacy-080.test.ts` (append one describe block), `tests/regression/legacy-087.test.ts` (append one describe block)
+- Test: `apps/edge/test/containers.test.ts`, `tests/regression/legacy-080.test.ts`, `tests/regression/legacy-087.test.ts`
 
 **Interfaces:**
 - Consumes: Task 4's `infra/wrangler.jsonc`; Plan 0A's `db:migrate` / `db:lint` scripts and `.github/workflows/ci.yml` job `checks`; 0D's `apps/worker` script `jobs:install`; §3.11's names.
@@ -2126,7 +2126,7 @@ describe("containerSecrets — the §3.11 inventory the container receives (spec
     expect(Object.values(containerSecrets(withKey, "api"))).not.toContain("sb-secret");
   });
 
-  it("never passes the migrator URL — the container must not be able to run DDL (spec:104, SAH-053)", () => {
+  it("never passes the migrator URL — the container must not be able to run DDL (spec:104, LEGACY-053)", () => {
     const withMigrator = { ...env, DATABASE_URL_MIGRATOR: "postgres://app_migrator:pw@db.ref.supabase.co:5432/postgres" } as unknown as Env;
     expect(Object.keys(containerSecrets(withMigrator, "api"))).not.toContain("DATABASE_URL_MIGRATOR");
   });
@@ -2171,7 +2171,7 @@ import type { Env } from "./env";
  * The environment the container process receives (§3.11, spec:2273). Two names are deliberately absent:
  *   • SUPABASE_SERVICE_ROLE_KEY — the seed CLI's alone; it creates auth users and must never be reachable from
  *     a process that serves requests.
- *   • DATABASE_URL_MIGRATOR — the container connects as app_rw and issues no DDL (spec:104, SAH-053).
+ *   • DATABASE_URL_MIGRATOR — the container connects as app_rw and issues no DDL (spec:104, LEGACY-053).
  * An unset optional is omitted rather than passed empty, so apps/api's readConfig() fails loudly at boot.
  */
 export function containerSecrets(env: Env, entrypoint: "api" | "worker"): Record<string, string> {
@@ -2239,7 +2239,7 @@ Expected: PASS — 4 tests.
 #   1. migrate (app_migrator)  2. install pg-boss queues (app_migrator)  3. deploy the Worker and both containers
 #   4. re-apply the seed (§3.4.8: re-applying the seed against staging after deploy is a release-runbook step)
 # Migrations run BEFORE the deploy because they are expand-only (§3.4.7): the running old code tolerates the new
-# schema. A contract migration is a separate, later PR, which is the whole point of expand/contract (SAH-080).
+# schema. A contract migration is a separate, later PR, which is the whole point of expand/contract (LEGACY-080).
 name: deploy-staging
 on:
   push:
@@ -2332,7 +2332,7 @@ Nothing reaches production without passing through staging (spec:2272). `main` d
 
 1. **`bun run --cwd packages/db db:migrate`** as `app_migrator`. Forward-only (spec:2057). Every migration in the
    repository is expand-only where it touches a live table (§3.4.7), so the running old code tolerates the new
-   schema and there is no maintenance window (SAH-080, acceptance test 25).
+   schema and there is no maintenance window (LEGACY-080, acceptance test 25).
 2. **`bun run --cwd packages/db db:lint`** — zero violations, or stop. A schema that fails the linter must not
    reach a running environment.
 3. **`bun run --cwd packages/db provision:verify`** — the four posture lines of §5.0 row 0.2.
@@ -2383,16 +2383,16 @@ https://api.dulja.example/updates/
 
 - [ ] **Step 7: Append the two regression blocks**
 
-Append to `tests/regression/sah-080.test.ts` — never editing 0B's block (§3.7.3).
+Append to `tests/regression/legacy-080.test.ts` — never editing 0B's block (§3.7.3).
 
-**Where each piece goes.** The `describe` block is appended at the **end** of the file. The `repoFile` import is added to the file's **existing import block at the top**, merged into the existing `from "../support/regression"` specifier if there is one — `import` statements hoist, but `oxfmt` and oxlint's import-ordering convention would move a trailing import anyway, and reformatting churn in a file another slice owns is worse than the merge. Adding a named import to an import statement is not editing an earlier slice's `describe` block, so §3.7.3 is satisfied. The same applies to `sah-087` below and `sah-025` in Task 12.
+**Where each piece goes.** The `describe` block is appended at the **end** of the file. The `repoFile` import is added to the file's **existing import block at the top**, merged into the existing `from "../support/regression"` specifier if there is one — `import` statements hoist, but `oxfmt` and oxlint's import-ordering convention would move a trailing import anyway, and reformatting churn in a file another slice owns is worse than the merge. Adding a named import to an import statement is not editing an earlier slice's `describe` block, so §3.7.3 is satisfied. The same applies to `legacy-087` below and `legacy-025` in Task 12.
 
 ```ts
 // (top of file, in the existing import block)
 import { repoFile } from "../support/regression";       // cwd is tests/, so every repo path is resolved (T2 Step 5)
 
 // ── appended by slice 0C, at the end of the file ──────────────────────────────
-describe("SAH-080 Schema upgrade is a full database dump-and-repump driven by 6,251 uncoordinated version integers — 0C", () => {
+describe("LEGACY-080 Schema upgrade is a full database dump-and-repump driven by 6,251 uncoordinated version integers — 0C", () => {
   it("the deploy applies numbered migrations forward-only and never dumps or repumps", () => {
     const wf = repoFile(".github/workflows/deploy-staging.yml");
     expect(wf).toContain("bun run --cwd packages/db db:migrate");
@@ -2424,7 +2424,7 @@ describe("SAH-080 Schema upgrade is a full database dump-and-repump driven by 6,
 });
 ```
 
-Append to `tests/regression/sah-087.test.ts` — the import into the top import block, the `describe` at the end:
+Append to `tests/regression/legacy-087.test.ts` — the import into the top import block, the `describe` at the end:
 
 ```ts
 // (top of file, in the existing import block)
@@ -2433,7 +2433,7 @@ import { repoFile } from "../support/regression";
 // ── appended by slice 0C, at the end of the file ──────────────────────────────
 const DEVELOPER_PATH = /([A-Za-z]:\\Users\\|\/home\/[a-z]|\/Users\/[a-z])/;
 
-describe("SAH-087 Hardcoded developer build paths in shipped metadata — 0C", () => {
+describe("LEGACY-087 Hardcoded developer build paths in shipped metadata — 0C", () => {
   it("nothing that ships carries a path from the machine that built it", () => {
     for (const file of ["infra/Dockerfile", "infra/entrypoint.sh", "infra/wrangler.jsonc", ".github/workflows/deploy-staging.yml"]) {
       expect(repoFile(file), file).not.toMatch(DEVELOPER_PATH);
@@ -2451,7 +2451,7 @@ describe("SAH-087 Hardcoded developer build paths in shipped metadata — 0C", (
 
 - [ ] **Step 8: Run everything and commit**
 
-Run: `bun run lint && bun run typecheck && cd apps/edge && bun run test && cd ../../tests && bun run test -- regression/sah-080.test.ts regression/sah-087.test.ts`
+Run: `bun run lint && bun run typecheck && cd apps/edge && bun run test && cd ../../tests && bun run test -- regression/legacy-080.test.ts regression/legacy-087.test.ts`
 Expected: PASS.
 
 ```bash
@@ -2465,12 +2465,12 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 ### Task 6: the seed CLI seam — `bun run seed`, the sub-pack registry, `--only`, and ADR 0012
 
-spec:2188: "**Never** an initialisation procedure callable on a running system (SAH-039). Bootstrap is the offline `bun run seed` CLI of §5.0 task 0.7b, run as the migrator role." This task builds the seam — argument parsing, the sub-pack registry, the exit codes, the CLI sub-command and the regression that proves it is not an endpoint. The four loaders arrive in Tasks 8–11 and the bootstrap steps in Tasks 7 and 9; every one of them plugs into the registry written here.
+spec:2188: "**Never** an initialisation procedure callable on a running system (LEGACY-039). Bootstrap is the offline `bun run seed` CLI of §5.0 task 0.7b, run as the migrator role." This task builds the seam — argument parsing, the sub-pack registry, the exit codes, the CLI sub-command and the regression that proves it is not an endpoint. The four loaders arrive in Tasks 8–11 and the bootstrap steps in Tasks 7 and 9; every one of them plugs into the registry written here.
 
 **Files:**
-- Create: `packages/db/src/seed/types.ts`, `packages/db/src/seed/index.ts`, `packages/db/src/seed/config.ts`, `packages/db/src/seed/packs.ts`, `tests/regression/sah-039.test.ts`, `docs/adr/0012-seed-pack-format.md`
+- Create: `packages/db/src/seed/types.ts`, `packages/db/src/seed/index.ts`, `packages/db/src/seed/config.ts`, `packages/db/src/seed/packs.ts`, `tests/regression/legacy-039.test.ts`, `docs/adr/0012-seed-pack-format.md`
 - Modify: `packages/db/src/cli.ts` (the `seed` sub-command), `packages/db/package.json` (script `seed`), root `package.json` (script `seed`)
-- Test: `packages/db/test/seed-packs.test.ts`, `tests/regression/sah-039.test.ts`
+- Test: `packages/db/test/seed-packs.test.ts`, `tests/regression/legacy-039.test.ts`
 
 **Interfaces:**
 - Consumes: 0B's `createDb` and production `withTenant(sql, ctx, fn)`; Plan 0A's migration runner CLI shape and `DATABASE_URL_MIGRATOR`.
@@ -2826,7 +2826,7 @@ import { assertPackShape, parseSeedArgs, seed, SeedError } from "./seed";
 
 // … inside the try block, after the `lint` branch:
   else if (cmd === "seed") {
-    // SAH-039: this is an offline CLI run as app_migrator, never an endpoint on a running system (spec:2188).
+    // LEGACY-039: this is an offline CLI run as app_migrator, never an endpoint on a running system (spec:2188).
     // `url` is already DATABASE_URL_MIGRATOR (checked at the top of this file); a DATABASE_URL here would be
     // app_rw, which cannot write the roles or the chart at all.
     let config;
@@ -2853,9 +2853,9 @@ console.error("usage: cli.ts up | down [toVersion] | status | lint | seed --tena
 
 `packages/db/package.json` scripts gain `"seed": "bun run src/cli.ts seed"`; root `package.json` scripts gain `"seed": "bun run --cwd packages/db seed"`, so the spec's literal `bun run seed` (spec:2317) works from the repository root.
 
-**The seed is deliberately not re-exported from `packages/db/src/index.ts`, now or ever in this slice.** Task 9 adds `packages/db/src/seed/auth-admin.ts`, whose first line is `import { createClient } from "@supabase/supabase-js"`. An `export * from "./seed"` in the barrel would put the service-role admin client on the import graph of every `import { withTenant } from "@dulja/db"` in `apps/api` and `apps/worker` — the exact coupling `tests/regression/sah-039.test.ts` exists to forbid, and one its textual grep for `/from ["'].*seed/` over three application files would not catch. Step 5's regression asserts the barrel stays clean. The CLI reaches the seed by a **relative** import (`./seed`), which needs no export entry at all; the only other consumer is the test tier, and Task 12 gives it a `"./seed"` subpath export.
+**The seed is deliberately not re-exported from `packages/db/src/index.ts`, now or ever in this slice.** Task 9 adds `packages/db/src/seed/auth-admin.ts`, whose first line is `import { createClient } from "@supabase/supabase-js"`. An `export * from "./seed"` in the barrel would put the service-role admin client on the import graph of every `import { withTenant } from "@dulja/db"` in `apps/api` and `apps/worker` — the exact coupling `tests/regression/legacy-039.test.ts` exists to forbid, and one its textual grep for `/from ["'].*seed/` over three application files would not catch. Step 5's regression asserts the barrel stays clean. The CLI reaches the seed by a **relative** import (`./seed`), which needs no export entry at all; the only other consumer is the test tier, and Task 12 gives it a `"./seed"` subpath export.
 
-- [ ] **Step 5: Write `tests/regression/sah-039.test.ts`**
+- [ ] **Step 5: Write `tests/regression/legacy-039.test.ts`**
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -2863,11 +2863,11 @@ import { ROUTES } from "@dulja/api";
 import { repoFile } from "../support/regression";       // cwd is tests/ (T2 Step 5)
 
 /**
- * SAH-039 · H · `procInitDatabase` creates an administrator, unauthenticated, with no already-initialised guard.
+ * LEGACY-039 · H · `procInitDatabase` creates an administrator, unauthenticated, with no already-initialised guard.
  * The fix is structural, so the test is structural: bootstrap is a CLI, it needs the migrator credential, and no
  * route in the system can reach it (spec:2188).
  */
-describe("SAH-039 procInitDatabase creates an admin, unauthenticated, unguarded — 0C", () => {
+describe("LEGACY-039 procInitDatabase creates an admin, unauthenticated, unguarded — 0C", () => {
   it("no registered route is an initialisation endpoint", () => {
     const offenders = ROUTES.filter((r) => /seed|init|bootstrap|setup|install/i.test(r.path));
     expect(offenders.map((r) => r.path)).toEqual([]);
@@ -2927,7 +2927,7 @@ into a table a later slice creates, and eight parallel writers editing one file.
 ## Decision
 
 1. **Per-tenant rows are seed-pack data**, applied by `bun run seed --tenant <uuid> [--only <sub-pack>]`, run as
-   `app_migrator` from `packages/db/src/cli.ts`. Never an endpoint (spec:2188, SAH-039).
+   `app_migrator` from `packages/db/src/cli.ts`. Never an endpoint (spec:2188, LEGACY-039).
 2. **A pack is a directory of sub-pack directories**; a sub-pack is a directory of JSON files. Phase 0's pack is
    `packages/db/seed/my/` with exactly `chart-of-accounts/`, `dimensions/` and `fiscal-periods/`; `assertPackShape`
    fails the run, exit code 3, if a later slice's directory appears early, naming the owning slice.
@@ -2955,13 +2955,13 @@ into a table a later slice creates, and eight parallel writers editing one file.
 - [ ] **Step 7: Run the tests and commit**
 
 Run: `cd packages/db && bun run test -- test/seed-packs.test.ts && cd ../.. && bun run typecheck`
-Expected: PASS — 7 tests. `tests/regression/sah-039.test.ts` still fails on `docs/adr/0012` only if the ADR is missing; run it after Step 6: `cd tests && bun run test -- regression/sah-039.test.ts` → 5 passed. (Task 12 Step 5 appends a sixth case to the same block, once the `"./seed"` subpath exists.)
+Expected: PASS — 7 tests. `tests/regression/legacy-039.test.ts` still fails on `docs/adr/0012` only if the ADR is missing; run it after Step 6: `cd tests && bun run test -- regression/legacy-039.test.ts` → 5 passed. (Task 12 Step 5 appends a sixth case to the same block, once the `"./seed"` subpath exists.)
 
 If `parseSeedArgs` throws `Unknown option '--only'`, `parseArgs` was given `argv` including the sub-command; the CLI slices from index 3 (`bun run src/cli.ts seed …`), so the first element passed here is `--tenant`.
 
 ```bash
 git add -A
-git commit -m "feat(db): seed CLI seam — sub-pack registry, --only, exit codes, ADR 0012 (SAH-039) [0C T6]
+git commit -m "feat(db): seed CLI seam — sub-pack registry, --only, exit codes, ADR 0012 (LEGACY-039) [0C T6]
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
@@ -3542,7 +3542,7 @@ export class SupabaseSeedAuthAdmin implements SeedAuthAdmin {
 
   async createUser(email: string): Promise<SeedAuthUser> {
     // No password: the owner sets one through Supabase's own recovery flow. The application never stores or
-    // compares a password (spec:2131, SAH-028), and MFA is enrolled at first login (spec:2004).
+    // compares a password (spec:2131, LEGACY-028), and MFA is enrolled at first login (spec:2004).
     const { data, error } = await this.#client.auth.admin.createUser({ email, email_confirm: true });
     if (error) throw error;
     return { sub: data.user.id, email: data.user.email ?? email };
@@ -4241,11 +4241,11 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 ### Task 12: definition of done 0.7b — twice changes nothing, the pack shape, and the owner's first login
 
-§5.0 row 0.7b, verbatim: "Running it twice changes nothing; the principal + membership inserts succeed under `FORCE ROW LEVEL SECURITY` (regression test for v1.1 fix #2); the owner logs in, enrols MFA at `aal1`, and sees an empty but fully configured company." Tasks 7–11 each proved their own half; this task proves the three clauses **as one run** and appends 0C's block to `sah-025`.
+§5.0 row 0.7b, verbatim: "Running it twice changes nothing; the principal + membership inserts succeed under `FORCE ROW LEVEL SECURITY` (regression test for v1.1 fix #2); the owner logs in, enrols MFA at `aal1`, and sees an empty but fully configured company." Tasks 7–11 each proved their own half; this task proves the three clauses **as one run** and appends 0C's block to `legacy-025`.
 
 **Files:**
 - Create: `packages/db/test/seed-idempotent.test.ts`, `apps/api/test/routes/first-login.test.ts`
-- Modify: `packages/db/package.json` (the `"./seed"` subpath export — this task's one production change), `tests/regression/sah-025.test.ts` (append one describe block), `tests/regression/sah-039.test.ts` (append one `it` to 0C's own block)
+- Modify: `packages/db/package.json` (the `"./seed"` subpath export — this task's one production change), `tests/regression/legacy-025.test.ts` (append one describe block), `tests/regression/legacy-039.test.ts` (append one `it` to 0C's own block)
 - Test: all of the above
 
 **Interfaces:**
@@ -4354,7 +4354,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDb } from "@dulja/db";
 // The seed reaches the test tier through the "./seed" subpath export (added in Step 5 below), never through
 // @dulja/db's main entry: that entry is imported by apps/api's production code, and re-exporting the seed there
-// would put @supabase/supabase-js and the service-role admin client on the request-serving path (sah-039).
+// would put @supabase/supabase-js and the service-role admin client on the request-serving path (legacy-039).
 import { StubSeedAuthAdmin, parseSeedArgs, seed } from "@dulja/db/seed";
 import { randomUUID } from "node:crypto";
 import { startApi, type StartedApi } from "../support/app";
@@ -4414,9 +4414,9 @@ This is the task's one production change. `packages/db/package.json` `exports` g
     "./seed": "./src/seed/index.ts",
 ```
 
-`packages/db/src/index.ts` is **not** touched. `export * from "./seed"` there would pull `@supabase/supabase-js` and the service-role admin client into the import graph of every `apps/api` and `apps/worker` module that imports `withTenant` — the coupling `tests/regression/sah-039.test.ts` forbids, and one its textual grep over three application files cannot see, because the path is transitive. The subpath keeps the seed reachable from the test tier and from nowhere on the serving path.
+`packages/db/src/index.ts` is **not** touched. `export * from "./seed"` there would pull `@supabase/supabase-js` and the service-role admin client into the import graph of every `apps/api` and `apps/worker` module that imports `withTenant` — the coupling `tests/regression/legacy-039.test.ts` forbids, and one its textual grep over three application files cannot see, because the path is transitive. The subpath keeps the seed reachable from the test tier and from nowhere on the serving path.
 
-Then append one `it` to **0C's own** `describe` block in `tests/regression/sah-039.test.ts` (Task 6's file, this slice's, so §3.7.3 does not apply):
+Then append one `it` to **0C's own** `describe` block in `tests/regression/legacy-039.test.ts` (Task 6's file, this slice's, so §3.7.3 does not apply):
 
 ```ts
   it("the seed is reachable only through the ./seed subpath, and no production file uses it", () => {
@@ -4436,12 +4436,12 @@ bun install
 
 - [ ] **Step 6: Run it to verify it passes**
 
-Run: `cd apps/api && bun run test -- test/routes/first-login.test.ts && cd ../../tests && bun run test -- regression/sah-039.test.ts`
+Run: `cd apps/api && bun run test -- test/routes/first-login.test.ts && cd ../../tests && bun run test -- regression/legacy-039.test.ts`
 Expected: PASS — 3 + 6 tests.
 
 If the import still fails, `apps/api/package.json` has no `@dulja/db` dependency edge at all — 0B declares one for `createDb` and production `withTenant`, so its absence is a 0B defect, not a missing export.
 
-- [ ] **Step 7: Append the `sah-025` block**
+- [ ] **Step 7: Append the `legacy-025` block**
 
 The `describe` goes at the **end** of the file; the `repoFile` import goes into the file's **existing import block at the top** (Task 5 Step 7 explains why, and why that is not an edit to 0B's block under §3.7.3). `describe`, `expect`, `it` and `sharedDb` are already imported there.
 
@@ -4450,7 +4450,7 @@ The `describe` goes at the **end** of the file; the `repoFile` import goes into 
 import { repoFile } from "../support/regression";       // added by slice 0C (Task 2 Step 5)
 
 // ── appended by slice 0C, at the end of the file ──────────────────────────────
-describe("SAH-025 `procQuickLogin` grants a full administrator session with no credentials — 0C", () => {
+describe("LEGACY-025 `procQuickLogin` grants a full administrator session with no credentials — 0C", () => {
   it("the bootstrap administrator is granted BY the system principal, never self-granted (R5)", async () => {
     const { db } = await sharedDb();
     const rows = await db.admin<{ granted_by: string; principal_id: string }[]>`
@@ -4463,7 +4463,7 @@ describe("SAH-025 `procQuickLogin` grants a full administrator session with no c
   it("there is no credential-free path to an admin session: the seed creates no password and no session", () => {
     const owner = repoFile("packages/db/src/seed/owner.ts");
     expect(owner).not.toMatch(/password|token|session|jwt/i);
-    // The application never stores or compares a password — AuthN is Supabase's (spec:2131, SAH-028).
+    // The application never stores or compares a password — AuthN is Supabase's (spec:2131, LEGACY-028).
     expect(owner).toContain("authAdmin");
   });
 });
@@ -4471,7 +4471,7 @@ describe("SAH-025 `procQuickLogin` grants a full administrator session with no c
 
 - [ ] **Step 8: Run everything and commit**
 
-Run: `cd packages/db && bun run test && cd ../../apps/api && bun run test -- test/routes/first-login.test.ts && cd ../../tests && bun run test -- regression/sah-025.test.ts regression/sah-039.test.ts`
+Run: `cd packages/db && bun run test && cd ../../apps/api && bun run test -- test/routes/first-login.test.ts && cd ../../tests && bun run test -- regression/legacy-025.test.ts regression/legacy-039.test.ts`
 Expected: PASS — 5 + 3 + (0B's block + 2) + 6 tests.
 
 If the second census differs by exactly one `app.audit_log` row, an `update` is unguarded: every `update` in the seed carries `where … is distinct from …` (ADR 0012 decision 4).
@@ -5204,7 +5204,7 @@ Run against the spec sections in the header, the contracts document §2.1 (0C ca
 | Phase 0 DoD clause "A tenant is created" | T7, T12 |
 | runs 12, 13, 14 in CI against staging | T14 |
 | re-runs test 36's seed clauses (nine roles; `admin` minus `pos.ticket.sell` and `pos.sync.*`) | T8 |
-| regression files created `sah-039`, `sah-081`; appended `sah-025`, `sah-080`, `sah-087` | T6, T2, T12, T5, T5 |
+| regression files created `legacy-039`, `legacy-081`; appended `legacy-025`, `legacy-080`, `legacy-087` | T6, T2, T12, T5, T5 |
 | ADRs 0011 (topology), 0012 (seed-pack format), 0013 (observability) | T1/T4, T6, T13 |
 | the contracts-register entries every one of the above depends on (hazard 32) — folded in by §4.18 round 1 | T1 Step 0, the fourteen-string grep gate |
 
@@ -5239,7 +5239,7 @@ Pattern searched, widened after the first pass let one through:
 - **32 (no invented literal in a shared namespace):** the eleven account codes are §4.15's own; the five group parents are explicitly unregistered by §4.15; no document-type code, report code or `DatasetId` is written. **One `ERR_*` is added — `ERR_RATE_LIMITED` (429, edge Worker)** — and the rule is followed, not bypassed: §4.2.4's table already allocates the code and Task 1 Step 0 greps for that row before Task 3 raises it, because the allocated space had no 429 member and spec:2204 makes rate limiting v1. It is listed in §5 below and in the header's namespaces line.
 - **33 (the slice that seeds a policy seeds its accounts):** 0C seeds no policy, and the eleven accounts it does seed are the ones §4.15 assigns it — every later consumer (`item.*_account_id`, `party.*_account_id`, `bank_statement.bank_account_id`) resolves them and re-seeds nothing.
 - **32, second half (the register is amended *first*):** the amendment **has been made** — contracts §4.18 round 1 folded every one of this slice's register entries into §2.12, §3.1 (three), §3.4.8, §2.1, §3.9, §3.11, §4.2.2, §4.2.12, §4.2.3, §4.2.4 (two) and §4.15, and left the `| … | 0C | plan |` rows recording it. **Task 1 Step 0 is therefore a grep gate over those fourteen strings, not an edit**: re-applying a "replace A with B" whose A no longer exists would stall an executor, and re-adding a row that is already there would duplicate it in a register twenty-nine plans read. Step 0b commits only if a grep reported `MISSING` and the step restored it. The slice is **fourteen commits across fourteen tasks** in the normal case, fifteen only if the contracts document has drifted since 2026-09-08.
-- **35 (real code, failing test first, a commit per task):** every task follows write-failing-test → run it and see the exact failure → implement → run it → commit. **T1** Step 6 was the last exception and no longer is: it writes `apps/worker/test/health.test.ts` and the `test:bun` script **first**, runs `bun run test:bun` and expects `Cannot find module '../src/health'`, and only then writes the module and the two `index.ts` lines. **T2** Step 5 likewise now runs `sah-081` against the absent `docs/runbooks/supabase-provisioning.md` and expects the `ENOENT` from `repoFile`, before Step 6 writes the runbook. The three later tasks that used to skip the observation step carry it too: **T12** Step 2 (the idempotence file, which must pass on the first try, and why that is deliberate) and Steps 4–6 (the `@dulja/db/seed` import, red then green, with the manifest change as its own numbered step rather than a block-quote note); **T13** Step 3 (`Failed to resolve import "../src/otel"`, and the second, more useful failure once the module exists but the middleware is unwired); **T14** Steps 2–3 (`Script not found "test:staging"`, then the suite pointed at a dead host so a green run cannot be vacuous).
+- **35 (real code, failing test first, a commit per task):** every task follows write-failing-test → run it and see the exact failure → implement → run it → commit. **T1** Step 6 was the last exception and no longer is: it writes `apps/worker/test/health.test.ts` and the `test:bun` script **first**, runs `bun run test:bun` and expects `Cannot find module '../src/health'`, and only then writes the module and the two `index.ts` lines. **T2** Step 5 likewise now runs `legacy-081` against the absent `docs/runbooks/supabase-provisioning.md` and expects the `ENOENT` from `repoFile`, before Step 6 writes the runbook. The three later tasks that used to skip the observation step carry it too: **T12** Step 2 (the idempotence file, which must pass on the first try, and why that is deliberate) and Steps 4–6 (the `@dulja/db/seed` import, red then green, with the manifest change as its own numbered step rather than a block-quote note); **T13** Step 3 (`Failed to resolve import "../src/otel"`, and the second, more useful failure once the module exists but the middleware is unwired); **T14** Steps 2–3 (`Script not found "test:staging"`, then the suite pointed at a dead host so a green run cannot be vacuous).
 
 ### 4. Type and literal consistency
 
@@ -5266,7 +5266,7 @@ Pattern searched, widened after the first pass let one through:
 8. **[T1S0]** **`DbOptions.debug`** — an additive field on §4.2.2's `createDb` options, so Postgres spans come from postgres.js's own hook rather than a monkey-patch (ADR 0013).
 9. **[T1S0]** **ADR 0013 = observability** — §3.9's ADR-range table and §2.1's 0C card named only 0011 and 0012 for 0C; both now name 0013 and mark 0014–0015 unused.
 10. **The seed CLI's exit codes** (0/1/2/3) and **`.github/workflows/deploy-staging.yml`** as the workflow's name.
-11. **[T1S0]** **`packages/db` `exports` gains `"./provision/verify-supabase"`** (T2, so the staging suite can import the probe) **and `"./seed"`** (T12, so `apps/api`'s test tier can drive the bootstrap). The seed is deliberately **not** re-exported from `packages/db/src/index.ts`: `auth-admin.ts` imports `@supabase/supabase-js`, and a barrel re-export would put the service-role admin client on the import graph of every `apps/api` and `apps/worker` module that imports `withTenant`. `tests/regression/sah-039.test.ts` asserts both halves — the barrel is clean, the subpath exists.
+11. **[T1S0]** **`packages/db` `exports` gains `"./provision/verify-supabase"`** (T2, so the staging suite can import the probe) **and `"./seed"`** (T12, so `apps/api`'s test tier can drive the bootstrap). The seed is deliberately **not** re-exported from `packages/db/src/index.ts`: `auth-admin.ts` imports `@supabase/supabase-js`, and a barrel re-export would put the service-role admin client on the import graph of every `apps/api` and `apps/worker` module that imports `withTenant`. `tests/regression/legacy-039.test.ts` asserts both halves — the barrel is clean, the subpath exists.
 12. **[T1S0]** **`infra` joins the root `workspaces` array** (§3.1 fixed it as `["packages/*", "apps/*", "tests"]` and now records the `"infra"` append), with its row in §3.1's workspace table. **`tests/staging` does not** — it is a directory inside the existing `tests` workspace with its own Vitest config, invoked by the new root script `test:staging`, so the frozen array gains nothing for the sake of one `describe`.
 13. **[T1S0]** **`ERR_RATE_LIMITED`, status 429, raised by `apps/edge`** — its row in §4.2.4's allocated table (verified present by T1 S0) **and** a row in `packages/contracts/src/errors.ts` in the PR that raises it (T3 S4), which is the two-part rule contracts:1548 states. No existing code fits 429.
 14. **[T1S0]** **`otelMiddleware()` is registered ahead of `requestId()`**, so §4.2.3's fixed middleware order becomes `otel → requestId → logger → auth → idempotency → requirePermission → handler`. Without an active span nothing else in ADR 0013 functions (T13's rationale block).

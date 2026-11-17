@@ -19,7 +19,7 @@ async function indexColumns(db: Db, table: string): Promise<Record<string, strin
   return Object.fromEntries(rows.map((row) => [row.index_name, row.cols]));
 }
 
-describe("report filter indexes — SAH-070, migration 0016", () => {
+describe("report filter indexes — LEGACY-070, migration 0016", () => {
   let db: Db;
   let s: Seed;
   beforeAll(async () => {

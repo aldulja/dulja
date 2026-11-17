@@ -22,7 +22,7 @@ const CONCAT =
 
 /**
  * A whole-line comment: `//`, a `*` continuation, or a `/*` opener. Prose never reaches a database. Exported
- * so `tests/regression/sah-036.test.ts` — which pins WHERE `.unsafe(` may live — skips exactly the lines
+ * so `tests/regression/legacy-036.test.ts` — which pins WHERE `.unsafe(` may live — skips exactly the lines
  * this rule skips; two hand-written regexes had already drifted once (Phase 3 review pass).
  */
 export const isCommentLine = (line: string): boolean => /^\s*(\/\/|\*|\/\*)/.test(line);

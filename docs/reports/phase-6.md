@@ -32,7 +32,7 @@ Sync/enrolment/catalogue delivery, employee/PIN/branch authority, the offline PO
 | 6C T10 | Implemented and verified locally | Branch-scoped endpoints, six regression appends, exact route/job/schema pins, settled acceptance matrix and focused broader-run corrections |
 | 6C T11–T12 | Decision records complete; conditional runtime pending | Required supplied email and no production cashier seeds; OD-11/OD-12 records preserve the owner-input gates |
 | 6C T13 | Implemented and verified locally | Staff/cashier/limits unit checks and actual local-API EN/AR Chromium keyboard workflows pass; screenshots inspected |
-| 6B T0 | Implemented and verified locally | One shared portable signer and exact-body serializer; sync 57, API 15 and SAH-046 3 pass |
+| 6B T0 | Implemented and verified locally | One shared portable signer and exact-body serializer; sync 57, API 15 and LEGACY-046 3 pass |
 | 6B T1–T3 | Implemented and verified locally | Durable SQLite/version upgrade/embedded CJS, atomic mirrors and kind-qualified ACKs, device identity, exact-body transport and serial/rebind loops; 39 local cases pass |
 | 6B T4 | Implemented and verified locally | PIN authority, malformed/wrong-branch refusal, 0063 item tax and three permissions; local POS 49, DB 43, API 37, contracts 61, 14 types and both lint checks pass |
 | 6B T5 | Implemented and verified locally | Customer/branch/company prices, exact adjacent quantity breaks, unit prices, promotions, tax null/effectivity and shared arithmetic; local POS 71 and domain 301 pass |
@@ -175,8 +175,8 @@ credentials, tight/zero manual-discount limits, forged evidence rejection and
 queued replay with one posting. Thirteen type checks, lint and eleven repository
 rules pass at this milestone. The whole regression rerun completed **618 passed,
 two failed and five existing skips in 118 files**: the newly added queue case
-loaded pre-change modules, and SAH-047 still inspected the former apply-local
-permission loop. Queue replay is green against settled modules; SAH-047 now
+loaded pre-change modules, and LEGACY-047 still inspected the former apply-local
+permission loop. Queue replay is green against settled modules; LEGACY-047 now
 verifies apply's delegation to the actual current-principal/company/branch loop
 and retains the original override-trigger assertions (**three focused cases
 pass**). A final settled run follows the remaining T10 appends.
@@ -241,7 +241,7 @@ completion is claimed.
 
 
 6B T0–T3 are verified locally. The shared signer passes 57 sync tests, 15 API
-checks and SAH-046's three single-owner checks. The native SQLite workspace passes
+checks and LEGACY-046's three single-owner checks. The native SQLite workspace passes
 39 recovery/sync/device tests; its embedded CJS opens from a temporary directory
 outside the source tree with all 18 tables. Version-1 upgrades retain unsent
 outbox/ticket rows and exact revisions; WAL uses FULL durability. Older catalogue
@@ -292,8 +292,8 @@ The final reconciliation/report/regression rerun passes **38 cases in five files
 
 | Verification | Executed result and correction evidence |
 |---|---|
-| First root invariant/regression sweep | 721 passed, six failed, five existing skips / 732. Every failed file has a passing correction: catalogue 8, SAH-051 5, reports 10, branch scope 20, SAH-033 and SAH-047. The final combined reconciliation/authority/report regression run passes 38. |
-| Second root sweep | 731 passed, one failed, five existing skips / 737 in 128 files. It loaded SAH-047 before its correction; all three corrected authority cases pass in the final 38-case combined rerun. No other failures. Settled coverage is 732 passing cases plus five existing skips, across the full process and rerun. |
+| First root invariant/regression sweep | 721 passed, six failed, five existing skips / 732. Every failed file has a passing correction: catalogue 8, LEGACY-051 5, reports 10, branch scope 20, LEGACY-033 and LEGACY-047. The final combined reconciliation/authority/report regression run passes 38. |
+| Second root sweep | 731 passed, one failed, five existing skips / 737 in 128 files. It loaded LEGACY-047 before its correction; all three corrected authority cases pass in the final 38-case combined rerun. No other failures. Settled coverage is 732 passing cases plus five existing skips, across the full process and rerun. |
 | API sweep | 769 passed, four failed / 773; no skips. Corrected report/permission catalogue pins pass in the 24-case report/OpenAPI rerun; hardened batch fixtures with actual owned second-terminal shifts pass all 27; extended shift API passes seven. |
 | DB correction reruns | Seed types 7, idempotence 5, branch isolation 15, phase pins 5 and combined chart/till-pack 13 pass. Chart verification found and fixed missing parent links for new 1130/5120 seed accounts; exact seed counts/table pins now include the new slice. |
 | Leaf suites | Domain 301, contracts 61, sync 57, i18n 40, UI 22, backoffice 149, POS 145, desktop 47, edge 38, worker 69 plus two health cases, infrastructure 25 pass. |
@@ -321,7 +321,7 @@ After the plan-gap groups were each fixed and reviewed, one review covered every
 - **A cancelled ticket came back (blocking, older than PR 12).** In `pos.exe` every bridge call settles on a later task, so React rendered between the cancel and the status read after it, and a status read taken before the cancel still named the ticket as open: its payment screen returned with every key and button refused until the till restarted. The renderer suite's bridge settled in microtasks and never showed that render. The screen now remembers the tickets it closed and never resumes one (`apps/pos/src/renderer/app.tsx`); the test runs the real handlers behind a bridge that answers on a later task.
 - **The next shift's float and count were added to the last one's (blocking, older than PR 12).** The fields kept the previous figures and focus did not select them, so the documented key map ("type the float, Enter") turned 150 into 100150. Both reset after each open and close and select their text on focus, and the last close's summary is cleared when the next shift opens; the test runs two shifts in one session by keyboard and reads both rows back.
 - **The Z-report printed the whole page in `backoffice.exe` (blocking, older than PR 12).** Its print rule was an inline `<style>`, which `style-src 'self'` refuses; it now lives in `apps/backoffice/src/app.css`. The e2e harness now serves the back office under `backoffice.exe`'s own policy (only `connect-src` widened to the loopback API and auth stub), so every back-office spec runs under the shipped script and style rules; `pos-z-report.spec.ts` fails with the inline rule.
-- **Minor.** A Lock now clears the void's and the sale's approval fields (the signed-in cashier is part of the screen key); price check shows a promotion as its own figure between the list price and the total; the enrolment-code refusal says the code was not accepted and to check it first, because the server answers alike for a mistyped, expired or used code (SAH-025), and the runbook names which message each case gets; migration 0068's comments now say the in-transit exception admits the sending branch (comments only); AGENTS.md's owner register names every PR 12 amendment, 0061's actor switch among the security-control changes, and no longer lists a fixed behaviour as a defect; a test helper's comment names the URL each window opens.
+- **Minor.** A Lock now clears the void's and the sale's approval fields (the signed-in cashier is part of the screen key); price check shows a promotion as its own figure between the list price and the total; the enrolment-code refusal says the code was not accepted and to check it first, because the server answers alike for a mistyped, expired or used code (LEGACY-025), and the runbook names which message each case gets; migration 0068's comments now say the in-transit exception admits the sending branch (comments only); AGENTS.md's owner register names every PR 12 amendment, 0061's actor switch among the security-control changes, and no longer lists a fixed behaviour as a defect; a test helper's comment names the URL each window opens.
 - **A re-review of these fixes (same day).** Two lenses with verifiers confirmed ten minor findings, all fixed: the sale's supervisor approval now clears whenever the signed-in cashier changes (a sign-out main forces when the cashier's authority changes, not only a Lock); `backoffice.exe`'s start path is one constant (`BACKOFFICE_START_PATH`) that `main.ts`, a desktop test and `backoffice-csp.spec.ts` share; and the records above, AGENTS.md's register, ADR 0058 and the decisions record were corrected where they disagreed with the code.
 - **Executed (2026-10-23, Linux, PostgreSQL 18 Testcontainers, Chromium 1194).** `packages/db` 1,677/1,677 in 172 files; `apps/api` 811/811 in 86; `apps/worker` 69 plus its two Bun cases; `tests` 751 passed, 6 skipped, 1 failed — test 15's PDF loses its hyphens under this container's Chromium and fails identically on `main`; `bun run e2e` 21/21 under the desktop policy; domain 310, contracts 63, sync 57, POS 241, i18n 41, UI 22, backoffice 194, edge 44, desktop 54, infra 25; typecheck in all fourteen workspaces, `lint`, the eleven custom rules over 1,070 files, `format:check`, the eleven contract gates, a regenerated `openapi.json` with no diff, and the back-office, desktop and POS builds. Windows packaged execution is CI's `desktop` job.
 

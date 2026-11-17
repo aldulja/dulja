@@ -119,7 +119,7 @@ beforeAll(async () => {
   });
   customerId = await seedParty(db, s, { kind: "customer", code: "CUST-SET" });
   vendorId = await seedParty(db, s, { kind: "vendor", code: "VEND-SET" });
-  // The customer carries a term, so the pin at draft (SAH-013) has a value to be wrong about.
+  // The customer carries a term, so the pin at draft (LEGACY-013) has a value to be wrong about.
   termId = await seedPaymentTerm(db, s, { code: "NET14", dueDays: 14 });
   await withTenant(
     db.rw,
@@ -159,7 +159,7 @@ describe("RECEIPT and PAYMENT — §4.14, spec:2147, tests 10 and 31", () => {
       { code: "1100", debit: "250.0000", credit: "0.0000" },
       { code: "1200", debit: "0.0000", credit: "250.0000" },
     ]);
-    // What the draft wrote: the pinned term (SAH-013), the rate's provenance (SAH-012), the head-office
+    // What the draft wrote: the pinned term (LEGACY-013), the rate's provenance (LEGACY-012), the head-office
     // branch the service defaults to, and ONE account line carrying the bank and the reference.
     const [doc] = await db.admin<
       { term: string | null; rateSource: string | null; branch: string; series: string }[]
@@ -457,7 +457,7 @@ describe("RECEIPT and PAYMENT — §4.14, spec:2147, tests 10 and 31", () => {
     expect(before.base.subtract(after.base).toString()).toBe("15.0000");
   });
 
-  it("a foreign-currency receipt keeps the caller's rate and labels it manual:<actor> (SAH-012, SAH-014)", async () => {
+  it("a foreign-currency receipt keeps the caller's rate and labels it manual:<actor> (LEGACY-012, LEGACY-014)", async () => {
     const r = await withTenant(db.rw, s.tenant, s.human, async (tx) => {
       const d = await draftSettlement(
         tx,

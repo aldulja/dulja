@@ -4,7 +4,7 @@
 
 -- ── 1. one-time enrolment codes ───────────────────────────────────────────────────────────────────────
 -- Only the HASH is stored. The code is shown once, in the back office, and is a bearer secret exactly like a
--- password-reset link; storing it would make the enrolment table a credential store (SAH-025, SAH-028 — the
+-- password-reset link; storing it would make the enrolment table a credential store (LEGACY-025, LEGACY-028 — the
 -- PIN is the ONLY credential this application hashes, and this is not a credential, it is a one-shot ticket).
 -- The three columns §4.10.3's sketch did not carry — `code_hash bytea` (not `text`), `name`, `terminal_code`
 -- with its per-company reservation — are Task 0 amendment 10, which restated the sketch to match this file.

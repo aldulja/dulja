@@ -6,7 +6,7 @@ import type { Sql } from "postgres";
  *    writer holds the HR codes opened that employee's sealed columns and compensation (ADR 0074 amendment).
  *  - DBS-10: the UPDATE that verifies a rate table may change only `verified_at` and `verified_by`, and only a
  *    holder of `hr.statutory_table.verify` in the scheme's company may make it — otherwise the verifier writes and
- *    signs the content in one statement and SAH-020's four eyes are two names over one hand (ADR 0073 amendment).
+ *    signs the content in one statement and LEGACY-020's four eyes are two names over one hand (ADR 0073 amendment).
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { startDb, uuidv7, withTenant, type Db } from "../harness";
@@ -74,7 +74,7 @@ describe("0126 — employee.company_id is immutable (DBS-09)", () => {
   });
 });
 
-describe("0126 — the verifying UPDATE changes only the verification (DBS-10, SAH-020)", () => {
+describe("0126 — the verifying UPDATE changes only the verification (DBS-10, LEGACY-020)", () => {
   it("a verifier cannot rewrite the definition or source in the statement that signs it", async () => {
     const id = await seedRateTable(db, a, { schemeId, version: 1 });
     await expect(

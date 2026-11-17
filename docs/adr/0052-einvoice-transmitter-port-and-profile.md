@@ -62,7 +62,7 @@ committed JSON Schema.**
   the file's `source`, and `scripts/check/no-authority-literals.sh` fails the build if the file
   exists without it.
 - An authority's schema-version bump is `myinvois.v2.json` beside `v1`, with
-  `einvoice_transmission.profile_version` recording which file each call was made with — SAH-013's
+  `einvoice_transmission.profile_version` recording which file each call was made with — LEGACY-013's
   "pinned versions" applied to an integration.
 - A profile cannot express an authority that needs request signing, mutual TLS or a multi-step
   handshake. If ADR 0051 finds one, **the OD-15 task widens the schema's `auth` block and this

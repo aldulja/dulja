@@ -4,7 +4,7 @@ import { Quantity, rational } from "../src/index";
 
 const q = (s: string) => Quantity.of(s);
 
-describe("Quantity — spec §3.9 'numeric(19,6), exact rational conversions' (SAH-066)", () => {
+describe("Quantity — spec §3.9 'numeric(19,6), exact rational conversions' (LEGACY-066)", () => {
   it("of() pads to six decimal places and refuses a seventh", () => {
     expect(q("12").toString()).toBe("12.000000");
     expect(q("12.5").toString()).toBe("12.500000");

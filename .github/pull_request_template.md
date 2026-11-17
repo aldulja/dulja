@@ -8,7 +8,7 @@
 
 ## Definition of done
 
-- [ ] Tests updated for each touched `SAH-###` defect
+- [ ] Tests updated for each touched `LEGACY-###` defect
 - [ ] Migration down path and CI up → down → up passed
 - [ ] OpenAPI updated when the API changed
 - [ ] English LTR and Arabic RTL checked when UI changed

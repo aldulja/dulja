@@ -10,22 +10,22 @@ describe("redactDsn — no credential reaches an artefact or a log line", () => 
         "DRIVER={Firebird/InterBase(r) driver};UID=SYSDBA;PWD=masterkey;DBNAME=C:/db/STANDARD.FDB",
       ),
     ).toBe("DRIVER={Firebird/InterBase(r) driver};UID=***;PWD=***;DBNAME=C:/db/STANDARD.FDB");
-    expect(redactDsn("DSN=sahli;user=reader;Password=s3cret")).toBe(
-      "DSN=sahli;user=***;Password=***",
+    expect(redactDsn("DSN=legacy;user=reader;Password=s3cret")).toBe(
+      "DSN=legacy;user=***;Password=***",
     );
   });
 
   it("drops a brace-quoted credential whole, `;` and `=` inside it included (2026-11-15 review, HRP-07)", () => {
     const dsn =
-      "DRIVER=Firebird;DBNAME=srv:/db/sahli.fdb;UID={SYS;DBA};PWD={ab;TopSecret99=x};CHARSET=UTF8";
+      "DRIVER=Firebird;DBNAME=srv:/db/legacy.fdb;UID={SYS;DBA};PWD={ab;TopSecret99=x};CHARSET=UTF8";
     expect(redactDsn(dsn)).toBe(
-      "DRIVER=Firebird;DBNAME=srv:/db/sahli.fdb;UID=***;PWD=***;CHARSET=UTF8",
+      "DRIVER=Firebird;DBNAME=srv:/db/legacy.fdb;UID=***;PWD=***;CHARSET=UTF8",
     );
     const driver = new OdbcLegacyDriver({ query: async () => [], close: async () => {} }, dsn);
     expect(driver.source).not.toMatch(/TopSecret99|DBA/);
     // Spaces around the key, and an unclosed brace, which runs to the end and goes with the value.
-    expect(redactDsn("DSN=sahli; Pwd = {s3cret;CHARSET=UTF8")).toBe("DSN=sahli; Pwd =***");
-    expect(redactDsn("DSN=sahli;;User Id=reader;")).toBe("DSN=sahli;;User Id=***;");
+    expect(redactDsn("DSN=legacy; Pwd = {s3cret;CHARSET=UTF8")).toBe("DSN=legacy; Pwd =***");
+    expect(redactDsn("DSN=legacy;;User Id=reader;")).toBe("DSN=legacy;;User Id=***;");
   });
 });
 

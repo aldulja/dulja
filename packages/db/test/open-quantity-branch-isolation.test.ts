@@ -15,7 +15,7 @@ import {
 } from "./index";
 import { secondPrincipal } from "../../../tests/invariants/support/post-inventory";
 
-// DBS-07 = INV-08 (full review 2026-11-15), ADR 0095, migration 0127: the over-fulfilment guard (SAH-017)
+// DBS-07 = INV-08 (full review 2026-11-15), ADR 0095, migration 0127: the over-fulfilment guard (LEGACY-017)
 // and app.document_open_quantity sum a source line's links over the whole COMPANY. Before 0127 the sum
 // joined app.document under the caller's RLS, so a principal restricted to the source's branch did not see
 // a fulfilment drafted in another branch and could link the same quantity again.
@@ -138,7 +138,7 @@ describe("DBS-07 / INV-08 — a source line's links are summed over the whole co
     expect(row).toEqual({ linked: "10.000000", open: "0.000000" });
   });
 
-  it("an HQ-restricted clerk cannot link the same 10 again (SAH-017)", async () => {
+  it("an HQ-restricted clerk cannot link the same 10 again (LEGACY-017)", async () => {
     const target = await draft(s.hq, "10.000000");
     await expect(link(hqClerk, order, target, "10.000000")).rejects.toThrow(
       /ERR_DOC_LINK_OVER_FULFILLED: source line .* has 0\.000000 open of 10\.000000 ordered/,

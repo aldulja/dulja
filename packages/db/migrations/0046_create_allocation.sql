@@ -2,12 +2,12 @@
 -- Slice 4A. app.allocation — which settlement paid which invoice (contracts §4.8.1, spec:1042).
 -- It is NOT a ledger table: a receipt relieves the AR control account in total when it posts, and this table
 -- records the apportionment. That is what lets `unallocate` exist without touching a posted entry
--- (spec:2457, SAH-041). The `posting-only-tables` lint (§3.7.5) does not list it and must not gain it.
+-- (spec:2457, LEGACY-041). The `posting-only-tables` lint (§3.7.5) does not list it and must not gain it.
 -- Financial rows: reversed by `unallocated_at`, never deleted (spec:2049); §3.5.4's DELETE list is unchanged.
 
 -- ── 1. the table (§4.8.1's DDL, with Task 0's amendment 11 columns and CHECK) ─────────────────────────
 create table app.allocation (
-  id                     uuid primary key default uuidv7(),                -- §3.2 identifiers (SAH-021)
+  id                     uuid primary key default uuidv7(),                -- §3.2 identifiers (LEGACY-021)
   tenant_id              uuid not null references app.tenant(id),
   company_id             uuid not null,
   party_id               uuid not null,
@@ -29,7 +29,7 @@ create table app.allocation (
   -- documents alone, an allocation made after their period closed rewrote that period's ageing and its FX
   -- document could never post.
   effective_date         date not null,
-  allocated_by           uuid not null default app.current_actor() references app.principal(id),  -- stamped below (SAH-044)
+  allocated_by           uuid not null default app.current_actor() references app.principal(id),  -- stamped below (LEGACY-044)
   unallocated_at         timestamptz,                                      -- the reversal: set once, never cleared (spec:2457)
   unallocated_by         uuid references app.principal(id),                -- stamped on the NULL → value transition (amendment 11)
   unallocation_reason    text,                                             -- the reason `unallocate` compels (amendment 11, ADR 0023)
@@ -42,7 +42,7 @@ create table app.allocation (
   constraint allocation_unallocated_on_check
     check ((unallocated_at is null) = (unallocated_on is null) and unallocated_on >= effective_date),
   unique (tenant_id, id),
-  -- composite: an FK check bypasses RLS, so a plain `references` would admit another tenant's row (SAH-035)
+  -- composite: an FK check bypasses RLS, so a plain `references` would admit another tenant's row (LEGACY-035)
   foreign key (tenant_id, company_id)             references app.company(tenant_id, id),
   foreign key (tenant_id, party_id)               references app.party(tenant_id, id),
   foreign key (tenant_id, settlement_document_id) references app.document(tenant_id, id),
@@ -66,7 +66,7 @@ comment on column app.allocation.unallocation_reason is
 -- ── 4. tenancy, audit, stamps, privileges (§3.5.1) ─────────────────────────────────────────────────────
 call app_meta.enable_tenant_rls('app.allocation');               -- spec:106; policy `tenant_isolation`, RLS enabled AND forced
 call app_meta.attach_audit('app.allocation');                    -- spec:106; every allocation and un-allocation is audited
-call app_meta.attach_stamp('app.allocation', 'allocated_by');    -- §3.5.1 step 4; the *_by rule of §3.3 (SAH-044)
+call app_meta.attach_stamp('app.allocation', 'allocated_by');    -- §3.5.1 step 4; the *_by rule of §3.3 (LEGACY-044)
 call app_meta.attach_stamp('app.allocation', 'unallocated_by');  -- BOTH stamps, exactly as §4.8.3's bank_match carries two
 -- Two stamps and not one, for the same two reasons §4.8.3 gives bank_match's matched_by/unmatched_by pair:
 -- the stamp_actor LINTER rule fires on every *_by column with no stamp_<col> trigger (plan0A:2755-2758) and
@@ -76,7 +76,7 @@ call app_meta.attach_stamp('app.allocation', 'unallocated_by');  -- BOTH stamps,
 -- app_rw receives select, insert, update through default privileges (plan0A:2564). NO DELETE: an allocation
 -- is reversed by setting unallocated_at, never removed (§3.5.4's pinned list is unchanged by this slice).
 
--- ── 5. the accounting dates, and what an UPDATE may change: the un-allocation, once (spec:2457, SAH-041) ──
+-- ── 5. the accounting dates, and what an UPDATE may change: the un-allocation, once (spec:2457, LEGACY-041) ──
 -- app.first_open_date (code review B1): `p_date` when its fiscal period of `p_company` is open, else the
 -- first day of the earliest OPEN period after it; NULL when there is none. The period it returns is read
 -- `for share`, as postDocument's step 5 reads the one it posts into, so a concurrent close of that period
@@ -171,4 +171,4 @@ begin
 end
 $$;
 create trigger allocation_guard before insert or update on app.allocation
-  for each row execute function app.allocation_guard();  -- SAH-041: live at insert, reversal only, and only once; B1's dates
+  for each row execute function app.allocation_guard();  -- LEGACY-041: live at insert, reversal only, and only once; B1's dates

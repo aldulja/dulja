@@ -50,7 +50,7 @@ function bool(row: Record<string, unknown>, key: string): number {
  *
  * There is one statement per stream and no dynamic table name: `MIRROR_TABLE[stream]` selects a **literal**
  * SQL string below, never interpolates one — spec:100's "never build SQL by string concatenation" binds the
- * till as much as the server (SAH-036/037/069), and acceptance test 27 is the mechanical check.
+ * till as much as the server (LEGACY-036/037/069), and acceptance test 27 is the mechanical check.
  */
 export function upsertMirror(db: PosDatabase, stream: Stream, m: MirrorRow): void {
   const identity = stream === "cashier" ? m.row["principal_id"] : m.row["id"];

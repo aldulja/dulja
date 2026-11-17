@@ -56,7 +56,7 @@ gate too.
    running or failed (never an empty 200 a caller could save as "the export"), recomputes the stored bytes'
    SHA-256 against the row's, refuses with `ERR_INTERNAL` (detail to the log) on a mismatch, and sends the
    digest as `X-Content-Sha256` so the tenant can verify what ADR 0069 made reproducible. The object key
-   never reaches the wire (SAH-038).
+   never reaches the wire (LEGACY-038).
 
 ## Alternatives rejected
 

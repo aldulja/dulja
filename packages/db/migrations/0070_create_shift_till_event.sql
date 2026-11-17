@@ -15,7 +15,7 @@ create table app.shift (
   branch_id               uuid not null,
   terminal_id             uuid not null,
   -- ATTRIBUTION, never `*_by`: on a shift synced up by a terminal the acting principal is the TERMINAL, and
-  -- a stamped `opened_by` would silently replace the cashier with it — SAH-044 in reverse (§3.3).
+  -- a stamped `opened_by` would silently replace the cashier with it — LEGACY-044 in reverse (§3.3).
   opened_principal_id     uuid not null references app.principal(id),
   opened_at               timestamptz not null,
   opening_float           numeric(19,4) not null,

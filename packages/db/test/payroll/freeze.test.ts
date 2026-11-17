@@ -3,7 +3,7 @@ import type { Sql } from "postgres";
  * Migration 0126 — DBS-03 (full review 2026-11-15). A posted payroll is frozen for EVERY principal, not only for
  * one who can see its document: 0087's `forbid_payroll_line_change_unless_draft` read the parent status under the
  * caller's RLS and passed on NULL, so a principal restricted to another branch, or an employee holding no role,
- * rewrote a posted run's line; `payroll_run` had no freeze at all (its `pinned_tables` is the SAH-013 pin).
+ * rewrote a posted run's line; `payroll_run` had no freeze at all (its `pinned_tables` is the LEGACY-013 pin).
  * ADR 0074 and ADR 0076 amendments (2026-11-15), proposed.
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -141,7 +141,7 @@ afterAll(async () => {
   await db.stop();
 });
 
-describe("0126 — a posted payroll is frozen for everyone (DBS-03, SAH-031/041)", () => {
+describe("0126 — a posted payroll is frozen for everyone (DBS-03, LEGACY-031/041)", () => {
   it("a principal restricted to another branch cannot rewrite a posted run's line", async () => {
     const d = await run({ post: true });
     const [seen] = await withTenant(
@@ -209,7 +209,7 @@ describe("0126 — a posted payroll is frozen for everyone (DBS-03, SAH-031/041)
     expect(r!.pinned).toEqual([{ schemeId: "00000000-0000-0000-0000-000000000001", version: 1 }]);
   });
 
-  it("payroll_run is frozen after draft for a principal who CAN see it — every column, SAH-013's pin included", async () => {
+  it("payroll_run is frozen after draft for a principal who CAN see it — every column, LEGACY-013's pin included", async () => {
     const d = await run({ post: true });
     const id = d.documentId;
     const edits = [

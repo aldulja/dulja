@@ -73,7 +73,7 @@ create table app.leave_record (
   days           numeric(6,2) not null check (days > 0),
   status         text not null default 'requested' check (status in ('requested', 'approved', 'rejected')),
   -- NULL while `requested`; app.stamp_actor stamps the NULL → value transition with the SESSION actor and raises
-  -- ERR_ACTOR_IMMUTABLE on any later change. A supplied value is never trusted (SAH-044). The column names the
+  -- ERR_ACTOR_IMMUTABLE on any later change. A supplied value is never trusted (LEGACY-044). The column names the
   -- principal who DECIDED the record — an approval or a rejection alike.
   approved_by    uuid references app.principal(id),
   reason         text,

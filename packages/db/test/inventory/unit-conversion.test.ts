@@ -11,7 +11,7 @@ import {
 import { draftDocument, seedItem, seedTenant, seedUnit, type Seed } from "../fixtures";
 import { startDb, uuidv7, withTenant, type Db } from "../harness";
 
-describe("unit conversion applied by the data layer — migration 0032 (SAH-066, ADR 0036)", () => {
+describe("unit conversion applied by the data layer — migration 0032 (LEGACY-066, ADR 0036)", () => {
   let db: Db;
   let a: Seed;
   let itemId: string;
@@ -130,7 +130,7 @@ describe("unit conversion applied by the data layer — migration 0032 (SAH-066,
     }
   });
 
-  it("the TRIGGER derives document_line.quantity from the entered pair — every write path (SAH-066)", async () => {
+  it("the TRIGGER derives document_line.quantity from the entered pair — every write path (LEGACY-066)", async () => {
     const doc = await draftDocument(db, a);
     const [line] = await withTenant(
       db.rw,

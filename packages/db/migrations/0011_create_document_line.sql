@@ -23,7 +23,7 @@ create table app.document_line (
   unique (document_id, line_no),
   unique (tenant_id, id),
   -- Composite FKs: an FK check bypasses RLS, so a plain references would let tenant A's line point at
-  -- tenant B's account if the uuid were known (SAH-035, spec:1820).
+  -- tenant B's account if the uuid were known (LEGACY-035, spec:1820).
   foreign key (tenant_id, company_id)  references app.company(tenant_id, id),
   foreign key (tenant_id, document_id) references app.document(tenant_id, id) on delete cascade,
   foreign key (tenant_id, account_id)  references app.account(tenant_id, id)
@@ -36,4 +36,4 @@ call app_meta.attach_audit('app.document_line');          -- before/after images
 -- app_rw receives select, insert, update through the default privileges of migration 0001 (plan0A:2564).
 -- No DELETE: the cascade from document runs with the table owner's rights, and 2B's migration 0023 is the
 -- one slice that grants app_rw DELETE here, guarded by document_delete_draft_only (contracts §3.5.4).
--- No extra index: `unique (document_id, line_no)` already backs every lookup by document (SAH-070).
+-- No extra index: `unique (document_id, line_no)` already backs every lookup by document (LEGACY-070).

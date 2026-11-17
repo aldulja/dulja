@@ -251,7 +251,7 @@ describe("runLoad — contracts §4.13.2 and ADR 0084", () => {
     ).toEqual([{ targetTable: "unit_of_measure", rows: 3 }]);
   });
 
-  it("re-running the same load inserts nothing twice (SAH-049): every key is a silent skip, and map is not called", async () => {
+  it("re-running the same load inserts nothing twice (LEGACY-049): every key is a silent skip, and map is not called", async () => {
     const s = await tenant("load-rerun");
     const { loader, calls } = unitLoader();
     const first = await registered([loader], async () => runLoad(db.rw, await ctxFor(s)));
@@ -311,7 +311,7 @@ describe("runLoad — contracts §4.13.2 and ADR 0084", () => {
     expect(existsSync(artefact(runId, "index.json"))).toBe(true);
   });
 
-  it("loads a key the source holds twice with identical data once, and reports the second sighting (SAH-049)", async () => {
+  it("loads a key the source holds twice with identical data once, and reports the second sighting (LEGACY-049)", async () => {
     const s = await tenant("load-dup-same");
     const rows = loadCorpus("cut-over").tables["UNITS"]!.rows;
     setLoadSource(sourceOf(withRows([...rows, rows[0]!])));
@@ -329,7 +329,7 @@ describe("runLoad — contracts §4.13.2 and ADR 0084", () => {
           sourceTable: "UNITS",
           sourceKey: "1",
           reason:
-            "the source holds this key twice with identical data; it was loaded once (SAH-049)",
+            "the source holds this key twice with identical data; it was loaded once (LEGACY-049)",
         },
       ]);
       expect(await units(s)).toHaveLength(3);

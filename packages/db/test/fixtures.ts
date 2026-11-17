@@ -334,7 +334,7 @@ export async function seedDocumentType(
  * (contracts §4.17.1) for the five admin codes and this helper for anything narrower.
  *
  * `branchIds` adds `role_assignment_branch` rows, which restrict the assignment to those BRANCH dimension
- * values: with rows present, `app.actor_has(code, company, null)` is FALSE (spec:2166, SAH-042).
+ * values: with rows present, `app.actor_has(code, company, null)` is FALSE (spec:2166, LEGACY-042).
  *
  * `opts` is optional and every member of it is optional, so `grantCodes(db, s)` is legal and **grants
  * nothing**: it creates a role with zero `role_permission` rows and assigns it, which is the documented
@@ -1116,7 +1116,7 @@ export async function seedRateTable(
  *
  * It deliberately does NOT calculate: approval and posting go through the real state machine and the real run
  * service (8B Task 10). A fixture that computed figures would give the golden tests a second source of truth,
- * which is SAH-009 in a test suite. The fiscal period is the one covering the effective date (January's, the
+ * which is LEGACY-009 in a test suite. The fiscal period is the one covering the effective date (January's, the
  * seed's own, when no other covers it). Returns the DOCUMENT id — `payroll_run` is keyed on it.
  */
 export async function seedPayrollRun(

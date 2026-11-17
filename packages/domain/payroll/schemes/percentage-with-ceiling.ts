@@ -5,7 +5,7 @@ import { assertRequiredInputs, modeOf, shapeMismatch } from "./shape";
 /**
  * `share = clamp(base, floor, ceiling) × rate`, rounded once with the table's declared mode.
  *
- * The clamp happens BEFORE the multiplication and the rounding happens ONCE, at the end — SAH-019's fix is "one
+ * The clamp happens BEFORE the multiplication and the rounding happens ONCE, at the end — LEGACY-019's fix is "one
  * rounding function, explicit mode, applied at persist time", and rounding an intermediate would give two
  * implementations two answers.
  */

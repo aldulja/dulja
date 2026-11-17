@@ -2,7 +2,7 @@
 //
 // §4.2.8's naming: <Resource>Schema, <Resource>Query, <Resource>List, <Verb><Resource>Body.
 // Money does not appear here: a transmission carries no amount of its own — the amounts are in the
-// document it points at, and duplicating one would give SAH-019 a second place to disagree.
+// document it points at, and duplicating one would give LEGACY-019 a second place to disagree.
 
 import { z } from "zod";
 import { ListEnvelope, ListQuery, ProblemSchema, TimestampSchema, UuidSchema } from "../common";

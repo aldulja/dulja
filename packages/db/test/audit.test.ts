@@ -24,9 +24,9 @@ interface AuditRow {
 // that actually runs nightly.
 
 // Two of this suite's invariants are proven once, elsewhere, and are deliberately not repeated here:
-// actor columns stamped from the session and frozen afterwards — tests/regression/sah-044.test.ts;
-// audit rows unchangeable — tests/regression/sah-041.test.ts for the shared forbid_change() trigger and
-// tests/regression/sah-029.test.ts for app_rw holding neither UPDATE nor DELETE on app.audit_log. That
+// actor columns stamped from the session and frozen afterwards — tests/regression/legacy-044.test.ts;
+// audit rows unchangeable — tests/regression/legacy-041.test.ts for the shared forbid_change() trigger and
+// tests/regression/legacy-029.test.ts for app_rw holding neither UPDATE nor DELETE on app.audit_log. That
 // the trigger is attached to audit_log itself, and so answers even a superuser, is proven by
 // apps/worker/test/ledger-integrity-check.test.ts ("the immutable trigger rejects an attempted tamper").
 describe("audit log — append-only, actor-stamped and tenant chained", () => {

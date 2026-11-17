@@ -6,7 +6,7 @@ import { createLot, pickLotsFefo, sentinelLotId } from "../../src/inventory/lots
 import { seedItem, seedTenant, seedWarehouse, type Seed } from "../fixtures";
 import { startDb, withTenant, type Db } from "../harness";
 
-describe("app.pick_lots_fefo — migration 0031 (the 3A card, SAH-067, ADR 0036)", () => {
+describe("app.pick_lots_fefo — migration 0031 (the 3A card, LEGACY-067, ADR 0036)", () => {
   let db: Db;
   let a: Seed;
   let itemId: string;
@@ -126,7 +126,7 @@ describe("app.pick_lots_fefo — migration 0031 (the 3A card, SAH-067, ADR 0036)
     ).rejects.toThrow(/ERR_VALIDATION_FAILED: pick_lots_fefo needs a positive quantity/);
   });
 
-  it("the ordering is total, so two identical calls return identical rows (SAH-067)", async () => {
+  it("the ordering is total, so two identical calls return identical rows (LEGACY-067)", async () => {
     const once = await withTenant(
       db.rw,
       a.tenant,

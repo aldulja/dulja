@@ -8,7 +8,7 @@
 --
 -- WHY A TRIGGER (and why migration 0090 is not spare — round 17 A1): R3 is a data-layer rule. Putting it in the
 -- compensation handler would leave the seed CLI, the Phase 9 importer and any direct `app_rw` update outside
--- it, which is SAH-032's shape — an authority rule the data layer does not hold.
+-- it, which is LEGACY-032's shape — an authority rule the data layer does not hold.
 --
 -- The file has two parts:
 --   1. the R3 trigger on app.compensation_line;
@@ -29,7 +29,7 @@ declare
   r record;
 begin
   -- Only the two statuses R3 names. `draft` needs nothing (it is already there) and `posted`, `issued`, `void`
-  -- and `reversed` are never touched: a posted run's figures are history (SAH-041).
+  -- and `reversed` are never touched: a posted run's figures are history (LEGACY-041).
   --
   -- The join through payroll_line is what scopes the rule to THIS employee's runs: a join on payroll_run alone
   -- would bounce every overlapping run, including a supplementary or final run for somebody else. `group by`

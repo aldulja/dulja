@@ -58,7 +58,7 @@ interface PromotionDbRow {
  * line keeps its whole discount, the ordinary checks apply to it, and a cashier without the authority or the
  * limit is refused — recoverably, with the reason named — rather than let through on a claim nobody can prove.
  * A promotion edited, shortened or removed between the sale and the sync is refused the same way, as a stale
- * tax rate is (SAH-020): the server never re-prices what the shop sold.
+ * tax rate is (LEGACY-020): the server never re-prices what the shop sold.
  *
  * Malformed evidence is refused outright: another currency, a zero or wrongly signed share, a share larger
  * than the line's discount, a line whose whole discount exceeds its gross, or any evidence on a referenced

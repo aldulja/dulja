@@ -95,7 +95,7 @@ describe("computeDocumentTax (spec:2228, ADR 0050)", () => {
     expect(second).toEqual(first);
   });
 
-  it("a line with no tax code is zeroed, not skipped — SAH-011's NULL arithmetic cannot start", async () => {
+  it("a line with no tax code is zeroed, not skipped — LEGACY-011's NULL arithmetic cannot start", async () => {
     const { documentId } = await draftTypedDocument(db, f.s, {
       documentTypeId: f.types["SALES_INVOICE"]!,
       series: "TMP",
@@ -119,7 +119,7 @@ describe("computeDocumentTax (spec:2228, ADR 0050)", () => {
     expect(w.map((l) => l.totalInclTax)).toEqual(["70.0000", "80.0000"]);
   });
 
-  it("two codes of DIFFERENT regimes on one document is a refusal (SAH-020)", async () => {
+  it("two codes of DIFFERENT regimes on one document is a refusal (LEGACY-020)", async () => {
     const second = await prodWithTenant(db.rw, ctx(), async (tx) => {
       const [r] = await tx<{ id: string }[]>`
         insert into app.tax_regime (tenant_id, company_id, code, jurisdiction, version, effective_from,
@@ -181,7 +181,7 @@ describe("computeDocumentTax (spec:2228, ADR 0050)", () => {
     );
   });
 
-  it("a non-draft document refuses recomputation (spec:2049, SAH-041)", async () => {
+  it("a non-draft document refuses recomputation (spec:2049, LEGACY-041)", async () => {
     const { documentId } = await postTaxedDocument(db, f, {
       typeCode: "SALES_INVOICE",
       effectiveDate: "2026-01-20",

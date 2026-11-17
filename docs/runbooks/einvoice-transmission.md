@@ -18,7 +18,7 @@ the wire: it is a lock, not a fact about the transmission, and an operator who n
 | `pending` | The document posted; no remote call has succeeded yet. Either the job has not run or every attempt failed. | `POST …/{id}/submit` |
 | `submitted` | The remote system queued the request and has not yet returned a final verdict. | Automatic polling backs off and stops at twelve total attempts, including submission and transient retries. After that, escalate for controlled reconciliation through the existing `pollTransmission` service; the submit API cannot act from this state. |
 | `accepted` | Final. `qrPayload` and `externalId` are set. | Nothing |
-| `rejected` | The authority refused the document. `lastError` carries its reason. | Correct the document by **reversal** (SAH-041, never by editing), post the correction, and let its own transmission run |
+| `rejected` | The authority refused the document. `lastError` carries its reason. | Correct the document by **reversal** (LEGACY-041, never by editing), post the correction, and let its own transmission run |
 | `cancelled` | Withdrawn with the authority. | Nothing |
 | `error` | A remote error outcome or an unmapped response status. Transport and configuration exceptions preserve the prior status and record `lastError`. | Read `lastError`, resolve the cause, then `POST …/{id}/submit` |
 

@@ -12,7 +12,7 @@ interface Entry {
   action: "insert" | "update" | "delete";
 }
 
-describe("/v1/admin/audit-log — spec:2124, acceptance test 13; SAH-029, 030, 040", () => {
+describe("/v1/admin/audit-log — spec:2124, acceptance test 13; LEGACY-029, 030, 040", () => {
   let api: StartedApi;
   let a: Seed;
   let b: Seed;
@@ -95,7 +95,7 @@ describe("/v1/admin/audit-log — spec:2124, acceptance test 13; SAH-029, 030, 0
     // (packages/contracts/src/admin/audit-log.ts) — the audit log is always `seq desc`. An empty value is
     // still accepted, so the refusal below is the bound firing, not the parameter being unknown.
     expect((await page("sort=&limit=1")).items).toHaveLength(1);
-    // Undeclared keys are stripped rather than rejected: the schema is not `.strict()` (SAH-036).
+    // Undeclared keys are stripped rather than rejected: the schema is not `.strict()` (LEGACY-036).
     expect((await page("where=1&filter=x&limit=1")).items).toHaveLength(1);
 
     const injected = await api.request({

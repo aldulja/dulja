@@ -102,7 +102,7 @@ const INTEGER = /^-?\d{1,18}$/;
 
 /**
  * Shape-check a bound value BEFORE it reaches Postgres. Without this a malformed uuid raises SQLSTATE 22P02,
- * which `fromDatabaseError` maps to `ERR_INTERNAL` (§4.2.4) — a 500 for a caller's typo. SAH-084's fix is a
+ * which `fromDatabaseError` maps to `ERR_INTERNAL` (§4.2.4) — a 500 for a caller's typo. LEGACY-084's fix is a
  * message naming the specific offending entity, which is what this produces.
  */
 function assertValue(kind: DatasetColumnKind, value: string, field: string): void {

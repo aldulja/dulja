@@ -82,7 +82,7 @@ describe("migration 0049 — bank_statement and bank_statement_line (§4.8.3)", 
     }
   });
 
-  it("imported_by is stamped, so a supplied value cannot win (SAH-044)", async () => {
+  it("imported_by is stamped, so a supplied value cannot win (LEGACY-044)", async () => {
     const triggers = await db.admin<{ tgname: string }[]>`
       select tgname from pg_trigger where tgrelid = 'app.bank_statement'::regclass and not tgisinternal`;
     expect(triggers.map((t) => t.tgname)).toContain("stamp_imported_by");
@@ -205,7 +205,7 @@ describe("importStatement (§4.8.3, ADR 0048)", () => {
     expect(usd!.currency).toBe("USD");
   });
 
-  it("refuses a statement that does not add up, naming the difference (SAH-011's discipline)", async () => {
+  it("refuses a statement that does not add up, naming the difference (LEGACY-011's discipline)", async () => {
     const bad: CsvMapping = {
       ...MAPPING,
       statement: { ...MAPPING.statement, closingBalance: "300.0000", statementDate: "2026-02-28" },

@@ -64,7 +64,7 @@ code and fixed in the same PR. Three would have let money land where it should n
 
 | # | Defect | Fix |
 |---|---|---|
-| 1 | `issueDocument` read and updated the document with no row lock, so two concurrent `to: "issued"` transitions both passed the status check and each consumed a series number — a burned number with no void row (SAH-051 reborn) | `select … for update` on the document before the status check; `postDocument` already held it, and re-locking in the same transaction is a no-op |
+| 1 | `issueDocument` read and updated the document with no row lock, so two concurrent `to: "issued"` transitions both passed the status check and each consumed a series number — a burned number with no void row (LEGACY-051 reborn) | `select … for update` on the document before the status check; `postDocument` already held it, and re-locking in the same transaction is a no-op |
 | 2 | `balanceInBase` never checked Σdebit = Σcredit in the **document** currency, and its `0.01 × lines` tolerance applied at rate 1 — so `100.0000 / 99.9900` posted with a fabricated `fx_rounding` line | exact document-currency balance first; base tolerance `0.0001 × lines` (per-line 4-dp rounding contributes at most 0.00005) |
 | 3 | Document lines accepted any account, branch or dimension value **in the tenant** — the FKs are tenant-scoped — so company A could post to company B's accounts | every referenced account (live, non-group), the header branch (this company's `BRANCH` type) and every line dimension value are checked against `companyId` before any row is written |
 | 4 | `PATCH …/accounts/{id}` never verified the new `parentId` was in the company (POST did) | the same existence check, before the cycle CTE |
@@ -112,7 +112,7 @@ suites has yet run.
 | 0021 | `document_line`: the Phase 1 base shape — no branch key, ever |
 | 0022 | Ajv validates posting policies; the `PostingPolicy` type is generated and committed |
 | 0023 | The mandatory period-reopen reason is a column on `fiscal_period` |
-| 0024 | The ledger-integrity check is four independent read functions and one registry; the job detects and never repairs (SAH-079) |
+| 0024 | The ledger-integrity check is four independent read functions and one registry; the job detects and never repairs (LEGACY-079) |
 | 0025 | The restore drill is two phases and one shared verdict; the local equivalent is a snapshot, not a WAL replay |
 
 ## What we are asking
@@ -138,7 +138,7 @@ suites has yet run.
    routes that are membership-scoped rather than permission-scoped therefore needed an explicit marker
    rather than an absence. It refuses to attach to an UNSAFE method. It is described in
    `docs/ui/phase-1-api-surface.md`; it widens a Phase 0 security control and should be reviewed as one.
-7. **Three amendments to the contracts document**, each one line: `sah-070` is an append for 1B, not a
+7. **Three amendments to the contracts document**, each one line: `legacy-070` is an append for 1B, not a
    create (0B creates it); the 1B card's task target of 10–12 becomes 13; and the names this slice had to
    define — `membershipOnly`, `sliceRegression`, `chainHashExpression`, `seedTenantV2`, `seedAccount`,
    `seedJournalPolicy`, `grantReportCodes` — join the interface registry.

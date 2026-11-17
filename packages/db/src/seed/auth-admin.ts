@@ -51,7 +51,7 @@ export class SupabaseSeedAuthAdmin implements SeedAuthAdmin {
 
   async createUser(email: string): Promise<SeedAuthUser> {
     // No password: the owner sets one through Supabase's own recovery flow. The application never stores or
-    // compares a password (spec:2131, SAH-028), and MFA is enrolled at first login (spec:2004).
+    // compares a password (spec:2131, LEGACY-028), and MFA is enrolled at first login (spec:2004).
     const { data, error } = await this.#client.auth.admin.createUser({
       email,
       email_confirm: true,

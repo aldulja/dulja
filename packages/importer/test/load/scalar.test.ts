@@ -42,9 +42,9 @@ describe("the scalar boundary — legacy text becomes a Dulja type here or nowhe
     );
   });
 
-  it("refuses a NULL amount and a NULL quantity rather than reading either as zero (SAH-007, SAH-011)", () => {
+  it("refuses a NULL amount and a NULL quantity rather than reading either as zero (LEGACY-007, LEGACY-011)", () => {
     expect(() => moneyOf(row, "NONE", MYR, "ACCTOTALS/7")).toThrow(
-      /^ERR_VALIDATION_FAILED: ACCTOTALS\/7: NONE is NULL; a NULL legacy amount is never read as zero \(SAH-007, SAH-011\)$/,
+      /^ERR_VALIDATION_FAILED: ACCTOTALS\/7: NONE is NULL; a NULL legacy amount is never read as zero \(LEGACY-007, LEGACY-011\)$/,
     );
     expect(() => quantityOf(row, "NONE", "BILLITEMS/9")).toThrow(
       /NONE is NULL; a NULL legacy quantity is never read as zero/,
@@ -112,7 +112,7 @@ describe("the scalar boundary — legacy text becomes a Dulja type here or nowhe
     );
   });
 
-  it("converts a legacy float factor to an exact Rational, never through a number and never to Money (SAH-066)", () => {
+  it("converts a legacy float factor to an exact Rational, never through a number and never to Money (LEGACY-066)", () => {
     const factors: LegacyRow = {
       TWELVE: "12",
       HALF: "0.5",
@@ -128,17 +128,17 @@ describe("the scalar boundary — legacy text becomes a Dulja type here or nowhe
     expect(rationalOf(factors, "HALF", "x")).toEqual({ numerator: 1n, denominator: 2n });
     expect(rationalOf(factors, "SCI", "x")).toEqual({ numerator: 25n, denominator: 2n });
     // The stored float, exactly as the source prints it — 1/3 is what the operator meant and nothing here guesses
-    // it: the factor that round-trips is the owner's to enter after cut-over (spec SAH-066).
+    // it: the factor that round-trips is the owner's to enter after cut-over (spec LEGACY-066).
     expect(rationalOf(factors, "THIRD", "x")).toEqual({
       numerator: 333333333333333n,
       denominator: 1000000000000000n,
     });
     expect(() => rationalOf(factors, "ZERO", "MATUNITS/1")).toThrow(
-      /^ERR_VALIDATION_FAILED: MATUNITS\/1: ZERO is 0\.0000; a unit conversion factor must be positive \(SAH-066\)$/,
+      /^ERR_VALIDATION_FAILED: MATUNITS\/1: ZERO is 0\.0000; a unit conversion factor must be positive \(LEGACY-066\)$/,
     );
-    expect(() => rationalOf(factors, "NEG", "x")).toThrow(/must be positive \(SAH-066\)/);
+    expect(() => rationalOf(factors, "NEG", "x")).toThrow(/must be positive \(LEGACY-066\)/);
     expect(() => rationalOf(factors, "NONE", "MATUNITS/1")).toThrow(
-      /^ERR_VALIDATION_FAILED: MATUNITS\/1: NONE is NULL; a missing conversion factor is never read as 1 \(SAH-066\)$/,
+      /^ERR_VALIDATION_FAILED: MATUNITS\/1: NONE is NULL; a missing conversion factor is never read as 1 \(LEGACY-066\)$/,
     );
     expect(() => rationalOf(factors, "WORD", "x")).toThrow(/"a dozen", which is not a decimal/);
     expect(() => rationalOf(factors, "TINY", "x")).toThrow(/does not fit a bigint ratio/);

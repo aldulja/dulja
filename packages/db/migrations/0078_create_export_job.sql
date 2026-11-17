@@ -25,7 +25,7 @@ create table app.export_job (
   table_count         int,
   row_count           bigint,
   byte_size           bigint,
-  object_key          text,          -- '<tenant_id>/exports/<export_job_id>.tar.gz' (SAH-038: server-generated)
+  object_key          text,          -- '<tenant_id>/exports/<export_job_id>.tar.gz' (LEGACY-038: server-generated)
   sha256              bytea,         -- of the archive bytes
   manifest            jsonb,
   started_at          timestamptz,   -- when the CURRENT claim was taken: the lease's start (Phase 7 review)
@@ -54,7 +54,7 @@ create table app.export_job (
   foreign key (tenant_id, company_id) references app.company(tenant_id, id)
 );
 
--- SAH-070: the list's keyset order, and the worker's pick-up read.
+-- LEGACY-070: the list's keyset order, and the worker's pick-up read.
 create index export_job_company_created_idx on app.export_job (company_id, created_at desc, id desc);
 create index export_job_queued_idx on app.export_job (company_id) where status = 'queued';
 

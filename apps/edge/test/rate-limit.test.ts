@@ -7,7 +7,7 @@ import {
 } from "../src/rate-limit";
 
 const binding = (success: boolean) => ({ limit: async () => ({ success }) });
-// An IPv6 documentation address stands in for CF-Connecting-IP: SAH-082 forbids IPv4 literals in source.
+// An IPv6 documentation address stands in for CF-Connecting-IP: LEGACY-082 forbids IPv4 literals in source.
 const ORIGIN = "2001:db8::1";
 /** What `networkOriginKey` makes of ORIGIN: an IPv6 client is keyed on its /64, never its full address. */
 const ORIGIN_KEY = "2001:db8:0:0::/64";

@@ -50,7 +50,7 @@ const COLUMNS: readonly SourceColumn[] = [
  * `MATBATCHES` → `app.lot`, through 3A's `createLot`. Source key: the bare `BATID` — what Task 6's
  * `refs.byLegacyRef("lot", …)` passes. `lot.code` is `BATCODE` as printed (no `codeFromName`: a batch number is read
  * off a carton and must match it), and `lot.legacy_ref` carries the same string (0101: "the source system's batch
- * code"). A batch whose material was not imported is an orphan and is REPORTED (SAH-073), never given a null item.
+ * code"). A batch whose material was not imported is an orphan and is REPORTED (LEGACY-073), never given a null item.
  */
 export const lotLoader: Loader<LegacyRow, LotTarget> = {
   sourceTable: "MATBATCHES",
@@ -73,7 +73,7 @@ export const lotLoader: Loader<LegacyRow, LotTarget> = {
     const itemId = await refs.byLegacyRef("item", materialKey);
     if (!itemId)
       return {
-        skip: `material ${materialKey} has no imported item; the batch is an orphan (SAH-073)`,
+        skip: `material ${materialKey} has no imported item; the batch is an orphan (LEGACY-073)`,
       };
     const expiresOn = optionalDateOf(row, "BATEXPIRY", site);
     const manufacturedOn = optionalDateOf(row, "BATMFG", site);

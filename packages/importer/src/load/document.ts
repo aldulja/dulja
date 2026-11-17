@@ -24,7 +24,7 @@ export interface ImportedLine {
 /** One cut-over document (contracts §4.14's `OPENING_BALANCE` / `OPENING_STOCK`), drafted and posted whole. */
 export interface ImportedDocument {
   documentTypeCode: "OPENING_BALANCE" | "OPENING_STOCK";
-  /** The legacy document number, verbatim (§5.1 #8, SAH-051) — `null` for a figure that is no legacy document's. */
+  /** The legacy document number, verbatim (§5.1 #8, LEGACY-051) — `null` for a figure that is no legacy document's. */
   legacyRef: string | null;
   partyId?: string | null;
   warehouseId?: string | null;

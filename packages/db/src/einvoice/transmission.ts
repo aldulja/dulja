@@ -80,7 +80,7 @@ const SUBMIT_DEFINITIVE: readonly TransmissionStatus[] = ["submitted", "accepted
 const is2xx = (httpStatus: number): boolean => httpStatus >= 200 && httpStatus < 300;
 
 /**
- * `last_error` for a submit or poll outcome. An unmapped label is named (SAH-020: visible, never a
+ * `last_error` for a submit or poll outcome. An unmapped label is named (LEGACY-020: visible, never a
  * false acceptance); a non-2xx answer, a refusal, an `error`, and any outcome recorded under a
  * status other than the one the authority gave keep the redacted body, which carries `httpStatus`
  * — so an operator can tell an authority's 404 from a 200 with a missing field. A clean answer
@@ -546,7 +546,7 @@ export async function submitTransmission(
 
     // The snapshot is read in its own short transaction, and canonicalisation is pure — so the
     // payload is a function of STORED line figures and a later tax_code version cannot change it
-    // (SAH-020's "regime pinned on submission"; tests/regression/sah-020.test.ts proves it).
+    // (LEGACY-020's "regime pinned on submission"; tests/regression/legacy-020.test.ts proves it).
     const snapshot = await withTenant(sql, ctx, (tx) => loadSnapshot(tx, claimed.documentId));
     doc = transmitter.canonicalise(snapshot);
 
@@ -680,7 +680,7 @@ export async function pollTransmission(
         "configured transmitter differs from the transmission's recorded transmitter",
       );
     }
-    // The row is read against the profile version it was submitted under (SAH-013), not whichever
+    // The row is read against the profile version it was submitted under (LEGACY-013), not whichever
     // version a new submission would use: a version bump must not strand it (ADR 0053, "Also
     // open"). A version this deployment no longer registers is ERR_EINVOICE_TRANSMITTER_UNAVAILABLE
     // naming it, from the registry; a row never submitted has no pin and takes the highest.

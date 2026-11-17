@@ -156,7 +156,7 @@ accountRoutes.openapi(
     path: "/tree",
     tags: ["accounting"],
     middleware: [membershipOnly()] as const,
-    summary: "The chart as a tree, in one recursive CTE (SAH-071)",
+    summary: "The chart as a tree, in one recursive CTE (LEGACY-071)",
     request: { params: z.object({ companyId: UuidSchema }) },
     responses: {
       200: {
@@ -167,7 +167,7 @@ accountRoutes.openapi(
   }),
   async (c) => {
     const { companyId } = c.req.valid("param");
-    // One statement for the whole tree. SAH-071 is the legacy system running a recursive check per row inside
+    // One statement for the whole tree. LEGACY-071 is the legacy system running a recursive check per row inside
     // a trigger; the depth cap is a belt-and-braces guard, since the PATCH handler already refuses a cycle.
     const rows = await c.var.withTenant(
       (tx) => tx<(Row & { depth: number; path: string[] })[]>`
@@ -278,7 +278,7 @@ accountRoutes.openapi(
     path: "/{accountId}/archive",
     tags: ["accounting"],
     middleware: [manage] as const,
-    summary: "Archive an account — accounts are never deleted (spec:2049, SAH-021)",
+    summary: "Archive an account — accounts are never deleted (spec:2049, LEGACY-021)",
     request: {
       params: z.object({ companyId: UuidSchema, accountId: UuidSchema }),
       headers: IdempotencyHeader,

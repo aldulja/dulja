@@ -10,8 +10,8 @@
 --            record exactly what they consumed; a back-dated document invalidates only layers at or
 --            after its sequence; the replay writes an adjustment entry.
 -- spec:1370, 1993  derived tables are AUDIT-EXEMPT but MUST stay updatable by app_rw.
--- SAH-004  cost is a derived function of an immutable ordered movement ledger, never a running scalar.
--- SAH-008  unit_cost >= 0 and qty_remaining >= 0 are CHECKs, not conventions: a negative computed cost
+-- LEGACY-004  cost is a derived function of an immutable ordered movement ledger, never a running scalar.
+-- LEGACY-008  unit_cost >= 0 and qty_remaining >= 0 are CHECKs, not conventions: a negative computed cost
 --          is a hard error and must never reach a stored row.
 -- Nothing in this migration writes a row: hazard 10 — FORCE ROW LEVEL SECURITY binds app_migrator and a
 -- migration has no tenant set, so every per-tenant row here is the posting service's or the replay's.
@@ -26,8 +26,8 @@ create table app.cost_layer (
   lot_id         uuid not null,
   movement_id    uuid not null,
   qty_in         numeric(19,6) not null,
-  unit_cost      numeric(19,4) not null check (unit_cost >= 0),          -- SAH-008: never a negative stored cost
-  qty_remaining  numeric(19,6) not null check (qty_remaining >= 0),      -- SAH-008: never a negative residue
+  unit_cost      numeric(19,4) not null check (unit_cost >= 0),          -- LEGACY-008: never a negative stored cost
+  qty_remaining  numeric(19,6) not null check (qty_remaining >= 0),      -- LEGACY-008: never a negative residue
   effective_at   date   not null,                                        -- = movement.effective_date
   sequence       bigint not null,                                        -- = movement.posting_seq (spec:1220 "sequence")
   invalidated_at timestamptz,                                            -- set by invalidateFrom; cleared by the replay
@@ -56,7 +56,7 @@ create index cost_layer_open_idx
   where invalidated_at is null and qty_remaining > 0;
 create index cost_layer_invalid_idx
   on app.cost_layer (company_id, item_id, effective_at, sequence)
-  where invalidated_at is not null;                                      -- the replay's resume point (SAH-054)
+  where invalidated_at is not null;                                      -- the replay's resume point (LEGACY-054)
 
 -- ── 2. cost_consumption ─────────────────────────────────────────────────────────────
 -- spec:1218 "record exactly what they consumed". No natural unique key: an AVCO issue takes a proportional

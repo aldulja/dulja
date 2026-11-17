@@ -2,7 +2,7 @@
 -- Slice 4B. The two ASYNCHRONOUS projections spec:1204 names beside stock_valuation: "Asynchronous ones
 -- (party_ageing, item_profitability, stock_valuation history) are pg-boss jobs. All of them are rebuilt
 -- from ledger_entry/inventory_movement into scratch tables nightly and compared row for row; a mismatch
--- is an incident."  Derived, never hand-edited (SAH-001, 002, 013, 049, 050). Contracts §4.6.1, §4.8.2,
+-- is an incident."  Derived, never hand-edited (LEGACY-001, 002, 013, 049, 050). Contracts §4.6.1, §4.8.2,
 -- round 8 amendments 3, 6 and 7.
 --
 -- Neither table is written by the posting service, so neither joins the posting-only-tables lint
@@ -21,17 +21,17 @@ create table app.party_ageing (
   currency     char(3) not null,                     -- the open documents' own currency (spec:2041)
   as_of        date not null,
   bucket       text not null,
-  -- SAH-011: every monetary column is NOT NULL DEFAULT 0. One NULL in an accumulation nulled a whole
+  -- LEGACY-011: every monetary column is NOT NULL DEFAULT 0. One NULL in an accumulation nulled a whole
   -- period's balance in the old system and only a table rebuild recovered it.
   amount       numeric(19,4) not null default 0,      -- the open documents' own currency
-  base_amount  numeric(19,4) not null default 0,      -- SAH-012: base = value × rate, at each open document's OWN rate
+  base_amount  numeric(19,4) not null default 0,      -- LEGACY-012: base = value × rate, at each open document's OWN rate
   created_at   timestamptz not null default now(),    -- spec:106's Always list, kept although the table is in NO_ID_TABLES
   updated_at   timestamptz not null default now(),
   -- §3.4.4 / hazard 11: a closed vocabulary is text + a named CHECK, never an enum label
   constraint party_ageing_bucket_check
     check (bucket in ('current', '1_30', '31_60', '61_90', 'over_90')),
-  primary key (company_id, party_id, currency, as_of, bucket),   -- the full natural key the MERGE targets (SAH-002/049)
-  -- composite: an FK check bypasses RLS, so a plain `references` would admit another tenant's row (SAH-035)
+  primary key (company_id, party_id, currency, as_of, bucket),   -- the full natural key the MERGE targets (LEGACY-002/049)
+  -- composite: an FK check bypasses RLS, so a plain `references` would admit another tenant's row (LEGACY-035)
   foreign key (tenant_id, company_id) references app.company(tenant_id, id),
   foreign key (tenant_id, party_id)   references app.party(tenant_id, id)
 );
@@ -50,14 +50,14 @@ create table app.item_profitability (
   company_id       uuid not null,
   item_id          uuid not null,
   fiscal_period_id uuid not null,
-  -- SAH-011: not null default 0, every measure
+  -- LEGACY-011: not null default 0, every measure
   quantity_sold    numeric(19,6) not null default 0,   -- base unit; an issue adds, a return subtracts (amendment 7)
   revenue_base     numeric(19,4) not null default 0,
   cogs_base        numeric(19,4) not null default 0,
   margin_base      numeric(19,4) not null default 0,   -- revenue_base − cogs_base, stored so a report never recomputes it
   created_at       timestamptz not null default now(),
   updated_at       timestamptz not null default now(),
-  primary key (company_id, item_id, fiscal_period_id),   -- §4.6.1's natural key (SAH-002/049)
+  primary key (company_id, item_id, fiscal_period_id),   -- §4.6.1's natural key (LEGACY-002/049)
   foreign key (tenant_id, company_id)       references app.company(tenant_id, id),
   foreign key (tenant_id, item_id)          references app.item(tenant_id, id),
   foreign key (tenant_id, fiscal_period_id) references app.fiscal_period(tenant_id, id)
@@ -186,9 +186,9 @@ grant execute on function app.document_netted_from_rows(uuid) to app_rw;
 --    control account, chosen by kind — vendor → coalesce(payable, receivable), anything else →
 --    coalesce(receivable, payable) — so a party carrying both defaults is not netted, and the vendor side
 --    sign-flipped so an open invoice is positive in both directions. `amount` sums only the rows in the
---    document's own currency (SAH-014: two currencies are never added); `base_amount` sums them all.
+--    document's own currency (LEGACY-014: two currencies are never added); `base_amount` sums them all.
 -- 2. WHEN IT IS DUE. document.effective_date + the term PINNED on the document (document.payment_term_id,
---    4A amendment 8 / 4B amendment 3 — never party.payment_term_id, which would re-age history: SAH-013);
+--    4A amendment 8 / 4B amendment 3 — never party.payment_term_id, which would re-age history: LEGACY-013);
 --    no term is due on its effective date.
 -- 3. WHAT RELIEVED IT. An allocation relieves BOTH its documents while it is live as of p_as_of: from its
 --    own accounting date, allocation.effective_date, until its un-allocation's, allocation.unallocated_on
@@ -320,7 +320,7 @@ grant execute on function app.party_ageing_rows(uuid, date) to app_rw;
 --
 -- Per (document, item): Σ round(document_line.amount × document.exchange_rate, 4) over the ITEM lines of the
 -- company's posted and reversed documents whose effective_date lies in [p_from, p_to] (a NULL bound is open)
--- — the arithmetic 4A's sales_by_item introduced (Phase 4 review B7), on each document's OWN rate (SAH-014).
+-- — the arithmetic 4A's sales_by_item introduced (Phase 4 review B7), on each document's OWN rate (LEGACY-014).
 -- WHICH documents carry revenue, and in which direction, is read from the policy PINNED on the document
 -- (§4.3.2 step 13) — its rules on `item.revenue_account` — never from the item's CURRENT revenue_account_id,
 -- which a later edit of the item would change under every past sale, and never from a list of type codes.
@@ -334,7 +334,7 @@ grant execute on function app.party_ageing_rows(uuid, date) to app_rw;
 -- reversal's own date, which is what a dated or per-period report must show.
 --
 -- inventory.sales_by_item (packages/db/src/reports/sales-by-item.ts) and app.item_profitability_rows below
--- both read it, so the two reports that must reconcile (SAH-019) cannot disagree about revenue: before this,
+-- both read it, so the two reports that must reconcile (LEGACY-019) cannot disagree about revenue: before this,
 -- the report counted a hard-coded SALES_INVOICE / SALES_CREDIT_NOTE list and the projection the pinned
 -- policy, and 6A's POS_TICKET would have been revenue in one and not the other.
 create function app.item_revenue_rows(p_company uuid, p_from date, p_to date)

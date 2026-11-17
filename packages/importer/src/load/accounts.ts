@@ -38,7 +38,7 @@ export function accountMap(): AccountMap {
  * No amount column (2026-11-15 review, HRP-21). The loader once read `ACCOPENBAL` only to skip — and so never link — an
  * account whose stored balance was NULL; no figure is ever taken from that column (the OPENING_BALANCE amounts come
  * from AccTotals, recomputed by 9A), so the skip only sent that account's real AccTotals balance to `3900` in a one-shot
- * opening. SAH-007 is guarded where an amount IS read: the trial-balance opening refuses a NULL `ACTDEBIT`/`ACTCREDIT`
+ * opening. LEGACY-007 is guarded where an amount IS read: the trial-balance opening refuses a NULL `ACTDEBIT`/`ACTCREDIT`
  * at its row (`moneyOf`), and 9A's `null_poison` report names every NULL legacy amount before any load.
  */
 const COLUMNS: readonly SourceColumn[] = [...ACCOUNTS_KEY_COLUMNS];

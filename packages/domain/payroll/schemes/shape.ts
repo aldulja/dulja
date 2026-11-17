@@ -33,7 +33,7 @@ export function shapeMismatch(table: RateTable, member: string): RateTableValida
   ]);
 }
 
-/** A profile input the table needs, refused when null or absent — SAH-011: an absent input is never a zero. */
+/** A profile input the table needs, refused when null or absent — LEGACY-011: an absent input is never a zero. */
 export function missingInput(
   table: RateTable,
   key: string,

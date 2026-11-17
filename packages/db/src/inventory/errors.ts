@@ -19,7 +19,7 @@ export class ItemAccountUnresolvedError extends Error {
 }
 
 /**
- * Raised when a line names a unit that has no conversion to the item's base unit (SAH-066). Declared HERE and
+ * Raised when a line names a unit that has no conversion to the item's base unit (LEGACY-066). Declared HERE and
  * nowhere else: Task 6 raises it from `inventory/units.ts` and **imports** it from this module. One class, one
  * barrel line — a second `export class` of the same name re-exported from `packages/db/src/index.ts` is TS2308
  * at `bun run typecheck`.

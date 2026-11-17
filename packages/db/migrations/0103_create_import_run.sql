@@ -49,7 +49,7 @@ create table app.import_run (
 comment on table app.import_run is
   '9B Task 9 — one cut-over load started through the API (spec:2206). At most one queued or running run per company.';
 
--- SAH-070: the list's keyset order.
+-- LEGACY-070: the list's keyset order.
 create index import_run_company_created_idx on app.import_run (company_id, created_at desc, id desc);
 -- ONE live run per company, in the data layer. Two concurrent loads of one company are always an operator error, and
 -- the plan's pg-boss singleton key could not say it: a keyed standard job takes a 24-hour slot that a FINISHED job

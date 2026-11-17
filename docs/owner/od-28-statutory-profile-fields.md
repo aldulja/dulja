@@ -19,11 +19,11 @@ policy on `hr.compensation.read`, and refuses a principal writing their own prof
 type (text, whole number, yes/no, date), whether it is required, and the publication and date it
 was read from. That last part is not paperwork: `statutory_rate_table.source` records the same
 three facts for every rate table (§4.12.3), and a profile field with no source is the shape
-SAH-078 describes.
+LEGACY-078 describes.
 
 **What changes when it arrives** — one migration in 8B's range promotes the confirmed fields from
 `extra` to typed columns and backfills them; the payroll run starts refusing a NULL in a required
-field, naming the employee (`ERR_PAYROLL_INPUT_MISSING`, spec:2105 SAH-011). Until then a required
+field, naming the employee (`ERR_PAYROLL_INPUT_MISSING`, spec:2105 LEGACY-011). Until then a required
 field simply is not declared anywhere, and no calculation depends on one.
 
 **No rate, threshold, ceiling or formula belongs in this answer.** Those arrive separately as

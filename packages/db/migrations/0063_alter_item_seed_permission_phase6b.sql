@@ -6,7 +6,7 @@
 --
 -- The codes are evaluated ONLY at the till, from the down-synced `pos_cashier.snapshot` (§4.6.3), which is
 -- why §3.6.3 makes `apps/pos` one of the roots the `permission-catalogue` lint scans: a code with no
--- reference anywhere fails the build (spec:2051's inverse of SAH-084), and these three have their only
+-- reference anywhere fails the build (spec:2051's inverse of LEGACY-084), and these three have their only
 -- references in the till.
 --
 -- `app.permission` is GLOBAL (no RLS, read-only to app_rw — plan0A:1254), so it is migration data and not

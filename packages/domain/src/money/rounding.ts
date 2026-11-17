@@ -7,9 +7,9 @@ export const RATE_SCALE = 8;
 export const QUANTITY_SCALE = 6;
 
 /**
- * The one rounding function (spec §4.6 "one function, explicit mode, symmetric across sign"; SAH-019).
+ * The one rounding function (spec §4.6 "one function, explicit mode, symmetric across sign"; LEGACY-019).
  * Every mode here is symmetric across sign — there is deliberately no CEIL/FLOOR, because an asymmetric
- * mode applied to a signed money value is the SAH-019 defect ("configured everywhere, applied nowhere,
+ * mode applied to a signed money value is the LEGACY-019 defect ("configured everywhere, applied nowhere,
  * and the one rounding function is wrong").
  */
 export type RoundingMode = "HALF_AWAY_FROM_ZERO" | "HALF_EVEN" | "TOWARD_ZERO" | "AWAY_FROM_ZERO";

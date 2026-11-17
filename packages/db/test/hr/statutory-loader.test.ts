@@ -162,7 +162,7 @@ describe("the statutory sub-pack loader (§3.4.8, ADR 0073)", () => {
     );
   });
 
-  it("refuses a definition with no source, with a JSON Pointer at the root (SAH-078)", async () => {
+  it("refuses a definition with no source, with a JSON Pointer at the root (LEGACY-078)", async () => {
     const noSource: Record<string, unknown> = { ...SYNTH_RATE_TABLE_V1 };
     delete noSource["source"];
     let caught: unknown;

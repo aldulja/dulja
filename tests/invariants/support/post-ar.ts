@@ -52,11 +52,11 @@ export interface PostArOptions {
   partyId?: string;
   currency?: string;
   exchangeRate?: string;
-  /** The provenance of `exchangeRate`, written to `document.rate_source` (plan0A:1787, SAH-012).
+  /** The provenance of `exchangeRate`, written to `document.rate_source` (plan0A:1787, LEGACY-012).
    *  Defaults to `"unit"` at rate 1.00000000 and `manual:<actorId>` otherwise — the two spellings that
    *  column's own comment gives, and the same rule `draftSettlement` applies (4A Task 10). */
   rateSource?: string;
-  /** Pinned on the header after the draft, as a drafting service pins the party's term (SAH-013). Absent
+  /** Pinned on the header after the draft, as a drafting service pins the party's term (LEGACY-013). Absent
    *  leaves the column as the draft wrote it (null); `null` writes null explicitly. */
   paymentTermId?: string | null;
   /** 4B. The HEADER warehouse, passed straight to `draftTypedDocument` — a policy that resolves
@@ -170,7 +170,7 @@ export async function postArDocument(db: Db, s: Seed, opts: PostArOptions): Prom
   //
   // …and `rate_source`, for the same reason: `draftTypedDocument` writes `currency` and `exchange_rate`
   // and NOT the provenance column (3C's insert list), while every production writer in this slice sets or
-  // copies it. A null `rate_source` on a posted document is the SAH-012 absence itself — a base figure
+  // copies it. A null `rate_source` on a posted document is the LEGACY-012 absence itself — a base figure
   // whose rate nobody can account for — so the helper supplies the same two spellings plan0A:1787's own
   // comment gives and `draftSettlement` uses: `unit` at rate 1.00000000, `manual:<actor>` otherwise.
   const rate = opts.exchangeRate ?? "1.00000000";

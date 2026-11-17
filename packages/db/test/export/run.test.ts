@@ -150,7 +150,7 @@ describe("runExport — spec:2186, spec:1067, ADR 0069", () => {
     expect(entry.path).toBe(`attachments/${id}-invoice_01_26.pdf`);
     expect(entry.sha256).toBe(createHash("sha256").update("invoice pdf").digest("hex"));
     expect(unpack(withAcc.bytes).get(entry.path)!.toString("utf8")).toBe("invoice pdf");
-    // SAH-038: the store key is nowhere in the manifest.
+    // LEGACY-038: the store key is nowhere in the manifest.
     expect(JSON.stringify(withAcc.manifest)).not.toContain(objectKeyFor(f.s.tenant, id));
 
     const withNone = await runFor(await seedExportJob(db, f.s, { readableModules: [] }));
@@ -203,7 +203,7 @@ describe("runExport — spec:2186, spec:1067, ADR 0069", () => {
     expect(files).toContain("tables/attachment.csv");
     expect(result.manifest.attachments).toEqual([]);
     expect(result.manifest.attachmentsOmitted).toEqual([]);
-    // The metadata never carries the store key (NEVER_EXPORTED, SAH-038).
+    // The metadata never carries the store key (NEVER_EXPORTED, LEGACY-038).
     expect(unpack(result.bytes).get("tables/attachment.csv")!.toString("utf8")).not.toContain(
       `${f.s.tenant}/`,
     );

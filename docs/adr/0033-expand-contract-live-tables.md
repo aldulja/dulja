@@ -6,15 +6,15 @@
 **Slice:** 2C
 **Spec:** §3.9 Migrations (spec:2057) "Expand/contract for any change touching a live table"; §4.8
 (spec:2236) "zero-downtime deployments … so schema change never requires a maintenance window (the direct
-answer to SAH-080)"; SAH-080 (spec:872); Part VI test 25 (spec:2443).
+answer to LEGACY-080)"; LEGACY-080 (spec:872); Part VI test 25 (spec:2443).
 **Demonstrated by:** `packages/db/migrations/0027_expand_document_add_notes.sql`,
-`packages/db/test/expand-contract.test.ts`, `tests/regression/sah-080.test.ts`.
+`packages/db/test/expand-contract.test.ts`, `tests/regression/legacy-080.test.ts`.
 **Binds:** every later migration that touches a live table.
 **Supersedes:** nothing. **Superseded by:** nothing.
 
 ## Context
 
-SAH-080 is a High finding: the legacy system upgrades its schema by dumping and re-pumping the whole
+LEGACY-080 is a High finding: the legacy system upgrades its schema by dumping and re-pumping the whole
 database, coordinated by 6,251 version integers. The rebuild's answer is expand/contract. The rule was
 written in §3.9 and never demonstrated, so "zero downtime" had no operational definition and no test.
 
@@ -44,7 +44,7 @@ measures the same migration against two row counts a decade apart in scale and a
 comparable. A wall-clock bound would pass on a fast machine and prove nothing.
 
 **5. "No maintenance window" is asserted as ZERO non-2xx responses in a request loop that spans the
-migration** — not as "the migration finished quickly". `tests/regression/sah-080.test.ts` holds that loop,
+migration** — not as "the migration finished quickly". `tests/regression/legacy-080.test.ts` holds that loop,
 on an API instance the test owns, because it rolls a migration back and the tier's shared instance must
 never see that.
 

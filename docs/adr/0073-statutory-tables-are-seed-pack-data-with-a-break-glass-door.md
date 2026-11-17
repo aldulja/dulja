@@ -11,7 +11,7 @@
 ## Context
 
 spec:2080 gives two load paths and ranks them: rate tables are "seeded from version-controlled files under
-`packages/db/seed/my/statutory/<scheme>/vN.json` **so every change is a reviewed diff** (SAH-078)", and "the seed
+`packages/db/seed/my/statutory/<scheme>/vN.json` **so every change is a reviewed diff** (LEGACY-078)", and "the seed
 pull request is the primary load path; the runtime `hr.statutory_table.manage` load is **break-glass**". What
 "break-glass" means operationally was not written down, and a permission with no stated intent becomes an ordinary
 one.
@@ -49,7 +49,7 @@ no-op against the database and a permanent record in the repository.
 
 ## Rejected
 
-- **API-only loading.** No reviewed diff, which is the SAH-078 defect verbatim.
+- **API-only loading.** No reviewed diff, which is the LEGACY-078 defect verbatim.
 - **Seed-only loading.** A statutory change between deployments would mean a deployment, and payroll deadlines do
   not move for a release train.
 - **Letting the seed set `verified_at` when the file carries a `verification` block.** The block records who signed
@@ -68,7 +68,7 @@ no-op against the database and a permanent record in the repository.
 
 ## Amendment — 2026-11-15: the verifier signs and does not write (full review DBS-10)
 
-- Status: **Proposed** — a segregation-of-duties control (spec:95, SAH-020). Implemented in migration `0126` ahead
+- Status: **Proposed** — a segregation-of-duties control (spec:95, LEGACY-020). Implemented in migration `0126` ahead
   of approval.
 - The verifier trigger froze a table's content only after verification; on the verify edge it checked only that the
   actor was not the loader, so the verifier could rewrite `definition` and `source` in the statement that signed

@@ -59,7 +59,7 @@ The `pooler-url` line scans the configuration files listed in `SCANNED_CONFIGS` 
 `infra/wrangler.jsonc`, `.github/workflows/deploy-staging.yml` and `.github/workflows/ci.yml`. If none of the three
 exists the command exits 1 rather than printing a false pass.
 
-## 5. Point-in-time recovery (SAH-081)
+## 5. Point-in-time recovery (LEGACY-081)
 
 Enable **Point-in-time recovery** on the production project (Database → Backups → PITR). It requires billing,
 which is the OD-19 half only the owner can supply.

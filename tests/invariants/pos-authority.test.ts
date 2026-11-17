@@ -41,7 +41,7 @@ beforeAll(async () => {
   f = await staffFixture(api, "auth37");
 }, 300_000);
 
-describe("Acceptance test 37 — POS authority re-verified server-side (spec:2455; SAH-027, 048)", () => {
+describe("Acceptance test 37 — POS authority re-verified server-side (spec:2455; LEGACY-027, 048)", () => {
   it("a within-limit sale is accepted and posts", async () => {
     const r = await applyTicket(f, {
       cashierPrincipalId: f.cashierA,
@@ -114,7 +114,7 @@ describe("Acceptance test 37 — POS authority re-verified server-side (spec:245
     // ONE row, not two. 6A's applyBatch step (h) is the only writer of this event; Step 5's seam adds no
     // recordOverride call of its own, and this length assertion is what would catch it if somebody did.
     expect(events).toHaveLength(1);
-    // hazard 19 / SAH-044: the TERMINAL acted, the SUPERVISOR is attributed.
+    // hazard 19 / LEGACY-044: the TERMINAL acted, the SUPERVISOR is attributed.
     expect(events[0]).toMatchObject({
       override_code: "pos.ticket.override",
       actor_id: f.terminalA.principalId,

@@ -8,7 +8,7 @@
 
 **Tech Stack:** Bun 1.4 · TypeScript strict · `@dulja/importer` (9A's `LegacyReader`, `LegacyDriver`, `FixtureLegacyDriver`, `scope`, `reconcile`) · `@dulja/db` (`withTenant`, `systemContext`, `postDocument`, `applyMovements`, `valuationAsOf`, `upsertEmployeeYtdOpening`) · `@dulja/domain` (`Money`, `Quantity`, `costingEngine`) · `@dulja/contracts` (`AppError`, `ERRORS`, Zod) · Hono + `@hono/zod-openapi` for the two route modules · pg-boss through `JobClient` · PostgreSQL 18 with RLS forced · Vitest under Node 24 with Testcontainers.
 
-**Spec:** `docs/spec/rebuild-spec.md` v1.2 — **§5.1 Migration from Sahlisoft in full (spec:2329–2344)**; §0.2 the never/always lists (spec:97–110); §0.4 glossary (spec:144–180); §3.8 `document.number bigint` (spec:1757) and `client_ref` (spec:1764); §3.9 Identifiers (spec:2037), Time and dates (spec:2039), Money (spec:2041), Deletion (spec:2049); §3.10.1 Year-to-date (spec:2084) and Termination (spec:2090); §4.2.2 R8 the system principal (spec:2179); §4.5 bulk endpoints with async job semantics and a status resource (spec:2206); §4.11 the report format and the load-test sizing rule (spec:2267); Part V Phase 9 row (spec:2295) and sequencing (spec:2301); Part VI tests 2, 5, 9, 12, 13, 18, 34, 35 (re-run through the import path); Part VII #4, #7, #10, #13; Part I SAH-003, 007, 011, 022, 028, 049, 051, 073. Companion dossier: `docs/spec/sahlisoft-accounting-analysis.md`.
+**Spec:** `docs/spec/rebuild-spec.md` v1.2 — **§5.1 Migration from the legacy system in full (spec:2329–2344)**; §0.2 the never/always lists (spec:97–110); §0.4 glossary (spec:144–180); §3.8 `document.number bigint` (spec:1757) and `client_ref` (spec:1764); §3.9 Identifiers (spec:2037), Time and dates (spec:2039), Money (spec:2041), Deletion (spec:2049); §3.10.1 Year-to-date (spec:2084) and Termination (spec:2090); §4.2.2 R8 the system principal (spec:2179); §4.5 bulk endpoints with async job semantics and a status resource (spec:2206); §4.11 the report format and the load-test sizing rule (spec:2267); Part V Phase 9 row (spec:2295) and sequencing (spec:2301); Part VI tests 2, 5, 9, 12, 13, 18, 34, 35 (re-run through the import path); Part VII #4, #7, #10, #13; Part I LEGACY-003, 007, 011, 022, 028, 049, 051, 073. Companion dossier: `docs/spec/legacy-system-analysis.md`.
 
 ## Assumptions and contracts (from docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md)
 
@@ -17,8 +17,8 @@
 - **Migration numbers:** **0101–0102** — files `packages/db/migrations/0101_add_legacy_ref.sql` and `0102_create_import_batch.sql`, each with its hand-written `NNNN.down.sql`. **0103 and 0104 are allocated to this slice and stay unused** (§3.4.1: gaps are legal, `discover()` sorts whatever exists, and no later slice may claim them). **ADR numbers:** 0084–0086 — `docs/adr/0084-idempotent-loaders-keyed-on-import-batch.md`, `docs/adr/0085-cut-over-series-and-opening-documents.md`, `docs/adr/0086-cut-over-reconciliation-and-the-explained-difference.md`.
 - **Interfaces consumed:** §3.1 (package tiers, the `packages/<pkg>/src/cli.ts` rule), §3.2 (identifiers, time, money, naming, deletion, error codes, database access, logging), §3.3 (the never/always lists and the three homes of `sql.unsafe`), §3.4 (migrations in full — 3.4.1 ranges, 3.4.2 names, 3.4.3 one transaction per file, 3.4.5 down files, 3.4.6 the reversibility test, 3.4.8 seed-pack data, 3.4.9 the Drizzle mirror), §3.5.1–§3.5.4 (the new-table recipe, the linter sets, the DELETE-grant list — **this slice grants none**), §3.6 (permission codes — **this slice introduces none**; §3.6.2's "maintained under `admin.company.manage`" mapping is what gates the import routes), §3.7 (test layout, the isolation harness, regression ownership, golden fixtures, the lint rules), §3.8 (commits and **the AGENTS.md "Current phase" rewrite that every phase-completing slice owns**), §3.10, §3.11 (`LEGACY_ODBC_DSN` — CLI/worker-only, never in `containerSecrets()`), §4.1 (the whole Plan 0A surface), §4.2.1 (`Money`, `Quantity`, `round`, `MONEY_SCALE`, `toBase`), §4.2.2 (`withTenant`, `TenantContext`, `systemContext`), §4.2.3 (`AppEnv`, `Logger`, the fixed middleware order), §4.2.4 (`Problem`, `ERRORS`, `AppError`, `fromDatabaseError` — **this slice adds two allocated rows**), §4.2.5 (`PERMISSION`, `requirePermission`, `assertRouteGates`), §4.2.6 (`JOBS`, `JobPayload`, `JobEnvelope`, `JobClient`, `registerHandler`, `runJob`, `JOB_PROBES` — **this slice owns `admin.import.run`**), §4.2.7 (`RouteModule`, `buildRoutes`, `PROBES`, `IdempotencyHeader`, `createApp`, `TENANT_FREE`), §4.2.8 (the common schemas, the list envelope, the one list-filter convention), §4.2.9 (`idempotency`), §4.2.12 (`startApi`, `StartedApi`), §4.2.13 (`PackLoader`, `readPackFile`, `SUB_PACKS`), §4.3.1–§4.3.8 in full (the posting service, the fixed algorithm, `document_line`, `posting_seq`, numbering at issue, the seed envelope, the error list), §4.4.1–§4.4.2 (the policy schema and the evaluator, **including amendment A9's sign normalisation**), §4.5.1 (legal transitions), §4.5.7 (`app.party`), §4.6.1 (the register rows for `item`, `unit_of_measure`, `warehouse`, `lot`, `import_batch`, `employee_ytd_opening`), §4.6.2 (`app.employee`), §4.7.1–§4.7.3 (the costing engine, `applyMovements`, the layer tables), §4.8.1–§4.8.2 (allocation and ageing), §4.12.5 and §4.12.8 (the HR encryption envelope and `employee_ytd`), **§4.13 in full**, §4.14 (document-type codes), §4.15 (account codes), §4.16.1–§4.16.2 (**this slice ships no report definition and no `DatasetId` member** — its reconciliation output is an artefact file and a job log, not a `report_definition` row), §4.17 and §4.17.1, §4.18 (both rounds and every later round's amendments), §5 (all thirty-five hazards), §6.1 rows 2, 5, 9, 12, 13, 18, 34, 35, §6.2 row spec:1059.
 - **Interfaces produced:** **§4.13.2 in full** (`LoadContext`, `Loader`, `RefResolver`, `loaders`, `runLoad`); **§4.13.3 in full** (`legacy_ref` on `document`, `party`, `item`, `account`, `employee`, `lot`; `app.import_batch` as §4.6.1 fixes it); §4.14's `OPENING_BALANCE` and `OPENING_STOCK` rows with their envelopes and policies; §4.15's `3900` row seeded from `packages/db/seed/my/chart-of-accounts/9b-cut-over.json`; §4.2.6's `admin.import.run` handler, its `JobPayload` key and its `JOB_PROBES` entry; two §4.2.7 route modules (`/v1/companies/:companyId/imports` and `/v1/jobs`) with their two `PROBES` keys; one §4.2.8 contracts module `packages/contracts/src/admin/import.ts`; two §4.2.4 rows (`ERR_IMPORT_DUPLICATE_SOURCE_KEY`, `ERR_IMPORT_UNBALANCED_SOURCE`); §4.17's one new fixture helper `seedImportBatch`; §4.17.1's one new shared helper file `tests/invariants/support/cut-over.ts`; one test-tier file internal to `packages/importer/test/**` (`support/tenant.ts`, name **N16**, registered nowhere because it crosses no slice boundary); and `docs/runbooks/cut-over.md`. **The §4.13.2 surface this slice produces is §4.13.2 plus its own six additive amendments** — C8 (`sourceColumns`, `sourceKey`), C9 (`artefacts`), C12 (`map` may be async), C13 (`wholeTable`), C14 (`LoadContext.only`) and C15 (`load` may return `skips`) — every one of which widens the frozen interface and breaks no existing implementation.
-- **Owner decisions:** **OD-25** (suspense-account treatment for unbalanced vouchers; the cut-over date — spec:2334) → **Task 11**, isolated; default per §2.12 is *none*, so the plan posts every unexplained residue to `3900` and the cut-over date is `--cut-over-date`, required, with no default. **OD-26** (is `Users.Password` hashed client-side? Part VII #4 — spec:2468) → **Task 12**, isolated; default per §2.12 is *forced reset, never imported*, so there is no `Users` loader at all and the task is the proof that there is none. **OD-16** (must historical POS data migrate? Part VII #10 ⚠️ — spec:2474) → **Task 13**, isolated; default per §2.12 is *start clean*, so the `mpos` loader is **written but not registered** and the task is dropped whole if the owner starts clean. **OD-17** (read access to the live Sahlisoft database; the Firebird version — spec:2409, 2469) → **Task 14**, isolated; default per §2.12 is *none*, so every other task runs against 9A's committed `FixtureLegacyDriver` corpus. **OD-27** (Part VII #6, #7, #8, #9, #13 — spec:2470–2473, 2477) → **Task 15**, isolated; default per §2.12 is *none*, so this slice **consumes** 9A's answers: #13 (is the Salaries module live?) gates whether Task 8's employee load runs at all, and #7 (`MatOpens.Job` ever ≠ 0) gates whether Task 6's opening-stock source is trusted per job or aggregated. **OD-24** does not apply — this slice ships **no screen**; the import is triggered by an API call and read back as a job status, and §2.12's OD-24 blocks screen tasks, not slices. This plan decides none of them (§2.12, hazard 7).
-- **Part VI tests owned / re-run:** **owned — none exclusively** (card). **Re-run — 9** (period lock, through the import path — Task 5), **18** (stock availability, through the import path — Task 6), **2** (deterministic projections after the load — Task 9), **5** (imported history recost — Task 6), **35** (opening rows — Task 8), **34** (termination through the importer — Task 8; **the re-run covers the trigger being REACHED on the import path, not its downstream effects**: an imported employee has no `principal_id` and no `pos_cashier`, so the revoke and the role expiry have nothing to act on and stay 8C's own assertions — the task says so where the test is), **12** (tenant isolation, for both new tables, both new routes and the new job — Tasks 1, 2, 9), **13** (audit completeness, for every import write — Tasks 2, 9). **§3.0.4 rows owned:** none; this slice **completes the "mid-year cut-over YTD import" clause of spec:1059**, whose owning slice is 8D. **Regression files created / appended:** created — **none**. Appended — `tests/regression/sah-003.test.ts` (unbalanced vouchers reach `3900`, never the ledger, Task 5), `sah-007.test.ts` (a NULL-poisoned legacy balance is refused, never coerced to zero, Task 4) and `sah-011.test.ts` (the same for a legacy cost, Task 6), `sah-022.test.ts` (`MatOpens.Job`, Task 15), `sah-028.test.ts` (no credential is imported, Task 12), `sah-049.test.ts` (duplicate legacy aggregate rows do not double-load, Task 3), `sah-051.test.ts` (legacy numbers are strings in `legacy_ref`; `document.number` stays a gapless `bigint`, Tasks 1 and 7), `sah-073.test.ts` (orphans are reported, never silently nulled, Task 4). Every one of these files already exists — `sah-003`, `sah-007`, `sah-011`, `sah-049`, `sah-051`, `sah-073` are Plan 0A-proven files created by **0B**, `sah-022` is created by **3B**, `sah-028` by **0B** — so §3.7.3's rule applies unchanged: this slice **appends** a `describe("SAH-NNN … — 9B", …)` block and edits no earlier block.
+- **Owner decisions:** **OD-25** (suspense-account treatment for unbalanced vouchers; the cut-over date — spec:2334) → **Task 11**, isolated; default per §2.12 is *none*, so the plan posts every unexplained residue to `3900` and the cut-over date is `--cut-over-date`, required, with no default. **OD-26** (is `Users.Password` hashed client-side? Part VII #4 — spec:2468) → **Task 12**, isolated; default per §2.12 is *forced reset, never imported*, so there is no `Users` loader at all and the task is the proof that there is none. **OD-16** (must historical POS data migrate? Part VII #10 ⚠️ — spec:2474) → **Task 13**, isolated; default per §2.12 is *start clean*, so the `mpos` loader is **written but not registered** and the task is dropped whole if the owner starts clean. **OD-17** (read access to the live legacy database; the Firebird version — spec:2409, 2469) → **Task 14**, isolated; default per §2.12 is *none*, so every other task runs against 9A's committed `FixtureLegacyDriver` corpus. **OD-27** (Part VII #6, #7, #8, #9, #13 — spec:2470–2473, 2477) → **Task 15**, isolated; default per §2.12 is *none*, so this slice **consumes** 9A's answers: #13 (is the Salaries module live?) gates whether Task 8's employee load runs at all, and #7 (`MatOpens.Job` ever ≠ 0) gates whether Task 6's opening-stock source is trusted per job or aggregated. **OD-24** does not apply — this slice ships **no screen**; the import is triggered by an API call and read back as a job status, and §2.12's OD-24 blocks screen tasks, not slices. This plan decides none of them (§2.12, hazard 7).
+- **Part VI tests owned / re-run:** **owned — none exclusively** (card). **Re-run — 9** (period lock, through the import path — Task 5), **18** (stock availability, through the import path — Task 6), **2** (deterministic projections after the load — Task 9), **5** (imported history recost — Task 6), **35** (opening rows — Task 8), **34** (termination through the importer — Task 8; **the re-run covers the trigger being REACHED on the import path, not its downstream effects**: an imported employee has no `principal_id` and no `pos_cashier`, so the revoke and the role expiry have nothing to act on and stay 8C's own assertions — the task says so where the test is), **12** (tenant isolation, for both new tables, both new routes and the new job — Tasks 1, 2, 9), **13** (audit completeness, for every import write — Tasks 2, 9). **§3.0.4 rows owned:** none; this slice **completes the "mid-year cut-over YTD import" clause of spec:1059**, whose owning slice is 8D. **Regression files created / appended:** created — **none**. Appended — `tests/regression/legacy-003.test.ts` (unbalanced vouchers reach `3900`, never the ledger, Task 5), `legacy-007.test.ts` (a NULL-poisoned legacy balance is refused, never coerced to zero, Task 4) and `legacy-011.test.ts` (the same for a legacy cost, Task 6), `legacy-022.test.ts` (`MatOpens.Job`, Task 15), `legacy-028.test.ts` (no credential is imported, Task 12), `legacy-049.test.ts` (duplicate legacy aggregate rows do not double-load, Task 3), `legacy-051.test.ts` (legacy numbers are strings in `legacy_ref`; `document.number` stays a gapless `bigint`, Tasks 1 and 7), `legacy-073.test.ts` (orphans are reported, never silently nulled, Task 4). Every one of these files already exists — `legacy-003`, `legacy-007`, `legacy-011`, `legacy-049`, `legacy-051`, `legacy-073` are Plan 0A-proven files created by **0B**, `legacy-022` is created by **3B**, `legacy-028` by **0B** — so §3.7.3's rule applies unchanged: this slice **appends** a `describe("LEGACY-NNN … — 9B", …)` block and edits no earlier block.
 - **Shared namespaces this slice writes into:** **document-type codes (§4.14)** — `OPENING_BALANCE` (`module: "accounting"`, series `OB`) and `OPENING_STOCK` (`module: "inventory"`, series `OS`), both seeded as files under `packages/db/seed/my/document-types/`. **Account codes (§4.15)** — seeded: **`3900`** Opening-balance suspense (equity) in `packages/db/seed/my/chart-of-accounts/9b-cut-over.json`; consumed but seeded elsewhere: `1200` and `2100` (0C — the AR/AP controls the open-item openings and the ageing tie-out use), `1300` (0C — `item.inventory_account_id` default, the `OPENING_STOCK` debit), `5920` (0C — `company.fx_rounding_account_id`), and the item-group defaults `4000` / `5000` / `5900` (0C) that the item loader leaves at their defaults. **Report codes (§4.16.1) — none; `DatasetId` members (§4.16.2) — none.** **`fixtures.ts` helpers (§4.17)** — one added: **`seedImportBatch(db, s, opts)`**, recorded as an amendment because §4.17 assigns 9B no row. **Shared test helpers (§4.17.1)** — one new file added: **`tests/invariants/support/cut-over.ts`**, likewise recorded as an amendment. **`ERR_*` (§4.2.4)** — two rows, both already allocated to 9B by that table: `ERR_IMPORT_DUPLICATE_SOURCE_KEY` (409) and `ERR_IMPORT_UNBALANCED_SOURCE` (422).
 - **Never re-decide:** D1–D27 (spec:114–142); every name in the contracts document is frozen — a needed change goes to that document first.
 - **Contracts version:** 2026-09-07.
@@ -59,7 +59,7 @@ Contracts §4 says a plan "may add members only by amending this document". The 
 | **N2** | `SkipRecord`, `LoaderReport`, `LoadReport`, `LoadError` | `load/types.ts` | the return `runLoad` needs and the one error class this package raises (`packages/importer` may not import `AppError`, §3.1 — 9A's `unreadable` has the same constraint) |
 | **N3** | `LoadSource`, `LoadSourceFactory`, `setLoadSource`, `loadSourceFromEnv`, `loadSource`, `baseCurrency`, `EMPTY_TARGET`, `READ_BATCH` | `load/run.ts` | the swappable legacy connection, the same port shape 7A uses for `objectStore` / `setObjectStore` / `objectStoreFromEnv`; §4.13.2 freezes `runLoad(sql, ctx)` at two parameters so the driver cannot be one of them. `baseCurrency()` is the same run-scoped getter for the **company's base currency**, read once when the run opens: `map(row, refs)` has no `ctx` and must still mint `Money` in the company's own currency rather than an `"MYR"` literal that would be a `Money<CurrencyCode & "MYR">` a non-MYR company's `load` could not add to |
 | **N4** | `loaderFor`, `orderLoaders` | `load/registry.ts` | the topological order `dependsOn` implies and the cycle error it needs |
-| **N5** | `requireText`, `optionalText`, `moneyOf`, `quantityOf`, `dateOf`, `optionalDateOf` | `load/scalar.ts` | the one boundary between legacy text and Dulja types; the place SAH-007/011's "a NULL is not a zero" is enforced once |
+| **N5** | `requireText`, `optionalText`, `moneyOf`, `quantityOf`, `dateOf`, `optionalDateOf` | `load/scalar.ts` | the one boundary between legacy text and Dulja types; the place LEGACY-007/011's "a NULL is not a zero" is enforced once |
 | **N6** | `AccountMap`, `AccountMapEntry`, `AccountTreatment`, `ACCOUNT_CODE_PATTERN`, `readAccountMap`, `assertAccountMap`, `treatmentOf`, `setAccountMap`, `accountMap` | `load/account-map.ts`, `load/accounts.ts` | the owner-supplied legacy→Dulja chart mapping and its validation; the input without which a cut-over is a guess |
 | **N7** | `ImportedLine`, `ImportedDocument`, `draftAndPost`, `OPENING_BRANCH_CODE` | `load/document.ts` | the one place this package writes `app.document`; `document.branch_id` is NOT NULL and `LoadContext` is frozen, so the branch is resolved here |
 | **N8** | `LegacyMovement`, `OpeningPosition`, `RecostResult`, `replayLegacyMovements`, `sortLegacyMovements`, `OPENING_STOCK_LINES_PER_DOCUMENT`, `SUSPENSE_CODE` | `load/recost.ts`, `load/opening-stock.ts`, `load/opening-balance.ts` | §5.1 #6's recompute, and the one `3900` literal every task refers to |
@@ -83,10 +83,10 @@ Copied verbatim from spec §0.2 (spec:97–106). Every task's requirements impli
 **Never**, at any phase, for any reason:
 - write to a ledger or movement table outside the posting service;
 - represent money as a float, anywhere, including in TypeScript;
-- build SQL by string concatenation (SAH-036/037/069);
-- issue DDL from application code (SAH-053);
-- disable an invariant, constraint or trigger "temporarily" (SAH-027, 041, 053);
-- gate an audit write on any flag (SAH-030);
+- build SQL by string concatenation (LEGACY-036/037/069);
+- issue DDL from application code (LEGACY-053);
+- disable an invariant, constraint or trigger "temporarily" (LEGACY-027, 041, 053);
+- gate an audit write on any flag (LEGACY-030);
 - hard-code a package version into a source file — the lockfile owns versions.
 
 **Always**, for every new table: `tenant_id`, an RLS policy, `created_at`, a migration, and a test that a second tenant cannot see it. For every new endpoint: Zod schema, OpenAPI entry, idempotency on unsafe methods, and a tenant-isolation test. For every UI screen: verified in both text directions before merge.
@@ -219,14 +219,14 @@ tests/
 ├─ invariants/probes.ts                  + two PROBES keys, + one JOB_PROBES key           T9
 ├─ invariants/projection-rebuild.test.ts + the after-the-load clause (test 2)              T9
 └─ regression/
-   ├─ sah-003.test.ts                    append — unbalanced vouchers reach 3900            T5
-   ├─ sah-007.test.ts                    append — NULL-poisoned balance refused             T4
-   ├─ sah-011.test.ts                    append — NULL-poisoned cost refused                T6
-   ├─ sah-022.test.ts                    append — MatOpens.Job                             T15
-   ├─ sah-028.test.ts                    append — no credential imported                   T12
-   ├─ sah-049.test.ts                    append — duplicate aggregates do not double-load   T3
-   ├─ sah-051.test.ts                    append — legacy numbers are strings            T1, T7
-   └─ sah-073.test.ts                    append — orphans reported, never nulled            T4
+   ├─ legacy-003.test.ts                    append — unbalanced vouchers reach 3900            T5
+   ├─ legacy-007.test.ts                    append — NULL-poisoned balance refused             T4
+   ├─ legacy-011.test.ts                    append — NULL-poisoned cost refused                T6
+   ├─ legacy-022.test.ts                    append — MatOpens.Job                             T15
+   ├─ legacy-028.test.ts                    append — no credential imported                   T12
+   ├─ legacy-049.test.ts                    append — duplicate aggregates do not double-load   T3
+   ├─ legacy-051.test.ts                    append — legacy numbers are strings            T1, T7
+   └─ legacy-073.test.ts                    append — orphans reported, never nulled            T4
 
 docs/
 ├─ adr/0084-idempotent-loaders-keyed-on-import-batch.md                                     T3
@@ -250,7 +250,7 @@ AGENTS.md                                the "Current phase" section rewritten (
 
 **Files:**
 - Create: `packages/db/migrations/0101_add_legacy_ref.sql`, `packages/db/migrations/0101.down.sql`, `packages/db/test/import/legacy-ref.test.ts`
-- Modify: `packages/db/src/schema/document.ts`, `packages/db/src/schema/party.ts`, `packages/db/src/schema/item.ts`, `packages/db/src/schema/account.ts`, `packages/db/src/schema/employee.ts`, `packages/db/src/schema/lot.ts`, `tests/regression/sah-051.test.ts`
+- Modify: `packages/db/src/schema/document.ts`, `packages/db/src/schema/party.ts`, `packages/db/src/schema/item.ts`, `packages/db/src/schema/account.ts`, `packages/db/src/schema/employee.ts`, `packages/db/src/schema/lot.ts`, `tests/regression/legacy-051.test.ts`
 
 **Interfaces:**
 - Consumes: `startDb`, `Db`, `withTenant` (the 4-argument test helper), `seedTenant`, `Seed`, `uuidv7`, `lintSchema`, `up`, `down`, `listApplied`, `MIGRATIONS_DIR`, `schemaFingerprint` (§4.1); `sharedDb`, `thinRegression` (§4.17.1); `seedParty` (2A), `seedItem`, `seedLot` (3A), `seedEmployee` (6C/8A), `seedAccount` (1A), `draftDocument` (0A).
@@ -291,7 +291,7 @@ beforeAll(async () => {
 }, 180_000);
 afterAll(async () => { await db?.stop(); });
 
-describe("migration 0101 — legacy_ref (contracts §4.13.3; spec:2333 §5.1 #8, SAH-051)", () => {
+describe("migration 0101 — legacy_ref (contracts §4.13.3; spec:2333 §5.1 #8, LEGACY-051)", () => {
   it("adds a nullable text column to exactly the six tables §4.13.3 names, and to no other", async () => {
     const rows = await db.admin<{ table_name: string; data_type: string; is_nullable: string }[]>`
       select table_name, data_type, is_nullable
@@ -302,7 +302,7 @@ describe("migration 0101 — legacy_ref (contracts §4.13.3; spec:2333 §5.1 #8,
     expect(rows.every((r) => r.data_type === "text" && r.is_nullable === "YES")).toBe(true);
   });
 
-  it("indexes each one on (company_id, legacy_ref) and NEVER uniquely — SAH-051 says duplicates exist", async () => {
+  it("indexes each one on (company_id, legacy_ref) and NEVER uniquely — LEGACY-051 says duplicates exist", async () => {
     const rows = await db.admin<{ indexname: string; indexdef: string }[]>`
       select indexname, indexdef from pg_indexes
        where schemaname = 'app' and indexname like '%_legacy_ref_idx' order by indexname`;
@@ -320,7 +320,7 @@ describe("migration 0101 — legacy_ref (contracts §4.13.3; spec:2333 §5.1 #8,
     expect(lot!.indexdef).toContain("(company_id, legacy_ref)");
   });
 
-  it("accepts two rows with the same legacy_ref — the legacy numbering is not unique (SAH-051)", async () => {
+  it("accepts two rows with the same legacy_ref — the legacy numbering is not unique (LEGACY-051)", async () => {
     const a = await uuidv7(db.admin);
     const b = await uuidv7(db.admin);
     await withTenant(db.rw, s.tenant, s.human, async (tx) => {
@@ -337,7 +337,7 @@ describe("migration 0101 — legacy_ref (contracts §4.13.3; spec:2333 §5.1 #8,
     expect(await lintSchema(db.admin)).toEqual([]);
   });
 
-  it("document.number stays bigint — a legacy number is never written into it (SAH-051)", async () => {
+  it("document.number stays bigint — a legacy number is never written into it (LEGACY-051)", async () => {
     const [col] = await db.admin<{ data_type: string }[]>`
       select data_type from information_schema.columns
        where table_schema = 'app' and table_name = 'document' and column_name = 'number'`;
@@ -357,7 +357,7 @@ Expected: FAIL — the first case reports `expected [] to equal [ 'account', 'do
 
 ```sql
 -- 0101_add_legacy_ref.sql — contracts §4.13.3; spec §5.1 #8 (spec:2333): "Document numbers may contain
--- duplicates and gaps (SAH-051). Preserve them as historical strings; start the new gapless series after
+-- duplicates and gaps (LEGACY-051). Preserve them as historical strings; start the new gapless series after
 -- cut-over." The historical string lives here; app.document.number stays a gapless bigint owned by
 -- app.document_series (§4.3.6) and no legacy value is ever written into it.
 --
@@ -373,7 +373,7 @@ alter table app.employee add column legacy_ref text;
 alter table app.lot      add column legacy_ref text;
 
 comment on column app.document.legacy_ref is
-  'SAH-051 — the source system''s own document number, kept as a string. Not unique: the legacy numbering had duplicates and gaps.';
+  'LEGACY-051 — the source system''s own document number, kept as a string. Not unique: the legacy numbering had duplicates and gaps.';
 comment on column app.party.legacy_ref is 'The source system''s account/customer/vendor code (§5.1 #8).';
 comment on column app.item.legacy_ref is 'The source system''s material code (§5.1 #8).';
 comment on column app.account.legacy_ref is 'The source system''s chart-of-accounts code (§5.1 #8).';
@@ -381,7 +381,7 @@ comment on column app.employee.legacy_ref is 'The source system''s employee numb
 comment on column app.lot.legacy_ref is 'The source system''s batch code (§5.1 #8).';
 
 -- ── 2. one partial index each, on (company_id, legacy_ref) ────────────────────
--- Partial because only imported rows carry the column; non-unique because SAH-051 says the source
+-- Partial because only imported rows carry the column; non-unique because LEGACY-051 says the source
 -- numbering is not unique and an import that refused a duplicate would refuse the customer's own data.
 -- No `create index concurrently` — a migration file is one transaction (§3.4.3).
 create index document_legacy_ref_idx on app.document (company_id, legacy_ref) where legacy_ref is not null;
@@ -431,12 +431,12 @@ Repeat verbatim in `party.ts`, `item.ts`, `account.ts`, `employee.ts` and `lot.t
 Run: `bun run --cwd packages/db test import/legacy-ref && bun run --cwd packages/db test privileges`
 Expected: PASS. `privileges.test.ts` carries §3.4.6's up→down→up fingerprint case, which is what proves `0101.down.sql` restores the schema byte for byte; a forgotten index drop fails it.
 
-- [ ] **Step 6: Append the 9B block to `tests/regression/sah-051.test.ts`**
+- [ ] **Step 6: Append the 9B block to `tests/regression/legacy-051.test.ts`**
 
 The file exists (0B created it; §3.7.3). Append — never edit an earlier block:
 
 ```ts
-describe("SAH-051 Document numbers may contain duplicates and gaps — 9B", () => {
+describe("LEGACY-051 Document numbers may contain duplicates and gaps — 9B", () => {
   it("keeps the legacy number as a string and never lets it near document.number", async () => {
     const { rw, a } = await sharedDb();
     await withTenant(rw, { tenantId: a.tenant, actorId: a.human, requestId: crypto.randomUUID() }, async (tx) => {
@@ -451,7 +451,7 @@ describe("SAH-051 Document numbers may contain duplicates and gaps — 9B", () =
     });
   });
 
-  it("does not make legacy_ref unique — the source numbering was not (SAH-051)", async () => {
+  it("does not make legacy_ref unique — the source numbering was not (LEGACY-051)", async () => {
     const { rw, a } = await sharedDb();
     await withTenant(rw, { tenantId: a.tenant, actorId: a.human, requestId: crypto.randomUUID() }, async (tx) => {
       const [idx] = await tx<{ indexdef: string }[]>`
@@ -466,7 +466,7 @@ The imports the block needs (`describe`, `expect`, `it`, `sharedDb`, `withTenant
 
 - [ ] **Step 7: Run the regression file and the linter**
 
-Run: `bun run --cwd tests test sah-051 && bun run --cwd packages/db test lint-schema && bun run lint:rules`
+Run: `bun run --cwd tests test legacy-051 && bun run --cwd packages/db test lint-schema && bun run lint:rules`
 Expected: PASS, zero violations.
 
 - [ ] **Step 8: Commit**
@@ -475,11 +475,11 @@ Expected: PASS, zero violations.
 git add packages/db/migrations/0101_add_legacy_ref.sql packages/db/migrations/0101.down.sql \
         packages/db/test/import/legacy-ref.test.ts packages/db/src/schema/document.ts \
         packages/db/src/schema/party.ts packages/db/src/schema/item.ts packages/db/src/schema/account.ts \
-        packages/db/src/schema/employee.ts packages/db/src/schema/lot.ts tests/regression/sah-051.test.ts
+        packages/db/src/schema/employee.ts packages/db/src/schema/lot.ts tests/regression/legacy-051.test.ts
 git commit -m "feat(db): add legacy_ref to the six master tables [9B T1]
 
 Migration 0101. Six nullable text columns and six partial, deliberately
-non-unique indexes: SAH-051 says the source numbering had duplicates and
+non-unique indexes: LEGACY-051 says the source numbering had duplicates and
 gaps, so the historical number is a string here and app.document.number
 stays the gapless bigint app.document_series owns.
 
@@ -674,7 +674,7 @@ create table app.import_batch (
   tenant_id     uuid not null references app.tenant(id),
   company_id    uuid not null,
   source_table  text not null,                                    -- the legacy relation, upper-case as Firebird stores it
-  source_key    text not null,                                    -- the legacy row's own key, as a string (SAH-051)
+  source_key    text not null,                                    -- the legacy row's own key, as a string (LEGACY-051)
   target_table  text not null,                                    -- the app.* table the row became
   target_id     uuid not null,                                    -- the Dulja row's id
   source_hash   text not null,                                    -- sha256 of the mapped payload (amendment C7)
@@ -933,7 +933,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 **Files:**
 - Create: `packages/importer/src/load/types.ts`, `packages/importer/src/load/scalar.ts`, `packages/importer/src/load/preflight.ts`, `packages/importer/src/load/refs.ts`, `packages/importer/src/load/registry.ts`, `packages/importer/src/load/run.ts`, `packages/importer/test/load/run.test.ts`, `packages/importer/test/load/preflight.test.ts`, `packages/importer/test/corpus/cut-over/catalog.json`, `packages/importer/test/corpus/cut-over/UNITS.json`, `docs/adr/0084-idempotent-loaders-keyed-on-import-batch.md`
-- Modify: `packages/importer/package.json`, `packages/importer/src/index.ts`, `packages/importer/src/cli.ts`, `tests/regression/sah-049.test.ts`
+- Modify: `packages/importer/package.json`, `packages/importer/src/index.ts`, `packages/importer/src/cli.ts`, `tests/regression/legacy-049.test.ts`
 
 **Interfaces:**
 - Consumes: `LegacyReader`, `LegacyDriver`, `LegacyRow`, `LegacyScalar`, `LegacyColumn`, `LegacyPredicate`, `createReader`, `connectOdbc`, `redactDsn`, `FixtureLegacyDriver`, `unreadable` (9A, §4.13.1); `withTenant`, `TenantContext`, `systemContext` (§4.2.2); `recordBatch`, `byLegacyRef`, `batchCounts`, `sourceHashOf`, `RecordBatchOutcome` (T2); `Money`, `currency`, `Quantity`, `MONEY_SCALE` (§4.2.1); `ReportWriter`, `ArtefactIndex`, `toCsv` (9A).
@@ -992,7 +992,7 @@ export class LoadError extends Error {
 export function requireText(row: LegacyRow, column: string, where: string): string;
 export function optionalText(row: LegacyRow, column: string): string | null;
 /** spec:2041 — a legacy amount is a decimal string and becomes Money here or nowhere. A NULL is REFUSED,
- *  never coerced to zero: SAH-007/011 is exactly the defect of treating a NULL balance as a zero one.
+ *  never coerced to zero: LEGACY-007/011 is exactly the defect of treating a NULL balance as a zero one.
  *  `currencyCode` is a `CurrencyCode`, never a `string`: it is the COMPANY's base currency (`baseCurrency()`),
  *  so the `Money` a loader mints and the `Money.zero(...)` its `load` adds it to are the same type. */
 export function moneyOf(row: LegacyRow, column: string, currencyCode: CurrencyCode, where: string): Money;
@@ -1219,7 +1219,7 @@ describe("runLoad — contracts §4.13.2", () => {
     expect(after).toBe(before);
   });
 
-  it("re-running the same load inserts nothing twice (SAH-049 — duplicate aggregate rows do not double-load)", async () => {
+  it("re-running the same load inserts nothing twice (LEGACY-049 — duplicate aggregate rows do not double-load)", async () => {
     const first = await runLoad(db.rw, await ctx());
     const second = await runLoad(db.rw, await ctx());
     expect(first.perLoader["unit_of_measure"]!.inserted).toBeGreaterThan(0);
@@ -1383,7 +1383,7 @@ const DATE = /^(\d{4}-\d{2}-\d{2})([T ]\d{2}:\d{2}:\d{2}(\.\d+)?)?$/;
 export function requireText(row: LegacyRow, column: string, where: string): string {
   const raw = row[column];
   if (raw === null || raw === undefined || raw === "") {
-    throw new LoadError("ERR_VALIDATION_FAILED", `${where}: ${column} is empty; the loader will not guess a value (SAH-007)`);
+    throw new LoadError("ERR_VALIDATION_FAILED", `${where}: ${column} is empty; the loader will not guess a value (LEGACY-007)`);
   }
   if (typeof raw === "boolean") return raw ? "1" : "0";
   return raw.trim();
@@ -1398,14 +1398,14 @@ export function optionalText(row: LegacyRow, column: string): string | null {
 }
 
 /**
- * SAH-007 and SAH-011: "Expect NULL-poisoned balances and costs. These will appear as blank or zero, not
+ * LEGACY-007 and LEGACY-011: "Expect NULL-poisoned balances and costs. These will appear as blank or zero, not
  * as errors." A NULL is therefore REFUSED here, never coerced. A row whose amount is genuinely absent is
  * skipped by its loader's `map` with a reason that reaches the skip register — visible, not invented.
  */
 export function moneyOf(row: LegacyRow, column: string, currencyCode: CurrencyCode, where: string): Money {
   const raw = row[column];
   if (raw === null || raw === undefined || raw === "") {
-    throw new LoadError("ERR_VALIDATION_FAILED", `${where}: ${column} is NULL; a NULL legacy amount is never read as zero (SAH-007, SAH-011)`);
+    throw new LoadError("ERR_VALIDATION_FAILED", `${where}: ${column} is NULL; a NULL legacy amount is never read as zero (LEGACY-007, LEGACY-011)`);
   }
   const text = String(raw).trim();
   if (!DECIMAL.test(text)) {
@@ -1424,7 +1424,7 @@ export function moneyOf(row: LegacyRow, column: string, currencyCode: CurrencyCo
 export function quantityOf(row: LegacyRow, column: string, where: string): Quantity {
   const raw = row[column];
   if (raw === null || raw === undefined || raw === "") {
-    throw new LoadError("ERR_VALIDATION_FAILED", `${where}: ${column} is NULL; a NULL legacy quantity is never read as zero (SAH-011)`);
+    throw new LoadError("ERR_VALIDATION_FAILED", `${where}: ${column} is NULL; a NULL legacy quantity is never read as zero (LEGACY-011)`);
   }
   const text = String(raw).trim();
   if (!DECIMAL.test(text)) {
@@ -1912,7 +1912,7 @@ export { dateOf, moneyOf, optionalDateOf, optionalText, quantityOf, requireText 
 
 The Phase 9 load runs against a customer's live-then-frozen Firebird database, over hours, on a machine
 that may lose its connection. It will be run more than once: a dry run, a rehearsal, and the real cut-over
-(§5.1 #10). It must therefore be restartable without double-loading — SAH-049 says the source itself
+(§5.1 #10). It must therefore be restartable without double-loading — LEGACY-049 says the source itself
 contains duplicate aggregate rows, so "insert everything again and let the unique keys sort it out" both
 hides real duplicates and hides real changes.
 
@@ -1981,10 +1981,10 @@ Expected: PASS — including `run.test.ts`, which is green at **this** task beca
 fill it; a framework test that only passed once a business loader existed would be a T4 test wearing a T3
 name, and Step 2's FAIL would have been unreadable. `lint:rules` matters here: **no binding under `packages/importer/src/**` is named `db` or `sql`** — `runLoad`'s PostgreSQL handle is `conn`, it is only ever passed to `withTenant`, and every template tag is the `tx` inside `withTenant`'s callback. `no-bare-db` fires on the *name*, not on the use, so a parameter called `sql` would fail this step however carefully it were used; §4.13.2 freezes `runLoad`'s **arity and types**, and a parameter name is not part of a TypeScript signature, so `conn` satisfies the contract and Global Constraint 7 at once.
 
-- [ ] **Step 13: Append the 9B block to `tests/regression/sah-049.test.ts`**
+- [ ] **Step 13: Append the 9B block to `tests/regression/legacy-049.test.ts`**
 
 ```ts
-describe("SAH-049 Duplicate aggregate rows in MatObjects/MatQuantity — 9B", () => {
+describe("LEGACY-049 Duplicate aggregate rows in MatObjects/MatQuantity — 9B", () => {
   it("a duplicated legacy key loads once, and the second sighting is a skip, not a second row", async () => {
     const { rw, a } = await sharedDb();
     const runId = crypto.randomUUID();
@@ -2012,7 +2012,7 @@ Add `import { recordBatch, sourceHashOf } from "@dulja/db";` to the file's exist
 ```bash
 git add packages/importer/package.json packages/importer/src/load packages/importer/src/index.ts \
         packages/importer/src/cli.ts packages/importer/test/load packages/importer/test/corpus/cut-over \
-        docs/adr/0084-idempotent-loaders-keyed-on-import-batch.md tests/regression/sah-049.test.ts
+        docs/adr/0084-idempotent-loaders-keyed-on-import-batch.md tests/regression/legacy-049.test.ts
 git commit -m "feat(importer): add the loader framework, pre-flight and runLoad [9B T3]
 
 Contracts 4.13.2's Loader/LoadContext/RefResolver/runLoad, keyed on
@@ -2030,7 +2030,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 **Files:**
 - Create: `packages/importer/src/load/units.ts`, `packages/importer/src/load/warehouses.ts`, `packages/importer/src/load/items.ts`, `packages/importer/src/load/lots.ts`, `packages/importer/src/load/parties.ts`, `packages/importer/src/load/account-map.ts`, `packages/importer/src/load/accounts.ts`, `packages/db/seed/my/chart-of-accounts/9b-cut-over.json`, `packages/importer/test/support/tenant.ts`, `packages/importer/test/load/master.test.ts`, `packages/importer/test/load/accounts.test.ts`, `packages/importer/test/corpus/cut-over/{WAREHOUSES,MATERIALS,MATBATCHES,ACCOUNTS}.json`, `packages/importer/test/fixtures/account-map.json`
-- Modify: `packages/importer/src/load/registry.ts`, `packages/importer/src/index.ts`, `packages/importer/test/corpus/cut-over/catalog.json`, `tests/regression/sah-007.test.ts`, `tests/regression/sah-073.test.ts`
+- Modify: `packages/importer/src/load/registry.ts`, `packages/importer/src/index.ts`, `packages/importer/test/corpus/cut-over/catalog.json`, `tests/regression/legacy-007.test.ts`, `tests/regression/legacy-073.test.ts`
 
 **Interfaces:**
 - Consumes: `Loader`, `LoadContext`, `RefResolver`, `SourceColumn`, `LoadError` (T3); `requireText`, `optionalText`, `moneyOf`, `optionalDateOf` (T3); `loaders` (T3); `withTenant`, `systemContext`, `TenantContext` (§4.2.2); `readPackFile` (0C, §4.2.13); `seedTenantV2`, `seedAccount`, `seedDocumentType` (§4.17); the `0c-base.json` chart codes `1200`, `1300`, `2100`, `4000`, `5000`, `5900` (§4.15).
@@ -2228,7 +2228,7 @@ describe("the master-data loaders (contracts §4.13.2, §5.1 #3, #8)", () => {
     expect(lots).toEqual([{ code: "B-2401", expires_on: "2027-03-31" }]);
     const report = await runLoad(db.rw, await ctxFor({ runId: "01930000-0000-7000-8000-0000000000b1" }));
     expect(report.skips.filter((k) => k.loader === "lot")).toEqual([
-      { loader: "lot", sourceTable: "MATBATCHES", sourceKey: "9001", reason: "material 999 has no imported item; the batch is an orphan (SAH-073)" },
+      { loader: "lot", sourceTable: "MATBATCHES", sourceKey: "9001", reason: "material 999 has no imported item; the batch is an orphan (LEGACY-073)" },
     ]);
   });
 
@@ -2261,7 +2261,7 @@ describe("the master-data loaders (contracts §4.13.2, §5.1 #3, #8)", () => {
     ]);
   });
 
-  it("refuses a NULL legacy balance rather than reading it as zero (SAH-007)", async () => {
+  it("refuses a NULL legacy balance rather than reading it as zero (LEGACY-007)", async () => {
     const poisoned = loadCorpus("cut-over");
     poisoned.tables["ACCOUNTS"]!.rows = poisoned.tables["ACCOUNTS"]!.rows.map((r) =>
       r["ACCCODE"] === "1101" ? { ...r, ACCOPENBAL: null } : r);
@@ -2271,7 +2271,7 @@ describe("the master-data loaders (contracts §4.13.2, §5.1 #3, #8)", () => {
     });
     const report = await runLoad(db.rw, await ctxFor({ runId: "01930000-0000-7000-8000-0000000000b2", dryRun: true }));
     expect(report.skips.map((k) => k.reason)).toContain(
-      "ACCOPENBAL is NULL for legacy account 1101; a NULL legacy amount is never read as zero (SAH-007)",
+      "ACCOPENBAL is NULL for legacy account 1101; a NULL legacy amount is never read as zero (LEGACY-007)",
     );
   });
 });
@@ -2648,7 +2648,7 @@ export const itemLoader: Loader<LegacyRow, ItemTarget> = {
     if (code === "") return { skip: `material ${legacyKey} produces no usable item code` };
     const unitKey = requireText(row, "MATUNIT", where);
     const baseUnitId = await refs.byLegacyRef("unit_of_measure", unitKey);
-    if (!baseUnitId) return { skip: `material ${legacyKey} references unit ${unitKey}, which has no imported unit_of_measure; the item is an orphan (SAH-073)` };
+    if (!baseUnitId) return { skip: `material ${legacyKey} references unit ${unitKey}, which has no imported unit_of_measure; the item is an orphan (LEGACY-073)` };
     return {
       legacyKey, code, nameEn, nameAr: optionalText(row, "MATNAMEAR"),
       kind: truthy(optionalText(row, "MATISSERVICE")) ? "service" : "product",
@@ -2726,7 +2726,7 @@ export const lotLoader: Loader<LegacyRow, LotTarget> = {
     const where = `MATBATCHES/${legacyKey}`;
     const materialKey = requireText(row, "BATMAT", where);
     const itemId = await refs.byLegacyRef("item", materialKey);
-    if (!itemId) return { skip: `material ${materialKey} has no imported item; the batch is an orphan (SAH-073)` };
+    if (!itemId) return { skip: `material ${materialKey} has no imported item; the batch is an orphan (LEGACY-073)` };
     return {
       legacyKey, itemId, code: requireText(row, "BATCODE", where),
       expiresOn: optionalDateOf(row, "BATEXPIRY", where),
@@ -2877,7 +2877,7 @@ const COLUMNS: readonly SourceColumn[] = [
   { name: "ACCNAME",       required: true,  confidence: "hypothesis", note: "display name, kept for the reconciliation report" },
   { name: "ACCISCUSTOMER", required: false, confidence: "hypothesis", note: "flag; a customer row is partyLoader's, not this one's" },
   { name: "ACCISVENDOR",   required: false, confidence: "hypothesis", note: "flag" },
-  { name: "ACCOPENBAL",    required: false, confidence: "hypothesis", note: "the stored opening balance; read only to detect SAH-007 NULL poisoning — the OPENING_BALANCE amounts come from AccTotals, recomputed by 9A" },
+  { name: "ACCOPENBAL",    required: false, confidence: "hypothesis", note: "the stored opening balance; read only to detect LEGACY-007 NULL poisoning — the OPENING_BALANCE amounts come from AccTotals, recomputed by 9A" },
 ];
 
 const truthy = (v: string | null): boolean => v === "1" || v?.toUpperCase() === "T" || v?.toUpperCase() === "TRUE" || v?.toUpperCase() === "Y";
@@ -2913,10 +2913,10 @@ export const accountLoader: Loader<LegacyRow, AccountTarget> = {
       return { skip: `account ${legacyKey} is a customer or vendor; partyLoader takes it` };
     }
     const legacyCode = requireText(row, "ACCCODE", where);
-    // SAH-007: a NULL stored balance is reported here, at the row that has it, rather than being read as a
+    // LEGACY-007: a NULL stored balance is reported here, at the row that has it, rather than being read as a
     // zero three tasks later inside a posting.
     if (Object.hasOwn(row, "ACCOPENBAL") && row["ACCOPENBAL"] === null) {
-      return { skip: `ACCOPENBAL is NULL for legacy account ${legacyCode}; a NULL legacy amount is never read as zero (SAH-007)` };
+      return { skip: `ACCOPENBAL is NULL for legacy account ${legacyCode}; a NULL legacy amount is never read as zero (LEGACY-007)` };
     }
     const entry = accountMap().entries.find((e) => e.legacyCode === legacyCode);
     if (!entry) return { skip: `legacy account ${legacyCode} is not in the account map; add it with a treatment, or mark it exclude` };
@@ -3032,7 +3032,7 @@ export { warehouseLoader } from "./load/warehouses";
 ]
 ```
 
-`packages/importer/test/corpus/cut-over/MATBATCHES.json` — the second row is the deliberate orphan the SAH-073 clause asserts:
+`packages/importer/test/corpus/cut-over/MATBATCHES.json` — the second row is the deliberate orphan the LEGACY-073 clause asserts:
 
 ```json
 [
@@ -3071,45 +3071,45 @@ export { warehouseLoader } from "./load/warehouses";
 - [ ] **Step 10: Run the tests**
 
 Run: `bun run --cwd packages/importer test load/`
-Expected: PASS — all six loaders green, including the orphan skip and the SAH-007 refusal.
+Expected: PASS — all six loaders green, including the orphan skip and the LEGACY-007 refusal.
 
-- [ ] **Step 11: Append the 9B blocks to `sah-007` and `sah-073`**
+- [ ] **Step 11: Append the 9B blocks to `legacy-007` and `legacy-073`**
 
-`tests/regression/sah-007.test.ts`:
+`tests/regression/legacy-007.test.ts`:
 
 ```ts
-describe("SAH-007 NULL-poisoned balances read as zero — 9B", () => {
+describe("LEGACY-007 NULL-poisoned balances read as zero — 9B", () => {
   const MYR = currency("MYR");
 
   it("moneyOf refuses a NULL legacy amount instead of returning zero", () => {
     expect(() => moneyOf({ AMT: null }, "AMT", MYR, "ACCTOTALS/1")).toThrow(
-      /ERR_VALIDATION_FAILED: ACCTOTALS\/1: AMT is NULL; a NULL legacy amount is never read as zero \(SAH-007, SAH-011\)/,
+      /ERR_VALIDATION_FAILED: ACCTOTALS\/1: AMT is NULL; a NULL legacy amount is never read as zero \(LEGACY-007, LEGACY-011\)/,
     );
     expect(moneyOf({ AMT: "0.0000" }, "AMT", MYR, "ACCTOTALS/1").toString()).toBe("0.0000");
   });
 });
 ```
 
-`tests/regression/sah-073.test.ts`:
+`tests/regression/legacy-073.test.ts`:
 
 ```ts
-describe("SAH-073 Orphaned references (Job 82%, CostCentre 81% unconstrained) — 9B", () => {
+describe("LEGACY-073 Orphaned references (Job 82%, CostCentre 81% unconstrained) — 9B", () => {
   it("an orphaned legacy batch is reported as a skip with its reason, never loaded with a null parent", async () => {
     const skips = await loadFromCorpus("cut-over");
     expect(skips.filter((k) => k.loader === "lot")).toEqual([
-      { loader: "lot", sourceTable: "MATBATCHES", sourceKey: "9001", reason: "material 999 has no imported item; the batch is an orphan (SAH-073)" },
+      { loader: "lot", sourceTable: "MATBATCHES", sourceKey: "9001", reason: "material 999 has no imported item; the batch is an orphan (LEGACY-073)" },
     ]);
   });
 });
 ```
 
-`loadFromCorpus` is the helper Task 5 adds to `tests/invariants/support/cut-over.ts` (amendment C6). **This block is therefore written in Task 5, not here** — Task 5's Step 8 lists it, and Task 4 appends only the `sah-007` block. `sah-007.test.ts` gains `import { moneyOf } from "@dulja/importer";` (already a `tests` dependency after 9A added it for `sah-077`) and `import { currency } from "@dulja/domain";` — `moneyOf`'s third parameter is a `CurrencyCode`, never a bare `"MYR"` string, which is what stops a loader minting Money in a currency the company does not use.
+`loadFromCorpus` is the helper Task 5 adds to `tests/invariants/support/cut-over.ts` (amendment C6). **This block is therefore written in Task 5, not here** — Task 5's Step 8 lists it, and Task 4 appends only the `legacy-007` block. `legacy-007.test.ts` gains `import { moneyOf } from "@dulja/importer";` (already a `tests` dependency after 9A added it for `legacy-077`) and `import { currency } from "@dulja/domain";` — `moneyOf`'s third parameter is a `CurrencyCode`, never a bare `"MYR"` string, which is what stops a loader minting Money in a currency the company does not use.
 
 - [ ] **Step 12: Commit**
 
 ```bash
 git add packages/importer/src/load packages/importer/src/index.ts packages/importer/test \
-        packages/db/seed/my/chart-of-accounts/9b-cut-over.json tests/regression/sah-007.test.ts
+        packages/db/seed/my/chart-of-accounts/9b-cut-over.json tests/regression/legacy-007.test.ts
 git commit -m "feat(importer): add the six master-data loaders and the owner's account map [9B T4]
 
 Units, warehouses, items, lots and parties, plus the account linker that
@@ -3117,7 +3117,7 @@ stamps legacy_ref on the Dulja account the OWNER's map names. The map is
 validated, never inferred: a code outside 4.15's format, a code whose first
 digit disagrees with its type, or a missing AR/AP control is a named
 failure. Orphans and NULL-poisoned figures are reported as skips, never
-nulled or read as zero (SAH-007, SAH-073). Seeds account 3900.
+nulled or read as zero (LEGACY-007, LEGACY-073). Seeds account 3900.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
@@ -3128,7 +3128,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 **Files:**
 - Create: `packages/db/seed/my/document-types/OPENING_BALANCE.json`, `packages/importer/src/load/document.ts`, `packages/importer/src/load/opening-balance.ts`, `packages/importer/test/load/opening-balance.test.ts`, `packages/importer/test/corpus/cut-over/ACCTOTALS.json`, `tests/invariants/support/cut-over.ts`
-- Modify: `packages/importer/src/load/registry.ts`, `packages/importer/src/index.ts`, `packages/importer/test/corpus/cut-over/catalog.json`, `packages/contracts/src/errors.ts` (the `ERR_IMPORT_UNBALANCED_SOURCE` row, in the commit that raises it — §4.2.4), `tests/regression/sah-003.test.ts`, `tests/regression/sah-073.test.ts`
+- Modify: `packages/importer/src/load/registry.ts`, `packages/importer/src/index.ts`, `packages/importer/test/corpus/cut-over/catalog.json`, `packages/contracts/src/errors.ts` (the `ERR_IMPORT_UNBALANCED_SOURCE` row, in the commit that raises it — §4.2.4), `tests/regression/legacy-003.test.ts`, `tests/regression/legacy-073.test.ts`
 
 **Interfaces:**
 - Consumes: `postDocument`, `PostResult`, `PostingError` (§4.3.1); `resolvePolicy` (§4.3.1); `loadDocumentTypes`, `documentTypesLoader` (1A, §4.3.7); `Money`, `currency` (§4.2.1); `moneyOf`, `requireText` (T3); `accountMap`, `treatmentOf`, `AccountTreatment` (T4); `Loader`, `LoadContext`, `LoadError` (T3); **`sharedApi`, `grantAdmin`, `FullContext` (§4.17.1)** — the memoised api the `tests` tier reaches a running API through, never `startApi` from a package subpath that does not exist (§3.7.5's round-3 settlement, §4.2.7's frozen `exports`).
@@ -3173,7 +3173,7 @@ export interface CutOverFixture { api: StartedApi; seed: Seed; ctx: LoadContext;
 export async function cutOverFixture(name: string): Promise<CutOverFixture>;
 /** TWO forms. The first loads INTO an existing fixture and leaves its api running — every caller that then
  *  QUERIES the result must use it. The second builds, loads and stops a fixture of its own and is usable
- *  only by a caller that reads nothing but the returned skips (`sah-073`, `sah-022`). */
+ *  only by a caller that reads nothing but the returned skips (`legacy-073`, `legacy-022`). */
 export async function loadFromCorpus(fixture: CutOverFixture, corpus: string, over?: Partial<LoadContext>): Promise<SkipRecord[]>;
 export async function loadFromCorpus(corpus: string, over?: Partial<LoadContext>): Promise<SkipRecord[]>;
 export async function assertExplained(fixture: CutOverFixture, tolerance?: string): Promise<void>;
@@ -3470,7 +3470,7 @@ export const SUSPENSE_CODE = "3900";
  *   `inventory_control` — supplied by `OPENING_STOCK` at RECOMPUTED cost (T6, §5.1 #6), because §5.1 #6
  *                         forbids importing the legacy cost figures at all.
  * `exclude` accounts are reported and not loaded. Everything else is a `balance` line, and whatever the
- * three exclusions and the legacy imbalance (SAH-003) leave over lands on `3900`, where it is visible.
+ * three exclusions and the legacy imbalance (LEGACY-003) leave over lands on `3900`, where it is visible.
  */
 export const openingBalanceLoader: Loader<LegacyRow, OpeningBalanceTarget> = {
   sourceTable: "ACCTOTALS",
@@ -3539,7 +3539,7 @@ export const openingBalanceLoader: Loader<LegacyRow, OpeningBalanceTarget> = {
       }
       lines.push({
         lineNo: lines.length + 1, kind: "account", accountId: suspense.id,
-        description: `Opening-balance suspense — the unexplained residue of the legacy trial balance (§5.1 #2, SAH-003)`,
+        description: `Opening-balance suspense — the unexplained residue of the legacy trial balance (§5.1 #2, LEGACY-003)`,
         debit: residue.isNegative() ? residue.negate() : Money.zero(base),
         credit: residue.isNegative() ? Money.zero(base) : residue,
       });
@@ -3568,7 +3568,7 @@ export const openingBalanceLoader: Loader<LegacyRow, OpeningBalanceTarget> = {
       { "name": "ACTCREDIT", "kind": "decimal", "scale": 4, "nullable": false } ] }
 ```
 
-`packages/importer/test/corpus/cut-over/ACCTOTALS.json` — deliberately unbalanced by 5000, which is exactly the SAH-003 case the suspense line absorbs:
+`packages/importer/test/corpus/cut-over/ACCTOTALS.json` — deliberately unbalanced by 5000, which is exactly the LEGACY-003 case the suspense line absorbs:
 
 ```json
 [
@@ -3667,12 +3667,12 @@ export async function cutOverFixture(name: string): Promise<CutOverFixture> {
  * **Two forms, and the difference is which TENANT is loaded.** `loadFromCorpus(fixture, corpus)` loads
  * INTO the caller's fixture, which is the form every caller that then *queries* the result must use.
  * `loadFromCorpus(corpus)` makes a tenant of its own and returns only the skips — usable solely by a
- * caller that reads nothing but the skip register (`sah-073`, `sah-022`). The two-argument form exists
+ * caller that reads nothing but the skip register (`legacy-073`, `legacy-022`). The two-argument form exists
  * because the one-argument form is a trap: a caller that made its own fixture and then called it would
  * query an EMPTY tenant, because the load went to a different one.
  *
  * **Neither form stops anything.** The api is `sharedApi()`'s (§4.17.1) and its consumers must not call
- * `api.stop()`; a load that throws — the SAH-022 case — therefore needs no `finally`, because this
+ * `api.stop()`; a load that throws — the LEGACY-022 case — therefore needs no `finally`, because this
  * function owns no container to release. The tenant a self-contained call created is simply left behind,
  * which costs a few rows in a database the run is about to discard.
  */
@@ -3739,14 +3739,14 @@ function readCorpus(name: string): never {
 
 The two `require` calls are deliberate and are the only ones in the file: `tests/` runs under Node 24 through Vitest and both modules are built-ins, so no dependency is added; a top-level `import` of `node:fs` would be equally correct and either form is acceptable — use the top-level `import` if the file's lint configuration prefers it.
 
-- [ ] **Step 8: Append the 9B blocks to `sah-003` and `sah-073`**
+- [ ] **Step 8: Append the 9B blocks to `legacy-003` and `legacy-073`**
 
-`tests/regression/sah-003.test.ts`:
+`tests/regression/legacy-003.test.ts`:
 
 ```ts
-describe("SAH-003 Unbalanced vouchers were never prevented — 9B", () => {
+describe("LEGACY-003 Unbalanced vouchers were never prevented — 9B", () => {
   it("an unbalanced legacy trial balance reaches account 3900 and never an unbalanced ledger", async () => {
-    const f = await cutOverFixture("sah-003-9b");
+    const f = await cutOverFixture("legacy-003-9b");
     // INTO `f`. The one-argument form builds and destroys a fixture of its own, so the query below would
     // run against an empty tenant.
     await loadFromCorpus(f, "cut-over");
@@ -3765,24 +3765,24 @@ describe("SAH-003 Unbalanced vouchers were never prevented — 9B", () => {
 });
 ```
 
-`tests/regression/sah-073.test.ts` — the block Task 4 Step 10 deferred to here, now that `loadFromCorpus` exists:
+`tests/regression/legacy-073.test.ts` — the block Task 4 Step 10 deferred to here, now that `loadFromCorpus` exists:
 
 ```ts
-describe("SAH-073 Orphaned references (Job 82%, CostCentre 81% unconstrained) — 9B", () => {
+describe("LEGACY-073 Orphaned references (Job 82%, CostCentre 81% unconstrained) — 9B", () => {
   it("an orphaned legacy batch is reported as a skip with its reason, never loaded with a null parent", async () => {
     const skips = await loadFromCorpus("cut-over");
     expect(skips.filter((k) => k.loader === "lot")).toEqual([
-      { loader: "lot", sourceTable: "MATBATCHES", sourceKey: "9001", reason: "material 999 has no imported item; the batch is an orphan (SAH-073)" },
+      { loader: "lot", sourceTable: "MATBATCHES", sourceKey: "9001", reason: "material 999 has no imported item; the batch is an orphan (LEGACY-073)" },
     ]);
   });
 });
 ```
 
-`sah-003.test.ts` gains `import { cutOverFixture, loadFromCorpus } from "../invariants/support/cut-over";` and `import { currency, Money } from "@dulja/domain";`; `sah-073.test.ts` gains `import { loadFromCorpus } from "../invariants/support/cut-over";` only — it reads nothing but the skip register, which is the one case the self-contained one-argument form is for.
+`legacy-003.test.ts` gains `import { cutOverFixture, loadFromCorpus } from "../invariants/support/cut-over";` and `import { currency, Money } from "@dulja/domain";`; `legacy-073.test.ts` gains `import { loadFromCorpus } from "../invariants/support/cut-over";` only — it reads nothing but the skip register, which is the one case the self-contained one-argument form is for.
 
 - [ ] **Step 9: Run everything**
 
-Run: `bun run --cwd packages/importer test load/opening-balance && bun run --cwd tests test sah-003 && bun run --cwd tests test sah-073 && bun run lint:rules`
+Run: `bun run --cwd packages/importer test load/opening-balance && bun run --cwd tests test legacy-003 && bun run --cwd tests test legacy-073 && bun run lint:rules`
 Expected: PASS. `posting-only-tables` is the rule to watch: `opening-balance.ts` and `document.ts` name `app.document` and `app.document_line`, neither of which is on the protected list, and name no protected table at all.
 
 - [ ] **Step 10: Commit**
@@ -3791,14 +3791,14 @@ Expected: PASS. `posting-only-tables` is the rule to watch: `opening-balance.ts`
 git add packages/db/seed/my/document-types/OPENING_BALANCE.json packages/importer/src/load \
         packages/importer/src/index.ts packages/importer/test packages/contracts/src/errors.ts \
         tests/invariants/support/cut-over.ts \
-        tests/regression/sah-003.test.ts tests/regression/sah-073.test.ts
+        tests/regression/legacy-003.test.ts tests/regression/legacy-073.test.ts
 git commit -m "feat(importer): post the trial-balance opening through the posting service [9B T5]
 
 OPENING_BALANCE (series OB, module accounting) and the one place this
 package writes app.document. The AR, AP and inventory controls are excluded
 from the opening on purpose — their sub-ledger loads supply them — so the
 cut-over cannot double-count, and whatever the legacy imbalance leaves over
-lands visibly on 3900 (SAH-003, 5.1 #2). Period lock is proven through the
+lands visibly on 3900 (LEGACY-003, 5.1 #2). Period lock is proven through the
 import path (acceptance test 9, re-run).
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
@@ -3810,7 +3810,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 **Files:**
 - Create: `packages/db/seed/my/document-types/OPENING_STOCK.json`, `packages/importer/src/load/recost.ts`, `packages/importer/src/load/opening-stock.ts`, `packages/importer/test/load/recost.test.ts`, `packages/importer/test/load/opening-stock.test.ts`, `packages/importer/test/corpus/cut-over/BILLITEMS.json`
-- Modify: `packages/importer/src/load/registry.ts`, `packages/importer/src/index.ts`, `packages/importer/test/corpus/cut-over/catalog.json`, `tests/regression/sah-011.test.ts`
+- Modify: `packages/importer/src/load/registry.ts`, `packages/importer/src/index.ts`, `packages/importer/test/corpus/cut-over/catalog.json`, `tests/regression/legacy-011.test.ts`
 
 **Interfaces:**
 - Consumes: `costingEngine`, `Layer`, `CostingInput`, `CostingOutput`, `Consumption`, `CostingMethod` (3B, §4.7.1); `valuationAsOf`, `ValuationRow` (3B); `applyMovements` **indirectly**, through `postDocument` step 9 (§4.3.2 — this slice never calls it); `Money`, `Quantity`, `currency` (§4.2.1); `draftAndPost`, `ImportedLine` (T5); `moneyOf`, `quantityOf`, `dateOf`, `requireText`, `optionalText` (T3).
@@ -3912,9 +3912,9 @@ describe("replayLegacyMovements — §5.1 #6, through 3B's one costing engine", 
     expect(out.negatives).toEqual([]);
   });
 
-  it("refuses a receipt with no value rather than costing it at zero (SAH-011)", () => {
+  it("refuses a receipt with no value rather than costing it at zero (LEGACY-011)", () => {
     expect(() => replayLegacyMovements([m({ value: null })], "avco", MYR)).toThrow(
-      /ERR_VALIDATION_FAILED: legacy receipt 10\/1 on 2025-06-01 has no value; a receipt with no cost is never costed at zero \(SAH-011, §5\.1 #6\)/,
+      /ERR_VALIDATION_FAILED: legacy receipt 10\/1 on 2025-06-01 has no value; a receipt with no cost is never costed at zero \(LEGACY-011, §5\.1 #6\)/,
     );
   });
 });
@@ -4160,7 +4160,7 @@ export function replayLegacyMovements(
     const layers = open.get(key) ?? [];
 
     if (move.direction === "in" && move.value === null) {
-      throw new LoadError("ERR_VALIDATION_FAILED", `legacy receipt ${move.itemKey}/${move.warehouseKey} on ${move.effectiveDate} has no value; a receipt with no cost is never costed at zero (SAH-011, §5.1 #6)`);
+      throw new LoadError("ERR_VALIDATION_FAILED", `legacy receipt ${move.itemKey}/${move.warehouseKey} on ${move.effectiveDate} has no value; a receipt with no cost is never costed at zero (LEGACY-011, §5.1 #6)`);
     }
 
     // §4.2.1's `Quantity` is `add / subtract / negate / multiply / convert / compare / isZero / isNegative`
@@ -4168,7 +4168,7 @@ export function replayLegacyMovements(
     // not a Decimal. `compare` returns -1 | 0 | 1.
     const available = layers.reduce((q, l) => q.add(l.qtyRemaining), Quantity.zero());
     if (move.direction === "out" && move.quantity.compare(available) > 0) {
-      // The legacy system permitted it (SAH-009/018); Dulja does not, and an importer running as ONE
+      // The legacy system permitted it (LEGACY-009/018); Dulja does not, and an importer running as ONE
       // system principal cannot record the `inventory.negative_stock.override` a second principal would
       // have to record (hazard 17). The position is therefore REPORTED and not opened.
       negatives.push({
@@ -4250,7 +4250,7 @@ import { refResolver } from "./refs";
 import { baseCurrency, EMPTY_TARGET, loadSource } from "./run";
 import { dateOf, moneyOf, optionalText, quantityOf, requireText } from "./scalar";
 // No `LoadError` here: this loader raises none of its own. `replayLegacyMovements` raises for a receipt
-// with no value (SAH-011) and the scalar helpers raise for a malformed column; everything this loader
+// with no value (LEGACY-011) and the scalar helpers raise for a malformed column; everything this loader
 // itself cannot open is REPORTED (§5.1 #3), never thrown.
 import type { Loader, LoadContext, SkipRecord, SourceColumn } from "./types";
 
@@ -4269,7 +4269,7 @@ const COLUMNS: readonly SourceColumn[] = [
   { name: "BTMROW",  required: true,  confidence: "hypothesis", note: "the line number within the bill — the third element" },
   { name: "BTMIN",   required: true,  confidence: "hypothesis", note: "direction flag: 1 receipt, 0 issue" },
   { name: "BTMQNT",  required: true,  confidence: "hypothesis", note: "quantity in the material's base unit (the dossier names this column verbatim)" },
-  { name: "BTMVAL",  required: false, confidence: "hypothesis", note: "the line's value on a RECEIPT; NULL on an issue, where the engine computes it. A NULL on a receipt is refused, never zeroed (SAH-011)" },
+  { name: "BTMVAL",  required: false, confidence: "hypothesis", note: "the line's value on a RECEIPT; NULL on an issue, where the engine computes it. A NULL on a receipt is refused, never zeroed (LEGACY-011)" },
 ];
 
 /**
@@ -4338,7 +4338,7 @@ export const openingStockLoader: Loader<LegacyRow, LegacyMovement> = {
         skips.push({
           loader: "opening_stock", sourceTable: "BILLITEMS",
           sourceKey: `${position.itemKey}/${position.warehouseKey}${position.lotKey ? `/${position.lotKey}` : ""}`,
-          reason: `the opening position for legacy material ${position.itemKey} in warehouse ${position.warehouseKey}${position.lotKey ? ` batch ${position.lotKey}` : ""} references an item, warehouse or lot that did not import; the position is reported, never opened against a guessed parent (§5.1 #3, SAH-073)`,
+          reason: `the opening position for legacy material ${position.itemKey} in warehouse ${position.warehouseKey}${position.lotKey ? ` batch ${position.lotKey}` : ""} references an item, warehouse or lot that did not import; the position is reported, never opened against a guessed parent (§5.1 #3, LEGACY-073)`,
         });
         continue;
       }
@@ -4423,15 +4423,15 @@ export const openingStockLoader: Loader<LegacyRow, LegacyMovement> = {
 ]
 ```
 
-- [ ] **Step 7: Append the 9B block to `tests/regression/sah-011.test.ts`**
+- [ ] **Step 7: Append the 9B block to `tests/regression/legacy-011.test.ts`**
 
 ```ts
-describe("SAH-011 NULL-poisoned costs — 9B", () => {
+describe("LEGACY-011 NULL-poisoned costs — 9B", () => {
   it("a legacy receipt with no value is refused, never costed at zero", () => {
     expect(() => replayLegacyMovements([{
       itemKey: "10", warehouseKey: "1", lotKey: null, effectiveDate: "2025-06-01",
       sequence: 1n, lineNo: 1, direction: "in", quantity: Quantity.of("1.000000"), value: null,
-    }], "avco", currency("MYR"))).toThrow(/has no value; a receipt with no cost is never costed at zero \(SAH-011, §5\.1 #6\)/);
+    }], "avco", currency("MYR"))).toThrow(/has no value; a receipt with no cost is never costed at zero \(LEGACY-011, §5\.1 #6\)/);
   });
 
   it("does not import a legacy cost figure at all — MatCosts is never read by any loader (§5.1 #6)", async () => {
@@ -4445,14 +4445,14 @@ The file gains `import { replayLegacyMovements } from "@dulja/importer";`, `impo
 
 - [ ] **Step 8: Run everything**
 
-Run: `bun run --cwd packages/importer test load/ && bun run --cwd tests test sah-011 && bun run lint:rules`
+Run: `bun run --cwd packages/importer test load/ && bun run --cwd tests test legacy-011 && bun run lint:rules`
 Expected: PASS. `posting-only-tables` is the rule that matters most in this task: `recost.ts` and `opening-stock.ts` compute layers but name **no** protected table in DML — the only writer of `cost_layer` remains `packages/db/src/costing/apply-movements.ts`, reached through `postDocument` step 9.
 
 - [ ] **Step 9: Commit**
 
 ```bash
 git add packages/db/seed/my/document-types/OPENING_STOCK.json packages/importer/src/load \
-        packages/importer/src/index.ts packages/importer/test tests/regression/sah-011.test.ts
+        packages/importer/src/index.ts packages/importer/test tests/regression/legacy-011.test.ts
 git commit -m "feat(importer): recompute opening stock and post it as OPENING_STOCK [9B T6]
 
 5.1 #6 says do not import cost figures: this replays the legacy movement
@@ -4472,7 +4472,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 **Files:**
 - Create: `packages/importer/src/load/open-items.ts`, `packages/importer/test/load/open-items.test.ts`, `packages/importer/test/corpus/cut-over/BILLS.json`, `docs/adr/0085-cut-over-series-and-opening-documents.md`
-- Modify: `packages/importer/src/load/registry.ts`, `packages/importer/src/index.ts`, `packages/importer/test/corpus/cut-over/catalog.json`, `tests/regression/sah-051.test.ts`
+- Modify: `packages/importer/src/load/registry.ts`, `packages/importer/src/index.ts`, `packages/importer/test/corpus/cut-over/catalog.json`, `tests/regression/legacy-051.test.ts`
 
 **Interfaces:**
 - Consumes: `draftAndPost`, `ImportedLine` (T5); `accountMap`, `treatmentOf` (T4); `agedBalance`, `ageingRows`, `ageingTieOut` (4B, §4.8.2); `openBalance`, `partyBalance` (4A, §4.8.1); `seedPaymentTerm` (4A); `moneyOf`, `dateOf`, `requireText`, `optionalText` (T3).
@@ -4538,7 +4538,7 @@ describe("open AR/AP items at cut-over (§5.1 #8; ADR 0085)", () => {
         join app.party p on p.id = d.party_id
        where t.code = 'OPENING_BALANCE' and d.legacy_ref is not null order by d.number::bigint`);
     // Ordered by `number`, NOT by `legacy_ref`: the two corpus rows deliberately SHARE the number
-    // 'INV/2025/0417' — that shared string is the whole point of the SAH-051 case — so a sort on it leaves
+    // 'INV/2025/0417' — that shared string is the whole point of the LEGACY-051 case — so a sort on it leaves
     // the two rows in whatever order Postgres happens to return, and this assertion pins which is which.
     // `document.number` is the posting service's own gapless bigint and is the deterministic key here.
     expect(docs).toEqual([
@@ -4604,7 +4604,7 @@ describe("open AR/AP items at cut-over (§5.1 #8; ADR 0085)", () => {
     });
     const report = await runLoad(db.rw, await ctxFor({ runId: "01930000-0000-7000-8000-0000000000e1" }));
     expect(report.skips.map((k) => k.reason)).toContain(
-      "account 888 has no imported party; the open item INV/2025/0999 is an orphan (SAH-073)",
+      "account 888 has no imported party; the open item INV/2025/0999 is an orphan (LEGACY-073)",
     );
   });
 });
@@ -4642,7 +4642,7 @@ export interface OpenItemTarget {
 
 const COLUMNS: readonly SourceColumn[] = [
   { name: "BILID",     required: true, confidence: "hypothesis", note: "the bill's own key (Bills, prefix BIL)" },
-  { name: "BILNUMBER", required: true, confidence: "hypothesis", note: "the number printed on the customer's copy — preserved as a STRING in document.legacy_ref (SAH-051)" },
+  { name: "BILNUMBER", required: true, confidence: "hypothesis", note: "the number printed on the customer's copy — preserved as a STRING in document.legacy_ref (LEGACY-051)" },
   { name: "BILACC",    required: true, confidence: "hypothesis", note: "the Accounts key of the customer or vendor" },
   { name: "BILDATE",   required: true, confidence: "hypothesis", note: "the document's own date, kept for the ageing report's narrative; the POSTING date is the cut-over date" },
   { name: "BILOPEN",   required: true, confidence: "hypothesis", note: "the unsettled amount as at the freeze — recomputed by 9A, never the stored aggregate (§5.1 #1)" },
@@ -4658,7 +4658,7 @@ const COLUMNS: readonly SourceColumn[] = [
  * and re-recognising revenue for an unpaid 2025 invoice would double the year (ADR 0085).
  *
  * `document.legacy_ref` carries the printed number; `document.number` is issued by the posting service in
- * the `OB` series and is gapless. That pairing is SAH-051's fix: the historical string is preserved and
+ * the `OB` series and is gapless. That pairing is LEGACY-051's fix: the historical string is preserved and
  * the new numbering starts clean.
  */
 export const openItemLoader: Loader<LegacyRow, OpenItemTarget> = {
@@ -4674,7 +4674,7 @@ export const openItemLoader: Loader<LegacyRow, OpenItemTarget> = {
     const legacyNumber = requireText(row, "BILNUMBER", where);
     const accountKey = requireText(row, "BILACC", where);
     const partyId = await refs.byLegacyRef("party", `ACC:${accountKey}`);
-    if (!partyId) return { skip: `account ${accountKey} has no imported party; the open item ${legacyNumber} is an orphan (SAH-073)` };
+    if (!partyId) return { skip: `account ${accountKey} has no imported party; the open item ${legacyNumber} is an orphan (LEGACY-073)` };
 
     const amount = moneyOf(row, "BILOPEN", baseCurrency(), where);
     if (amount.isZero()) return { skip: `open item ${legacyNumber} has a zero open amount; a settled document is history, not an opening` };
@@ -4766,7 +4766,7 @@ export const openItemLoader: Loader<LegacyRow, OpenItemTarget> = {
       { "name": "BILKIND", "kind": "integer", "scale": 0, "nullable": false } ] }
 ```
 
-`packages/importer/test/corpus/cut-over/BILLS.json` — **two rows deliberately share a legacy number**, which is SAH-051's own fact and what the non-unique index of Task 1 exists for:
+`packages/importer/test/corpus/cut-over/BILLS.json` — **two rows deliberately share a legacy number**, which is LEGACY-051's own fact and what the non-unique index of Task 1 exists for:
 
 ```json
 [
@@ -4811,7 +4811,7 @@ trial balance already carries that revenue.
    Dr the receivable control / Cr `3900` (or the mirror). It is never a `SALES_INVOICE`, never a
    `PURCHASE_INVOICE`, and touches no revenue, expense or tax account.
 3. **`document.legacy_ref` carries the printed legacy number; `document.number` is the posting service's
-   own gapless `bigint` in the `OB` series.** The legacy numbering had duplicates and gaps (SAH-051), so
+   own gapless `bigint` in the `OB` series.** The legacy numbering had duplicates and gaps (LEGACY-051), so
    its index is non-unique and its values never reach `number`.
 4. **The live series start clean.** The import creates `document_series` rows for `OB` and `OS` only. The
    first real `SALES_INVOICE` after cut-over is `INV` number 1 in the cut-over period, which is exactly
@@ -4833,14 +4833,14 @@ trial balance already carries that revenue.
   about, and the figure the cut-over sign-off reads.
 ```
 
-- [ ] **Step 6: Append the second 9B block to `tests/regression/sah-051.test.ts`**
+- [ ] **Step 6: Append the second 9B block to `tests/regression/legacy-051.test.ts`**
 
 Task 1 added the schema-level block; this one is the behaviour:
 
 ```ts
-describe("SAH-051 Document numbers may contain duplicates and gaps — 9B, the load", () => {
+describe("LEGACY-051 Document numbers may contain duplicates and gaps — 9B, the load", () => {
   it("loads two legacy documents that share a number, and gives each its own gapless OB number", async () => {
-    const f = await cutOverFixture("sah-051-9b");
+    const f = await cutOverFixture("legacy-051-9b");
     await loadFromCorpus(f, "cut-over");        // INTO `f` — the query below is about `f`'s database
     const rows = await withTenant(f.api.db.rw, f.ctx, (tx) =>
       tx<{ legacy_ref: string; number: string }[]>`
@@ -4856,7 +4856,7 @@ describe("SAH-051 Document numbers may contain duplicates and gaps — 9B, the l
 
 - [ ] **Step 7: Run everything**
 
-Run: `bun run --cwd packages/importer test load/ && bun run --cwd tests test sah-051 && bun run typecheck`
+Run: `bun run --cwd packages/importer test load/ && bun run --cwd tests test legacy-051 && bun run typecheck`
 Expected: PASS.
 
 - [ ] **Step 8: Commit**
@@ -4864,13 +4864,13 @@ Expected: PASS.
 ```bash
 git add packages/importer/src/load/open-items.ts packages/importer/src/load/registry.ts \
         packages/importer/src/index.ts packages/importer/test \
-        docs/adr/0085-cut-over-series-and-opening-documents.md tests/regression/sah-051.test.ts
+        docs/adr/0085-cut-over-series-and-opening-documents.md tests/regression/legacy-051.test.ts
 git commit -m "feat(importer): load open AR/AP items with their legacy numbers [9B T7]
 
 One OPENING_BALANCE per open legacy document, Dr control / Cr 3900 — never
 a SALES_INVOICE, so the cut-over cannot re-recognise revenue the trial
 balance already carries. The printed number is a string in legacy_ref; the
-posting service issues a gapless OB number (SAH-051). ADR 0085 records why
+posting service issues a gapless OB number (LEGACY-051). ADR 0085 records why
 the dedicated series are OB and OS rather than the unregistered LEGACY.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
@@ -4981,7 +4981,7 @@ describe("the employee load (§5.1 #11, #12)", () => {
       "E-001:36000.0000:31200.0000",
       "E-002:24000.0000:21600.0000",
     ]);
-    expect(openings.every((o) => o.source.startsWith("sahlisoft:"))).toBe(true);
+    expect(openings.every((o) => o.source.startsWith("legacy:"))).toBe(true);
   });
 
   it("leaves employee_ytd itself untouched — the opening is a read-time addend, never a projection row (8C amendment B14, acceptance test 35 re-run)", async () => {
@@ -5213,7 +5213,7 @@ export const employeeLoader: Loader<LegacyRow, EmployeeTarget> = {
           companyId: ctx.companyId, employeeId: made.id, taxYear,
           gross: row.ytd.gross, net: row.ytd.net,
           byComponent: row.ytd.byComponent, byScheme: row.ytd.byScheme,
-          source: `sahlisoft:${ctx.runId}`,
+          source: `legacy:${ctx.runId}`,
         });
       }
 
@@ -6023,13 +6023,13 @@ describe("explain — a difference is explained or it is not; there is no third 
 
   it("names the 9A report whose total equals the difference", () => {
     expect(explain("100.0000", [unbalanced])).toBe(
-      "unbalanced_vouchers: 1 voucher totalling 100.0000 (SAH-003) — posted to 3900",
+      "unbalanced_vouchers: 1 voucher totalling 100.0000 (LEGACY-003) — posted to 3900",
     );
   });
 
   it("names BOTH reports when their totals sum to the difference, in kind order", () => {
     expect(explain("200.0000", [drift, unbalanced])).toBe(
-      "aggregate_drift: 1 of 4 stored aggregates differ from the recomputation by 100.0000 (SAH-001) — posted to 3900; unbalanced_vouchers: 1 voucher totalling 100.0000 (SAH-003) — posted to 3900",
+      "aggregate_drift: 1 of 4 stored aggregates differ from the recomputation by 100.0000 (LEGACY-001) — posted to 3900; unbalanced_vouchers: 1 voucher totalling 100.0000 (LEGACY-003) — posted to 3900",
     );
   });
 
@@ -6137,11 +6137,11 @@ export interface CutOverReconciliation {
 }
 
 const SUMMARY: Readonly<Record<ReconciliationReport["kind"], (r: ReconciliationReport) => string>> = {
-  aggregate_drift: (r) => `aggregate_drift: ${r.summary.drifting} of ${r.summary.checked} stored aggregates differ from the recomputation by ${totalOf(r)} (SAH-001) — posted to ${SUSPENSE_CODE}`,
-  unbalanced_vouchers: (r) => `unbalanced_vouchers: ${r.summary.vouchers} voucher${r.summary.vouchers === "1" ? "" : "s"} totalling ${r.summary.total} (SAH-003) — posted to ${SUSPENSE_CODE}`,
-  orphans: (r) => `orphans: ${r.rows.length} row${r.rows.length === 1 ? "" : "s"} reference a parent that does not exist (SAH-073) — reported, not loaded`,
-  null_poison: (r) => `null_poison: ${r.rows.length} figure${r.rows.length === 1 ? "" : "s"} are NULL where a number was expected (SAH-007, SAH-011) — refused, not zeroed`,
-  duplicate_aggregates: (r) => `duplicate_aggregates: ${r.rows.length} duplicated aggregate row${r.rows.length === 1 ? "" : "s"} (SAH-049) — loaded once`,
+  aggregate_drift: (r) => `aggregate_drift: ${r.summary.drifting} of ${r.summary.checked} stored aggregates differ from the recomputation by ${totalOf(r)} (LEGACY-001) — posted to ${SUSPENSE_CODE}`,
+  unbalanced_vouchers: (r) => `unbalanced_vouchers: ${r.summary.vouchers} voucher${r.summary.vouchers === "1" ? "" : "s"} totalling ${r.summary.total} (LEGACY-003) — posted to ${SUSPENSE_CODE}`,
+  orphans: (r) => `orphans: ${r.rows.length} row${r.rows.length === 1 ? "" : "s"} reference a parent that does not exist (LEGACY-073) — reported, not loaded`,
+  null_poison: (r) => `null_poison: ${r.rows.length} figure${r.rows.length === 1 ? "" : "s"} are NULL where a number was expected (LEGACY-007, LEGACY-011) — refused, not zeroed`,
+  duplicate_aggregates: (r) => `duplicate_aggregates: ${r.rows.length} duplicated aggregate row${r.rows.length === 1 ? "" : "s"} (LEGACY-049) — loaded once`,
   employee_mapping: (r) => `employee_mapping: ${r.rows.length} employee row${r.rows.length === 1 ? "" : "s"} did not match one-to-one (§5.1 #12) — reported`,
 };
 
@@ -6336,7 +6336,7 @@ Consequences of that definition, each deliberate:
 `docs/runbooks/cut-over.md`:
 
 ```markdown
-# Runbook — Sahlisoft → Dulja cut-over
+# Runbook — legacy system → Dulja cut-over
 
 Audience: the operator running the migration, with the customer's accountant in the room.
 Prerequisites: Phases 0–8 green in CI and deployed; ADRs 0081 (extraction method), 0084, 0085, 0086 read.
@@ -6346,7 +6346,7 @@ gives the local equivalent that lets the rehearsal proceed without it.
 
 ## 0. Before the day
 
-- [ ] **Owner provides:** read access to the live Sahlisoft database and its Firebird version (OD-17).
+- [ ] **Owner provides:** read access to the live legacy database and its Firebird version (OD-17).
       **Verify:** `bun run --cwd packages/importer legacy scope --dsn "$LEGACY_ODBC_DSN"` prints an
       engine version and a table count. **Until provided:** every rehearsal below runs against
       `packages/importer/test/corpus/cut-over`, which is what the test suite uses.
@@ -6365,7 +6365,7 @@ gives the local equivalent that lets the rehearsal proceed without it.
 
 ## 1. Freeze
 
-- [ ] Stop every Sahlisoft client. Confirm no session remains.
+- [ ] Stop every legacy client. Confirm no session remains.
 - [ ] Take a backup of the legacy database and record its checksum. **Nothing below writes to it**, but the
       reconciliation compares against exactly this state and a later write invalidates the sign-off.
 - [ ] Note the freeze time. Any business transacted after it belongs in Dulja, not in the import.
@@ -6422,10 +6422,10 @@ gives the local equivalent that lets the rehearsal proceed without it.
 
 - [ ] Confirm `app.document_series` holds rows for **`OB` and `OS` only**. Every live series — `JV`, `INV`,
       `PINV`, `PO`, `GRN`, `PAY`… — starts at 1 with the first real document after cut-over (§5.1 #8).
-- [ ] **Force a password reset for every user.** Legacy passwords are cleartext (SAH-028) and are never
+- [ ] **Force a password reset for every user.** Legacy passwords are cleartext (LEGACY-028) and are never
       imported; there is no `Users` loader. Invite each user through `POST /v1/admin/users` and have them
       enrol MFA. Confirm no legacy credential exists anywhere in Dulja:
-      `bun run --cwd tests test sah-028`.
+      `bun run --cwd tests test legacy-028`.
 - [ ] Keep the frozen legacy database **read-only and retained**: an imported open item carries only its
       number and its balance, so the original document is looked up there (ADR 0085).
 - [ ] Rotate or remove `LEGACY_ODBC_DSN` from the worker container. The cut-over is over; the credential
@@ -6445,7 +6445,7 @@ reconciliation reports, legacy catalogues) and 9B (loaders and cut-over) are mer
 What exists now, end to end: the ledger and posting service (Phase 1); document types, policies and the
 state machine (Phase 2); inventory, costing, purchasing and fulfilment (Phase 3); AR/AP, ageing, FX and
 bank reconciliation (Phase 4); tax and e-invoicing hooks (Phase 5); POS with offline sync, shifts and till
-cash (Phase 6); the report engine and its catalogue (Phase 7); HR and payroll (Phase 8); and the Sahlisoft
+cash (Phase 6); the report engine and its catalogue (Phase 7); HR and payroll (Phase 8); and the legacy
 importer with a reconciled cut-over (Phase 9).
 
 **Phase 10 (other verticals) is deferred indefinitely** (spec:2296): fixed assets and depreciation are
@@ -6489,7 +6489,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 ### Task 11 — **OWNER GATE OD-25**: the suspense-account treatment and the cut-over date
 
-**Owner decision (contracts §2.12, OD-25; spec:2334):** "Suspense-account treatment for unbalanced vouchers; cut-over date." §5.1 #2 is the source: "Expect unbalanced vouchers. Nothing prevented them (SAH-003). Detect them, quantify them, and **agree a treatment (suspense account) with the customer *before* migrating**." §2.12's *Default written into plans* column is **none** — there is no default treatment and no default date.
+**Owner decision (contracts §2.12, OD-25; spec:2334):** "Suspense-account treatment for unbalanced vouchers; cut-over date." §5.1 #2 is the source: "Expect unbalanced vouchers. Nothing prevented them (LEGACY-003). Detect them, quantify them, and **agree a treatment (suspense account) with the customer *before* migrating**." §2.12's *Default written into plans* column is **none** — there is no default treatment and no default date.
 
 **Owner provides:** (a) the cut-over date, as a calendar date; (b) the agreed treatment of the balance standing on account `3900` after the load — one of *leave standing pending investigation*, *write off to a named expense account by a JOURNAL after cut-over*, or *reclassify per line to named accounts by a JOURNAL after cut-over*. **Verify:** `bun run --cwd packages/importer legacy reconcile-cut-over --tenant-id <id> --company-id <id> --cut-over-date <the owner's date>` exits 0 and prints a `suspenseBalance` the customer has initialled on the sign-off sheet. **Until provided:** the plan uses the last day of the current month in every rehearsal, the residue stands on `3900`, and no JOURNAL is written.
 
@@ -6541,8 +6541,8 @@ Read after `docs/runbooks/cut-over.md` step 5, with the customer's accountant.
 
 After a clean load, account `3900` carries the sum of every difference ADR 0086's `explain` matched:
 
-- the legacy trial balance's own imbalance (SAH-003 — nothing prevented unbalanced vouchers);
-- the drift between the stored aggregates and the recomputation from `VouItems` / `BillItems` (SAH-001);
+- the legacy trial balance's own imbalance (LEGACY-003 — nothing prevented unbalanced vouchers);
+- the drift between the stored aggregates and the recomputation from `VouItems` / `BillItems` (LEGACY-001);
 - the other side of every open AR/AP item (ADR 0085) and of the opening stock, both of which are
   intentionally posted against it so that the sub-ledgers and the ledger agree.
 
@@ -6613,10 +6613,10 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 **Owner provides:** an answer to Part VII #4 — whether the legacy client hashed the password before storing it, and if so with what algorithm. **Verify:** if the answer is "yes, hashed with X", the owner also provides one example row and the algorithm's parameters, and this task's decision is re-opened as an ADR proposal (spec:95) before any code is written. **Until provided — and this plan expects it to stay unprovided:** there is no `Users` loader, no `Users` column is read, and every user is invited fresh.
 
-**Why the default holds even if the answer is "yes".** SAH-028 records the passwords as cleartext; Part VII #4 admits the possibility of a client-side hash and answers itself — "the schema has no salt or algorithm column either way, so a forced reset is the safe default". Dulja's identity is Supabase with MFA (§4.2 of the spec), so there is no password column in Dulja to rehash *into*: a migrated credential would have to become a Supabase user's password, which the invite flow sets. **A "yes" therefore changes nothing in this slice**; it changes only whether the legacy hashes are worth retaining for a forensic reason, which is a decision about the archived legacy database, not about Dulja.
+**Why the default holds even if the answer is "yes".** LEGACY-028 records the passwords as cleartext; Part VII #4 admits the possibility of a client-side hash and answers itself — "the schema has no salt or algorithm column either way, so a forced reset is the safe default". Dulja's identity is Supabase with MFA (§4.2 of the spec), so there is no password column in Dulja to rehash *into*: a migrated credential would have to become a Supabase user's password, which the invite flow sets. **A "yes" therefore changes nothing in this slice**; it changes only whether the legacy hashes are worth retaining for a forensic reason, which is a decision about the archived legacy database, not about Dulja.
 
 **Files:**
-- Modify: `tests/regression/sah-028.test.ts`, `docs/runbooks/cut-over.md` (step 6 is already written; this task adds its verification)
+- Modify: `tests/regression/legacy-028.test.ts`, `docs/runbooks/cut-over.md` (step 6 is already written; this task adds its verification)
 
 **Interfaces:**
 - Consumes: `sourceFiles`, `REPO_ROOT` (§4.17.1, 0B); `NEVER_READ` (9A); `loaders` (T3); `sharedApi`, `fullRegression`, `problemOf` (§4.17.1).
@@ -6624,10 +6624,10 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 - [ ] **Step 1: Write the failing test**
 
-Appended to `tests/regression/sah-028.test.ts`:
+Appended to `tests/regression/legacy-028.test.ts`:
 
 ```ts
-describe("SAH-028 Cleartext passwords — 9B, the import path", () => {
+describe("LEGACY-028 Cleartext passwords — 9B, the import path", () => {
   it("registers no loader whose source table is USERS", () => {
     expect(loaders.map((l) => l.sourceTable)).not.toContain("USERS");
   });
@@ -6677,7 +6677,7 @@ The file gains `import { loaders, NEVER_READ } from "@dulja/importer";`, `import
 
 - [ ] **Step 2: Run it**
 
-Run: `bun run --cwd tests test sah-028`
+Run: `bun run --cwd tests test legacy-028`
 Expected: PASS on every clause, because nothing in Tasks 3–10 reads a credential column. The value of the test is that it **stays** passing: a future loader that adds a `USERS` source fails it.
 
 - [ ] **Step 3: Add the verification line to the runbook**
@@ -6685,7 +6685,7 @@ Expected: PASS on every clause, because nothing in Tasks 3–10 reads a credenti
 `docs/runbooks/cut-over.md` step 6's password item gains:
 
 ```markdown
-      **Verify (OD-26):** `bun run --cwd tests test sah-028` — the suite asserts that no loader names a
+      **Verify (OD-26):** `bun run --cwd tests test legacy-028` — the suite asserts that no loader names a
       `USERS` source, that no declared source column matches `PASSWORD` or `PIN`, that 9A's `NEVER_READ`
       deny-list is unchanged, and that the invite endpoint has no password field to migrate one into.
       **If the owner answers Part VII #4 with "yes, hashed with X":** nothing here changes. Dulja has no
@@ -6697,7 +6697,7 @@ Expected: PASS on every clause, because nothing in Tasks 3–10 reads a credenti
 - [ ] **Step 4: Commit**
 
 ```bash
-git add tests/regression/sah-028.test.ts docs/runbooks/cut-over.md
+git add tests/regression/legacy-028.test.ts docs/runbooks/cut-over.md
 git commit -m "test(regression): prove no legacy credential is imported [9B T12]
 
 OD-26 (Part VII #4) asks whether Users.Password is hashed client-side. The
@@ -6941,9 +6941,9 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 ### Task 14 — **OWNER GATE OD-17**: the live database, the rehearsal, and the columns that become `verified`
 
-**Owner decision (contracts §2.12, OD-17; spec:2409, 2469):** "Read access to the live Sahlisoft database; Firebird version." §2.12's default: **none.** 9A's Task 3 is the first task in the project that reads a live byte; this is the second, and it is where the hypotheses become facts.
+**Owner decision (contracts §2.12, OD-17; spec:2409, 2469):** "Read access to the live legacy database; Firebird version." §2.12's default: **none.** 9A's Task 3 is the first task in the project that reads a live byte; this is the second, and it is where the hypotheses become facts.
 
-**Owner provides:** a read-only ODBC DSN for the live (or freshly restored) Sahlisoft database, and the Firebird version if the engine does not report it. **Verify, in this order:**
+**Owner provides:** a read-only ODBC DSN for the live (or freshly restored) legacy database, and the Firebird version if the engine does not report it. **Verify, in this order:**
 
 1. `bun run --cwd packages/importer legacy scope --dsn "$LEGACY_ODBC_DSN"` prints an engine version, a table count and a total row count, and writes `artefacts/legacy/<runId>/scope.json`.
 2. `bun run --cwd packages/importer legacy load --tenant-id <id> --company-id <id> --account-map <path> --cut-over-date <date> --dry-run` prints `preflight.json` with **zero required-column findings**.
@@ -7036,15 +7036,15 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 **Owner decision (contracts §2.12, OD-27; spec:2470–2473, 2477):** Part VII #6 (real DDL constraints), #7 (`MatOpens.Job` ever ≠ 0), #8 (templates in use), #9 (customisations), #13 (is the Salaries module live?). §2.12 routes the *answers* to 9A's profiler and 7B's template mapping; **9B is a consumer**, and two of the five change what this slice does:
 
 - **#13 — is the Salaries module live?** If no, **Task 8 does not run**: there is no employee master to import and `--only` omits `employee`. If yes, it runs as written. §2.12's default is *none*, so the plan runs Task 8 and reports zero rows when `EMPLOYEES` is empty — which is the same outcome, reached by evidence rather than assumption.
-- **#7 — does `MatOpens.Job` ever differ from 0?** SAH-022 is "a hard failure if so, and inert if not". `MatOpens` carries opening stock positions per job; if `Job` is always 0 the positions are company-wide and Task 6's `BILLITEMS` replay is the whole story. If it is ever non-zero, the legacy opening stock was partitioned by project and a replay that ignores the partition silently merges positions that were never one position.
+- **#7 — does `MatOpens.Job` ever differ from 0?** LEGACY-022 is "a hard failure if so, and inert if not". `MatOpens` carries opening stock positions per job; if `Job` is always 0 the positions are company-wide and Task 6's `BILLITEMS` replay is the whole story. If it is ever non-zero, the legacy opening stock was partitioned by project and a replay that ignores the partition silently merges positions that were never one position.
 
-The other three (#6, #8, #9) change nothing in 9B: #6 is 9A's `constraints()` probe and 1A's `sah-024`; #8 and #9 are 7B's template mapping.
+The other three (#6, #8, #9) change nothing in 9B: #6 is 9A's `constraints()` probe and 1A's `legacy-024`; #8 and #9 are 7B's template mapping.
 
 **Owner provides:** 9A's Task 13 `questions.json` for this database. **Verify:** `bun run --cwd packages/importer legacy questions --dsn "$LEGACY_ODBC_DSN"` prints an answer of `answered` for `part7-7` and `part7-13`. **Until provided:** both stay `unanswered`, Task 8 runs and reports what it finds, and the `MatOpens` guard below fails the load loudly rather than merging silently.
 
 **Files:**
 - Create: `packages/importer/src/load/matopens-guard.ts`, `packages/importer/test/load/matopens-guard.test.ts`
-- Modify: `packages/importer/src/load/opening-stock.ts` (one call), `packages/importer/src/index.ts`, `tests/regression/sah-022.test.ts`
+- Modify: `packages/importer/src/load/opening-stock.ts` (one call), `packages/importer/src/index.ts`, `tests/regression/legacy-022.test.ts`
 
 **Interfaces:**
 - Consumes: `LegacyReader`, `answerOpenQuestions`, `OpenQuestionReport` (9A); `LoadError` (T3).
@@ -7053,7 +7053,7 @@ The other three (#6, #8, #9) change nothing in 9B: #6 is 9A's `constraints()` pr
 ```ts
 // packages/importer/src/load/matopens-guard.ts
 export interface JobPartitionFinding { table: string; column: string; distinctNonZero: number; sample: string[] }
-/** Part VII #7 / SAH-022, asked of the customer's own data at load time rather than assumed. */
+/** Part VII #7 / LEGACY-022, asked of the customer's own data at load time rather than assumed. */
 export async function assertNoJobPartition(reader: LegacyReader): Promise<JobPartitionFinding | null>;
 export const JOB_PARTITIONED_TABLES: readonly { table: string; column: string }[];
 ```
@@ -7087,17 +7087,17 @@ const corpusWith = (rows: Record<string, string | null>[]) => {
   };
 };
 
-describe("Part VII #7 / SAH-022 — MatOpens.Job, asked rather than assumed", () => {
+describe("Part VII #7 / LEGACY-022 — MatOpens.Job, asked rather than assumed", () => {
   it("names the tables and columns the question is about", () => {
     expect(JOB_PARTITIONED_TABLES).toEqual([{ table: "MATOPENS", column: "MOPJOB" }]);
   });
 
-  it("returns null when every Job is 0 or NULL — SAH-022 is inert for this customer", async () => {
+  it("returns null when every Job is 0 or NULL — LEGACY-022 is inert for this customer", async () => {
     const reader = await createReader(new FixtureLegacyDriver(corpusWith([{ MOPID: "1", MOPJOB: "0" }, { MOPID: "2", MOPJOB: null }])));
     expect(await assertNoJobPartition(reader)).toBeNull();
   });
 
-  it("reports the finding when any Job differs from 0 — SAH-022 is a hard failure for this customer", async () => {
+  it("reports the finding when any Job differs from 0 — LEGACY-022 is a hard failure for this customer", async () => {
     const reader = await createReader(new FixtureLegacyDriver(corpusWith([{ MOPID: "1", MOPJOB: "0" }, { MOPID: "2", MOPJOB: "7" }, { MOPID: "3", MOPJOB: "9" }])));
     expect(await assertNoJobPartition(reader)).toEqual({
       table: "MATOPENS", column: "MOPJOB", distinctNonZero: 2, sample: ["7", "9"],
@@ -7123,7 +7123,7 @@ import type { LegacyReader } from "../index";
 
 export interface JobPartitionFinding { table: string; column: string; distinctNonZero: number; sample: string[] }
 
-/** Part VII #7 names `MatOpens.Job` specifically, and SAH-022 is the defect it decides. No other table is
+/** Part VII #7 names `MatOpens.Job` specifically, and LEGACY-022 is the defect it decides. No other table is
  *  added here without an amendment: the question is about opening stock, and widening it to every `Job`
  *  column in the 460-table map would turn a decidable question into noise. */
 export const JOB_PARTITIONED_TABLES: readonly { table: string; column: string }[] = [
@@ -7131,7 +7131,7 @@ export const JOB_PARTITIONED_TABLES: readonly { table: string; column: string }[
 ];
 
 /**
- * Part VII #7: "Does `MatOpens.Job` ever differ from 0 in production? SAH-022 is a hard failure if so, and
+ * Part VII #7: "Does `MatOpens.Job` ever differ from 0 in production? LEGACY-022 is a hard failure if so, and
  * inert if not." Asked of the customer's own data at load time, so the answer is evidence rather than an
  * assumption — and asked here, in 9B, because 9B is the slice that would silently merge job-partitioned
  * opening positions into one if the answer were yes and nobody looked.
@@ -7168,7 +7168,7 @@ export async function assertNoJobPartition(reader: LegacyReader): Promise<JobPar
 ```ts
     const partition = await assertNoJobPartition(loadSource().reader);
     if (partition) {
-      throw new LoadError("ERR_IMPORT_SOURCE_UNREADABLE", `${partition.table}.${partition.column} has ${partition.distinctNonZero} distinct non-zero values (for example ${partition.sample.join(", ")}); the legacy opening stock is partitioned by job and this loader would merge positions that were never one position. Answer Part VII #7 with the customer and decide how a job maps to a Dulja warehouse before loading opening stock (SAH-022, OD-27).`);
+      throw new LoadError("ERR_IMPORT_SOURCE_UNREADABLE", `${partition.table}.${partition.column} has ${partition.distinctNonZero} distinct non-zero values (for example ${partition.sample.join(", ")}); the legacy opening stock is partitioned by job and this loader would merge positions that were never one position. Answer Part VII #7 with the customer and decide how a job maps to a Dulja warehouse before loading opening stock (LEGACY-022, OD-27).`);
     }
 ```
 
@@ -7176,19 +7176,19 @@ with `import { assertNoJobPartition } from "./matopens-guard";` and `import { lo
 
 **Failing closed here is the point.** §2.12's default for OD-27 is *none*, and the safe behaviour under *none* is to refuse, not to proceed: merging job-partitioned openings produces a stock valuation that ties to the ledger and is still wrong, which is the worst outcome a cut-over can have.
 
-- [ ] **Step 5: Append the 9B block to `tests/regression/sah-022.test.ts`**
+- [ ] **Step 5: Append the 9B block to `tests/regression/legacy-022.test.ts`**
 
 The file exists (3B created it):
 
 ```ts
-describe("SAH-022 MatOpens.Job — 9B, asked of the customer's data", () => {
+describe("LEGACY-022 MatOpens.Job — 9B, asked of the customer's data", () => {
   it("refuses to load opening stock from a job-partitioned source rather than merging it", async () => {
     await expect(loadFromCorpus("matopens-partitioned")).rejects.toThrow(
       /MATOPENS\.MOPJOB has 2 distinct non-zero values .*; the legacy opening stock is partitioned by job/,
     );
   });
 
-  it("loads normally when every Job is 0 — SAH-022 is inert for that customer", async () => {
+  it("loads normally when every Job is 0 — LEGACY-022 is inert for that customer", async () => {
     const skips = await loadFromCorpus("cut-over");
     expect(skips.filter((k) => /partitioned by job/.test(k.reason))).toEqual([]);
   });
@@ -7208,20 +7208,20 @@ The first case needs a second corpus directory, `packages/importer/test/corpus/m
       simply produces zero employee rows and an empty `employee_ytd_opening`, which is the same outcome
       reached by evidence.
 - [ ] **OD-27, Part VII #7 — does `MatOpens.Job` ever differ from 0?** The load answers this itself and
-      **refuses** if it does (SAH-022). A refusal is not a bug: it means the legacy opening stock was
+      **refuses** if it does (LEGACY-022). A refusal is not a bug: it means the legacy opening stock was
       partitioned by project and somebody must decide how a job maps to a Dulja warehouse first.
 ```
 
 - [ ] **Step 7: Run everything**
 
-Run: `bun run --cwd packages/importer test && bun run --cwd tests test sah-022 && bun run lint:rules`
+Run: `bun run --cwd packages/importer test && bun run --cwd tests test legacy-022 && bun run lint:rules`
 Expected: PASS.
 
 - [ ] **Step 8: Commit**
 
 ```bash
 git add packages/importer/src/load/matopens-guard.ts packages/importer/src/load/opening-stock.ts \
-        packages/importer/src/index.ts packages/importer/test tests/regression/sah-022.test.ts \
+        packages/importer/src/index.ts packages/importer/test tests/regression/legacy-022.test.ts \
         docs/runbooks/cut-over.md
 git commit -m "feat(importer): ask Part VII #7 of the customer's data and fail closed [9B T15]
 
@@ -7267,12 +7267,12 @@ Every *Delivers* bullet of the §2.10 9B card, and every §5.1 item, mapped to t
 | The importer cannot leave a live credential behind (test 34, spec:2090) | **T10, T12** | the source scan in the DoD suite; the runbook rotates `LEGACY_ODBC_DSN` at the end |
 | §5.1 #1 do not trust stored aggregates | **T5, T10** | `ACCTOTALS` is read to be *compared*; 9A's `aggregate_drift` is what quantifies it |
 | §5.1 #2 unbalanced vouchers, suspense agreed **before** migrating | **T5, T11** | the residue lands on `3900`; OD-25 is an isolated task and the runbook's step 0 |
-| §5.1 #3 orphans reported, never nulled | **T4, T6, T7** | every loader's `{ skip }` path; `sah-073` |
-| §5.1 #4 NULL-poisoned balances and costs | **T3, T4, T6** | `moneyOf`/`quantityOf` refuse a NULL; `sah-007`, `sah-011` |
-| §5.1 #5 duplicate aggregate rows | **T3** | `recordBatch` skips the second sighting; `sah-049` |
-| §5.1 #6 do not import cost figures | **T6** | `MATCOSTS` appears in no loader, asserted by a source scan in `sah-011` |
+| §5.1 #3 orphans reported, never nulled | **T4, T6, T7** | every loader's `{ skip }` path; `legacy-073` |
+| §5.1 #4 NULL-poisoned balances and costs | **T3, T4, T6** | `moneyOf`/`quantityOf` refuse a NULL; `legacy-007`, `legacy-011` |
+| §5.1 #5 duplicate aggregate rows | **T3** | `recordBatch` skips the second sighting; `legacy-049` |
+| §5.1 #6 do not import cost figures | **T6** | `MATCOSTS` appears in no loader, asserted by a source scan in `legacy-011` |
 | §5.1 #7, #11 passwords / PIN | **T12** | |
-| §5.1 #8 duplicate and gapped numbers | **T1, T7** | non-unique index; two corpus rows share a number; `sah-051` twice |
+| §5.1 #8 duplicate and gapped numbers | **T1, T7** | non-unique index; two corpus rows share a number; `legacy-051` twice |
 | §5.1 #9 report blobs | — | **9A's**, explicitly (card: "feeds 7B/7C"). 9B loads no template |
 | §5.1 #10 scope first | **T3, T14** | `preflight` before a row is read; OD-17's three verification commands |
 | §5.1 #12 employees exist twice | **T8** | `party` kind `employee` + `employee`, one each; 9A's `employeeMapping` is the input |
@@ -7315,19 +7315,19 @@ Names were traced from each Produces block to every consumer. Forty-three incons
 | **R14 / C13** | `runLoad` calls `loader.load` once per page of `READ_BATCH` (500) rows, and **two loaders are wrong under paging**. `openingBalanceLoader` builds one document from all of `AccTotals` and balances the residue to `3900` — paged, it posts one document *per 500 accounts*, each with its own invented suspense figure, while Task 5 asserts "posts ONE OPENING_BALANCE document". `openingStockLoader` replays a material's whole history through the AVCO engine — paged, it averages 500 movements at a time, which is not the average. **The cut-over corpus has three rows per table, so no test in this plan would have failed**; the first sign would have been a customer's trial balance | `Loader` gains an optional `readonly wholeTable?: boolean` (amendment C13, additive). `runLoad` accumulates every mapped page and calls `load` once for such a loader, in one transaction; the two set it and the doc comment states the memory-and-atomicity trade rather than hiding it — half an opening balance is not a smaller opening balance. ADR 0084 gains decision 6, and T6 pins **which** loaders are in the set so a later one cannot join or leave it silently |
 | **R15 / C14** | `POST …/imports` accepts `only`, the route puts it in the job payload (amendment C3 declares it), and `importRunHandler` builds a `LoadContext` **without** it — because §4.13.2's `LoadContext` has no such field. An operator restricting a resume to `employee` would get a full re-load of every table and no warning that the switch was ignored | `LoadContext` gains an optional `only?: string[]` (amendment C14, additive); `runLoad` filters the registry by it *before* ordering, so a restricted run still runs in dependency order, and refuses a target table no loader has rather than succeeding at nothing. The handler forwards it. The fallback in C14 is the honest alternative — delete `only` everywhere — and is recorded as the poorer product |
 | **R16** | T3's `run.test.ts` asserts `perLoader["unit_of_measure"].inserted > 0` and spreads `loaders[0]!`, but `registry.ts` ships **empty** at T3 and T4–T8 fill it, so T3 Step 12's "Expected: PASS" was unreachable and Step 2's "see them fail" would have failed for the wrong reason | the file registers its own `stubLoader` on `loaders` in `beforeAll` and splices it out in `afterAll`. A framework test should not depend on which business loaders exist yet; T4 replaces it in the registry with the full `unitLoader`. Step 12 says so |
-| **R17** | the fix for R8 replaced the wrong sentinel with a **wrong refusal**: a warehouse that opened no stock raised `ERR_VALIDATION_FAILED` saying its positions "were driven negative or pointed at an item, warehouse or lot that did not import". `replayLegacyMovements` emits no position for a key whose layers net to zero (`if (quantity.isZero()) continue;`), so a warehouse **emptied before cut-over** — transferred out, closed, sold down — reaches that line with no positions and no negatives. On a Sahlisoft customer who has ever closed a warehouse, the whole cut-over would refuse, and the message would be a false accusation about the source. The reasoning behind the refusal was itself wrong: it claimed a committed all-zero `target_id` could only be a crash artefact, but `recordBatch`, `load` and `linkBatches` share **one** `withTenant` transaction, so that state cannot survive a crash | `EMPTY_TARGET` is exported from `run.ts` with the meaning a commit gives it — *seen, hashed, produced no target row* — and `openingStockLoader` returns it for such a warehouse, with no throw. `LoadError` is dropped from that file's imports (nothing there raises now, and an unused import fails `lint`). ADR 0084 decision 2 no longer claims the crash it cannot have, and gains decision 7 stating the committed meaning **and** its cost: the row's hash is unchanged, so it is never retried — right for an emptied warehouse, and a reconciliation item for a position reported because its material did not import |
+| **R17** | the fix for R8 replaced the wrong sentinel with a **wrong refusal**: a warehouse that opened no stock raised `ERR_VALIDATION_FAILED` saying its positions "were driven negative or pointed at an item, warehouse or lot that did not import". `replayLegacyMovements` emits no position for a key whose layers net to zero (`if (quantity.isZero()) continue;`), so a warehouse **emptied before cut-over** — transferred out, closed, sold down — reaches that line with no positions and no negatives. On a legacy customer who has ever closed a warehouse, the whole cut-over would refuse, and the message would be a false accusation about the source. The reasoning behind the refusal was itself wrong: it claimed a committed all-zero `target_id` could only be a crash artefact, but `recordBatch`, `load` and `linkBatches` share **one** `withTenant` transaction, so that state cannot survive a crash | `EMPTY_TARGET` is exported from `run.ts` with the meaning a commit gives it — *seen, hashed, produced no target row* — and `openingStockLoader` returns it for such a warehouse, with no throw. `LoadError` is dropped from that file's imports (nothing there raises now, and an unused import fails `lint`). ADR 0084 decision 2 no longer claims the crash it cannot have, and gains decision 7 stating the committed meaning **and** its cost: the row's hash is unchanged, so it is never retried — right for an emptied warehouse, and a reconciliation item for a position reported because its material did not import |
 | **R18** | the new T3 test ran its own `await runLoad(...)` and sat **above** "re-running the same load inserts nothing twice". Vitest runs `it`s in file order against the one tenant `beforeAll` seeds, so the re-run test's `first` load would have found everything already loaded and its `expect(first.perLoader["unit_of_measure"]!.inserted).toBeGreaterThan(0)` would have failed — T3 Step 12's "Expected: PASS" unreachable again, for the third distinct reason | the sentinel test moves **below** the re-run test and drops its own `runLoad`: it asserts on the state the test above committed, which is what it wanted to see anyway. Its comment says why the ordering is load-bearing, so nobody re-sorts the file |
 | **R19 / C15** | **`Money` and `Quantity` were called with decimal.js's method names.** §4.2.1 freezes `Money` at `add / subtract / negate / multiply(factor, mode) / divide / allocate / abs / compare / equals / isZero / isNegative / isPositive / toDecimal / toString` and `Quantity` at `add / subtract / negate / multiply / convert / compare / isZero / isNegative / toDecimal / toString`. Neither has `plus`, `minus`, `negated`, `times`, `greaterThan` or `roundToScale`, and the plan used all six — `row.debit.minus(row.credit)`, `residue.plus(net)`, `net.negated()` (opening-balance), `q.plus(l.qtyRemaining)` twice, `move.quantity.greaterThan(available)`, `available.minus(...)`, `unitCost.times(quantity).roundToScale()` (recost), `amount.negated()` (open-items), `gross.plus(...)` and `.minus(...)` (employees), `moneyOf(...).minus(...)` (reconcile). A paragraph under `recost.ts` asserted as fact that "`Money.times(Quantity)` and `Money.roundToScale()` are 0D's (§4.2.1)"; they are in no version of that section. **Tasks 5, 6, 7, 8 and 10 each stopped at their file's first compile** | every site rewritten against §4.2.1: `plus`→`add`, `minus`→`subtract`, `negated()`→`negate()`, `q.greaterThan(a)`→`q.compare(a) > 0`. The product is **not** a rename — `Money.multiply` demands an explicit `RoundingMode` and takes `Decimal \| Rational \| string`, never a `Quantity` — so `unitCost.times(quantity).roundToScale()` becomes `Money.fromDecimal(unitCost.toDecimal().mul(quantity.toDecimal()), baseCurrency, "HALF_AWAY_FROM_ZERO")`, which states the mode where the old form implied it. The false claim is deleted and replaced by the two method lists, so the next reader checks rather than trusts. **decimal.js's own `.plus` / `.minus` / `.greaterThan` in `reconcile-cut-over.ts` are untouched** — that file's `Decimal` arithmetic is correct and a blind rename would have broken it |
 | **R20 / C15** | **`assertYtdReconciles` was described and never wired.** T8 Step 3 wrote `employeeLoader.load` in full with no call to it; the prose after the block said the helper "lives in `map`, not `load`" and then, two sentences later, that `load` "calls it per row" — and no step carried the edit, so an executor had no code to type. Worse, `load`'s frozen return `{ inserted, skipped, batchIds }` has no channel for a **reason**, and `runLoad` builds `skips[]` only from `map`'s `{ skip }`, so the skip could never have reached a report; and the test ran with `dryRun: true`, where `runLoad` throws its roll-back sentinel *before* `loader.load` and the helper would not have executed at all. The same three faults hid a fourth: `openingStockLoader`'s negative-position reason had no channel either, so T6's assertion on it was equally unreachable | the reconciliation stays in **`load`** — that is forced, not chosen: the comparison needs the tax year of `ctx.cutOverDate` and `Loader.map(row, refs)` is frozen at two parameters with no `ctx`. Amendment **C15** widens `load`'s return with an optional `skips?: readonly SkipRecord[]`, `runLoad` concatenates it into the one register, and **both** reasons now travel it. The call is written into `load` as a code step; a drifting employee is **loaded** with their YTD opening **withheld** (losing the person over a disputed figure would be the larger error) and the test becomes a real run against its own tenant, asserting the skip, the missing opening row and the surviving employee. The contradictory heading and the two stale prose claims are rewritten |
-| **R21** | **`loadFromCorpus` built and destroyed its own tenant, so four suites asserted against a database the load never touched.** It did `cutOverFixture(\`corpus-${corpus}\`)` → `runLoad` → `api.stop()` and returned only `SkipRecord[]`. Four call sites nevertheless made their own fixture and then queried it: `sah-003` (expects one `3900` credit), `sah-051` (expects two documents at `legacy_ref = 'INV/2025/0417'`), `projection-rebuild` (`runIntegrityCheck`), and `cut-over-reconciliation.test.ts` — **the whole definition-of-done suite**, four clauses. Every one queried an empty tenant | `loadFromCorpus` gains an **overload**: `loadFromCorpus(fixture, corpus, over?)` loads INTO the caller's fixture and leaves its api running; `loadFromCorpus(corpus, over?)` keeps the self-contained form for the two callers that read nothing but the skip register (`sah-073`, `sah-022`). The four sites pass `f`, each with a one-line comment saying why. The implementation's `finally` stops only a fixture it created, which also fixes the container leak on the SAH-022 case, where the load is *expected* to throw |
-| **R22** | **Idempotence made four cases unreachable.** `import_batch`'s natural key is `(company_id, source_table, source_key)` with **no run scoping** (§4.6.1) and `runLoad` calls `recordBatch` *before* `loader.load`, so a second `runLoad` against a tenant that already loaded a key maps nothing, and `if (mapped.length === 0) return;` fires before `load` is reached. Three cases assumed otherwise: T5's closed-period case (`ERR_PERIOD_NOT_OPEN` never raised), T5's archived-`3900` case (`ERR_IMPORT_UNBALANCED_SOURCE` never raised), and T8's YTD-drift case. T6's negative-stock case was worse than unreachable — it replaced `BILLITEMS` with rows keyed `"1"` and `"2"`, both already recorded with *different* data, so it would have raised `ERR_IMPORT_DUPLICATE_SOURCE_KEY` instead of producing the skip. **(T3's own re-run case was fixed separately, by R18.)** | each of the four gets its **own tenant**, seeded by the helper R23 adds; T5 grows a two-line `ownTenant` wrapper and T6 and T8 call `seedLoadableTenant` directly. Each carries the reason in a comment so nobody merges them back. Skips produced inside `map` (T4's SAH-007, T7's orphan on the fresh key `77`) are untouched and still work, because `map` runs before `recordBatch` |
+| **R21** | **`loadFromCorpus` built and destroyed its own tenant, so four suites asserted against a database the load never touched.** It did `cutOverFixture(\`corpus-${corpus}\`)` → `runLoad` → `api.stop()` and returned only `SkipRecord[]`. Four call sites nevertheless made their own fixture and then queried it: `legacy-003` (expects one `3900` credit), `legacy-051` (expects two documents at `legacy_ref = 'INV/2025/0417'`), `projection-rebuild` (`runIntegrityCheck`), and `cut-over-reconciliation.test.ts` — **the whole definition-of-done suite**, four clauses. Every one queried an empty tenant | `loadFromCorpus` gains an **overload**: `loadFromCorpus(fixture, corpus, over?)` loads INTO the caller's fixture and leaves its api running; `loadFromCorpus(corpus, over?)` keeps the self-contained form for the two callers that read nothing but the skip register (`legacy-073`, `legacy-022`). The four sites pass `f`, each with a one-line comment saying why. The implementation's `finally` stops only a fixture it created, which also fixes the container leak on the LEGACY-022 case, where the load is *expected* to throw |
+| **R22** | **Idempotence made four cases unreachable.** `import_batch`'s natural key is `(company_id, source_table, source_key)` with **no run scoping** (§4.6.1) and `runLoad` calls `recordBatch` *before* `loader.load`, so a second `runLoad` against a tenant that already loaded a key maps nothing, and `if (mapped.length === 0) return;` fires before `load` is reached. Three cases assumed otherwise: T5's closed-period case (`ERR_PERIOD_NOT_OPEN` never raised), T5's archived-`3900` case (`ERR_IMPORT_UNBALANCED_SOURCE` never raised), and T8's YTD-drift case. T6's negative-stock case was worse than unreachable — it replaced `BILLITEMS` with rows keyed `"1"` and `"2"`, both already recorded with *different* data, so it would have raised `ERR_IMPORT_DUPLICATE_SOURCE_KEY` instead of producing the skip. **(T3's own re-run case was fixed separately, by R18.)** | each of the four gets its **own tenant**, seeded by the helper R23 adds; T5 grows a two-line `ownTenant` wrapper and T6 and T8 call `seedLoadableTenant` directly. Each carries the reason in a comment so nobody merges them back. Skips produced inside `map` (T4's LEGACY-007, T7's orphan on the fresh key `77`) are untouched and still work, because `map` runs before `recordBatch` |
 | **R23** | **Every DB-backed importer test seeded a tenant the load cannot run against.** T4–T8 open with `seedTenantV2`, which is `seedTenant` plus `5920` and the JOURNAL policy — and `seedTenant` creates exactly `1000` and `4000` (plan0A:1563–1611) and no document type of this slice's. Every loader fails closed on a missing §4.15 account (`1200`, `1300`, `2100`, `3900`, `5000`, `5900`) or a missing `OPENING_BALANCE` / `OPENING_STOCK`, which is correct production behaviour and means the five suites would have died in `beforeAll` on `cannot resolve account 1200`, never reaching what they were written to prove | **N16** — `seedLoadableTenant(db, name)` and `loadContextFor(db, s, runId, over?)` in `packages/importer/test/support/tenant.ts` (a new T4 Step 3), the test-tier twin of runbook step 2. The two document types are **read from this slice's own seed files**, never re-typed, so no suite can be green against a policy nobody deploys; and 0A's three fiscal periods are deliberately left alone, because R22's closed-period case depends on 2026-02 being `closed`. `tests/invariants/support/cut-over.ts` does the same work inline — §3.1 forbids the `tests` workspace importing `packages/importer/test/**`, the same reason its `readCorpus` already duplicates `loadCorpus` |
 | **R24** | **`moneyOf` hard-coded `"MYR"` at eight call sites while the same loaders built their zero values from `company.base_currency`.** `moneyOf(row, col, "MYR", …)` returns `Money<CurrencyCode & "MYR">`; `openingBalanceLoader.load` then wrote `currency(company!.base_currency as "MYR")` and added the two. For an MYR company the cast merely hid what §4.2.1 exists to check; for **any other company** it is `ERR_MONEY_CURRENCY_MISMATCH` at run time on the opening-balance, opening-stock, open-item and employee loads. `moneyOf`'s own signature took a `string`, so nothing could have caught it | the currency is resolved **once per run** and reaches `map` — which has no `ctx` — through `baseCurrency()`, a run-scoped getter beside `loadSource()` (N3), set from `app.company` inside `runLoad`'s first `withTenant` and cleared in its `finally`. `moneyOf`'s third parameter becomes a `CurrencyCode`, so the bare string is a **compile** error, and every `as "MYR"` / `as CurrencyCode` cast in the package is deleted. `reconcileCutOver` runs outside `runLoad` (its own CLI command) and therefore reads `base_currency` on its own `tx` — using the getter there would have thrown |
 | **R25** | **T9's route tests used an `api.request` shape §4.2.12 does not have**, and three members of `StartedApi` that do not exist. The calls were two-argument (`api.request(path, { method, actor, tenant, headers })`) where §4.2.12 freezes ONE object with `{ method, path, body, form, as, aal, idempotencyKey, headers }`; and they read `api.jobs.enqueued`, called `api.enqueueForTest(...)` and, in the probes, `db.enqueueForProbe(...)`. §4.2.12 closes `StartedApi` at eight members and says "a slice needing a new field amends this document first"; the amendment table added none. T12's regression block repeated the two-argument form | every call rewritten to the one-object form, with `as` for the principal, the harness's own idempotency key, and `idempotencyKey: null` for the missing-header case. The enqueue is asserted by **reading `pgboss.job`** — no RLS there (§4.2.6), so `db.admin` reads it — and the two `/v1/jobs` cases get their job ids from the route that creates them. `grantAdmin` becomes `grantCodes` (§4.17, reaches `apps/api/test` through `@dulja/db/test` with no allowance); `problemOf` keeps 7A Task 10's registered `tests/support/**` allowance and the import path is corrected to it. **Two additional faults surfaced while rewriting**: `JOB_PROBES.seed` **seeds only** — the harness does the running, with `payload: {}` for every job (0d:2733–2741) — so the probe's enqueue is deleted, and `importRunHandler` gains a two-line no-op guard for the empty payload, which is also the right production answer for a truncated job |
 | **R26** | three import errors, each in a file a later task consumes: `tests/invariants/support/cut-over.ts` imported `grantAdmin` from `"./api"` (§4.17.1 puts it in `tests/support/api.ts`, so from `tests/invariants/support/` the specifier is `../../support/api`); `apps/api/test/routes/admin/import.test.ts` imported `grantAdmin, problemOf` from `"../../support/grant"`, a module registered nowhere; and `packages/importer/test/load/employees.test.ts` imported `keyRingFromEnv` from `@dulja/db`, which 8A does not export — it ships `createHrKeyRing(opts)` and `DEV_HR_KEY` (8a:834, 8a:836) | the first specifier is corrected; the second is replaced by `grantCodes` plus 7A's registered `problemOf` path; the third becomes `createHrKeyRing({ current: <32-byte base64>, currentVersion: 1 })`, with a note saying why not `DEV_HR_KEY` (it is `APP_ENV === "dev"`-only) |
 | **R27** | **money held as a JavaScript `number` in eight assertions and in one registered shared helper**, against this plan's own Global Constraint 2 (spec:0.2 verbatim, "no `number` ever holds a monetary value"). `assertExplained` — the §4.17.1 helper this slice adds — summed ledger balances with `reduce((n, r) => n + Number(r.balance), 0)` and compared with `Math.abs(total) > Number(tolerance)`; and `Number(...)` was the *assertion* in three of the four definition-of-done clauses, in the T6 valuation case, the T7 ageing tie-out and the OD-25 pinning test. A tie-out asserted in float is not a tie-out to the cent | every one sums through `Money` — `rows.reduce((m, r) => m.add(Money.of(r.value, MYR)), Money.zero(MYR))` — and compares `toString()`, `isZero()`, `isPositive()` or `compare(...)`. `MYR` is justified in a comment at each site as a fact about the **fixture** (0A seeds every test company `base_currency = 'MYR'`, plan0A:1587), never about production, where `baseCurrency()` is what production code reads |
 | **R28** | six smaller faults found while checking the above, each fixed where it stands: `partyLoader` stored **ACCID** in `party.legacy_ref` while its own test expected **ACCCODE** and `accountLoader` stored ACCCODE — the two loaders reading one legacy table disagreed about what identifies its rows; `itemLoader` gave every product `expense_account_id = 5000`, contradicting §4.6.1's registered `4000`/`1300`/`5000`/`5900` and §4.15's `5900` row, with no assertion covering the column; T7's open-item query ordered two rows by `legacy_ref`, a value the corpus deliberately makes **identical** in both, and then pinned which came first; three `valuationAsOf(tx, { companyId, asOf })` calls omitted `limit`, which 3B declares **required** (3b:4475–4479); `employeeLoader` coded its parties `E-E-001`, because the legacy `EmpNumber` already reads `E-001`; and `tests/invariants/support/cut-over.ts` built two paths with `new URL(...).pathname`, which on Windows yields `/C:/Users/…` and `readFileSync` rejects | ACCCODE on both sides, with the ACCID/ACCCODE distinction written where the keys are built (the `import_batch` source key stays `ACC:<ACCID>`, which is what T7 resolves on); `5900` for every item kind, and the master test now selects and asserts **all four** account columns for a product *and* a service; the order becomes `d.number::bigint`, which is deterministic and is what the next case already used; `limit: 1000` (3B's `VALUATION_PAGE`) at all three sites; the employee number verbatim as the party code; and `fileURLToPath` at both paths. Three dead or broken scaffolds went with them: the no-op `withTenant(...).catch(...)` spread in T3's `ctx()`, the unused `uuidv7` beside it, and `mpos.ts`'s unused `applyBatch`, `currency` and `CurrencyCode` imports — all four `noUnusedLocals` failures. T14's preflight append gains the `node:fs` import it reads ADR 0084 with |
-| **R29** | **The account loader and the ledger opening disagreed about which legacy identifier keys an account.** `accountLoader.sourceKey` was `ACCID` (`100`, `101`), so `import_batch` held `(ACCOUNTS, '100') → account`; `openingBalanceLoader.map` resolves `AccTotals.ACTACC`, which the corpus and the owner's account-map fixture both make an ACC**CODE** (`1101`, `1301`). `byLegacyRef("account", "1101")` therefore found nothing, **every** ACCTOTALS row skipped, `mapped.length === 0`, `runLoad` returned before calling `load`, and **no `OPENING_BALANCE` document was ever posted** — taking T5's first three assertions, T7's `["1","2","3"]` number sequence, T10's whole DoD suite and the `sah-003` append with it | `accountLoader.sourceKey` becomes `ACCCODE` — the identifier `account.legacy_ref`, `party.legacy_ref`, the owner's map and the reconciliation report all already use, so one legacy identifier now runs through the slice. The party loader's `ACC:<ACCID>` space still cannot collide (its keys are prefixed). **The whole key-per-target list is now written above `SOURCE_OF` in `refs.ts`**, with the rule that a loader changing its `sourceKey` changes that list in the same commit, so the pair cannot drift apart again |
+| **R29** | **The account loader and the ledger opening disagreed about which legacy identifier keys an account.** `accountLoader.sourceKey` was `ACCID` (`100`, `101`), so `import_batch` held `(ACCOUNTS, '100') → account`; `openingBalanceLoader.map` resolves `AccTotals.ACTACC`, which the corpus and the owner's account-map fixture both make an ACC**CODE** (`1101`, `1301`). `byLegacyRef("account", "1101")` therefore found nothing, **every** ACCTOTALS row skipped, `mapped.length === 0`, `runLoad` returned before calling `load`, and **no `OPENING_BALANCE` document was ever posted** — taking T5's first three assertions, T7's `["1","2","3"]` number sequence, T10's whole DoD suite and the `legacy-003` append with it | `accountLoader.sourceKey` becomes `ACCCODE` — the identifier `account.legacy_ref`, `party.legacy_ref`, the owner's map and the reconciliation report all already use, so one legacy identifier now runs through the slice. The party loader's `ACC:<ACCID>` space still cannot collide (its keys are prefixed). **The whole key-per-target list is now written above `SOURCE_OF` in `refs.ts`**, with the rule that a loader changing its `sourceKey` changes that list in the same commit, so the pair cannot drift apart again |
 | **R30** | **`replayLegacyMovements` built a `CostingInput.movement` that is not a `PlannedMovement`.** It passed `direction: move.direction` — this file's own `LegacyMovement` spelling — and **no `effect`**, while §4.4.2 gives `PlannedMovement` the member `effect: "receipt" | "issue"` and no `direction` at all, and `costingEngine.cost` branches on `effect`. It also passed `lotId: move.lotKey ?? ""` where the contract type is `string \| null`. The call does not type-check; if it did, every movement would be treated as neither a receipt nor an issue | `effect: move.direction === "in" ? "receipt" : "issue"`, `lotId: move.lotKey` (the null kept — `""` would collide with a lot literally coded `""`), and the `direction` key dropped. The derivation is written beside the call, and §4's “consumed names checked against their owning plans” line now names the movement shape specifically rather than the interface generally |
 | **R31** | **`codeFromName` could not produce the warehouse codes three assertions pinned.** It upper-cases and replaces each run of non-alphanumerics with a single `-`, so the corpus's `"Main store"` / `"Shop 1"` are `MAIN-STORE` / `SHOP-1`; T4 asserted `["MAIN", "SHOP1"]` and T6 asserted the `OPENING_STOCK` warehouse and three `import_batch` joins as `MAIN` | the **assertions** move, not the corpus: free-text legacy names are what a real `Warehouses` row holds and the dash rule is the thing under test. T4 now expects `["MAIN-STORE", "SHOP-1"]`, T6 expects `MAIN-STORE` in all four places, and each site carries the one-line derivation so the next reader does not “tidy” it back |
 | **R32** | **`openingBalanceLoader.load`'s empty-lines branch returned `batchIds: []` for a non-empty `rows`**, which `linkBatches` refuses with `ERR_VALIDATION_FAILED` — so a legacy trial balance whose every account nets flat failed the load with a message accusing the loader of a contract breach | the branch returns `rows.map(() => EMPTY_TARGET)`, the value run.ts already documents as “seen, hashed, produced no target row” and the one `openingStockLoader` returns for an emptied warehouse. `linkBatches` gains a docstring stating the rule the branch broke: **`batchIds` is positional and total over the rows `load` was handed, with no early-return escape** |
@@ -7450,17 +7450,17 @@ And the checks the commands above do not make, each verifiable in one line:
 - [ ] `grep -rn "app.ledger_entry\|app.inventory_movement\|app.cost_layer\|app.cost_consumption\|app.account_balance\|app.stock_on_hand\|app.employee_ytd" packages/importer/src/` finds **only** `select` statements — nothing under this package writes a protected table (§0.2, hazard 22).
 - [ ] `grep -rin "users\.\?password\|users\.\?pin" packages/importer/src/` prints nothing — Global Constraint 11, proved by T12.
 - [ ] The three ADRs exist and are numbered as allocated: `docs/adr/0084-idempotent-loaders-keyed-on-import-batch.md` (T3), `0085-cut-over-series-and-opening-documents.md` (T7), `0086-cut-over-reconciliation-and-the-explained-difference.md` (T10). `docs/runbooks/cut-over.md` exists and carries the OD-25, OD-26 and OD-27 branches (T11, T12, T15).
-- [ ] All **eight** regression files carry a new `describe(… — 9B)` block and no earlier block is edited (§3.7.3): `sah-003`, `sah-007`, `sah-011`, `sah-022`, `sah-028`, `sah-049`, `sah-051` (twice — T1 and T7), `sah-073`. `git diff main -- tests/regression/ | grep '^-' | grep -v '^---'` prints nothing, which is what "append, never edit" means mechanically.
+- [ ] All **eight** regression files carry a new `describe(… — 9B)` block and no earlier block is edited (§3.7.3): `legacy-003`, `legacy-007`, `legacy-011`, `legacy-022`, `legacy-028`, `legacy-049`, `legacy-051` (twice — T1 and T7), `legacy-073`. `git diff main -- tests/regression/ | grep '^-' | grep -v '^---'` prints nothing, which is what "append, never edit" means mechanically.
 - [ ] Corrections **R1–R43 are already folded into the task text** — an executor types what is written and applies no extra diff. Ten are worth confirming by eye once T3–T12 are typed, each a one-line grep:
   - `grep -rn "runLoad(sql" packages/importer/src/` prints nothing (**R7** — the handle is `conn`).
   - `grep -rn "refsFor\|const EMPTY =" packages/importer/src/load/opening-stock.ts` prints nothing (**R1**, **R8**).
   - `grep -rnE '\.(plus|minus|negated|times|roundToScale|greaterThan)\(' packages/importer/src/load/ | grep -v reconcile-cut-over` prints nothing (**R19** — those are decimal.js's names and only `reconcile-cut-over.ts` holds real `Decimal`s).
   - `grep -rn '"MYR"' packages/importer/src/` prints nothing (**R24** — the currency comes from `baseCurrency()`; `"MYR"` survives only in tests and corpus files).
   - `grep -n 'direction' packages/importer/src/load/recost.ts` shows only `LegacyMovement`'s own `direction: "in" | "out"` field and the two `move.direction === "in" ? …` ternaries that derive `effect` and `costing` from it — **no `direction:` key appears inside the `costingEngine.cost({ movement })` object literal**, whose direction member is `effect` (**R30**).
-  - `grep -rn 'api\.stop()\|@dulja/api/test-support' tests/invariants/support/cut-over.ts tests/invariants/cut-over-reconciliation.test.ts tests/regression/sah-003.test.ts tests/regression/sah-051.test.ts tests/invariants/projection-rebuild.test.ts` prints nothing (**R34** — every one of them reaches the API through `sharedApi()` and none of them stops it).
+  - `grep -rn 'api\.stop()\|@dulja/api/test-support' tests/invariants/support/cut-over.ts tests/invariants/cut-over-reconciliation.test.ts tests/regression/legacy-003.test.ts tests/regression/legacy-051.test.ts tests/invariants/projection-rebuild.test.ts` prints nothing (**R34** — every one of them reaches the API through `sharedApi()` and none of them stops it).
   - `grep -n 'ERR_IMPORT_UNBALANCED_SOURCE' packages/contracts/src/errors.ts` first appears in **T5's** commit, not T2's, and `bun run lint:rules` is green at **every** commit of the branch (**R33**).
   - `grep -rnE 'Number\(|parseFloat' packages/importer/test/ tests/invariants/support/cut-over.ts tests/invariants/cut-over-reconciliation.test.ts` finds no monetary use (**R27** — every total is summed through `Money`; the surviving `Number(...)` calls are a line number, a tax year and `MOPJOB`, none of them money).
-  - `grep -rn 'Users\.PIN\|Users\.Password' tests/regression/sah-028.test.ts` prints nothing (**R39** — 9A's `NEVER_READ` members are `USERS.PASSWORD` and `USERS.PIN`, upper case).
+  - `grep -rn 'Users\.PIN\|Users\.Password' tests/regression/legacy-028.test.ts` prints nothing (**R39** — 9A's `NEVER_READ` members are `USERS.PASSWORD` and `USERS.PIN`, upper case).
   - `grep -rn 'AccountId' packages/importer/src/load/open-items.ts` prints nothing (**R40** — the two members hold codes and are named `controlAccountCode` / `suspenseAccountCode`).
 - [ ] AGENTS.md's "Current phase" section is rewritten (T10 Step 7) — §3.8 makes this the phase-completing slice's own deliverable, and it is the clause easiest to forget.
 

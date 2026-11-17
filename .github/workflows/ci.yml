@@ -35,7 +35,7 @@ jobs:
   # second desktop target, so D1 is unchanged.
   #
   # Owner-approved costing remediations (2026-10-01) resolve acceptance test 7's exact-value tie-out
-  # and SAH-004's purchase reversal. The complete `tests` workspace now joins `database`, with no quarantine.
+  # and LEGACY-004's purchase reversal. The complete `tests` workspace now joins `database`, with no quarantine.
   checks:
     runs-on: windows-latest
     timeout-minutes: 30
@@ -184,7 +184,7 @@ jobs:
       # pieces of coverage that need those two files are not bought here. They are not in the same place:
       #  - the one updater spec that reads `resources/app-update.yml` does run at release time —
       #    `.github/workflows/release.yml` runs `test:electron` straight after its full `dist`;
-      #  - `tests/regression/sah-087.test.ts`'s "— 0E" block runs in no CI job on either workflow, and
+      #  - `tests/regression/legacy-087.test.ts`'s "— 0E" block runs in no CI job on either workflow, and
       #    since the Windows-only split it is not even loaded. That file lives in `@dulja/tests`, which
       #    the `checks` job's filter list above no longer includes — the same commit that wrote an
       #    earlier version of this comment removed it, so the comment outlived the thing it described

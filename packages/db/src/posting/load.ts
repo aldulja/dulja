@@ -112,7 +112,7 @@ export async function loadSnapshot(tx: Sql, documentId: string): Promise<Documen
           from: docCurrency,
           to: baseCurrency,
           // Already "4.68350000" — ::text preserves numeric(19,8)'s scale; a parseFloat here would be
-          // SAH-012 in the new system.
+          // LEGACY-012 in the new system.
           rate: header.exchange_rate,
           effectiveFrom: header.effective_date,
           source: header.rate_source ?? "unknown",
@@ -391,7 +391,7 @@ export async function loadSnapshot(tx: Sql, documentId: string): Promise<Documen
 
 /** The policy effective for a document: the greatest effective_from <= effectiveDate, ties broken by the
  *  highest version (spec:2172, contracts §4.3.1). The definition is parsed against the schema on the way out,
- *  so a hand-edited or stale row is refused rather than evaluated (SAH-013). */
+ *  so a hand-edited or stale row is refused rather than evaluated (LEGACY-013). */
 export async function resolvePolicy(
   tx: Sql,
   documentTypeId: string,

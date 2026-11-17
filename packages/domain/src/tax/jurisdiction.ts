@@ -13,7 +13,7 @@ export interface ReturnBox {
 
 /** A box's RULE lives in the DEFINITION, not in code: which code kinds feed it, which measure it sums, and
  *  optionally which specific codes. `codes` omitted means "every code of those kinds". A box whose rule is
- *  in TypeScript is SAH-020's hardcoded 0.06 in a different coat. */
+ *  in TypeScript is LEGACY-020's hardcoded 0.06 in a different coat. */
 export interface ReturnBoxDef {
   readonly code: string;
   readonly label: string;
@@ -83,10 +83,10 @@ const AMOUNT_4DP = /^-?\d+\.\d{4}$/;
  * public surface (§4.9.1 names `malaysiaPack`), and a second jurisdiction (GCC, deferred by D21) would call
  * this with its own definitions rather than writing a second summing loop.
  *
- * **The three refusals, all of them SAH-020 or SAH-059:** a regime the pack does not define; a transaction
+ * **The three refusals, all of them LEGACY-020 or LEGACY-059:** a regime the pack does not define; a transaction
  * carrying another regime's id; a transaction dated outside the requested period. Every one is a
  * `TaxError("ERR_TAX_REGIME_MISMATCH")` naming the document and line — never a filtered-out row, because a
- * silently dropped transaction is exactly the "valid query with the period filter missing" of SAH-059 in
+ * silently dropped transaction is exactly the "valid query with the period filter missing" of LEGACY-059 in
  * reverse, and the caller's own SQL is what bounds the period (§4.9.2's index).
  *
  * **The currency is the caller's when it names one** (`input.currency`, the company's base currency) and

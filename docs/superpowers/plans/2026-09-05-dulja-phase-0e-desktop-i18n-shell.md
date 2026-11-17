@@ -20,7 +20,7 @@
 - **Interfaces consumed:** §4.1 (the Plan 0A produced surface — `startDb`, `Db`, `seedTenant`, `Seed`, `uuidv7`, the test `withTenant`); §4.2.3 (`Logger`, `AppEnv`); §4.2.4 (`Problem`, `ErrCode` — rendered here, never raised); §4.2.5 (`PERMISSION`, `PermissionCode` — the five `admin.*` codes the screen displays); §4.2.6 (`JobClient` — a stub only, to satisfy `createApp` in the e2e boot); §4.2.7 (`createApp(deps)`, `ROUTES`, the URL scheme `/v1/admin/*` and `/v1/companies/{companyId}/*`, `packages/contracts/openapi.json`); §4.2.8 (`ProblemSchema`, `ListEnvelope`, `ListQuery`, the `{ amount, currency }` money wire shape, the filter grammar); §4.2.12 (`startApi()`, `tokenFor()`, `ApiRequest`); §4.5.9 (`print_template.engine` — the column whose value set ADR 0016 fixes); §4.10.6 (`window.dulja.pos.*` — the namespace 6B occupies beside this slice's); §4.11.2 (the `reporting.render` job that consumes ADR 0016 in 7A).
 - **Interfaces produced:** `@dulja/i18n` and `@dulja/ui` in full (their public surfaces are not in the registry — see *Contract additions* in the Self-Review); the `window.dulja.auth` / `window.dulja.app` / `window.dulja.print` bridge namespaces beside §4.10.6's `window.dulja.pos`; `scripts/lint/rules/no-hardcoded-string.ts`; the `tests/e2e` Playwright project of §3.7.1; ADR 0016, which `app.print_template.engine` (§4.5.9, 2C) and `renderReport`'s adapter set (§4.11.2, 7A) both consume.
 - **Owner decisions:** **OD-18** (Windows code-signing certificate, OV or EV; spec:2323, §5.3 "0.13") → **Task 13 (isolated)**; default: the unsigned build is produced and verified, with the SmartScreen unsigned-publisher warning **expected and recorded**, and only Task 13 changes when the certificate arrives. **OD-24** (screenshots + a two-minute operator description before any screen; spec:79, 108, 2408, §5.3 "Any UI work") → **Task 7 (isolated)**; default: Task 8 builds the users-and-roles screen against 0B's OpenAPI document with the generic keyboard model of Task 4, and only `apps/backoffice/src/routes/admin/users.tsx` and `apps/backoffice/test/users.test.tsx` change if the owner's material shows a different workflow. **OD-20** (Cloudflare account and a domain) and **OD-22** (Sentry organisation) are 0C's gates; 0E consumes their values and states the local equivalent (`wrangler dev` / a stub DSN) inside Tasks 9 and 12 rather than re-gating them.
-- **Part VI tests owned / re-run:** **owns 23** (RTL/LTR parity — the shell screen in both directions; every later UI slice and 2C/7A/8D for PDFs re-run it). **Re-runs: none.** **§3.0.4 rows owned:** none. **Regression files created / appended:** **creates `tests/regression/sah-085.test.ts`** (i18n completeness — 0E is the first slice in execution order to touch SAH-085); **appends to `tests/regression/sah-087.test.ts`** (created by 0B for the clean-runner build; 0E adds the `— 0E` block asserting the packaged installer carries no build-machine path).
+- **Part VI tests owned / re-run:** **owns 23** (RTL/LTR parity — the shell screen in both directions; every later UI slice and 2C/7A/8D for PDFs re-run it). **Re-runs: none.** **§3.0.4 rows owned:** none. **Regression files created / appended:** **creates `tests/regression/legacy-085.test.ts`** (i18n completeness — 0E is the first slice in execution order to touch LEGACY-085); **appends to `tests/regression/legacy-087.test.ts`** (created by 0B for the clean-runner build; 0E adds the `— 0E` block asserting the packaged installer carries no build-machine path).
 - **Shared namespaces this slice writes into:** document-type codes (§4.14) — **none**; account codes (§4.15) — **none seeded, none consumed**; report codes (§4.16.1) and `DatasetId` members (§4.16.2) — **none**; `fixtures.ts` helpers (§4.17) — **none** (§4.17 assigns 0E no row; `packages/db/test/fixtures.ts` is not modified by any task in this plan). It adds **no `ERR_*` code** (§4.2.4) and **no permission code** (§3.6.2): the shell renders problems and reads the catalogue, it raises neither.
 - **Never re-decide:** D1–D27 (spec:114–142) — in particular **D2** (Electron + electron-builder, not PWA, not Tauri), **D10** (React 19, Vite, TanStack, RHF, Tailwind, shadcn/ui, i18next), **D18** (POS hardware out of scope; Windows printer drivers via Electron) and **D5** (Vitest runs under Node 24). Every name in the contracts document is frozen — a needed change goes to that document first.
 - **Contracts version:** 2026-09-05.
@@ -52,21 +52,21 @@ Copied verbatim from the spec. Every task's requirements implicitly include this
 **Never** (spec:97–104), at any phase, for any reason:
 - write to a ledger or movement table outside the posting service;
 - represent money as a float, anywhere, including in TypeScript;
-- build SQL by string concatenation (SAH-036/037/069);
-- issue DDL from application code (SAH-053);
-- disable an invariant, constraint or trigger "temporarily" (SAH-027, 041, 053);
-- gate an audit write on any flag (SAH-030);
+- build SQL by string concatenation (LEGACY-036/037/069);
+- issue DDL from application code (LEGACY-053);
+- disable an invariant, constraint or trigger "temporarily" (LEGACY-027, 041, 053);
+- gate an audit write on any flag (LEGACY-030);
 - hard-code a package version into a source file — the lockfile owns versions.
 
 **Always** (spec:106), for every new table: `tenant_id`, an RLS policy, `created_at`, a migration, and a test that a second tenant cannot see it. For every new endpoint: Zod schema, OpenAPI entry, idempotency on unsafe methods, and a tenant-isolation test. **For every UI screen: verified in both text directions before merge.**
 
-**Localisation** (spec:2061): "Every user-facing string goes through i18next with an ICU message; a CI check fails any hard-coded string in a component. Both catalogues must be complete before merge — no empty `msgstr`, no source-language fallbacks in the other language (SAH-085)."
+**Localisation** (spec:2061): "Every user-facing string goes through i18next with an ICU message; a CI check fails any hard-coded string in a component. Both catalogues must be complete before merge — no empty `msgstr`, no source-language fallbacks in the other language (LEGACY-085)."
 
 **Frontend and UX standards** (spec:2251–2256): "**Design system** with tokens; one component library; documented in Storybook." · "**Accessibility: WCAG 2.2 AA** — keyboard operability, focus management, contrast, screen-reader labels. Keyboard operability is also what makes the app fast for your own staff." · "**RTL and LTR parity** on every screen and every generated PDF, including numerals, Hijri and Gregorian dates, and column order. The old system did this well; do not regress it." · "**Keyboard-first data entry** for high-volume screens: tab order, type-ahead pickers, keyboard shortcuts, no mouse required to enter an invoice. This is the single biggest adoption risk in replacing a mature desktop app." · "Optimistic UI with clear pending/failed states; offline-tolerant POS." · "Empty states, inline help, and a searchable in-app documentation surface."
 
 **Security posture for Electron** (spec:1284), verbatim and not optional: "`contextIsolation: true`, `nodeIntegration: false`, `sandbox: true` for renderers; a strict Content-Security-Policy; all privileged operations (SQLite, printing, sync) behind a **typed `contextBridge` API**, never raw Node in the renderer; renderer navigation locked to the app's own origin."
 
-**The UI is not specified here** (spec:108): "Before beginning any screen, request from the owner: screenshots of the equivalent Sahlisoft screen, and a two-minute description of how a fast operator uses it. Design the new screen to be *at least as fast by keyboard*. Do not invent workflows from this document."
+**The UI is not specified here** (spec:108): "Before beginning any screen, request from the owner: screenshots of the equivalent legacy screen, and a two-minute description of how a fast operator uses it. Design the new screen to be *at least as fast by keyboard*. Do not invent workflows from this document."
 
 **Money** (spec:2041): "`numeric(19,4)` in Postgres. In TypeScript, `Money` is an opaque type wrapping `decimal.js`, carrying its currency; the compiler rejects adding MYR to USD. Display rounding applies the currency's policy at render time; **stored base amounts are never recomputed on read.** No `number` type ever holds a monetary value — a lint rule enforces it."
 
@@ -104,7 +104,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 | Clause | Task | Evidence |
 |---|---|---|
 | `en` and `ar` catalogues, ICU, Hijri | 1, 2 | `packages/i18n/test/catalogue.test.ts`, `format.test.ts` |
-| Both catalogues complete before merge | 3 | `packages/i18n/test/completeness.test.ts`, `tests/regression/sah-085.test.ts` |
+| Both catalogues complete before merge | 3 | `packages/i18n/test/completeness.test.ts`, `tests/regression/legacy-085.test.ts` |
 | A hard-coded string fails CI | 3 | `tests/invariants/lint-rules.test.ts` + `bun run lint:rules` |
 | Tailwind logical properties | 4 | `packages/ui/test/logical-properties.test.ts` |
 | `dir` switching | 4, 5 | `packages/ui/test/direction.test.tsx`, `apps/backoffice/test/shell.test.tsx` |
@@ -195,8 +195,8 @@ Created or modified by this plan, in order of appearance. One responsibility per
 │  ├─ e2e/support/global-teardown.ts             stops it again
 │  ├─ e2e/rtl-parity.spec.ts                     ACCEPTANCE TEST 23
 │  ├─ invariants/lint-rules.test.ts              the no-hardcoded-string proof
-│  ├─ regression/sah-085.test.ts                 CREATED here
-│  └─ regression/sah-087.test.ts                 MODIFY — append the "— 0E" describe block
+│  ├─ regression/legacy-085.test.ts                 CREATED here
+│  └─ regression/legacy-087.test.ts                 MODIFY — append the "— 0E" describe block
 └─ CLAUDE.md                                     MODIFY (last task) — "Current phase": Phase 0 complete, Phase 1 next
 ```
 
@@ -515,7 +515,7 @@ export async function createI18n(opts: CreateI18nOptions = {}): Promise<i18n> {
   await instance.use(ICU).init({
     lng: opts.locale ?? DEFAULT_LOCALE,
     supportedLngs: [...LOCALES],
-    fallbackLng: false,          // SAH-085: a missing Arabic string must show as missing, never as English
+    fallbackLng: false,          // LEGACY-085: a missing Arabic string must show as missing, never as English
     returnNull: false,
     resources: Object.fromEntries(
       LOCALES.map((locale) => [locale, { translation: catalogues[locale] }]),
@@ -541,7 +541,7 @@ export { DEFAULT_LOCALE, dirFor, isLocale, LOCALES, type Dir, type Locale } from
 bun run --cwd packages/i18n test
 ```
 
-Expected: PASS — 9 tests in `packages/i18n/test/catalogue.test.ts` (counts in this plan are always per file). If the Arabic dual assertion fails, the `two` branch of `admin.users.count` is missing from `ar.json`; add it rather than weakening the test (Arabic has six plural categories and the dual is the one English speakers forget — SAH-085's family of defect).
+Expected: PASS — 9 tests in `packages/i18n/test/catalogue.test.ts` (counts in this plan are always per file). If the Arabic dual assertion fails, the `two` branch of `admin.users.count` is missing from `ar.json`; add it rather than weakening the test (Arabic has six plural categories and the dual is the one English speakers forget — LEGACY-085's family of defect).
 
 - [ ] **Step 8: Write ADR 0018**
 
@@ -554,7 +554,7 @@ Expected: PASS — 9 tests in `packages/i18n/test/catalogue.test.ts` (counts in 
 
 ## Context
 spec:2061 requires every user-facing string to go through i18next with an ICU message, both catalogues
-complete before merge, "no empty `msgstr`, no source-language fallbacks in the other language (SAH-085)".
+complete before merge, "no empty `msgstr`, no source-language fallbacks in the other language (LEGACY-085)".
 The legacy system shipped 13,778 entries with 122 empty translations and 61 untranslated Arabic strings
 reaching English users. The format has to make those two states mechanically detectable.
 
@@ -911,12 +911,12 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 ---
 
-### Task 3: The localisation CI gate — completeness checker, `no-hardcoded-string` lint, `sah-085`
+### Task 3: The localisation CI gate — completeness checker, `no-hardcoded-string` lint, `legacy-085`
 
 This task delivers the whole of DoD 0.12's second clause, "a hard-coded string fails CI", and the "both catalogues complete before merge" half of spec:2061. It has two TDD cycles: the checker, then the lint rule.
 
 **Files:**
-- Create: `packages/i18n/src/completeness.ts`, `packages/i18n/test/completeness.test.ts`, `scripts/lint/rules/no-hardcoded-string.ts`, `tests/invariants/lint-rules.test.ts`, `tests/regression/sah-085.test.ts`
+- Create: `packages/i18n/src/completeness.ts`, `packages/i18n/test/completeness.test.ts`, `scripts/lint/rules/no-hardcoded-string.ts`, `tests/invariants/lint-rules.test.ts`, `tests/regression/legacy-085.test.ts`
 - Modify: `packages/i18n/src/index.ts`, `scripts/lint/rules/dependency-rule.ts` (verify, extend only if needed), `tests/tsconfig.json`
 
 **Interfaces:**
@@ -976,12 +976,12 @@ describe("checkCatalogues", () => {
     expect(v[0]).toMatchObject({ locale: "ar", key: "a.c", rule: "missing_key" });
   });
 
-  it("reports an empty translation (SAH-085: 122 empty entries shipped)", () => {
+  it("reports an empty translation (LEGACY-085: 122 empty entries shipped)", () => {
     const v = checkCatalogues({ en: { "a.b": "Hello" }, ar: { "a.b": "   " } });
     expect(rules(v)).toEqual(["empty_value"]);
   });
 
-  it("reports trailing whitespace (SAH-085: 232 entries)", () => {
+  it("reports trailing whitespace (LEGACY-085: 232 entries)", () => {
     const v = checkCatalogues({ en: { "a.b": "Hello " }, ar: { "a.b": "مرحبا" } });
     expect(v).toEqual([
       { locale: "en", key: "a.b", rule: "trailing_whitespace", detail: 'value is "Hello " — trim it' },
@@ -993,13 +993,13 @@ describe("checkCatalogues", () => {
     expect(rules(v)).toEqual(["source_language_fallback", "wrong_script"]);
   });
 
-  it("reports Arabic reaching an English value (SAH-085: 61 untranslated strings, two of them dialogs)", () => {
+  it("reports Arabic reaching an English value (LEGACY-085: 61 untranslated strings, two of them dialogs)", () => {
     const v = checkCatalogues({ en: { "a.b": "هل تريد حفظ التعديلات ؟" }, ar: { "a.b": "هل تريد حفظ التعديلات ؟" } });
     expect(rules(v)).toContain("wrong_script");
     expect(v.some((x) => x.locale === "en" && x.rule === "wrong_script")).toBe(true);
   });
 
-  it("reports a raw component name shipped as UI text (SAH-085: \"TBXToolbar3\")", () => {
+  it("reports a raw component name shipped as UI text (LEGACY-085: \"TBXToolbar3\")", () => {
     const v = checkCatalogues({ en: { "a.b": "TBXToolbar3" }, ar: { "a.b": "TBXToolbar3" } });
     expect(rules(v)).toContain("component_name_leak");
   });
@@ -1048,14 +1048,14 @@ export const CATALOGUE_RULES = [
 const EXEMPT_PREFIXES = ["app.endonym."];
 const ARABIC = /[؀-ۿݐ-ݿ]/;
 const LATIN_WORD = /[A-Za-z]{2,}/;
-/** A raw identifier shipped as UI text — the "TBXToolbar3" shape of SAH-085. */
+/** A raw identifier shipped as UI text — the "TBXToolbar3" shape of LEGACY-085. */
 const COMPONENT_NAME = /^[A-Z][A-Za-z]*\d+$/;
 
 const exempt = (key: string): boolean => EXEMPT_PREFIXES.some((p) => key.startsWith(p));
 
 /**
  * The mechanical half of spec:2061 — "Both catalogues must be complete before merge — no empty
- * `msgstr`, no source-language fallbacks in the other language (SAH-085)". Every rule below names a
+ * `msgstr`, no source-language fallbacks in the other language (LEGACY-085)". Every rule below names a
  * concrete failure the legacy build shipped.
  */
 export function checkCatalogues(
@@ -1285,15 +1285,15 @@ bun run --cwd tests test -- lint-rules
 
 Expected: PASS — 9 tests in `tests/invariants/lint-rules.test.ts`. The last one ("zero violations across the shipped UI trees") passes vacuously now — `walk` returns `[]` for a directory that does not exist yet, which is why the `existsSync` guard is in it. It becomes load-bearing from Task 4 onward and must never be deleted.
 
-- [ ] **Step 10: Create the regression file `tests/regression/sah-085.test.ts`**
+- [ ] **Step 10: Create the regression file `tests/regression/legacy-085.test.ts`**
 
-0E is the first slice in execution order to touch SAH-085, so it **creates** the file with a `— 0E` block (§3.7.3); later UI slices append their own blocks and never edit this one.
+0E is the first slice in execution order to touch LEGACY-085, so it **creates** the file with a `— 0E` block (§3.7.3); later UI slices append their own blocks and never edit this one.
 
 ```ts
 import { describe, expect, it } from "vitest";
 import { CATALOGUES, checkCatalogues, createI18n, LOCALES } from "@dulja/i18n";
 
-describe("SAH-085 The English build was never proofread — 0E", () => {
+describe("LEGACY-085 The English build was never proofread — 0E", () => {
   it("no translation is empty (the legacy build shipped 122)", () => {
     expect(checkCatalogues().filter((v) => v.rule === "empty_value")).toEqual([]);
   });
@@ -1356,7 +1356,7 @@ Expected: both green; `lint:rules` prints nothing and exits 0.
 
 ```bash
 git add packages/i18n scripts/lint tests
-git commit -m "feat(i18n): catalogue completeness checker, no-hardcoded-string lint, sah-085 [0E T3]
+git commit -m "feat(i18n): catalogue completeness checker, no-hardcoded-string lint, legacy-085 [0E T3]
 
 The two CI checks spec:2061 requires: both catalogues complete, and a hard-coded
 string in packages/ui/src or apps/backoffice/src fails the build.
@@ -3319,7 +3319,7 @@ This is the whole of OD-24 for this slice, isolated in one task per contracts §
 
 Ask the owner, in writing, for exactly two things:
 
-> 1. Screenshots of the equivalent Sahlisoft screen for managing users and their permissions — the list view and whatever dialog assigns a role.
+> 1. Screenshots of the equivalent legacy screen for managing users and their permissions — the list view and whatever dialog assigns a role.
 > 2. A two-minute description of how a fast operator uses it: which keys they press, in what order, and what they never touch the mouse for.
 
 - [ ] **Step 2: Verify the material arrived**
@@ -4222,7 +4222,7 @@ Any failure here is a defect in Tasks 4–8, not in this spec file. The three th
 |---|---|---|
 | `textAlign` is `left`, not `start` | a physical Tailwind class reached a component | add the pattern to `PHYSICAL_PROPERTY_PATTERNS` and fix the component; `packages/ui/test/logical-properties.test.ts` then guards it |
 | `firstRtl.x` is not greater than `firstLtr.x` | `dir` is on a wrapper `div` rather than `documentElement` | `DirectionProvider` must set it on the root (Task 4) |
-| the Arabic ICU plural renders as the key | `admin.users.count` lacks a plural category the count needs | add it to `ar.json`; `sah-085` and `catalogue.test.ts` cover it thereafter |
+| the Arabic ICU plural renders as the key | `admin.users.count` lacks a plural category the count needs | add it to `ar.json`; `legacy-085` and `catalogue.test.ts` cover it thereafter |
 
 ```bash
 bun run e2e
@@ -5097,7 +5097,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 **Files:**
 - Create: `apps/desktop/electron-builder.yml`, `apps/desktop/src/updater.ts`, `apps/desktop/src/sentry.ts`, `docs/adr/0017-electron-builder-bun-workspace.md`
-- Modify: `apps/desktop/src/main.ts`, `apps/desktop/package.json`, `tests/regression/sah-087.test.ts` (append the `— 0E` block)
+- Modify: `apps/desktop/src/main.ts`, `apps/desktop/package.json`, `tests/regression/legacy-087.test.ts` (append the `— 0E` block)
 - Test: `apps/desktop/test/native-module.spec.ts`, `apps/desktop/test/updater.spec.ts`
 
 **Interfaces:**
@@ -5278,9 +5278,9 @@ bun run --cwd apps/desktop test:electron
 
 Expected: PASS — 4 posture + 2 bridge + 1 native-module + 1 updater specs.
 
-- [ ] **Step 6: Append the `— 0E` block to `tests/regression/sah-087.test.ts`**
+- [ ] **Step 6: Append the `— 0E` block to `tests/regression/legacy-087.test.ts`**
 
-SAH-087 is "Hardcoded developer build paths in shipped metadata: `W:\Work\delphi\jobs\…`. The build is machine-bound." 0B created the file for the clean-runner fact; **append**, never edit an earlier block (§3.7.3):
+LEGACY-087 is "Hardcoded developer build paths in shipped metadata: `W:\Work\delphi\jobs\…`. The build is machine-bound." 0B created the file for the clean-runner fact; **append**, never edit an earlier block (§3.7.3):
 
 Append these imports at the top of the file first — **if 0B's block already imports a name, keep the single existing import rather than adding a second statement**:
 
@@ -5303,7 +5303,7 @@ const walkFiles = async (dir: string, out: string[] = []): Promise<string[]> => 
   return out;
 };
 
-describe("SAH-087 Hardcoded developer build paths in shipped metadata — 0E", () => {
+describe("LEGACY-087 Hardcoded developer build paths in shipped metadata — 0E", () => {
   const INSTALLER_DIR = resolve(__dirname, "../../apps/desktop/dist-installer");
   const built = existsSync(INSTALLER_DIR);
 
@@ -5374,10 +5374,10 @@ _(fill in from the Step 5 run — the exact command, the exact output, and which
 - [ ] **Step 8: Commit**
 
 ```bash
-git add apps/desktop docs/adr/0017-electron-builder-bun-workspace.md tests/regression/sah-087.test.ts
+git add apps/desktop docs/adr/0017-electron-builder-bun-workspace.md tests/regression/legacy-087.test.ts
 git commit -m "feat(desktop): electron-builder installer, auto-update, Sentry, better-sqlite3 ABI [0E T12]
 
-ADR 0017 records the two ⚠️ verifications spec:2323 demands. sah-087 gains the 0E block:
+ADR 0017 records the two ⚠️ verifications spec:2323 demands. legacy-087 gains the 0E block:
 no build-machine path reaches shipped metadata.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
@@ -6011,7 +6011,7 @@ Expected: green. Then confirm each named test by file:
 | 0.9 Money + rates | 0D | | |
 | 0.10 dimensions + custom fields | 0D | | |
 | 0.11 pg-boss | 0D | | |
-| **0.12 i18n/RTL shell** | **0E** | | `tests/e2e/rtl-parity.spec.ts`, `tests/regression/sah-085.test.ts` |
+| **0.12 i18n/RTL shell** | **0E** | | `tests/e2e/rtl-parity.spec.ts`, `tests/regression/legacy-085.test.ts` |
 | **0.13 Electron shell** | **0E** | | `apps/desktop/test/*.spec.ts`, `docs/runbooks/clean-vm-install.md`; ⚠️ OD-18 |
 | 0.14 observability | 0C | | ⚠️ OD-22 |
 | 0.15 ADRs + CONTRIBUTING + PR template | 0A | | |
@@ -6102,8 +6102,8 @@ Run against the spec and the contracts document with fresh eyes, per the writing
 | §5.3 "Any UI work" screenshots | 7 | OD-24, isolated |
 | Part VI test 23 | 9 | **owned** |
 | Part VII #11 ("The UI … must be sourced separately") | 7 | the whole reason Task 7 exists and is a gate |
-| SAH-085 | 3 | `tests/regression/sah-085.test.ts` created |
-| SAH-087 | 12 | appended, not edited (§3.7.3) |
+| LEGACY-085 | 3 | `tests/regression/legacy-085.test.ts` created |
+| LEGACY-087 | 12 | appended, not edited (§3.7.3) |
 
 **Gaps deliberately left, with where they close:** the PDF half of test 23 (2C for documents, 7A for reports, 8D for payslips — each re-runs test 23 per contracts §6.1); `apps/pos` and `pos.exe` (6B, which re-uses `packages/ui`, `packages/i18n` and the `apps/desktop` main-process code and adds `window.dulja.pos.*` per §4.10.6); every screen after the first (each slice with a screen task carries its own OD-24 gate, hazard 29).
 
@@ -6122,9 +6122,9 @@ Checked every name used across task boundaries:
 | Name | Defined | Used |
 |---|---|---|
 | `Locale`, `Dir`, `dirFor`, `LOCALES`, `isLocale`, `DEFAULT_LOCALE` | T1 | T2 (`FormatContext.locale`), T4 (`DirectionProvider`), T5 (`LocaleSwitcher`) |
-| `createI18n`, `CATALOGUES`, `Catalogue`, `TranslationKey` | T1 | T3 (`checkCatalogues` default), T5 (`AppShell`), sah-085 |
+| `createI18n`, `CATALOGUES`, `Catalogue`, `TranslationKey` | T1 | T3 (`checkCatalogues` default), T5 (`AppShell`), legacy-085 |
 | `FormatContext`, `MoneyJson`, `formatDate`, `formatTimestamp` | T2 | T8 (the `createdAt` column uses `formatTimestamp`, because 0B returns a `timestamptz`, not a `date`) |
-| `checkCatalogues`, `CatalogueViolation`, `CATALOGUE_RULES` | T3 | sah-085 |
+| `checkCatalogues`, `CatalogueViolation`, `CATALOGUE_RULES` | T3 | legacy-085 |
 | `rule` (`no-hardcoded-string`) | T3 | `tests/invariants/lint-rules.test.ts`, `bun run lint:rules` |
 | `PHYSICAL_PROPERTY_PATTERNS`, `tailwindPreset` | T4 | `packages/ui/test/logical-properties.test.ts`, `apps/backoffice/tailwind.config.ts` |
 | `DirectionProvider`, `useDirection`, `DirectionValue` | T4 | T4 (`DataGrid`), T5 (`AppShell`) |
@@ -6159,7 +6159,7 @@ An independent audit against the contracts document, Plan 0A and the spec found 
 7. **`AppShell`'s locale switch changed `dir` but not the strings.** `changeLanguage` is async and fires no React update, so the shell committed English text and never re-rendered. **T5 Step 6** now records the applied language in state and derives `t` from `i18n.getFixedT(language)`, with `DirectionProvider` driven by the same value so direction and strings flip in one commit.
 8. **`users.test.tsx` rendered `UsersRoute` — which calls `useQuery` twice — with no `QueryClientProvider`.** `renderScreen` now wraps a fresh `QueryClient` (retries off) per test.
 9. **Four assertions could not pass as written**, each verified against the code in the step that produces the value: the Arabic-Indic digit test asserted a contiguous `١٢٣٤` where CLDR inserts U+066C (verified on Node 24.9.0: the output is `١٬٢٣٤`); the CSP test's negative lookahead saw `style-src`'s `unsafe-inline` and so never matched a correct policy (now asserted per directive); the DataGrid empty-state test counted one `row` where the implementation renders two (header + the `colSpan` empty cell); and the login keyboard test tabbed past the e-mail field, which `autoFocus` already owns (it now asserts that focus and drives from there, leaving the real tab order to the e2e spec, where it is meaningful).
-10. **Two tests exercised nothing.** The problem-envelope test never activated a row, so the Assign button was `disabled` and no request was ever made; and the `sah-087` append pointed at the synchronous `{ path, text }[]` `walk` of `lint-rules.test.ts` while treating its members as path strings, which made the whole loop dead. Both now do what they claim, and the sah-087 block asserts that it inspected at least one file before asserting it found nothing.
+10. **Two tests exercised nothing.** The problem-envelope test never activated a row, so the Assign button was `disabled` and no request was ever made; and the `legacy-087` append pointed at the synchronous `{ path, text }[]` `walk` of `lint-rules.test.ts` while treating its members as path strings, which made the whole loop dead. Both now do what they claim, and the legacy-087 block asserts that it inspected at least one file before asserting it found nothing.
 11. **The e2e stack is cross-origin and nothing served CORS.** §4.2.3's middleware chain has no CORS entry — correctly, since production serves the app from the API's origin — so the harness supplies it: `cors()` on the auth stub, and a thin Hono front in `boot.ts` that answers the preflight and delegates to `createApp`'s own `fetch`, exposing `x-request-id` for `toApiError`.
 12. **`grantAdminRole` was declared without `export`** though contracts §4.17.1 registers it as the fixture later UI slices re-use; it is exported now. In the same block, `role_assignment` and `role_permission` deliberately carry **no `id`** — plan0A:1331 marks `role_assignment` "a join table (no id/created_at — linter rule)" and plan0A:1322 gives `role_permission` a `(role_id, permission_code)` primary key — so only `role`'s id is pre-generated, and the comment now says so.
 

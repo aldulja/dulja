@@ -3,7 +3,7 @@ import type { Env } from "./env";
 /**
  * The environment the container process receives (§3.11, spec:2273). Two names are deliberately absent:
  * SUPABASE_SERVICE_ROLE_KEY is the seed CLI's alone, and DATABASE_URL_MIGRATOR would let a serving process run DDL
- * (spec:104, SAH-053). An unset optional is omitted rather than passed empty, so readConfig() fails loudly at boot.
+ * (spec:104, LEGACY-053). An unset optional is omitted rather than passed empty, so readConfig() fails loudly at boot.
  */
 export function containerSecrets(env: Env, entrypoint: "api" | "worker"): Record<string, string> {
   const output: Record<string, string> = {

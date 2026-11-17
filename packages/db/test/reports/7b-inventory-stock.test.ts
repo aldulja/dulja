@@ -23,7 +23,7 @@ import {
 } from "../../../../tests/invariants/support/reports";
 
 /**
- * 7B Task 5 — stock ageing over the layers (SAH-055: read, never recomputed), the movement register and the
+ * 7B Task 5 — stock ageing over the layers (LEGACY-055: read, never recomputed), the movement register and the
  * expiry list (§4.16.1).
  *
  * The fixture (`reportFixture(…, { inventory: true })`): 40 received at 5.0000 into WH-HQ on 2026-01-06, 6
@@ -38,7 +38,7 @@ const EXPIRY = "inventory.expiry_list";
  *  this value reaches `valuationAsOf` through `TieOutOptions.asOf` alone. */
 const AS_OF = "2026-01-31";
 
-describe("7B stock ageing, movement register and expiry list (§4.16.1, SAH-055)", () => {
+describe("7B stock ageing, movement register and expiry list (§4.16.1, LEGACY-055)", () => {
   let db: Db;
   let f: ReportFixture;
 
@@ -98,7 +98,7 @@ describe("7B stock ageing, movement register and expiry list (§4.16.1, SAH-055)
     expect(d.columns.map((c) => c.field)).not.toContain("age_bucket");
   });
 
-  it("SAH-055: the ageing rows ARE the layers — every row's residue is a layer's qty_remaining", async () => {
+  it("LEGACY-055: the ageing rows ARE the layers — every row's residue is a layer's qty_remaining", async () => {
     await read(async (tx) => {
       // LEFT of every comparison is a `DatasetRow`'s snake_case alias (A3); RIGHT is 3B's camelCase
       // `CostLayerRow` member. `openLayersOf` takes an `asOf`; the REPORT does not.

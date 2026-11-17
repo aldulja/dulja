@@ -42,7 +42,7 @@ export const priceListLine = app.table(
     // mirrored the same way — the migration owns the predicate. The two CHECK constraints
     // (`price_list_line_min_quantity_check`, `price_list_line_unit_price_check`) are split the same way.
     index("price_list_line_item_idx").on(table.itemId, table.priceListId),
-    // 7B, migration 0077 (SAH-070) — NOT partial: inventory.price_list's item cut, archived lines included.
+    // 7B, migration 0077 (LEGACY-070) — NOT partial: inventory.price_list's item cut, archived lines included.
     index("price_list_line_item_any_idx").on(table.itemId),
   ],
 );

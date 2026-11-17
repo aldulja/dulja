@@ -125,7 +125,7 @@ describe("containerSecrets — the §3.11 inventory the container receives (spec
       expect(containerSecrets(env, entrypoint), entrypoint).not.toHaveProperty("LEGACY_ODBC_DSN");
     const cutOver = {
       ...env,
-      LEGACY_ODBC_DSN: "DSN=sahlisoft;UID=reader;PWD=fixture",
+      LEGACY_ODBC_DSN: "DSN=legacy;UID=reader;PWD=fixture",
     } as unknown as Env;
     // The admin.import.run handler reads the legacy database from the worker; the API only enqueues it.
     expect(containerSecrets(cutOver, "worker")["LEGACY_ODBC_DSN"]).toBe(cutOver.LEGACY_ODBC_DSN);
@@ -143,7 +143,7 @@ describe("containerSecrets — the §3.11 inventory the container receives (spec
       );
     const cutOver = {
       ...env,
-      LEGACY_ODBC_DSN: "DSN=sahlisoft;UID=reader;PWD=fixture",
+      LEGACY_ODBC_DSN: "DSN=legacy;UID=reader;PWD=fixture",
       LEGACY_IMPORT_TARGET:
         "01930000-0000-7000-8000-000000000001:01930000-0000-7000-8000-000000000002",
     } as unknown as Env;
@@ -193,7 +193,7 @@ describe("containerSecrets — the §3.11 inventory the container receives (spec
     expect(Object.values(containerSecrets(withKey, "api"))).not.toContain("sb-secret");
   });
 
-  it("never passes the migrator URL — the container must not be able to run DDL (spec:104, SAH-053)", () => {
+  it("never passes the migrator URL — the container must not be able to run DDL (spec:104, LEGACY-053)", () => {
     const withMigrator = {
       ...env,
       DATABASE_URL_MIGRATOR: "postgres://app_migrator:pw@db.ref.supabase.co:5432/postgres",

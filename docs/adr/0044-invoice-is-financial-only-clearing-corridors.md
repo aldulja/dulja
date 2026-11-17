@@ -35,7 +35,7 @@ rather than recomputing it.
 - **`1250` and `2150` become testable invariants**, not descriptive accounts: a non-zero balance means
   goods delivered and not yet invoiced, or received and not yet invoiced, and nothing else. Tasks 6
   and 7 assert `0.0000` after each pair.
-- **One physical movement keeps one cost** (spec:1228, SAH-009). Relieving `1250` by a recomputed
+- **One physical movement keeps one cost** (spec:1228, LEGACY-009). Relieving `1250` by a recomputed
   figure would leave a residue after every `inventory.cost.replay`.
 - **A sales invoice cannot be raised without a delivery for a product line.** The refusal is
   mechanical, not procedural: with no linked delivery there is no cost on the line, the evaluator
@@ -106,4 +106,4 @@ this ADR's open consequence for the owner.
   `quantity` and no `unit_quantity` (a partial conversion's entered quantity need not be exact at 6 dp, and
   0032's trigger would refuse an inexact pair); its stored `amount` is the figure that posts. A reader that
   re-extends such a line's price must go through `enteredQuantity`, never `unit_price × quantity`.
-  Proven by `packages/db/test/ar-ap/entered-unit-price.test.ts` and SAH-066's `review 2026-11-15` block.
+  Proven by `packages/db/test/ar-ap/entered-unit-price.test.ts` and LEGACY-066's `review 2026-11-15` block.

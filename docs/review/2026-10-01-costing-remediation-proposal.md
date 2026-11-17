@@ -6,7 +6,7 @@ and PostgreSQL 18 Testcontainers. Eleven cases ran: nine passed and the two know
 | Failure | Observed result | Proposed decision |
 | --- | --- | --- |
 | Acceptance test 7, back-dated purchase | Valuation `167.0589`; inventory ledger `167.0570` | Store each receipt layer's exact value and price covered issues from the decrease in that exact layer valuation. Rounded unit costs remain display figures. |
-| SAH-004, reverse the second purchase | Remaining quantity `100.000000`; unit cost `15.0000` rather than `10.0000` | A full reversal of an untouched purchase cancels that purchase's own quantity and original value. Refuse a full reversal if its source layer has already been consumed or is awaiting recost. Ordinary returns retain their policy. |
+| LEGACY-004, reverse the second purchase | Remaining quantity `100.000000`; unit cost `15.0000` rather than `10.0000` | A full reversal of an untouched purchase cancels that purchase's own quantity and original value. Refuse a full reversal if its source layer has already been consumed or is awaiting recost. Ordinary returns retain their policy. |
 
 The concrete proposals are appended to
 [ADR 0039](../adr/0039-stock-valuation-is-an-as-of-snapshot-and-cost-layer-joins-the-projection-registry.md#accepted-amendment--conserve-exact-layer-value-2026-10-01)
@@ -58,7 +58,7 @@ The source-status and full-return-chain fixtures now consume an older receipt un
 ## Completed verification before publishing
 
 - Acceptance workspace: 503 passed, five existing planned skips; both original failing cases pass.
-- New PostgreSQL safety/history/replay/migration cases: 11 passed. The three-file follow-up for transfers, return chains and those cases passes all 41 checks; SAH-017 passes all 10 cases separately.
+- New PostgreSQL safety/history/replay/migration cases: 11 passed. The three-file follow-up for transfers, return chains and those cases passes all 41 checks; LEGACY-017 passes all 10 cases separately.
 - New exact-value schema constraints: all 13 layer/schema cases pass, including required and nonnegative value checks.
 - Domain suite: 227 passed. Golden/lint suites: 75 passed, with no golden fixture changes; the tightened migration DML allowance also passes the lint suite separately.
 - Typecheck: all 12 workspaces. Lint, all 11 custom rules, formatting, all four contract gates, and unchanged regenerated OpenAPI pass.

@@ -147,7 +147,7 @@ describe("createHttpTransmitter — submit", () => {
     expect(res.externalId).toBe("R-3");
   });
 
-  it("maps an UNKNOWN remote label to error rather than to accepted (SAH-020)", async () => {
+  it("maps an UNKNOWN remote label to error rather than to accepted (LEGACY-020)", async () => {
     server = await startStubServer({ submit: { state: "in_review", receiptId: "R-4" } });
     const t = createSyntheticTransmitter({ profile: server.profile, env: ENV });
     const res = await t.submit(t.canonicalise(snapshotFixture()), CREDS);

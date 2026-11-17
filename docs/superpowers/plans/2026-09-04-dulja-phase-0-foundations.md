@@ -8,7 +8,7 @@
 
 **Tech Stack:** Bun 1.4 (install, scripts, build) · Node 24 LTS (runs Vitest) · TypeScript strict · Turborepo · oxlint + oxfmt · PostgreSQL 18 (`postgres:18` image) · `postgres` (postgres.js) · `@testcontainers/postgresql` · Vitest · GitHub Actions.
 
-**Spec:** `docs/spec/rebuild-spec.md` v1.2 (moved there in Task 1; currently `rebuild-spec.md` at the project root). Sections this plan implements: §3.8 (reference schema, all of it), §3.9 (conventions), §5.0 tasks 0.1, 0.3, 0.4, 0.7 (tables + query), 0.8, 0.15, and the local-development half of 0.2. Companion: `docs/spec/sahlisoft-accounting-analysis.md`.
+**Spec:** `docs/spec/rebuild-spec.md` v1.2 (moved there in Task 1; currently `rebuild-spec.md` at the project root). Sections this plan implements: §3.8 (reference schema, all of it), §3.9 (conventions), §5.0 tasks 0.1, 0.3, 0.4, 0.7 (tables + query), 0.8, 0.15, and the local-development half of 0.2. Companion: `docs/spec/legacy-system-analysis.md`.
 
 ## Global Constraints
 
@@ -17,14 +17,14 @@ Copied from the spec; every task's requirements include these.
 - **Never** write to a ledger or movement table outside the posting service (§0.2). In this plan nothing writes to `ledger_entry` except tests proving the constraints.
 - **Never** represent money as a float, anywhere (§0.2, D11). SQL money columns are `numeric(19,4)`; quantities `numeric(19,6)`.
 - **Never** build SQL by string concatenation (§0.2). Tests use postgres.js tagged templates; the only `sql.unsafe` is the migration runner executing a whole migration file, which contains no user input.
-- **Never** issue DDL from application code (§0.2, SAH-053). DDL lives only in `packages/db/migrations/*.sql`.
+- **Never** issue DDL from application code (§0.2, LEGACY-053). DDL lives only in `packages/db/migrations/*.sql`.
 - **Never** hard-code a package version into a source file (D22). `bun add` latest; the lockfile owns versions; Renovate later.
 - **Always**, for every new table: `tenant_id`, an RLS policy, `FORCE ROW LEVEL SECURITY`, `created_at`, a migration, a test that a second tenant cannot see it (§0.2). Exceptions are exactly the global tables named in §3.8: `tenant`, `principal`, `permission`.
 - **Identifiers:** `uuidv7()` server-side (§3.9). **Time:** `timestamptz` in UTC; `effective_date` is a `date` (§3.9). **Naming:** `snake_case`, singular table names (§3.9).
 - **Roles (§3.8, task 0.2):** `app_migrator` (schema owner, subject to FORCE RLS), `app_rw` (API; no `BYPASSRLS`; no UPDATE/DELETE on immutable tables), `app_auth` (`NOLOGIN`, no attributes; owns only `resolve_principal`; reads `principal`/`membership` through policies scoped `to app_auth`). Connections use session mode / direct (5432), never transaction-mode pooling.
 - **Transactions (§3.8):** every database access runs inside a transaction that first issues `set_config('app.tenant_id', …, true)` and `set_config('app.actor_id', …, true)`, at READ COMMITTED.
 - **Migrations (§3.9):** `NNNN_<verb>_<noun>.sql` with a hand-written `NNNN.down.sql`; CI applies up, down, up. Production is forward-only.
-- **Tests (§3.9):** `tests/invariants/` for ledger and tenant isolation; `tests/regression/sah-NNN.test.ts` per Part I defect touched. In this plan the db-level invariants live in `packages/db/test/` and are wired into the root `test` pipeline; the `tests/` tree at the repo root is created in Plan 0B when there is API code to exercise.
+- **Tests (§3.9):** `tests/invariants/` for ledger and tenant isolation; `tests/regression/legacy-NNN.test.ts` per Part I defect touched. In this plan the db-level invariants live in `packages/db/test/` and are wired into the root `test` pipeline; the `tests/` tree at the repo root is created in Plan 0B when there is API code to exercise.
 - **Commits:** conventional commits, small PRs (§4.11). Every commit message in this plan ends with the line `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`.
 
 ---
@@ -111,7 +111,7 @@ Created by this plan, in order of appearance. One responsibility per file.
 
 **Files:**
 - Create: `.gitignore`, `CLAUDE.md`, `docs/adr/0001-adopt-spec-v1-2.md`
-- Move: `rebuild-spec.md` → `docs/spec/rebuild-spec.md`; `sahlisoft-accounting-analysis.md` → `docs/spec/sahlisoft-accounting-analysis.md`
+- Move: `rebuild-spec.md` → `docs/spec/rebuild-spec.md`; `legacy-system-analysis.md` → `docs/spec/legacy-system-analysis.md`
 
 **Interfaces:**
 - Produces: the repository every later task commits into; `docs/spec/rebuild-spec.md` as the path every later file cites.
@@ -124,7 +124,7 @@ Run from `C:\Users\Edres101\Desktop\dulja`:
 git init -b main
 mkdir -p docs/spec docs/adr
 git mv -k rebuild-spec.md docs/spec/rebuild-spec.md 2>/dev/null || mv rebuild-spec.md docs/spec/rebuild-spec.md
-mv sahlisoft-accounting-analysis.md docs/spec/sahlisoft-accounting-analysis.md
+mv legacy-system-analysis.md docs/spec/legacy-system-analysis.md
 ```
 
 Expected: `ls docs/spec` shows both files; the root has no `.md` besides those under `docs/`.
@@ -149,7 +149,7 @@ Thumbs.db
 ```markdown
 # Dulja — agent entry point
 
-Dulja is the accounting/ERP product replacing Sahlisoft Accounting Plus. You are implementing, not re-deciding.
+Dulja is the accounting/ERP product replacing a legacy accounting system. You are implementing, not re-deciding.
 
 ## Read in this order, every session
 1. `CONTRIBUTING.md` — the operating brief (§0.2) and engineering conventions (§3.9), verbatim.
@@ -191,7 +191,7 @@ Phase 0 exits only when every §5.0 row is green and acceptance tests 12, 13, 14
 **Status:** accepted · **Date:** 2026-09-04
 
 ## Context
-Two documents describe the product: `docs/spec/sahlisoft-accounting-analysis.md` (what the legacy system is) and `docs/spec/rebuild-spec.md` (what Dulja is and how it is built). A review on 2026-09-04 (`docs/review/2026-09-04-dulja-docs-review.md`) corrected two blocking RLS defects and several inconsistencies and produced spec v1.1; a fourth pass on 2026-09-05 brought HR & Payroll into v1, added the nine-role catalogue and was adversarially verified (v1.2).
+Two documents describe the product: `docs/spec/legacy-system-analysis.md` (what the legacy system is) and `docs/spec/rebuild-spec.md` (what Dulja is and how it is built). A review on 2026-09-04 (`docs/review/2026-09-04-dulja-docs-review.md`) corrected two blocking RLS defects and several inconsistencies and produced spec v1.1; a fourth pass on 2026-09-05 brought HR & Payroll into v1, added the nine-role catalogue and was adversarially verified (v1.2).
 
 ## Decision
 Spec v1.2 is the baseline. Its §0.3 decision log (D1–D27) is binding. Any deviation is a new ADR in this directory, written as a proposal when it touches money semantics, security, the data model or the sync protocol, and approved by the owner before implementation.
@@ -612,7 +612,7 @@ recording `(version, name, applied_at)` in `app_meta.schema_migration`. `down(to
 its output is committed as a numbered file and applied by this runner after human review, as §3.9 requires.
 
 ## Consequences
-- One monotonic schema version (`max(version)`) — the answer the old system never had (SAH-080).
+- One monotonic schema version (`max(version)`) — the answer the old system never had (LEGACY-080).
 - CI's up → down → up test (Task 10) is the "reversible" definition of §3.9.
 - Production remains forward-only; `down` exists for CI and local development.
 ```
@@ -954,7 +954,7 @@ create schema app;
 grant usage on schema app to app_rw;
 grant usage on schema app to app_auth;
 
--- Identity comes from the API, set once per transaction, local to the transaction (closes SAH-026, 027, 035).
+-- Identity comes from the API, set once per transaction, local to the transaction (closes LEGACY-026, 027, 035).
 create function app.current_tenant() returns uuid language sql stable as $$
   select nullif(current_setting('app.tenant_id', true), '')::uuid $$;
 create function app.current_actor() returns uuid language sql stable as $$
@@ -1308,7 +1308,7 @@ create table app.role (
 );
 call app_meta.enable_tenant_rls('app.role');
 
--- Global catalogue, seeded from packages/contracts/permissions.ts (Plan 0B); a code no handler checks fails the build (SAH-047).
+-- Global catalogue, seeded from packages/contracts/permissions.ts (Plan 0B); a code no handler checks fails the build (LEGACY-047).
 -- `mutating` lets CI prove that a read-only role is read-only (spec §4.2.2 R7).
 create table app.permission (
   code         text primary key,               -- '<module>.<resource>.<action>' (spec §4.2.1)
@@ -1382,7 +1382,7 @@ language sql stable as $$
                      and b.branch_id = p_branch_id))))
 $$;
 
--- No self-grant, no self-escalation (spec §4.2.2 R5; SAH-032). The seed runs as the system principal, so the owner's first
+-- No self-grant, no self-escalation (spec §4.2.2 R5; LEGACY-032). The seed runs as the system principal, so the owner's first
 -- assignment passes.
 create function app.forbid_self_grant() returns trigger language plpgsql as $$
 begin
@@ -1481,7 +1481,7 @@ create table app.fiscal_period (
 );
 call app_meta.enable_tenant_rls('app.fiscal_period');
 
-create type app.account_type as enum ('asset', 'liability', 'equity', 'income', 'expense');  -- one discriminator, not 30 booleans (SAH-072)
+create type app.account_type as enum ('asset', 'liability', 'equity', 'income', 'expense');  -- one discriminator, not 30 booleans (LEGACY-072)
 create table app.account (
   id          uuid primary key default uuidv7(),
   tenant_id   uuid not null references app.tenant(id),
@@ -1493,7 +1493,7 @@ create table app.account (
   parent_id   uuid,                          -- composite FK below
   is_group    boolean not null default false,
   currency    char(3),                       -- null = any currency
-  archived_at timestamptz,                   -- accounts are archived, never deleted (SAH-021)
+  archived_at timestamptz,                   -- accounts are archived, never deleted (LEGACY-021)
   created_at  timestamptz not null default now(),
   unique (company_id, code),
   unique (tenant_id, id),
@@ -1618,7 +1618,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { draftDocument, seedTenant, type Seed } from "./fixtures";
 import { startDb, uuidv7, withTenant, type Db } from "./harness";
 
-describe("documents, numbering tables, dimensions — spec §3.8 (SAH-013, 051)", () => {
+describe("documents, numbering tables, dimensions — spec §3.8 (LEGACY-013, 051)", () => {
   let db: Db; let a: Seed; let b: Seed;
   beforeAll(async () => { db = await startDb(); a = await seedTenant(db, "Alpha"); b = await seedTenant(db, "Beta"); });
   afterAll(async () => { await db.stop(); });
@@ -1713,7 +1713,7 @@ Expected: FAIL — `app.document_type` does not exist.
 - [x] **Step 4: Append section 6 to `0001_foundations.sql`**
 
 ```sql
--- ── 6. document types are data; posting rules are versioned policy (RC-3, SAH-013) ─────────────────────
+-- ── 6. document types are data; posting rules are versioned policy (RC-3, LEGACY-013) ─────────────────────
 create table app.document_type (
   id          uuid primary key default uuidv7(),
   tenant_id   uuid not null references app.tenant(id),
@@ -1734,7 +1734,7 @@ create table app.posting_policy (
   version           int  not null,
   effective_from    date not null,
   definition        jsonb not null,          -- validated against packages/domain/posting-policy.schema.json (Phase 2);
-                                             -- seeded from version-controlled files, so it is diffable, not a blob (SAH-078)
+                                             -- seeded from version-controlled files, so it is diffable, not a blob (LEGACY-078)
   created_at        timestamptz not null default now(),
   unique (document_type_id, version), unique (tenant_id, id),
   foreign key (tenant_id, document_type_id) references app.document_type(tenant_id, id)
@@ -1742,7 +1742,7 @@ create table app.posting_policy (
 call app_meta.enable_tenant_rls('app.posting_policy');
 
 -- Numbering: a counter row per (company, series, period); numbers issued under an advisory lock by the posting
--- service (Phase 1), never by the client (SAH-051). The lock is released at commit; a rollback never consumes a number.
+-- service (Phase 1), never by the client (LEGACY-051). The lock is released at commit; a rollback never consumes a number.
 create table app.document_series (
   tenant_id         uuid not null references app.tenant(id),
   company_id        uuid not null,
@@ -1775,20 +1775,20 @@ create table app.document (
   tenant_id             uuid not null references app.tenant(id),
   company_id            uuid not null,
   document_type_id      uuid not null,
-  posting_policy_id     uuid,                -- PINNED at post time; never re-read (SAH-013)
+  posting_policy_id     uuid,                -- PINNED at post time; never re-read (LEGACY-013)
   status                app.document_status not null default 'draft',
   series                text not null,
   fiscal_period_id      uuid,                -- resolved from effective_date at issue
-  number                bigint,              -- assigned at ISSUE from document_series, never by the client (SAH-051)
+  number                bigint,              -- assigned at ISSUE from document_series, never by the client (LEGACY-051)
   effective_date        date not null,
   party_id              uuid,                -- FK (tenant_id, party_id) → app.party is added by the Phase 2 migration
   currency              char(3) not null,
   exchange_rate         numeric(19,8) not null default 1,
-  rate_source           text,                -- 'BNM 2026-09-04', 'manual:<actor>', … (SAH-012)
+  rate_source           text,                -- 'BNM 2026-09-04', 'manual:<actor>', … (LEGACY-012)
   reverses_document_id  uuid,
   client_ref            uuid,                -- uuidv7 generated at the till; the idempotency key (§3.7.3)
   branch_id             uuid not null,       -- BRANCH dimension value, the enforcement key for branch scoping (spec §4.2.1). NOT NULL: head-office documents carry the HQ value, so no branch gate has a NULL path; composite FK added below
-  attributed_to         uuid references app.principal(id),   -- e.g. the cashier: DATA about the document, not the actor (SAH-044)
+  attributed_to         uuid references app.principal(id),   -- e.g. the cashier: DATA about the document, not the actor (LEGACY-044)
   created_by            uuid not null default app.current_actor() references app.principal(id),
   created_at            timestamptz not null default now(),
   posted_by             uuid references app.principal(id),
@@ -1922,7 +1922,7 @@ async function post(tx: Sql, s: Seed, docId: string, lines: Line[], periodId = s
   }
 }
 
-describe("the ledger — spec §3.8 (SAH-003, 012, 031, 041, 042, 044)", () => {
+describe("the ledger — spec §3.8 (LEGACY-003, 012, 031, 041, 042, 044)", () => {
   let db: Db; let a: Seed; let b: Seed;
   beforeAll(async () => { db = await startDb(); a = await seedTenant(db, "Alpha"); b = await seedTenant(db, "Beta"); });
   afterAll(async () => { await db.stop(); });
@@ -1952,7 +1952,7 @@ describe("the ledger — spec §3.8 (SAH-003, 012, 031, 041, 042, 044)", () => {
     expect(r!.base).toBe("485.0000");
   });
 
-  it("base = round(value × rate, 4) is a CHECK — a stale or hand-typed base amount is rejected (SAH-012)", async () => {
+  it("base = round(value × rate, 4) is a CHECK — a stale or hand-typed base amount is rejected (LEGACY-012)", async () => {
     const doc = await draftDocument(db, a);
     await expect(withTenant(db.rw, a.tenant, a.human, (tx) => tx`insert into app.ledger_entry
       (tenant_id, company_id, document_id, line_no, account_id, debit, credit, currency, exchange_rate, base_debit, base_credit, effective_date, fiscal_period_id, posting_policy_id)
@@ -1966,7 +1966,7 @@ describe("the ledger — spec §3.8 (SAH-003, 012, 031, 041, 042, 044)", () => {
       .rejects.toThrow(/check constraint/);
   });
 
-  it("posting into a closed or locked period is refused on the LINE (SAH-031)", async () => {
+  it("posting into a closed or locked period is refused on the LINE (LEGACY-031)", async () => {
     for (const p of [a.closedPeriod, a.lockedPeriod]) {
       const doc = await draftDocument(db, a, { periodId: p, effectiveDate: p === a.closedPeriod ? "2026-02-10" : "2026-03-10" });
       await expect(withTenant(db.rw, a.tenant, a.human, (tx) => post(tx, a, doc, [{ account: a.cash, debit: "1" }, { account: a.sales, credit: "1" }], p)))
@@ -2019,9 +2019,9 @@ create table app.ledger_entry (
   fiscal_period_id   uuid not null,
   posting_policy_id  uuid not null,
   posted_at          timestamptz not null default now(),
-  posted_by          uuid not null default app.current_actor() references app.principal(id),   -- session, never a parameter (SAH-044)
+  posted_by          uuid not null default app.current_actor() references app.principal(id),   -- session, never a parameter (LEGACY-044)
   check (not (debit > 0 and credit > 0)),                        -- one side per line
-  check (base_debit  = round(debit  * exchange_rate, 4)),        -- base = value × rate, always (SAH-012)
+  check (base_debit  = round(debit  * exchange_rate, 4)),        -- base = value × rate, always (LEGACY-012)
   check (base_credit = round(credit * exchange_rate, 4)),
   unique (document_id, line_no),
   unique (tenant_id, id),                                        -- lets ledger_entry_dimension use the composite FK form
@@ -2029,13 +2029,13 @@ create table app.ledger_entry (
   -- tenant B's account if the uuid were known. Pairing tenant_id in the FK makes that impossible.
   foreign key (tenant_id, company_id)        references app.company(tenant_id, id),
   foreign key (tenant_id, document_id)       references app.document(tenant_id, id),
-  foreign key (tenant_id, account_id)        references app.account(tenant_id, id),        -- no orphan postings (SAH-021, 073)
+  foreign key (tenant_id, account_id)        references app.account(tenant_id, id),        -- no orphan postings (LEGACY-021, 073)
   foreign key (tenant_id, fiscal_period_id)  references app.fiscal_period(tenant_id, id),
   foreign key (tenant_id, posting_policy_id) references app.posting_policy(tenant_id, id)
 );
 call app_meta.enable_tenant_rls('app.ledger_entry');
 -- Partition by fiscal year once volume warrants it; PK and unique keys must then include effective_date.
-create index ledger_entry_account_date_idx on app.ledger_entry (company_id, account_id, effective_date);   -- the index Journal never had (SAH-070)
+create index ledger_entry_account_date_idx on app.ledger_entry (company_id, account_id, effective_date);   -- the index Journal never had (LEGACY-070)
 create index ledger_entry_company_date_idx on app.ledger_entry (company_id, effective_date);
 
 create table app.ledger_entry_dimension (                       -- join table
@@ -2050,7 +2050,7 @@ create table app.ledger_entry_dimension (                       -- join table
 );
 call app_meta.enable_tenant_rls('app.ledger_entry_dimension');
 
--- Immutability: belt (privileges — the grants block at the end of this file) and braces (trigger). (SAH-031, 041)
+-- Immutability: belt (privileges — the grants block at the end of this file) and braces (trigger). (LEGACY-031, 041)
 create function app.forbid_change() returns trigger language plpgsql as $$
 begin
   raise exception 'ERR_TABLE_IMMUTABLE: % is append-only', tg_table_name using errcode = 'check_violation';
@@ -2060,7 +2060,7 @@ create trigger ledger_entry_immutable before update or delete on app.ledger_entr
 create trigger ledger_entry_dimension_immutable before update or delete on app.ledger_entry_dimension
   for each row execute function app.forbid_change();
 
--- Period lock: checked on the LINES, not a sibling header table; fails closed on NULL. (SAH-031, 042)
+-- Period lock: checked on the LINES, not a sibling header table; fails closed on NULL. (LEGACY-031, 042)
 create function app.assert_period_open() returns trigger language plpgsql as $$
 declare st app.period_status;
 begin
@@ -2074,7 +2074,7 @@ end $$;
 create trigger ledger_entry_period_open before insert on app.ledger_entry
   for each row execute function app.assert_period_open();
 
--- Debits = credits in BASE currency, per document, checked at COMMIT. (SAH-003)
+-- Debits = credits in BASE currency, per document, checked at COMMIT. (LEGACY-003)
 -- Per-transaction-currency balance is a posting-policy rule (a revaluation journal legitimately balances only in base).
 -- Because base amounts are rounded per line, the posting service MUST add a base-currency FX-rounding line (rate 1,
 -- account company.fx_rounding_account_id) when Σbase would otherwise be off by rounding residue — this trigger is the
@@ -2164,7 +2164,7 @@ async function verifyChain(tx: Sql, tenantId: string): Promise<{ broken_links: n
   return r!;
 }
 
-describe("audit log — spec §3.8 (SAH-029, 030, 040); acceptance test 13", () => {
+describe("audit log — spec §3.8 (LEGACY-029, 030, 040); acceptance test 13", () => {
   let db: Db; let a: Seed;
   beforeAll(async () => { db = await startDb(); a = await seedTenant(db, "Alpha"); });
   afterAll(async () => { await db.stop(); });
@@ -2227,7 +2227,7 @@ describe("audit log — spec §3.8 (SAH-029, 030, 040); acceptance test 13", () 
     expect(first!.prev_hash).toBeNull();   // a tenant's chain starts at its own genesis
   });
 
-  it("actor columns are stamped from the session, never taken from the statement (SAH-044)", async () => {
+  it("actor columns are stamped from the session, never taken from the statement (LEGACY-044)", async () => {
     const doc = await uuidv7(db.admin);
     await withTenant(db.rw, a.tenant, a.human, (tx) => tx`
       insert into app.document (id, tenant_id, company_id, document_type_id, series, fiscal_period_id, effective_date, currency, branch_id, created_by)
@@ -2256,7 +2256,7 @@ Expected: FAIL — `app.audit_log` does not exist.
 - [ ] **Step 3: Append section 8 to `0001_foundations.sql`**
 
 ```sql
--- ── 8. Audit log: append-only, server-supplied actor, hash-chained (SAH-029, 030, 040) ─────────────────
+-- ── 8. Audit log: append-only, server-supplied actor, hash-chained (LEGACY-029, 030, 040) ─────────────────
 create table app.audit_log (
   seq          bigint generated always as identity primary key,
   tenant_id    uuid not null references app.tenant(id),
@@ -2362,7 +2362,7 @@ call app_meta.attach_audit('app.dimension_value');
 
 grant select, insert on app.audit_log to app_rw;   -- no update, no delete: immutable
 
--- Actor columns are never trusted (SAH-044): a DEFAULT is not a control — direct SQL can supply any value. stamp_actor()
+-- Actor columns are never trusted (LEGACY-044): a DEFAULT is not a control — direct SQL can supply any value. stamp_actor()
 -- OVERWRITES the named column with app.current_actor() on INSERT and forbids changing it on UPDATE.
 -- Semantics: on INSERT a supplied value is replaced with the session actor (a NULL stays NULL — posted_by / closed_by are set later);
 -- on UPDATE a NULL → value transition is stamped with the session actor; any change to a non-null value raises.
@@ -2608,8 +2608,8 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
   - `tenant_id` — every table except `tenant`, `principal`, `permission` has a `tenant_id` column.
   - `rls_enabled`, `rls_forced`, `tenant_isolation_policy` — the same tables have RLS enabled, forced, and a policy named `tenant_isolation`.
   - `id_column`, `created_at` — every table except the join/counter tables (`membership`, `role_permission`, `role_assignment`, `role_assignment_branch`, `ledger_entry_dimension`, `document_series`, `document_number_void`, `idempotency_key`), `audit_log` (keyed by `seq`, timestamped by `occurred_at`) and `permission` (keyed by `code`) has `id` and `created_at`; `ledger_entry` is exempt from `created_at` only (its timestamp is `posted_at`).
-  - `extra_permissive_policy` — every permissive policy is one of the standard tenant policies or is scoped to `app_auth`; any other policy (a permission or branch gate) must be `AS RESTRICTIVE`, because permissive policies OR together (SAH-033).
-  - `stamp_actor` — every `*_by` column has a `stamp_<col>` trigger (SAH-044).
+  - `extra_permissive_policy` — every permissive policy is one of the standard tenant policies or is scoped to `app_auth`; any other policy (a permission or branch gate) must be `AS RESTRICTIVE`, because permissive policies OR together (LEGACY-033).
+  - `stamp_actor` — every `*_by` column has a `stamp_<col>` trigger (LEGACY-044).
   - `composite_fk` — every FK whose referenced table is tenant-scoped includes `tenant_id` in its column list.
   - `audit_trigger` — every table not in the audit-exempt list carries a trigger named `audit_row`.
   - `immutable_privileges`, `immutable_trigger` — every table in the immutable list has no UPDATE/DELETE for `app_rw` and has a `*_immutable` trigger.
@@ -2750,12 +2750,12 @@ export async function lintSchema(sql: Sql): Promise<Violation[]> {
     for (const p of policies.filter((x) => x.tablename === name)) {
       const roleScoped = p.roles.includes("app_auth") && !p.roles.includes("app_rw") && !p.roles.includes("public");
       if (p.permissive === "PERMISSIVE" && !ALLOWED_PERMISSIVE.has(p.policyname) && !roleScoped) {
-        v.push({ table: name, rule: "extra_permissive_policy", detail: `${p.policyname} is PERMISSIVE — a gate must be AS RESTRICTIVE, or it is OR-ed away by tenant_isolation (SAH-033)` });
+        v.push({ table: name, rule: "extra_permissive_policy", detail: `${p.policyname} is PERMISSIVE — a gate must be AS RESTRICTIVE, or it is OR-ed away by tenant_isolation (LEGACY-033)` });
       }
     }
     for (const c of cols) {
       if (c.endsWith("_by") && !hasTrigger(name, (n) => n === `stamp_${c}`)) {
-        v.push({ table: name, rule: "stamp_actor", detail: `${c} has no stamp_${c} trigger — a DEFAULT is not a control (SAH-044)` });
+        v.push({ table: name, rule: "stamp_actor", detail: `${c} has no stamp_${c} trigger — a DEFAULT is not a control (LEGACY-044)` });
       }
     }
     if (!AUDIT_EXEMPT.has(name) && !hasTrigger(name, (n) => n === "audit_row")) {
@@ -2872,7 +2872,7 @@ jobs:
 - [ ] This PR belongs to the phase named in `CLAUDE.md` ("Current phase") — nothing from a later phase.
 
 ## Definition of done (spec §4.11)
-- [ ] Tests added or updated (`tests/regression/sah-NNN.test.ts` for every Part I defect this touches)
+- [ ] Tests added or updated (`tests/regression/legacy-NNN.test.ts` for every Part I defect this touches)
 - [ ] Migration is reversible: `NNNN.down.sql` exists and CI's up → down → up passed
 - [ ] OpenAPI updated if the API changed
 - [ ] Both text directions checked if the UI changed

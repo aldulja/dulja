@@ -55,7 +55,7 @@ export async function issueDocument(
   // One issuer per document. The status check below is only meaningful if nobody else can pass it at the
   // same time: without this lock two `to: "issued"` transitions on one draft both read 'draft', both take a
   // number under the series lock in turn, and the second overwrites the first — a burned number with no
-  // document_number_void row, which is SAH-051 reborn. postDocument already holds this same lock (post.ts
+  // document_number_void row, which is LEGACY-051 reborn. postDocument already holds this same lock (post.ts
   // step 1) when it calls in, and re-locking a row one's own transaction holds is a no-op.
   const [locked] = await tx<{ status: string; document_type_id: string }[]>`
     select status::text as status, document_type_id from app.document

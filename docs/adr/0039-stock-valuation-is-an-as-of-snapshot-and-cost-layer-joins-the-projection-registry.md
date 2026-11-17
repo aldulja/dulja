@@ -13,7 +13,7 @@ carries the same status its parent does. It is implemented ahead of approval, as
 **Slice:** 3B
 **Supersedes:** nothing. **Related:** ADR 0038 (the bounded recost, and note 7's shortfall), ADR 0037 (AVCO
 and the layer model), contracts §4.6.1 (`stock_valuation`), §4.7.2, §4.16.3 (`ProjectionCheck`), amendments
-A10, A19 and A20, Part I SAH-009, SAH-079
+A10, A19 and A20, Part I LEGACY-009, LEGACY-079
 **Spec:** §3.3 projections (spec:1204), §3.4 (spec:1210, 1228), §3.8 transactions (spec:1368, 1370), Part VI
 test 2 (spec:2420)
 
@@ -48,7 +48,7 @@ An issue's `inventory_movement.value` is the value it was **posted** with and is
 decision 1). After a recost the consumptions carry a different figure and the difference is booked as a
 `COST_ADJUSTMENT`. So `Σ movement.value` and the layer-derived value legitimately differ by exactly the
 adjustments already posted, and asserting their equality would raise an incident every single time a
-back-dated document was handled **correctly** — the failure mode SAH-079 is made of. The value's integrity
+back-dated document was handled **correctly** — the failure mode LEGACY-079 is made of. The value's integrity
 is the layer invariant above, checked by `COST_LAYER_CHECK`, and the quantity half stays an exact compare:
 the layer-derived quantity must equal `sum(inventory_movement.quantity)` as at the date, and a difference
 is a real incident.
@@ -80,7 +80,7 @@ worth as at D", never an archive. The archive is `cost_consumption`'s invalidate
   because `projectionChecks()` sorts by name. `stock_valuation` never appears in it; the string appears
   only in the handler's own `projections.checked` for the incident it writes.
 - The rebuild derives its rows **from `valuationAsOf`** rather than from a second query that computes the
-  same thing. Two derivations of one figure is SAH-009, and one function is what makes a stored snapshot
+  same thing. Two derivations of one figure is LEGACY-009, and one function is what makes a stored snapshot
   and a live report unable to diverge (spec:1228).
 - 4B adds `party_ageing` and `item_profitability` to `accounting.projection.rebuild` and meets the same
   question; this ADR is the precedent — a dated history is rebuilt by its job, current state by the
@@ -148,7 +148,7 @@ fourth-decimal change is why approval is required; existing golden output cannot
   correct pre-existing drift; book financial differences through the established adjustment path.
 - Test non-divisible receipts, repeated partial issues, complete depletion, AVCO and FIFO, fractional
   quantity allocations, transfers and landed cost, as-of dates, shortfalls, and crash-restarted replay.
-- Require acceptance test 7, SAH-009, the costing/golden suites, ledger/valuation tie-outs, tenant isolation,
+- Require acceptance test 7, LEGACY-009, the costing/golden suites, ledger/valuation tie-outs, tenant isolation,
   and migration up → down → up to pass. Review any intentional golden figure change individually.
 - Once both remaining failures are resolved, include the currently excluded `tests` workspace in CI and
   update its lint exclusion and the verification record. No test is quarantined or weakened.

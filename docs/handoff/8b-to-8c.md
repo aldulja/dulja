@@ -52,7 +52,7 @@ deduction credits its component's account (an advance recovery credits `1400`); 
 the scheme's payable account; each employer share debits the scheme's employer-expense account and credits its
 payable account; net pay credits `2400`. Every ledger line carries **BRANCH = the employee's home branch** (per line,
 amendment A3) and **EMPLOYEE**. `payroll_line.amount` is a magnitude; `side` is the policy's. Every statutory line
-pins `rate_table_id` / `rate_table_version`, and `payroll_run.pinned_tables` the run's set (SAH-013).
+pins `rate_table_id` / `rate_table_version`, and `payroll_run.pinned_tables` the run's set (LEGACY-013).
 
 **R3 (migration 0090).** A compensation change (insert, update — old AND new window — or delete) effective inside a
 `submitted` or `approved` run's period returns every such run the employee is on to draft, reason
@@ -86,7 +86,7 @@ A payment screen (8C) links from a posted run.
 **Acceptance tests owned and where they run.** 28 (`tests/invariants/payroll-one-posting-path.test.ts`), 29 and 38
 and the PAYROLL re-runs of 9, 10 and 31 (`tests/invariants/payroll-pinning.test.ts`; the API leg of 29 and the wire
 R1 case in `apps/api/test/routes/hr/payroll-runs.test.ts`), 33 (`tests/golden/payroll.test.ts`), 35's recalculation
-clause (`packages/db/test/payroll/recalculation.test.ts`). Regression appends: sah-003, 009, 011, 013, 019, 020, 031,
+clause (`packages/db/test/payroll/recalculation.test.ts`). Regression appends: legacy-003, 009, 011, 013, 019, 020, 031,
 032, 042.
 
 **What is still open.** OD-23 (accountant-signed tables and worked examples — `SYNTH` only), OD-28 (the proration

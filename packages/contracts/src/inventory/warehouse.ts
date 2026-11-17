@@ -31,7 +31,7 @@ export const CreateWarehouseBody = z
   .strict();
 
 /** `code`, `kind` and `branch_id` are immutable: movements already written are keyed by this row, and moving
- *  a warehouse to another branch would silently re-scope every historical figure (SAH-045). */
+ *  a warehouse to another branch would silently re-scope every historical figure (LEGACY-045). */
 export const UpdateWarehouseBody = z
   .object({
     nameEn: z.string().min(1).max(200).optional(),

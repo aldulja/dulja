@@ -4,11 +4,11 @@
 
 ## Goal
 
-Make a month's payroll a **document**. This slice ships the pure statutory calculator (`packages/domain/payroll/`, in which **no rate, threshold, ceiling or formula of any authority appears**), the `PAYROLL` document type and its posting policy, the two 1:1 extension tables `app.payroll_run` and `app.payroll_line`, the `EMPLOYEE` dimension, and the run service that turns employees, compensation lines, statutory profiles and **verified, effective-dated, version-pinned rate tables** into `document_line` rows that `postDocument` posts through the one posting service. Every posted payroll line pins the rate-table version it used (SAH-013); an unverified or out-of-range table is refused (`ERR_PAYROLL_RATE_TABLE_UNVERIFIED`, acceptance test 29); a NULL statutory input fails the run **naming the employee** and never posts a silent zero (`ERR_PAYROLL_INPUT_MISSING`, acceptance test 33, SAH-011); a PAYROLL run and a hand-keyed JOURNAL with the same lines produce identical `ledger_entry` and `ledger_entry_dimension` rows (acceptance test 28); and a run whose period is closed or locked cannot post by any path until a principal holding `accounting.period.reopen` reopens it with a reason (acceptance test 38).
+Make a month's payroll a **document**. This slice ships the pure statutory calculator (`packages/domain/payroll/`, in which **no rate, threshold, ceiling or formula of any authority appears**), the `PAYROLL` document type and its posting policy, the two 1:1 extension tables `app.payroll_run` and `app.payroll_line`, the `EMPLOYEE` dimension, and the run service that turns employees, compensation lines, statutory profiles and **verified, effective-dated, version-pinned rate tables** into `document_line` rows that `postDocument` posts through the one posting service. Every posted payroll line pins the rate-table version it used (LEGACY-013); an unverified or out-of-range table is refused (`ERR_PAYROLL_RATE_TABLE_UNVERIFIED`, acceptance test 29); a NULL statutory input fails the run **naming the employee** and never posts a silent zero (`ERR_PAYROLL_INPUT_MISSING`, acceptance test 33, LEGACY-011); a PAYROLL run and a hand-keyed JOURNAL with the same lines produce identical `ledger_entry` and `ledger_entry_dimension` rows (acceptance test 28); and a run whose period is closed or locked cannot post by any path until a principal holding `accounting.period.reopen` reopens it with a reason (acceptance test 38).
 
 ## Architecture
 
-- **The calculator is pure and the rates are data.** `packages/domain/payroll/` uses **`decimal.js` directly for intermediate arithmetic** — a proration factor, a band walk — and `Money` for every figure that is persisted or returned, which is what ADR 0022 records D11's "`decimal.js` only" to mean ("it scopes the money module, not the whole package", contracts:2396). It touches no database, clock, network or random number, and holds **three** `SchemeCalculator`s — one per `RateTable["kind"]` the §4.12.3 schema admits (`banded_contribution`, `percentage_with_ceiling`, `progressive_schedule`). Every number a calculator uses comes out of the `RateTable` handed to it. That is what makes `tests/golden/payroll/` byte-comparable (spec:2264) and what makes SAH-020 unrepeatable. **`packages/domain/src/**` never imports `packages/domain/payroll/**`** (spec:2366) — the shapes core needs (`PayComponentRef`, `SchemeRef`, `PayrollLineRef`) are declared in core by 2A and this package's richer types satisfy them **structurally**; nothing is imported back.
+- **The calculator is pure and the rates are data.** `packages/domain/payroll/` uses **`decimal.js` directly for intermediate arithmetic** — a proration factor, a band walk — and `Money` for every figure that is persisted or returned, which is what ADR 0022 records D11's "`decimal.js` only" to mean ("it scopes the money module, not the whole package", contracts:2396). It touches no database, clock, network or random number, and holds **three** `SchemeCalculator`s — one per `RateTable["kind"]` the §4.12.3 schema admits (`banded_contribution`, `percentage_with_ceiling`, `progressive_schedule`). Every number a calculator uses comes out of the `RateTable` handed to it. That is what makes `tests/golden/payroll/` byte-comparable (spec:2264) and what makes LEGACY-020 unrepeatable. **`packages/domain/src/**` never imports `packages/domain/payroll/**`** (spec:2366) — the shapes core needs (`PayComponentRef`, `SchemeRef`, `PayrollLineRef`) are declared in core by 2A and this package's richer types satisfy them **structurally**; nothing is imported back.
 - **The run is a document and the state machine is 2B's.** `app.payroll_run` is a 1:1 extension of `app.document` keyed on `document_id`; `app.payroll_line` is a 1:1 extension of `app.document_line` keyed on `document_line_id`. calculate → submit → approve → post runs on the **shared** transitions of §4.5.1 through `POST …/documents/{documentId}/transitions` — this slice mounts **no** type-specific transition route. R1 (maker ≠ checker) and R2 (authority at transition time) are 2B's triggers reading this slice's policy; no line of segregation logic is written here.
 - **The ledger is `postDocument`'s and nobody else's.** The run service writes `document`, `document_line`, `payroll_run` and `payroll_line`, and stops. `postDocument` evaluates the PAYROLL policy, and 2A's evaluator resolves `line.component.expense_account`, `line.scheme.payable_account`, `line.scheme.expense_account`, the `line.component.kind` / `line.share` filters and the `line.employee` dimension **already** — this slice fills the three snapshot slots those resolvers read (`refs.components`, `refs.schemes`, `LineSnapshot.payroll`) and writes no evaluator branch.
 - **Two dimensions per ledger line, and the BRANCH is the employee's, not the document's.** 2A's `dimensionsFor` gives `document.branch` the last word over anything in the line's own bag, so a PAYROLL rule that named `document.branch` would tag every employee's line with the *run's* branch. Every PAYROLL rule therefore declares `dimensions: { "from": ["line.dimensions", "line.employee"] }`: BRANCH arrives from the line's bag (the employee's `home_branch_id`) and EMPLOYEE from `line.employee`, and `dimensions.required: ["BRANCH", "EMPLOYEE"]` refuses any planned line missing either (spec:1066, spec:2101).
@@ -20,7 +20,7 @@ TypeScript 5 on Bun; PostgreSQL 18 via `postgres.js` tagged templates (Drizzle m
 
 ## Spec
 
-`C:/Users/Edres101/Desktop/dulja/rebuild-spec.md` v1.2 — **§3.10.1 in full** (spec:2071–2094, especially *Statutory schemes as data* spec:2080, *Payroll run* spec:2081, *Proration* spec:2086 and *Manual statutory override* spec:2087), §3.10.2 (spec:2097), **§3.10.3 Posting (spec:2099–2101)**, §3.10.4 (spec:2105), §3.10.5 (spec:2109), §3.9 (spec:2037–2063), §0.2 (spec:97–106), §4.2.1 the `hr_payroll`, `accountant` and `auditor` rows (spec:2157–2163), **§4.2.2 R1, R2, R3** (spec:2172–2174) and R6/R7/R8 (spec:2177–2179), §4.7 the payroll statutory pack bullet (spec:2229), §4.11 golden-file tests (spec:2262–2267), §5.2 `packages/domain/payroll/` and `tests/golden/` (spec:2352–2389), Part V Phase 8 (spec:2294, 2301), Part VI tests **9** (spec:2427), **10** (spec:2428), **28** (spec:2446), **29** (spec:2447), **31** (spec:2449), **33** (spec:2451), **35** (spec:2453), **38** (spec:2456), §5.3 the Phase 8 owner rows (spec:2407, 2478), Part I **SAH-003** (spec:223), **SAH-009** (spec:286), **SAH-011** (spec:311), **SAH-013** (spec:333), **SAH-019** (spec:381), **SAH-020** (spec:388), **SAH-031** (spec:490), **SAH-032** (spec:503), **SAH-042** (spec:576).
+`C:/Users/Edres101/Desktop/dulja/rebuild-spec.md` v1.2 — **§3.10.1 in full** (spec:2071–2094, especially *Statutory schemes as data* spec:2080, *Payroll run* spec:2081, *Proration* spec:2086 and *Manual statutory override* spec:2087), §3.10.2 (spec:2097), **§3.10.3 Posting (spec:2099–2101)**, §3.10.4 (spec:2105), §3.10.5 (spec:2109), §3.9 (spec:2037–2063), §0.2 (spec:97–106), §4.2.1 the `hr_payroll`, `accountant` and `auditor` rows (spec:2157–2163), **§4.2.2 R1, R2, R3** (spec:2172–2174) and R6/R7/R8 (spec:2177–2179), §4.7 the payroll statutory pack bullet (spec:2229), §4.11 golden-file tests (spec:2262–2267), §5.2 `packages/domain/payroll/` and `tests/golden/` (spec:2352–2389), Part V Phase 8 (spec:2294, 2301), Part VI tests **9** (spec:2427), **10** (spec:2428), **28** (spec:2446), **29** (spec:2447), **31** (spec:2449), **33** (spec:2451), **35** (spec:2453), **38** (spec:2456), §5.3 the Phase 8 owner rows (spec:2407, 2478), Part I **LEGACY-003** (spec:223), **LEGACY-009** (spec:286), **LEGACY-011** (spec:311), **LEGACY-013** (spec:333), **LEGACY-019** (spec:381), **LEGACY-020** (spec:388), **LEGACY-031** (spec:490), **LEGACY-032** (spec:503), **LEGACY-042** (spec:576).
 
 ## Assumptions and contracts (from docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md)
 
@@ -28,9 +28,9 @@ TypeScript 5 on Bun; PostgreSQL 18 via `postgres.js` tagged templates (Drizzle m
 - **Depends on (merged):** **Plan 0A** by exact name — `startDb`, `Db`, `Seed`, `withTenant` (the 4-argument **test** helper), `uuidv7`, `seedTenant`, `draftDocument`, `schemaFingerprint`, `lintSchema`, `AUDIT_EXEMPT`, `IMMUTABLE`, `up`, `down`, `listApplied`, `discover`, `MIGRATIONS_DIR`, `app_meta.enable_tenant_rls`, `app_meta.attach_audit`, `app_meta.attach_stamp`, `app.forbid_change`, `app.actor_has`, `app.current_actor`, `app.current_tenant`, `app.assert_period_open`, `app.posting_seq`. **0B** — `createDb`, the production `withTenant(sql, ctx, fn)`, `TenantContext`, `systemContext`, `AppError`, `ERRORS`, `Problem`, `fromDatabaseError`, `createLogger`, `PERMISSION`, `PERMISSIONS`, `PermissionCode`, `PermissionDef`, `requirePermission`, `assertRouteGates`, `buildRoutes`, `ROUTES`, `RouteModule`, `IdempotencyHeader`, `createApp`, `AppDeps`, `AppEnv`, `startApi`, `ApiRequest`, `StartedApi`, `PROBES`, `IsolationProbe`, `encodeCursor`, `decodeCursor`, `Cursor`, `ListEnvelope`, `ListQuery`, `UuidSchema`, `DateSchema`, `TimestampSchema`, `MoneySchema`, `QuantitySchema`, `CurrencySchema`, `ProblemSchema`, `sharedDb`, `thinRegression`, `sharedApi`, `grantAdmin`, `fullRegression`, `problemOf`, `sourceFiles`, `REPO_ROOT`, `repoFile`. **0D** — `Money`, `currency`, `CurrencyCode`, `round`, `RoundingMode`, `MONEY_SCALE`, `Quantity`, `Rational`, `rational`, `toBase`, `ExchangeRate`, `UNIT_RATE`, `ROLES`, `RoleSeed`, `INCOMPATIBLE_PAIRS`, `seedBranch`, `seedCurrency`, `JOBS`, `JobName`. **0C** — the seed CLI, **`chartOfAccountsLoader` (`packages/db/src/seed/chart-of-accounts.ts`, which applies every `.json` in the sub-pack in name order)**, `PackLoader`, `LoaderContext`, `SeedConfig`, `readPackFile`, `assertPackShape`, `SUB_PACKS`, `PHASE_0_SUB_PACK_DIRECTORIES`, and the `0c-base.json` chart rows `1000`, `1100`, `1200`, `1300`, `4000`, `5000`, `5900`, `5920`. **0E** — `packages/ui`, `packages/i18n`, `bootLocalStack`, `grantAdminRole`. **1A** — `postDocument`, `issueDocument`, `reverseDocument`, `voidDocument`, `loadSnapshot`, `resolvePolicy`, `PostResult`, `IssueResult`, `PostingError`, `PostingErrorCode`, `insertLedger`, `documentRoutes`, `JOURNAL_POLICY_V1`, `seedTenantV2`, `seedJournalPolicy`, `seedAccount`, `documentTypesLoader`, `loadDocumentTypes`, `app.posting_seq`, `document.posting_seq`, `fiscal_period.reopen_reason`. **1B** — `postJournal`, `JournalLine`, `PostJournalOptions`, `trialBalance`, `accountLedger`, `registerProjectionCheck`, `projectionChecks`, `ProjectionCheck`, `reportsRouteModule`, `ReportCodeSchema`. **2A** — `evaluatePolicy`, `balanceInBase`, `parsePolicy`, `validatePolicy`, `validateRequires`, `validateDocumentTypeSeed`, `PostingPolicy`, `DocumentSnapshot`, `LineSnapshot`, `PlannedLedgerLine`, `PlannedMovement`, `PlannedTaxLine`, `PostingPlan`, `PolicyEvaluationError`, `PayComponentRef`, `SchemeRef`, `PayrollLineRef`, `ItemRef`, `TaxCodeRef`, `requireDocumentPermission`, `DocumentStage`, `POLICY_RESOLVED_CODES`, `DOCUMENT_STAGE_CODES`, `seedDocumentType`, `seedParty`, `DocumentLineInput`, `DocumentLineSchema`, `DocumentTypeModuleSchema`, `app.party`, `document_line.kind`. **2B** — `transitionDocument`, `TransitionResult`, `recordOverride`, `setEventContext`, `listDocumentEvents`, `DocumentEventRow`, `stageCode`, `grantCodes`, `app.principal_has`, `app.effective_policy`, `app.document_event`, `app.document_status_before`, `app.forbid_line_delete_unless_draft`, `ERR_DOC_NOT_DRAFT`, `app.series_gaps`. **2C** — `MODULE_READ_CODE`, `requireAttachmentRead`, `readableModules`, `requireDocumentModuleRead` (all four in `apps/api/src/middleware/require-attachment-read.ts` — the path 2C actually shipped; §4.5.8's prose names a different one and 4A's Task 0 already filed the correction), `pdfText`, `app.attachment`. **3B** — `ensureOpenPeriods(db: Db, s: Seed, year: number): Promise<void>` in `tests/invariants/support/post-inventory.ts` (3b:2245, 3b:2416; registered by **3B's** amendment A11 against §4.17.1, which §4.18's round-2 table does not yet carry — 3C imports it the same way at 3c:3868). It reopens Plan 0A's three fixed periods and inserts months 4–12 open, which is the only reason a payroll test may name a month other than January. **3C** — `draftTypedDocument(db, s, opts) → { documentId, lineIds }` and its `DraftLine` / `DraftTypedDocumentOptions` shapes (widened to the six-label `kind` union by 6A). **8A** — `app.employee` as extended by migration 0080, `app.employee_sensitive`, `app.employee_statutory_profile`, `app.pay_component`, `app.pay_component_scheme`, `app.compensation_line`, `app.statutory_scheme`, `app.statutory_rate_table`, `app.company_hr_setting`, `packages/domain/payroll/rate-table.schema.json` and the committed `RateTable` type generated from it, the `statutory` sub-pack loader, `ERR_HR_SELF_PAY`, `ERR_HR_SELF_VERIFY`, the `sensitive_gate` linter rule, and the fixtures `seedEmployee`, `seedPayComponent`, `seedStatutoryScheme`, `seedRateTable`.
 - **Migration numbers:** 0087–0090, **all four used, four PRs** — `0087_create_payroll_run_line.sql` (T1), `0088_create_employee_dimension.sql` (T2), `0089_seed_permission_phase8b.sql` (T3), `0090_create_compensation_change_returns_run.sql` (T11). **§2.9's 8B row calls 0090 "spare" and names 0088 `…_trigger.sql`; amendments A1 and A2 below correct both.** **ADR numbers:** 0074–0076 — `0074-payroll-calculator-seam-and-rate-table-pinning`, `0075-employee-dimension-is-created-by-trigger`, `0076-payroll-correction-is-a-supplementary-run` (a **proposal**, spec:95 — it touches money semantics).
 - **Interfaces consumed:** §4.1 (the whole Plan 0A surface), §4.2.1 (`Money`, `currency`, `round`, `RoundingMode`, `MONEY_SCALE`, `toBase`), §4.2.2 (`withTenant`, `TenantContext`, `systemContext`), §4.2.3 (`AppEnv`, `RequestContext`, `Logger`, the fixed middleware order), §4.2.4 (`Problem`, `ERRORS`, `AppError`, `fromDatabaseError`, `PostingError` — **this slice adds two `ERRORS` rows**, both already allocated), §4.2.5 (`PERMISSION`, `PERMISSIONS`, `PermissionDef`, `requirePermission`, `ROLES`, `INCOMPATIBLE_PAIRS`, `assertRouteGates`), §4.2.6 (`JOBS`, consulted only — **no job is registered**), §4.2.7 (`RouteModule`, `buildRoutes`, `PROBES`, `IsolationProbe`, `IdempotencyHeader`, `createApp`), §4.2.8 (the common schemas, the list envelope, the cursor codec, and **the one list-filter convention — literal `filter[…]` keys, the Layer 2 default**), §4.2.9 (`idempotency`), §4.2.11 (`app.dimension_type` / `app.dimension_value` and the dimension API), §4.2.12 (`startApi`, `StartedApi`, `ApiRequest`), §4.2.13 (**`chartOfAccountsLoader` — 0C's, consumed and never replaced; `LoaderContext`, `SeedConfig`, `SUB_PACKS`. This slice ships no `PackLoader`: `LOADERS` is keyed by `SubPack` and `chart-of-accounts` is 0C's**), §4.3.1 (`postDocument`, `loadSnapshot`, `resolvePolicy`, `transitionDocument`, `setEventContext`), §4.3.2 (the fixed algorithm — steps 2, 4, 5, 6, 10, 12, 13), **§4.3.4 (`document_line`, and the 0087 row that rewrites `document_line_kind_check`)**, §4.3.5 (`posting_seq`), §4.3.6 (numbering at issue), §4.3.7 (the document-type seed envelope), §4.4.1 (`posting-policy.schema.json` — consumed **unchanged**, same `$id`, same `"version": 1`), **§4.4.2 in full** (`DocumentSnapshot`, `LineSnapshot`, `PayComponentRef`, `SchemeRef`, `PayrollLineRef`, and **sign normalisation A9, which names 8B**), §4.5.1 (legal transitions), §4.5.2 (`document_event`, `app.effective_policy`), §4.5.4 (`requireDocumentPermission`, `stageCode`, `POLICY_RESOLVED_CODES`, `DOCUMENT_STAGE_CODES`), §4.5.6 (Form A′ on `employee`, consumed), §4.5.8 (`MODULE_READ_CODE` — **this slice adds the `hr` row**), §4.6.1 (the register rows for `pay_component`, `pay_component_scheme`, `compensation_line`, `statutory_scheme`, `statutory_rate_table`, `company_hr_setting`, `payroll_run`, `payroll_line`), §4.6.2 (the minimal `employee`), **§4.12 in full**, §4.14 (document-type codes), §4.15 (account codes), §4.16.1–§4.16.2 (consulted: **this slice ships no report and no `DatasetId` member** — the five HR reports are 8D's), §4.17 (`seedPayrollRun` — this slice's one row), §4.17.1, §4.18 (both rounds), §5 (all thirty-five hazards), §6.1 rows 9, 10, 28, 29, 31, 33, 35, 38, **§6.2 rows spec:1057 (owned), spec:1058 (owner 8C — 8B is a re-run: T4 seeds and wires the `2400`, `1400` and `2411`–`2414` accounts `PAYROLL_PAYMENT`, the remittances and `EMPLOYEE_ADVANCE` resolve) and spec:1066 (owner 2A — 8B is a re-run: T4's policy declares `dimensions.required: ["BRANCH", "EMPLOYEE"]` and T9/T10 put BRANCH on every payroll line, so 2A's "BRANCH mandatory" clause is exercised on a type whose BRANCH is per line rather than per document)**.
-- **Interfaces produced:** §4.12.1 (`packages/domain/payroll/calculator.ts` verbatim — `EmployeePeriodInput`, `PayPeriod`, `RateTableRef`, `SchemeResult`, `EmployeeResult`, `PayrollCalculator`, `SchemeCalculator`, `calculators`), §4.12.2 (the `PAYROLL` policy and its §4.15 accounts), §4.12.6 (`app.payroll_run`, `app.payroll_line`), §4.12.7 (the `EMPLOYEE` dimension trigger `app.employee_dimension()`), §4.14's `PAYROLL` row, §4.15's rows `1400`, `2400`, `2411`–`2414`, `5300`, `5311`–`5314`, §4.5.8's `hr` map row, §3.6.2's four `hr.payroll.*` codes, §4.2.7's `payrollRunRouteModule` at `/v1/companies/:companyId/payroll-runs` with its one `PROBES` key, one new §4.2.8 contracts module (`packages/contracts/src/hr/payroll-run.ts`), §4.17's `seedPayrollRun`, and — in the **seed barrel only** (`@dulja/db/seed`, never the main barrel; §3.1, sah-039) — `linkPayrollAccountsForTenant`, the account-wiring entry point behind the `seed:payroll-accounts` script. **It is deliberately not a `PackLoader`:** `LOADERS` is keyed by `SubPack` and 0C owns `chart-of-accounts`, so 8B adds a *file* to that sub-pack and nothing else (§3.4.8).
+- **Interfaces produced:** §4.12.1 (`packages/domain/payroll/calculator.ts` verbatim — `EmployeePeriodInput`, `PayPeriod`, `RateTableRef`, `SchemeResult`, `EmployeeResult`, `PayrollCalculator`, `SchemeCalculator`, `calculators`), §4.12.2 (the `PAYROLL` policy and its §4.15 accounts), §4.12.6 (`app.payroll_run`, `app.payroll_line`), §4.12.7 (the `EMPLOYEE` dimension trigger `app.employee_dimension()`), §4.14's `PAYROLL` row, §4.15's rows `1400`, `2400`, `2411`–`2414`, `5300`, `5311`–`5314`, §4.5.8's `hr` map row, §3.6.2's four `hr.payroll.*` codes, §4.2.7's `payrollRunRouteModule` at `/v1/companies/:companyId/payroll-runs` with its one `PROBES` key, one new §4.2.8 contracts module (`packages/contracts/src/hr/payroll-run.ts`), §4.17's `seedPayrollRun`, and — in the **seed barrel only** (`@dulja/db/seed`, never the main barrel; §3.1, legacy-039) — `linkPayrollAccountsForTenant`, the account-wiring entry point behind the `seed:payroll-accounts` script. **It is deliberately not a `PackLoader`:** `LOADERS` is keyed by `SubPack` and 0C owns `chart-of-accounts`, so 8B adds a *file* to that sub-pack and nothing else (§3.4.8).
 - **Owner decisions:** **OD-23** (employer registration numbers; accountant-signed EPF/SOCSO/EIS/PCB tables and worked examples; staff list; pay-period conventions) → **Task 12**, isolated; default **`SYNTH` / `SYNTHETIC-TEST-v1`**, the clearly synthetic table of §4.12.4, and **no file under `packages/db/seed/my/statutory/` is created by this plan**. **OD-28** (the proration rule, spec:2086) → **Task 7**, isolated; default **`calendar_days`**, with `working_days` implemented and selectable and public holidays deliberately not subtracted. **OD-14** (HRD Corp or other levy, foreign workers, hourly/part-time staff, staff purchases on salary deduction — spec:2093) → **Task 8**, isolated; default **not built**, and the task states exactly what each answer adds. **OD-24** (screenshots and a two-minute operator description before any screen — spec:79, 108, 2408) → **Task 15**, isolated; default **the screen task is blocked, not the slice**, and Tasks 1–14 do not depend on it.
-- **Part VI tests owned / re-run:** owns **28** (T13), **29** (T14), **33** (T13), **38** (T14). Re-runs **10** (PAYROLL approval authority — T14), **31** (the PAYROLL clause of segregation of duties — T14), **9** (period lock reaching the payroll *lines* — T14), and **35's recalculation clause** (recalculating a submitted run returns it to draft and voids the pending approval — T11). **§3.0.4 rows owned:** spec:1057 (Statutory schemes as verified rate tables; pinning and refusal). **Regression files created / appended:** creates **none**; **appends** to `tests/regression/sah-003.test.ts`, `sah-009.test.ts`, `sah-011.test.ts`, `sah-013.test.ts`, `sah-019.test.ts`, `sah-020.test.ts`, `sah-031.test.ts`, `sah-032.test.ts` and `sah-042.test.ts` — all nine are 0B's under §3.7.3's Plan 0A-proven and structural lists, so every 8B block is an append and no earlier block is edited.
+- **Part VI tests owned / re-run:** owns **28** (T13), **29** (T14), **33** (T13), **38** (T14). Re-runs **10** (PAYROLL approval authority — T14), **31** (the PAYROLL clause of segregation of duties — T14), **9** (period lock reaching the payroll *lines* — T14), and **35's recalculation clause** (recalculating a submitted run returns it to draft and voids the pending approval — T11). **§3.0.4 rows owned:** spec:1057 (Statutory schemes as verified rate tables; pinning and refusal). **Regression files created / appended:** creates **none**; **appends** to `tests/regression/legacy-003.test.ts`, `legacy-009.test.ts`, `legacy-011.test.ts`, `legacy-013.test.ts`, `legacy-019.test.ts`, `legacy-020.test.ts`, `legacy-031.test.ts`, `legacy-032.test.ts` and `legacy-042.test.ts` — all nine are 0B's under §3.7.3's Plan 0A-proven and structural lists, so every 8B block is an append and no earlier block is edited.
 - **Shared namespaces this slice writes into:** **Document-type codes (§4.14)** — **two rows, and only one of them is ever packaged**: **`PAYROLL`**, `module: "hr"`, series `PAY`, seeded as `packages/db/seed/my/document-types/PAYROLL.json`; and **`PAYROLL_DDL_TEST`**, series `PDT`, `module: "hr"`, **test only** — configured through `seedDocumentType` inside a Testcontainers database by T1's `tables.test.ts` alone, never a file under `packages/db/seed/`, registered by **amendment A15** on the terms §4.14's own test-only paragraph sets (a test-only code is registered *because* hazard 32 makes an unregistered one a review-blocking finding — 3A did the same for its four). Consumed and never seeded here: `JOURNAL` (1A — test 28's hand-keyed side). Registered but **8C's, not seeded here**: `PAYROLL_PAYMENT`, `EMPLOYEE_ADVANCE`. **Account codes (§4.15)** — **eleven leaf rows, all this slice's own**, in `packages/db/seed/my/chart-of-accounts/8b-payroll.json`: `1400` Staff advances (asset), `2400` Salaries payable (liability), `2411`/`2412`/`2413`/`2414` Statutory payable per scheme in `statutory_scheme.code` order **EPF, SOCSO, EIS, PCB** (liability), `5300` Salaries expense (expense), `5311`/`5312`/`5313`/`5314` Employer contribution expense per scheme in the **same order and last digit** (expense). Consumed and asserted-not-re-seeded, with their seeding slice: `1100` Bank, `1000` Cash on hand, `5920` FX rounding (**0C**). **Report codes (§4.16.1) — none**, and **`DatasetId` members (§4.16.2) — none**: `payroll_line` is 8D's row in the frozen union and 7A creates `datasets.ts`. **`fixtures.ts` helpers (§4.17) — exactly one, the row §4.17 assigns 8B: `seedPayrollRun(db, s, opts: { periodStart; periodEnd; employeeIds; kind? }) → string`**, extended additively by amendment A6 with `payDate?`, `branchId?` and `effectiveDate?`. **Shared test helpers (§4.17.1) — one new file**, `tests/invariants/support/payroll.ts` (amendment A7), plus `tests/golden/payroll.test.ts`'s own file-local types.
 - **Never re-decide:** D1–D27 (spec:114–142); every name in the contracts document is frozen — a needed change goes to that document first.
 - **Contracts version:** 2026-09-07.
@@ -43,7 +43,7 @@ TypeScript 5 on Bun; PostgreSQL 18 via `postgres.js` tagged templates (Drizzle m
 |---|---|---|---|
 | **A1** | 2.9 (8B card), 3.4.1 | **Migration 0090 is not spare.** R3 (spec:2174) is a data-layer rule — "a compensation change effective in the period of a run in `submitted` or `approved` status returns that run to `draft`" — and a data-layer rule on 8A's `compensation_line` is a trigger, which is a migration. 0090 is `0090_create_compensation_change_returns_run.sql`. The range 0087–0090 is unchanged and nothing is borrowed | correction |
 | **A2** | 2.9 (8B card) | The card's expected name `0088_create_employee_dimension_trigger.sql` understates the file, which also creates the `app.ensure_employee_dimension_type` and `app.ensure_employee_dimension_value` helpers; §3.4.2's rule ("a file whose name understates what it does is renamed") gives **`0088_create_employee_dimension.sql`**, the name §4.12.7's own heading uses | correction |
-| **A3** | 4.12.2, 4.4.2, **4.4.1**, **4.3.4** | **Every `PAYROLL` policy rule declares `dimensions: { "from": ["line.dimensions", "line.employee"] }` and omits `document.branch`.** 2A's `dimensionsFor` (2a:1754–1768) gives `document.branch` the **last word** — `if (from.includes("document.branch")) out["BRANCH"] = snapshot.header.branchId;` after the loop — so a rule naming it would stamp every employee's line with the *run's* branch and spec:2101's "the employee's home branch" would be false for every employee outside it. 2A's own note (2a:1321) already states this mechanism as 8B's. `dimensions.required: ["BRANCH", "EMPLOYEE"]` is what makes the omission safe rather than silent. **The other half of the same decision, and it corrects §4.3.4:** that section's `document_line` DDL comment reads `dimensions jsonb … BRANCH is never here — it is document.branch_id`, and Task 10's `writeLines` deliberately writes `{"BRANCH": <the employee's home branch>}` into exactly that column. The comment now reads **"`{"<dimension_type.code>": "<dimension_value.id>"}`; BRANCH is never here **except on `PAYROLL` lines**, where the employee's home branch is per line and the policy omits `document.branch` — every other document type takes BRANCH from `document.branch_id`"**. The two halves are one mechanism: the line bag carries BRANCH *only* because no `PAYROLL` rule names `document.branch`, and 2A's header-wins rule (SAH-042, SAH-050) still governs every other type. spec:2101 is the authority for the per-employee branch. **A third section says the opposite and is corrected in the same PR:** §4.4.1's semantics paragraph reads "the evaluator adds `document.branch` as `BRANCH` to **every line** and `line.employee` as `EMPLOYEE` on payroll lines, then checks `required`", which is not what 2A shipped (`dimensionsFor` adds BRANCH from `document.branch` **only when a rule's `dimensions.from` names it**, 2a:1754–1768) and which, left standing, makes this policy read as wrong. It becomes **"the evaluator adds `document.branch` as `BRANCH` and `line.employee` as `EMPLOYEE` to a line exactly when that rule's `dimensions.from` names them — the default `from` is `["line.dimensions", "document.branch"]`, so BRANCH reaches every line of every type that does not override it, and a rule that omits `document.branch` (the `PAYROLL` rules, A3) takes BRANCH from the line's own bag — then checks `required`"** | correction |
+| **A3** | 4.12.2, 4.4.2, **4.4.1**, **4.3.4** | **Every `PAYROLL` policy rule declares `dimensions: { "from": ["line.dimensions", "line.employee"] }` and omits `document.branch`.** 2A's `dimensionsFor` (2a:1754–1768) gives `document.branch` the **last word** — `if (from.includes("document.branch")) out["BRANCH"] = snapshot.header.branchId;` after the loop — so a rule naming it would stamp every employee's line with the *run's* branch and spec:2101's "the employee's home branch" would be false for every employee outside it. 2A's own note (2a:1321) already states this mechanism as 8B's. `dimensions.required: ["BRANCH", "EMPLOYEE"]` is what makes the omission safe rather than silent. **The other half of the same decision, and it corrects §4.3.4:** that section's `document_line` DDL comment reads `dimensions jsonb … BRANCH is never here — it is document.branch_id`, and Task 10's `writeLines` deliberately writes `{"BRANCH": <the employee's home branch>}` into exactly that column. The comment now reads **"`{"<dimension_type.code>": "<dimension_value.id>"}`; BRANCH is never here **except on `PAYROLL` lines**, where the employee's home branch is per line and the policy omits `document.branch` — every other document type takes BRANCH from `document.branch_id`"**. The two halves are one mechanism: the line bag carries BRANCH *only* because no `PAYROLL` rule names `document.branch`, and 2A's header-wins rule (LEGACY-042, LEGACY-050) still governs every other type. spec:2101 is the authority for the per-employee branch. **A third section says the opposite and is corrected in the same PR:** §4.4.1's semantics paragraph reads "the evaluator adds `document.branch` as `BRANCH` to **every line** and `line.employee` as `EMPLOYEE` on payroll lines, then checks `required`", which is not what 2A shipped (`dimensionsFor` adds BRANCH from `document.branch` **only when a rule's `dimensions.from` names it**, 2a:1754–1768) and which, left standing, makes this policy read as wrong. It becomes **"the evaluator adds `document.branch` as `BRANCH` and `line.employee` as `EMPLOYEE` to a line exactly when that rule's `dimensions.from` names them — the default `from` is `["line.dimensions", "document.branch"]`, so BRANCH reaches every line of every type that does not override it, and a rule that omits `document.branch` (the `PAYROLL` rules, A3) takes BRANCH from the line's own bag — then checks `required`"** | correction |
 | **A4** | 4.12.2, 4.14 | **`PAYROLL` declares `reversal: { "allowed": false, "producesType": null }`** and correction after posting is a `supplementary` run (ADR 0076, a proposal). Two independent mechanics forbid the reversal path and both are load-bearing — Task 4 Step 2 states them in full | settlement |
 | **A5** | 4.12.6 | `app.payroll_line` carries **two** guards beyond §4.12.6's column list: a CHECK making the policy's three `when` filters mutually exclusive, and `payroll_line_change_draft_only` (BEFORE UPDATE OR DELETE, `ERR_DOC_NOT_DRAFT`) — the same shape as 2B's `forbid_line_delete_unless_draft`. That trigger **is** spec:2105's "period lock on the lines" and is what makes test 9's re-run non-vacuous | plan |
 | **A6** | 4.17 | `seedPayrollRun` gains `payDate?`, `branchId?` and `effectiveDate?`, additively; §4.17's own rule ("a slice needing an option a listed one lacks adds the option additively and records it here in the same PR") is discharged by this row | plan |
@@ -148,7 +148,7 @@ packages/db/
     hr/ytd.ts                                   NEW  T10 — ytdFromPostedLines
     posting/load.ts                             EDIT T9  — refs.components, refs.schemes, LineSnapshot.payroll
     seed/payroll-accounts.ts                    NEW  T4  — linkPayrollAccountsForTenant + main; NOT a PackLoader
-    seed/index.ts                               EDIT T4  — re-exports it from the SEED barrel (§3.1, sah-039)
+    seed/index.ts                               EDIT T4  — re-exports it from the SEED barrel (§3.1, legacy-039)
     seed/chart-of-accounts.ts                   —    0C — consumed unchanged; it applies 8b-payroll.json
     index.ts                                    EDIT T1, T2, T4, T10, T11 — re-exports
   seed/my/
@@ -202,15 +202,15 @@ tests/
   golden/payroll/synth-regular/{input,expected}.json      NEW T13
   golden/payroll/synth-proration/{input,expected}.json    NEW T13
   golden/payroll/synth-missing-input/{input,expected}.json NEW T13
-  regression/sah-003.test.ts                    EDIT T13 — append the 8B block
-  regression/sah-009.test.ts                    EDIT T13
-  regression/sah-011.test.ts                    EDIT T6
-  regression/sah-013.test.ts                    EDIT T14
-  regression/sah-019.test.ts                    EDIT T5
-  regression/sah-020.test.ts                    EDIT T6
-  regression/sah-031.test.ts                    EDIT T14
-  regression/sah-032.test.ts                    EDIT T14
-  regression/sah-042.test.ts                    EDIT T14
+  regression/legacy-003.test.ts                    EDIT T13 — append the 8B block
+  regression/legacy-009.test.ts                    EDIT T13
+  regression/legacy-011.test.ts                    EDIT T6
+  regression/legacy-013.test.ts                    EDIT T14
+  regression/legacy-019.test.ts                    EDIT T5
+  regression/legacy-020.test.ts                    EDIT T6
+  regression/legacy-031.test.ts                    EDIT T14
+  regression/legacy-032.test.ts                    EDIT T14
+  regression/legacy-042.test.ts                    EDIT T14
 ```
 
 **PR boundaries.** PR 1 = T1 (migration 0087). PR 2 = T2 (0088). PR 3 = T3 (0089) + T4. PR 4 = T5–T9. PR 5 = T10. PR 6 = T11 (0090). PR 7 = T12–T14. PR 8 = T15 ⚠️.
@@ -334,7 +334,7 @@ describe("migration 0087 — payroll_run and payroll_line (§4.12.6, amendment A
       .rejects.toThrow(/payroll_line_amount_check/);
   });
 
-  it("a POSTED run's payroll_line cannot be updated, and its parent line cannot be deleted — ERR_DOC_NOT_DRAFT (spec:2105, SAH-031/041)", async () => {
+  it("a POSTED run's payroll_line cannot be updated, and its parent line cannot be deleted — ERR_DOC_NOT_DRAFT (spec:2105, LEGACY-031/041)", async () => {
     const d = await draftTypedDocument(db, a, {
       documentTypeId: typeId, series: "PDT", effectiveDate: "2026-01-15",
       lines: [
@@ -402,7 +402,7 @@ describe("migration 0087 — payroll_run and payroll_line (§4.12.6, amendment A
     expect(await lintSchema(db.admin)).toEqual([]);
   });
 
-  it("a run's pinned_tables survives a round trip as jsonb (SAH-013 — what was originally applied)", async () => {
+  it("a run's pinned_tables survives a round trip as jsonb (LEGACY-013 — what was originally applied)", async () => {
     const docId = await uuidv7(db.admin);
     await withTenant(db.rw, a.tenant, a.human, async (tx) => {
       await tx`
@@ -418,7 +418,7 @@ describe("migration 0087 — payroll_run and payroll_line (§4.12.6, amendment A
     const [row] = await db.admin<{ pinned_tables: { schemeId: string; version: number }[]; calculated_by: string | null }[]>`
       select pinned_tables, calculated_by::text as calculated_by from app.payroll_run where document_id = ${docId}`;
     expect(row!.pinned_tables).toEqual([{ schemeId: "s1", version: 3 }]);
-    expect(row!.calculated_by).toBe(a.human);   // stamped by app.stamp_actor, never from a payload (SAH-044)
+    expect(row!.calculated_by).toBe(a.human);   // stamped by app.stamp_actor, never from a payload (LEGACY-044)
   });
 });
 ```
@@ -465,7 +465,7 @@ create table app.payroll_run (
   period_start    date not null,
   period_end      date not null,
   pay_date        date not null,
-  -- SAH-013: what was ORIGINALLY applied. [{ "schemeId": uuid, "version": int }], written by the run service
+  -- LEGACY-013: what was ORIGINALLY applied. [{ "schemeId": uuid, "version": int }], written by the run service
   -- from the pure calculator's `pinnedTables` and never re-read from statutory_rate_table afterwards.
   pinned_tables   jsonb not null default '[]'::jsonb,
   calculated_at   timestamptz not null default now(),
@@ -479,7 +479,7 @@ create table app.payroll_run (
   foreign key (tenant_id, document_id) references app.document(tenant_id, id) on delete cascade
 );
 comment on table app.payroll_run is
-  'spec:2081 — a payroll run is a PAYROLL document; this row carries the pay period, the run kind and the pinned rate-table versions (SAH-013).';
+  'spec:2081 — a payroll run is a PAYROLL document; this row carries the pay period, the run kind and the pinned rate-table versions (LEGACY-013).';
 call app_meta.enable_tenant_rls('app.payroll_run');
 call app_meta.attach_audit('app.payroll_run');
 call app_meta.attach_stamp('app.payroll_run', 'calculated_by');
@@ -500,7 +500,7 @@ create table app.payroll_line (
   -- A MAGNITUDE. §4.4.2 amendment A9 makes `side` the sole carrier of direction for a planned ledger line,
   -- and the policy's rules choose the side; a negative amount here would post a deduction as an earning.
   amount            numeric(19,4) not null,
-  rate_table_id     uuid,                        -- SAH-013: the version this line pinned
+  rate_table_id     uuid,                        -- LEGACY-013: the version this line pinned
   rate_table_version int,
   override_reason   text,                        -- spec:2087 — a manual statutory override, never silent
   entered_by        uuid references app.principal(id),   -- stamped; null unless override_reason is set
@@ -525,7 +525,7 @@ create table app.payroll_line (
   foreign key (tenant_id, rate_table_id)     references app.statutory_rate_table(tenant_id, id)
 );
 comment on table app.payroll_line is
-  'spec:2081 — one row per employee per component or scheme share, pinning the rate-table version it used (SAH-013).';
+  'spec:2081 — one row per employee per component or scheme share, pinning the rate-table version it used (LEGACY-013).';
 call app_meta.enable_tenant_rls('app.payroll_line');
 call app_meta.attach_audit('app.payroll_line');
 call app_meta.attach_stamp('app.payroll_line', 'entered_by');
@@ -533,8 +533,8 @@ call app_meta.attach_stamp('app.payroll_line', 'entered_by');
 create index payroll_line_employee_idx on app.payroll_line (company_id, employee_id);
 create index payroll_line_scheme_idx   on app.payroll_line (company_id, scheme_id);
 
--- ── 4. Period lock reaches the LINES (spec:2105, SAH-031) ────────────────────────────────────────────
--- SAH-031 is verbatim "Period locks … do not reach the line items". `assert_period_open` guards ledger_entry
+-- ── 4. Period lock reaches the LINES (spec:2105, LEGACY-031) ────────────────────────────────────────────
+-- LEGACY-031 is verbatim "Period locks … do not reach the line items". `assert_period_open` guards ledger_entry
 -- and `document_line_delete_draft_only` (2B) guards document_line, but app.payroll_line is a table those two
 -- have never heard of — and it carries every figure a payslip and a statutory schedule are generated from.
 -- The guard is the same shape as 2B's app.forbid_line_delete_unless_draft and raises the same token.
@@ -554,7 +554,7 @@ begin
     from app.document d join app.document_line l on l.document_id = d.id
    where l.id = coalesce(new.document_line_id, old.document_line_id);
   if s is not null and s <> 'draft' then
-    raise exception 'ERR_DOC_NOT_DRAFT: payroll line % belongs to a document that is %; a posted run is corrected by a supplementary run, never edited in place (spec:2081, SAH-041)',
+    raise exception 'ERR_DOC_NOT_DRAFT: payroll line % belongs to a document that is %; a posted run is corrected by a supplementary run, never edited in place (spec:2081, LEGACY-041)',
       coalesce(new.document_line_id, old.document_line_id), s
       using errcode = 'check_violation';
   end if;
@@ -597,8 +597,8 @@ alter table app.document_line add constraint document_line_kind_check
 
 **Three choices worth stating, because each is the difference between a table that works and one that lies.**
 
-- **`payroll_line.amount` has a `>= 0` CHECK and no sign.** §4.4.2's A9 warning names 8B among the five slices whose documents have a naturally negative expression, and its instruction is absolute: the magnitude is absolute and `side` answers "which way". A deduction is a *credit* rule in the policy, not a negative amount. A signed column here would let one line post as an earning and the balance would still be zero, which is SAH-003 with the constraint satisfied.
-- **`entered_by` is nullable and is the ONE `*_by` column on either table besides `calculated_by`.** §3.3's rule is that a `*_by` name means "the acting principal, stamped by the server". `entered_by` is exactly that — spec:2087 requires the operator who entered a manual override to be accountable — and it is stamped. The employee the line is *about* is `employee_id`, never `*_by`; naming it `entered_by` would replace the accountable operator with whoever last touched the row, which is SAH-044 in the opposite direction.
+- **`payroll_line.amount` has a `>= 0` CHECK and no sign.** §4.4.2's A9 warning names 8B among the five slices whose documents have a naturally negative expression, and its instruction is absolute: the magnitude is absolute and `side` answers "which way". A deduction is a *credit* rule in the policy, not a negative amount. A signed column here would let one line post as an earning and the balance would still be zero, which is LEGACY-003 with the constraint satisfied.
+- **`entered_by` is nullable and is the ONE `*_by` column on either table besides `calculated_by`.** §3.3's rule is that a `*_by` name means "the acting principal, stamped by the server". `entered_by` is exactly that — spec:2087 requires the operator who entered a manual override to be accountable — and it is stamped. The employee the line is *about* is `employee_id`, never `*_by`; naming it `entered_by` would replace the accountable operator with whoever last touched the row, which is LEGACY-044 in the opposite direction.
 - **`on delete cascade` on the composite FK to the parent, and the PK carries no FK of its own.** A draft run is recalculated by replacing its `document_line` rows (2B's DELETE grant plus its draft-only guard), and a `payroll_line` orphaned by that replacement would be a figure with no line. During that cascade **the parent row is already gone** — the RI cascade is an AFTER trigger on the parent and its child DELETE sees the parent removed — which is why the draft-only trigger's predicate is `s is not null and s <> 'draft'` and not `s is distinct from 'draft'`; 2B wrote the identical predicate for the identical situation and says so in its own comment (2b:1870–1873, 2b:1879). Getting this backwards refuses every draft recalculation. The single-column `references app.document_line(id)` that a PK column invites is **deliberately absent**: it would be a `composite_fk` violation (plan0A:2613) and it is redundant — the composite FK already supplies both the reference and the cascade.
 
 - [ ] **Step 5: Write the Drizzle mirrors**
@@ -677,7 +677,7 @@ Additively, at the end of the file. Nothing existing is edited — `seedTenant`,
  *
  * It deliberately does NOT calculate: approval and posting go through the real state machine and the real
  * `calculatePayrollRun` (Task 10). A fixture that computed figures would give the golden tests a second
- * source of truth, which is SAH-009 in a test suite.
+ * source of truth, which is LEGACY-009 in a test suite.
  *
  * Returns the DOCUMENT id — `payroll_run` is keyed on it and every later call takes a document id.
  */
@@ -762,7 +762,7 @@ document state machine and the one posting service (spec:2081).
 payroll_line.amount is a non-negative magnitude — §4.4.2 A9 makes `side` the
 sole carrier of direction and names 8B among the slices that must never infer
 one from a sign. payroll_line_shape_check makes the policy's three `when`
-filters mutually exclusive. payroll_line_change_draft_only is SAH-031's fix
+filters mutually exclusive. payroll_line_change_draft_only is LEGACY-031's fix
 reaching the line items, which is the half the legacy period lock never did.
 
 The document_line kind CHECK takes the full six-label union, byte-identical to
@@ -1017,7 +1017,7 @@ export const EMPLOYEE_DIMENSION_CODE = "EMPLOYEE";
  * The company's EMPLOYEE dimension type id, creating the row on first use. Idempotent.
  *
  * It calls the SQL function rather than re-implementing it, so the trigger path and the repair path can
- * never disagree about what an EMPLOYEE dimension type is — the SAH-009 failure mode applied to reference
+ * never disagree about what an EMPLOYEE dimension type is — the LEGACY-009 failure mode applied to reference
  * data instead of to cost.
  */
 export async function ensureEmployeeDimensionType(tx: Sql, companyId: string): Promise<string> {
@@ -1599,9 +1599,9 @@ describe("8b-payroll.json and PAYROLL.json (§4.15, §4.14, §4.3.7)", () => {
 - **A deduction credits `line.component.expense_account`, and that is not a misnomer.** `pay_component` has both `expense_account_id` and `payable_account_id` (§4.6.1), but §4.4.1's `accountRef` enum offers only `line.component.expense_account` and the schema is frozen at one `$id` from 2A onward. The account a deduction component names is therefore its `expense_account_id`: `5300` for an unpaid-leave deduction (it *reduces* salaries expense) and `1400` for the advance-recovery component (it relieves the staff-advance receivable — §4.15's own note, "recovered by the advance-recovery `pay_component`"). **`linkPayrollAccounts` (Step 5) does not choose that `1400` and must not:** it sets `5300` as the blanket default on components that have **no** account yet, and it never overwrites one that has. Which component is the advance-recovery one is an **operator/seed decision** — 8A's `pay-components.json` and the tenant's accountant name it, and no code in this slice matches on a component code, because a component code is not a registered namespace and a hard-coded `ADV_RECOVERY` here would have to match 8A's seed file byte for byte or wire the wrong account silently. `PAYROLL_ACCOUNT_CODES.staffAdvances` is exported for **8C's** `EMPLOYEE_ADVANCE` (§4.12.2) and for the two fixtures that set the account by hand (`payrollFixture`, T10 Step 3; the golden `seedCase`, T13 Step 2), and for nothing else in this slice.
 - **Net pay is an `account` line, not a `payroll` line, and it still carries both dimensions.** Rules 6 and 7 are the JOURNAL-shaped pair. The run service writes one `kind: "account"` `document_line` per employee with `account_id` = the `2400` account and `credit` = net pay, **and a `payroll_line` row beside it** with `employee_id` set and `component_id`/`scheme_id`/`share` all null — the third arm of `payroll_line_shape_check`. That `payroll_line` is what makes `line.employee` resolve on an `account` line, so the net-pay credit is tagged EMPLOYEE like every other line. Without it `dimensions.required` would refuse the whole document.
 - **Both `account` twins ship, and rule 7 is not dead weight.** `reverseDocument` **swaps** `debit`/`credit` on a copied line (2a:2512 — `l.credit, l.debit`) while negating the signed magnitudes, and `document_line.debit`/`credit` carry `>= 0` CHECKs (plan0A:2012). A lone credit rule would emit nothing from a mirrored line. PAYROLL refuses reversal (below), but a **supplementary** run legitimately carries a debit on an `account` line — a negative net pay for an over-payment being recovered — and rule 7 is what posts it.
-- **`dimensions.from` omits `document.branch` on every rule (amendment A3).** 2A's `dimensionsFor` ends with `if (from.includes("document.branch")) out["BRANCH"] = snapshot.header.branchId;` — the header's BRANCH always wins over the line's bag (2a:1766, SAH-042/050). Naming it here would stamp every employee's line with the *run's* branch, and spec:2101's "the employee's home branch" would be false for everyone outside it. The run service writes `document_line.dimensions = {"BRANCH": "<the employee's home_branch_id>"}`, `line.dimensions` carries it through, and `dimensions.required: ["BRANCH", "EMPLOYEE"]` refuses any line that lost it. This is the mechanism 2A's own note already assigned to 8B (2a:1321).
+- **`dimensions.from` omits `document.branch` on every rule (amendment A3).** 2A's `dimensionsFor` ends with `if (from.includes("document.branch")) out["BRANCH"] = snapshot.header.branchId;` — the header's BRANCH always wins over the line's bag (2a:1766, LEGACY-042/050). Naming it here would stamp every employee's line with the *run's* branch, and spec:2101's "the employee's home branch" would be false for everyone outside it. The run service writes `document_line.dimensions = {"BRANCH": "<the employee's home_branch_id>"}`, `line.dimensions` carries it through, and `dimensions.required: ["BRANCH", "EMPLOYEE"]` refuses any line that lost it. This is the mechanism 2A's own note already assigned to 8B (2a:1321).
 - **`approval.create: "hr.payroll.prepare"` — three distinct codes, which is what makes R6's pair meaningful.** §4.4.1 makes `create` the code that may create, edit and submit a draft; `requireDocumentPermission("create"/"submit")` resolves `approval.create ?? approval.post`, so without it a preparer would need `hr.payroll.post` to draft a run and R6's `[prepare, approve]` pair would guard nothing.
-- **`reversal: { "allowed": false, "producesType": null }` (amendment A4, ADR 0076).** Two independent mechanics forbid it and either alone is decisive. **(1) The state machine.** `reverseDocument` creates a fresh **draft** mirror and calls `postDocument` on it in the same transaction; §4.3.2 step 2 admits a draft only when `draft → issued` is legal, and §4.5.1 makes that legal **only when `approval.required = false`**. PAYROLL's is `true`, so the inner post raises `ERR_DOC_STATUS_ILLEGAL` — and the only ways round it are to set `approval.required = false` (which deletes R1 for the highest-risk document in the system, SAH-032) or to let the reversal skip the trigger (which is SAH-027, "disable an invariant temporarily"). **(2) The extension rows.** `reverseDocument` copies `document_line` columns; it copies no `payroll_line`, so every mirrored line would resolve `line.component.kind` and `line.share` to `null`, match no rule, plan zero ledger lines and raise `ERR_DOC_NO_LINES` at §4.3.2 step 6. Correction is therefore a **`supplementary` run** — a first-class `payroll_run.kind` (§4.12.6) that carries the delta, goes through submit → approve → post like any run, and leaves the original's posted lines and pins untouched, which is exactly what SAH-041 asks for.
+- **`reversal: { "allowed": false, "producesType": null }` (amendment A4, ADR 0076).** Two independent mechanics forbid it and either alone is decisive. **(1) The state machine.** `reverseDocument` creates a fresh **draft** mirror and calls `postDocument` on it in the same transaction; §4.3.2 step 2 admits a draft only when `draft → issued` is legal, and §4.5.1 makes that legal **only when `approval.required = false`**. PAYROLL's is `true`, so the inner post raises `ERR_DOC_STATUS_ILLEGAL` — and the only ways round it are to set `approval.required = false` (which deletes R1 for the highest-risk document in the system, LEGACY-032) or to let the reversal skip the trigger (which is LEGACY-027, "disable an invariant temporarily"). **(2) The extension rows.** `reverseDocument` copies `document_line` columns; it copies no `payroll_line`, so every mirrored line would resolve `line.component.kind` and `line.share` to `null`, match no rule, plan zero ledger lines and raise `ERR_DOC_NO_LINES` at §4.3.2 step 6. Correction is therefore a **`supplementary` run** — a first-class `payroll_run.kind` (§4.12.6) that carries the delta, goes through submit → approve → post like any run, and leaves the original's posted lines and pins untouched, which is exactly what LEGACY-041 asks for.
 
 - [ ] **Step 3: Write `packages/db/seed/my/chart-of-accounts/8b-payroll.json`**
 
@@ -1645,7 +1645,7 @@ import { linkPayrollAccounts, type PayrollAccountLinkage } from "../hr/accounts"
  * It is NOT a `PackLoader`: `LOADERS` is keyed by `SubPack` and 0C already owns `chart-of-accounts`, so this
  * runs as its own step after `bun run seed --tenant <id> --only chart-of-accounts`. It opens its own tenant
  * transaction as **the tenant's system principal** — the wiring is reference data nobody signs for, and a
- * human actor stamped on it would be a lie the audit trail then carries for ever (SAH-044).
+ * human actor stamped on it would be a lie the audit trail then carries for ever (LEGACY-044).
  */
 export async function linkPayrollAccountsForTenant(
   sql: Sql, tenantId: string, companyId: string,
@@ -1743,7 +1743,7 @@ export interface PayrollAccountLinkage {
  * **It never overwrites a value a tenant already chose.** The `where … is null` clauses are what make the
  * loader idempotent AND make a per-component override (an overtime component pointing at `5900`, an
  * advance-recovery component pointing at `1400`) survive a re-seed. A blind update would silently restate a
- * chart a customer's accountant configured, which is SAH-013's shape applied to reference data.
+ * chart a customer's accountant configured, which is LEGACY-013's shape applied to reference data.
  */
 export async function linkPayrollAccounts(tx: Sql, companyId: string): Promise<PayrollAccountLinkage> {
   const accounts = await tx<{ code: string; id: string }[]>`
@@ -1801,7 +1801,7 @@ Add to `packages/db/src/index.ts`:
 export { PAYROLL_ACCOUNT_CODES, linkPayrollAccounts, type PayrollAccountLinkage } from "./hr/accounts";
 ```
 
-and to `packages/db/src/seed/index.ts` (the seed barrel, **never** the main barrel — §3.1, sah-039). **`LOADERS` is not touched**: this is an entry point, not a loader.
+and to `packages/db/src/seed/index.ts` (the seed barrel, **never** the main barrel — §3.1, legacy-039). **`LOADERS` is not touched**: this is an entry point, not a loader.
 
 ```ts
 export { linkPayrollAccountsForTenant } from "./payroll-accounts";
@@ -1821,7 +1821,7 @@ spec:95 makes anything touching money semantics a proposal that is **asked** bef
 ## Context
 
 spec:2081 says "Correction after posting is a reversal plus a supplementary run; nothing is edited in place
-(SAH-041)". The `PAYROLL` policy must declare a `reversal` block — the schema requires it — and the value
+(LEGACY-041)". The `PAYROLL` policy must declare a `reversal` block — the schema requires it — and the value
 decides which of the two halves of that sentence the system actually offers.
 
 ## Decision
@@ -1836,8 +1836,8 @@ Two independent mechanics forbid the reversal path, and either alone is decisive
    §4.5.1 makes that legal only when the effective policy has `approval.required = false`. PAYROLL's is
    `true` (spec:2172 R1 names PAYROLL first in its seeded list), so the inner post raises
    `ERR_DOC_STATUS_ILLEGAL`. Setting `approval.required = false` to make reversal work would delete
-   maker ≠ checker for the highest-risk document in the system (SAH-032); letting the reversal skip the
-   trigger is SAH-027.
+   maker ≠ checker for the highest-risk document in the system (LEGACY-032); letting the reversal skip the
+   trigger is LEGACY-027.
 2. **The extension rows.** `reverseDocument` copies `document_line` columns and knows nothing of
    `app.payroll_line`. Every mirrored line would resolve `line.component.kind` and `line.share` to `null`,
    match no policy rule, plan zero ledger lines, and raise `ERR_DOC_NO_LINES` at §4.3.2 step 6.
@@ -1846,7 +1846,7 @@ Two independent mechanics forbid the reversal path, and either alone is decisive
 
 - `payroll_run.kind = 'supplementary'` is the correction path and is a first-class value in §4.12.6, not a
   workaround. The original run's posted lines, its `pinned_tables` and its ledger rows are never touched,
-  which is what SAH-041 asks for and what acceptance test 29 asserts.
+  which is what LEGACY-041 asks for and what acceptance test 29 asserts.
 - The half of spec:2081 that says "a reversal" is **not** offered for PAYROLL. If the owner wants it, the
   cost is stated rather than hidden: `reverseDocument` gains a payroll-extension copy step, and the state
   machine gains a rule admitting a reversal of an `approval.required` type straight to `issued` under the
@@ -1926,7 +1926,7 @@ EOF
 - **Modify (not create): `packages/domain/payroll/index.ts`** — **8A Task 9 creates this barrel** (`8a:4672`) and it already re-exports `RateTable`, `RateTableBands`, `RateTablePercentageWithCeiling`, `RateTableProgressive` from `./rate-table` and `RATE_TABLE_SCHEMA_ID`, `validateRateTable`, `parseRateTable`, `RateTableValidationError` from `./validate`. Every one of those eight names stays; this slice **appends** its own lines. Creating the file instead of appending deletes 8A's validator door and `packages/db/src/seed/statutory.ts` stops compiling.
 - Modify: `packages/domain/package.json` (**assert-then-add only** — 8A's amendment A11 already adds `"./payroll"`), `scripts/lint/rules/no-number-money.ts` (one `ALLOWED` entry — amendment A14)
 - Consumed and never edited: `packages/domain/payroll/rate-table.schema.json`, `rate-table.ts`, `validate.ts` (all three 8A Task 9)
-- Test: `packages/domain/test/payroll/schemes.test.ts`, `tests/regression/sah-019.test.ts` (append)
+- Test: `packages/domain/test/payroll/schemes.test.ts`, `tests/regression/legacy-019.test.ts` (append)
 
 **Interfaces:**
 - Consumes: `Money`, `Money.of`, `Money.zero`, `Money.fromDecimal`, `currency`, `CurrencyCode`, `round`, `RoundingMode`, `MONEY_SCALE` (§4.2.1, exported from `@dulja/domain`'s own `src/money/`), `Quantity` (§4.2.1), `Decimal` (`decimal.js`, D11), and **`RateTable`** — the committed type generated from `packages/domain/payroll/rate-table.schema.json` (8A, §4.12.3).
@@ -2091,7 +2091,7 @@ describe("SchemeCalculator — three kinds, and not one rate in code (spec:2080,
       .toEqual({ employeeShare: m("250.0000"), employerShare: m("500.0000") });
   });
 
-  it("banded_contribution REFUSES a base no band covers rather than returning zero (SAH-011)", () => {
+  it("banded_contribution REFUSES a base no band covers rather than returning zero (LEGACY-011)", () => {
     const gap: RateTable = { ...BANDED, table: { bands: [{ from: "1000", to: "5000", employee: "1.0000", employer: "2.0000" }] } };
     expect(() => calculators.banded_contribution.compute(gap, { base: m("10.0000"), profile: {}, ytd: {}, period: PERIOD }))
       .toThrow(new PayrollCalculationError("ERR_PAYROLL_INPUT_MISSING",
@@ -2110,11 +2110,11 @@ describe("SchemeCalculator — three kinds, and not one rate in code (spec:2080,
       .toEqual({ employeeShare: m("10.0000"), employerShare: m("20.0000") });
   });
 
-  it("percentage_with_ceiling applies the TABLE's declared rounding mode, and the two modes DISAGREE here (SAH-019)", () => {
+  it("percentage_with_ceiling applies the TABLE's declared rounding mode, and the two modes DISAGREE here (LEGACY-019)", () => {
     // The rate is chosen so the product is exactly `0.33325` — a tie at the fourth decimal whose preceding
     // digit is EVEN. That is the only input shape on which the two modes differ, and a case where they agree
     // (a tie behind an odd digit, say) would pass even if the calculators ignored `rounding_mode` entirely
-    // and always rounded HALF_AWAY_FROM_ZERO. SAH-019's fix is "one rounding function, EXPLICIT mode", so
+    // and always rounded HALF_AWAY_FROM_ZERO. LEGACY-019's fix is "one rounding function, EXPLICIT mode", so
     // the assertion has to be able to see the mode.
     const halfUp: RateTable = { ...PERCENTAGE, rounding_mode: "HALF_AWAY_FROM_ZERO",
       table: { employee_rate: "0.33325", employer_rate: "0", ceiling: null, floor: null } };
@@ -2141,7 +2141,7 @@ describe("SchemeCalculator — three kinds, and not one rate in code (spec:2080,
       .toEqual(Money.zero(MYR));
   });
 
-  it("progressive_schedule REFUSES a missing required profile field, naming it (SAH-011, test 33)", () => {
+  it("progressive_schedule REFUSES a missing required profile field, naming it (LEGACY-011, test 33)", () => {
     expect(() => calculators.progressive_schedule
       .compute(PROGRESSIVE, { base: m("3200.0000"), profile: { child_relief_count: null }, ytd: {}, period: PERIOD }))
       .toThrow(new PayrollCalculationError("ERR_PAYROLL_INPUT_MISSING",
@@ -2308,7 +2308,7 @@ export const bandedContribution: SchemeCalculator = {
       return value.greaterThanOrEqualTo(from) && (to === null || value.lessThan(to));
     });
     if (band === undefined) {
-      // A gap in the table is a gap, never a zero contribution. SAH-011 is exactly the failure where an
+      // A gap in the table is a gap, never a zero contribution. LEGACY-011 is exactly the failure where an
       // absent input becomes 0 and the figure is wrong for ever.
       throw new PayrollCalculationError(
         "ERR_PAYROLL_INPUT_MISSING",
@@ -2336,7 +2336,7 @@ const DEFAULT_MODE = "HALF_AWAY_FROM_ZERO" as const;
 /**
  * `share = clamp(base, floor, ceiling) × rate`, rounded once with the table's declared mode.
  *
- * The clamp happens BEFORE the multiplication and the rounding happens ONCE, at the end — SAH-019's fix is
+ * The clamp happens BEFORE the multiplication and the rounding happens ONCE, at the end — LEGACY-019's fix is
  * "one rounding function, explicit mode, applied at persist time", and rounding an intermediate would give
  * two implementations two answers.
  */
@@ -2481,8 +2481,8 @@ bun run typecheck
 ## Context
 
 spec:2080: "This document states no rate, threshold, ceiling or formula." spec:2229 asks for "EPF, SOCSO, EIS
-and PCB/MTD as versioned, effective-dated, **verified** rate tables pinned per payroll line". SAH-020 is a
-legacy GST return that hard-coded a rate; SAH-013 is a legacy reversal that re-read *current* flags instead
+and PCB/MTD as versioned, effective-dated, **verified** rate tables pinned per payroll line". LEGACY-020 is a
+legacy GST return that hard-coded a rate; LEGACY-013 is a legacy reversal that re-read *current* flags instead
 of what was originally applied. Both failures are the same shape: a figure that lives in code, or a figure
 that is re-derived at read time.
 
@@ -2499,13 +2499,13 @@ Three seams, and no fourth.
    new `kind` label, not an `if` inside an existing calculator.
 3. **A run pins what it used.** `PayrollCalculator.calculate` returns `pinnedTables`, and the run service
    writes `payroll_run.pinned_tables` and `payroll_line.rate_table_id` / `rate_table_version`. Nothing
-   re-reads `statutory_rate_table` for a posted line, ever. That is SAH-013's fix applied to statutory rates.
+   re-reads `statutory_rate_table` for a posted line, ever. That is LEGACY-013's fix applied to statutory rates.
 
 Refusals rather than defaults: a table with `verified = false`, or whose effective range does not cover the
 pay period, raises `ERR_PAYROLL_RATE_TABLE_UNVERIFIED`; a required statutory input that is `null` raises
 `ERR_PAYROLL_INPUT_MISSING` naming the employee and the field; a base outside every band, or a chargeable
 amount outside every bracket, raises `ERR_PAYROLL_INPUT_MISSING` naming the table. **No calculator returns
-zero for an input it does not understand** — SAH-011 is precisely the failure where a NULL became a figure.
+zero for an input it does not understand** — LEGACY-011 is precisely the failure where a NULL became a figure.
 
 ## Consequences
 
@@ -2518,20 +2518,20 @@ zero for an input it does not understand** — SAH-011 is precisely the failure 
 - `SchemeCalculator.compute` receives `ytd` and `period` and the three shipped calculators read neither. The
   parameters are in §4.12.1's frozen signature so a later `kind` that needs them does not change the seam.
 - Rounding is the table's declared `rounding_mode`, applied **once**, through `@dulja/domain`'s one `round`
-  (SAH-019). The scheme row's own `rounding_mode` (8A, §4.6.1) is what the run service copies into a
+  (LEGACY-019). The scheme row's own `rounding_mode` (8A, §4.6.1) is what the run service copies into a
   definition that omits the optional member, so the pure calculator stays total.
 ```
 
-- [ ] **Step 8: Append the 8B block to `tests/regression/sah-019.test.ts`**
+- [ ] **Step 8: Append the 8B block to `tests/regression/legacy-019.test.ts`**
 
 The file is 0B's (§3.7.3's structural list). Append a `describe`; edit no earlier block.
 
 ```ts
-// tests/regression/sah-019.test.ts — APPEND
+// tests/regression/legacy-019.test.ts — APPEND
 import { Money, currency } from "@dulja/domain";
 import { calculators, type RateTable } from "@dulja/domain/payroll";
 
-describe("SAH-019 Rounding is configured everywhere, applied nowhere, and the one rounding function is wrong — 8B", () => {
+describe("LEGACY-019 Rounding is configured everywhere, applied nowhere, and the one rounding function is wrong — 8B", () => {
   const MYR = currency("MYR");
   const table = (mode: RateTable["rounding_mode"]): RateTable => ({
     schema_version: 1, scheme: "SYNTH_ROUND", version: 1, kind: "percentage_with_ceiling",
@@ -2571,7 +2571,7 @@ describe("SAH-019 Rounding is configured everywhere, applied nowhere, and the on
 Run: `bun run --cwd packages/domain test -- payroll/schemes`
 **Expected:** PASS (8 tests).
 
-Run: `bun run --cwd tests test -- sah-019`
+Run: `bun run --cwd tests test -- legacy-019`
 **Expected:** PASS, with the 8B block's 2 new cases beside whatever earlier slices appended.
 
 Run: `bun run lint:rules`
@@ -2586,7 +2586,7 @@ git add packages/domain/payroll packages/domain/package.json \
         scripts/lint/rules/no-number-money.ts \
         packages/domain/test/payroll/schemes.test.ts \
         docs/adr/0074-payroll-calculator-seam-and-rate-table-pinning.md \
-        tests/regression/sah-019.test.ts
+        tests/regression/legacy-019.test.ts
 git commit -m "$(cat <<'EOF'
 feat(domain): the three statutory scheme calculators, and not one rate [8B T5]
 
@@ -2597,11 +2597,11 @@ gains the "./payroll" subpath as its one import path.
 Three calculators, one per `kind` the §4.12.3 schema admits. Every band, rate,
 ceiling, bracket and relief comes out of the RateTable handed in; a fourth
 statutory shape is a schema change, not an `if`. A base outside every band and a
-required profile field that is null both REFUSE naming the table — SAH-011 is
+required profile field that is null both REFUSE naming the table — LEGACY-011 is
 exactly the failure where an absent input silently became a figure.
 
 ADR 0074. Rounding is the table's declared mode applied once through the one
-`round` (SAH-019), and the regression block proves no calculator rounds twice.
+`round` (LEGACY-019), and the regression block proves no calculator rounds twice.
 
 no-number-money's ALLOWED gains exactly one entry, "rateTableVersion" — a rate
 table's version NUMBER, frozen as `number` by contracts §4.12.1 and matched by
@@ -2623,7 +2623,7 @@ EOF
 - Create: `packages/domain/test/payroll/calculator.test.ts`
 - Modify: `packages/domain/payroll/index.ts`, `packages/contracts/src/errors.ts`, `apps/api/src/problem.ts`
 - Modify: `scripts/lint/rules/error-codes.ts` (one scan root — amendment A16, Step 7)
-- Modify: `tests/regression/sah-011.test.ts`, `tests/regression/sah-020.test.ts`
+- Modify: `tests/regression/legacy-011.test.ts`, `tests/regression/legacy-020.test.ts`
 - Test: `packages/domain/test/payroll/calculator.test.ts`
 
 **Interfaces:**
@@ -2746,7 +2746,7 @@ describe("payrollCalculator.calculate (§4.12.1)", () => {
     expect(out.employees[0]!.net).toEqual(m("2800.0000"));
   });
 
-  it("a quantity-based component with NO per-unit amount refuses, naming the employee (SAH-011)", () => {
+  it("a quantity-based component with NO per-unit amount refuses, naming the employee (LEGACY-011)", () => {
     expect(() => payrollCalculator.calculate({
       period: PERIOD,
       employees: [EMPLOYEE({ compensation: [
@@ -2761,7 +2761,7 @@ describe("payrollCalculator.calculate (§4.12.1)", () => {
     // The two refusals are ordered: `assertComponentInputs` runs before `firstCurrency`, so the case above
     // gets the message naming its component and this one — the only case `firstCurrency` can still reach —
     // gets the currency message. If this case ever reports the component message, or the case above ever
-    // reports this one, the two are running in the wrong order and SAH-011's diagnosis is the thing lost.
+    // reports this one, the two are running in the wrong order and LEGACY-011's diagnosis is the thing lost.
     expect(() => payrollCalculator.calculate({
       period: PERIOD, employees: [EMPLOYEE({ compensation: [] })], rateTables: [], ytdBefore: {},
     })).toThrow(new PayrollCalculationError("ERR_PAYROLL_INPUT_MISSING",
@@ -2775,7 +2775,7 @@ describe("payrollCalculator.calculate (§4.12.1)", () => {
       "rate table SYNTH v1 is not verified; a payroll run cannot pin an unverified table (spec:2080)"));
   });
 
-  it("a table whose effective range does not COVER the period refuses (test 29, SAH-020)", () => {
+  it("a table whose effective range does not COVER the period refuses (test 29, LEGACY-020)", () => {
     expect(() => payrollCalculator.calculate({
       period: PERIOD, employees: [EMPLOYEE()],
       rateTables: [REF({ effectiveFrom: "2026-01-15", effectiveTo: null })], ytdBefore: {},
@@ -2948,7 +2948,7 @@ function coversPeriod(ref: RateTableRef, period: PayPeriod): boolean {
  * Order of operations, fixed here because a golden fixture pins it (test 33):
  *   1. every supplied rate table is checked for `verified` and for covering the period — the WHOLE run
  *      refuses on the first failure, because a run that computed some employees and refused others would
- *      leave a half-payroll (SAH-020's shape);
+ *      leave a half-payroll (LEGACY-020's shape);
  *   2. per employee: the proration factor; each earning and deduction resolved to a period amount;
  *   3. per scheme the employee's components name: the base is the sum of the EARNINGS joined to that scheme
  *      (RC-3, spec:2079 — never a "subject to X" boolean and never the whole gross);
@@ -2984,7 +2984,7 @@ export const payrollCalculator: PayrollCalculator = {
       // The per-component input gate runs BEFORE the currency is derived, and the order is load-bearing.
       // `firstCurrency` needs a line that carries an amount; an employee whose only line is a quantity with
       // no per-unit rate has none, so deriving the currency first would raise the generic "no compensation
-      // line carrying an amount" and BURY the refusal SAH-011 actually asks for — the one that names the
+      // line carrying an amount" and BURY the refusal LEGACY-011 actually asks for — the one that names the
       // component and the quantity. Both are ERR_PAYROLL_INPUT_MISSING; only one of them is useful.
       assertComponentInputs(e);
       const currency = firstCurrency(e);
@@ -3080,9 +3080,9 @@ export const payrollCalculator: PayrollCalculator = {
 type CompensationLine = EmployeePeriodInput["compensation"][number];
 
 /**
- * The exact `ERR_PAYROLL_INPUT_MISSING` message for a component with no usable amount (SAH-011, test 33).
+ * The exact `ERR_PAYROLL_INPUT_MISSING` message for a component with no usable amount (LEGACY-011, test 33).
  * ONE function, so the pre-pass and the narrowing throw inside the loop cannot spell one refusal two ways —
- * which is the SAH-009 failure mode applied to an error message.
+ * which is the LEGACY-009 failure mode applied to an error message.
  */
 function missingInput(e: EmployeePeriodInput, c: CompensationLine): PayrollCalculationError {
   return c.quantity !== null
@@ -3156,14 +3156,14 @@ import { PayrollCalculationError } from "@dulja/domain/payroll";
 
 **Why a branch and not a rethrow at the call site.** `packages/domain` may not import `AppError` (§3.1), so the class has to be its own; `problem.ts` is where every such class is translated once, exactly as `PolicyEvaluationError` and `PostingError` are. A translation at each call site would give two routes two spellings of one 422.
 
-- [ ] **Step 6: Append the 8B blocks to `sah-011` and `sah-020`**
+- [ ] **Step 6: Append the 8B blocks to `legacy-011` and `legacy-020`**
 
 ```ts
-// tests/regression/sah-011.test.ts — APPEND
+// tests/regression/legacy-011.test.ts — APPEND
 import { Money, currency } from "@dulja/domain";
 import { PayrollCalculationError, payrollCalculator, type RateTableRef } from "@dulja/domain/payroll";
 
-describe("SAH-011 NULL arithmetic irreversibly nulls balances and tax boxes — 8B", () => {
+describe("LEGACY-011 NULL arithmetic irreversibly nulls balances and tax boxes — 8B", () => {
   const MYR = currency("MYR");
   const period = { start: "2026-01-01", end: "2026-01-31", payDate: "2026-02-05", prorationRule: "calendar_days" as const };
 
@@ -3201,25 +3201,25 @@ describe("SAH-011 NULL arithmetic irreversibly nulls balances and tax boxes — 
 ```
 
 ```ts
-// tests/regression/sah-020.test.ts — APPEND
+// tests/regression/legacy-020.test.ts — APPEND
 import { PayrollCalculationError, payrollCalculator } from "@dulja/domain/payroll";
 
-describe("SAH-020 The GST return hardcodes a rate … — 8B (the payroll half)", () => {
+describe("LEGACY-020 The GST return hardcodes a rate … — 8B (the payroll half)", () => {
   it("no EXECUTABLE line under packages/domain/payroll holds a numeric literal that could be a rate", async () => {
-    // SAH-020's root cause is a figure in code. The structural fix is that every figure comes out of a
+    // LEGACY-020's root cause is a figure in code. The structural fix is that every figure comes out of a
     // RateTable, so the package's executable source may hold `0` and `1` and nothing else numeric —
     // a scale is `MONEY_SCALE`/`QUANTITY_SCALE`, a day count is a named constant, a rate is a table.
     //
     // TWO strips, and each one earns its place.
     //
-    // (a) Comments. Every file here cites spec lines and SAH ids (`spec:2080`, `SAH-011`, `§4.12.3`),
+    // (a) Comments. Every file here cites spec lines and LEGACY ids (`spec:2080`, `LEGACY-011`, `§4.12.3`),
     //     and a scan that read those as rates would cry wolf on every commit until someone widened
     //     the allowlist to shut it up — which is precisely how a real check dies.
     // (b) Citations in what is LEFT. `calculator.ts` and `progressive-schedule.ts` put `spec:2080`
     //     in the text of a THROWN ERROR, which is a template literal, not a comment. Stripping only
     //     the citation forms leaves every other digit inside every other string in scope — so a rate
-    //     smuggled in as `"0.11"` is still caught, and that is the SAH-020 shape that matters.
-    const CITATION = /(spec:\d+|SAH-\d+|OD-\d+|RC-\d+)/g;
+    //     smuggled in as `"0.11"` is still caught, and that is the LEGACY-020 shape that matters.
+    const CITATION = /(spec:\d+|LEGACY-\d+|OD-\d+|RC-\d+)/g;
     const BLOCK_COMMENT = /\/\*[\s\S]*?\*\//g;
     const LINE_COMMENT = /(^|[^:])\/\/[^\n]*/g;   // the `[^:]` spares `https://`
     const strip = (src: string) =>
@@ -3291,7 +3291,7 @@ bun run lint:rules
 
 Run: `bun run --cwd packages/domain test -- payroll/calculator` — **expected:** PASS (14 tests).
 Run: `bun run --cwd packages/domain test` — **expected:** the whole `packages/domain` suite green, including 0D's money property tests and 2A's evaluator suite.
-Run: `bun run --cwd tests test -- sah-011` and `bun run --cwd tests test -- sah-020` — **expected:** PASS.
+Run: `bun run --cwd tests test -- legacy-011` and `bun run --cwd tests test -- legacy-020` — **expected:** PASS.
 Run: `bun run lint`, `bun run lint:rules`, `bun run typecheck` at the root — **expected:** all green.
 
 - [ ] **Step 9: Commit**
@@ -3300,13 +3300,13 @@ Run: `bun run lint`, `bun run lint:rules`, `bun run typecheck` at the root — *
 git add packages/domain/payroll packages/domain/test/payroll/calculator.test.ts \
         packages/contracts/src/errors.ts apps/api/src/problem.ts \
         scripts/lint/rules/error-codes.ts \
-        tests/regression/sah-011.test.ts tests/regression/sah-020.test.ts
+        tests/regression/legacy-011.test.ts tests/regression/legacy-020.test.ts
 git commit -m "$(cat <<'EOF'
 feat(domain): payrollCalculator — the two refusals, the pinning, the proration [8B T6]
 
 The whole run refuses before a single figure is computed if any supplied table
 is unverified or does not cover the period (test 29), and a required statutory
-input that is null refuses NAMING THE EMPLOYEE (test 33). SAH-011 is exactly the
+input that is null refuses NAMING THE EMPLOYEE (test 33). LEGACY-011 is exactly the
 failure where an absent input became a zero that propagated for ever, so there
 is no default anywhere in this file.
 
@@ -3323,7 +3323,7 @@ puts the only raise there is outside every root the rule read.
 
 The per-component input gate runs BEFORE the currency is derived. An employee
 whose only line is a quantity with no rate has no amount to take a currency
-from, so the other order buries the refusal SAH-011 asks for behind a generic
+from, so the other order buries the refusal LEGACY-011 asks for behind a generic
 one that names neither the component nor the quantity.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
@@ -3995,7 +3995,7 @@ describe("calculatePayrollRun (§4.12.6, spec:2081)", () => {
     }
   });
 
-  it("a pinned line records the rate table it used, per line (SAH-013)", async () => {
+  it("a pinned line records the rate table it used, per line (LEGACY-013)", async () => {
     const r = await withTenant(db.rw, s.tenant, s.human, (tx) =>
       calculatePayrollRun(tx, ctxOf(s), { ...RUN, companyId: s.company, branchId: s.hq }));
     const rows = await db.admin<{ rate_table_id: string | null; rate_table_version: number | null }[]>`
@@ -4784,7 +4784,7 @@ async function writeLines(
     // session actor but LEAVES A NULL NULL (plan0A:2372–2375) — so an insert that omitted the column would
     // fail the CHECK on every override line, which `recalculatePayrollRun` re-creates from the overrides
     // `loadPayrollInputs` read back out of the draft. The value written is `app.current_actor()`, which is
-    // what the stamp would write anyway: the column is the session's actor and never a payload's (SAH-044).
+    // what the stamp would write anyway: the column is the session's actor and never a payload's (LEGACY-044).
     await tx`
       insert into app.payroll_line (document_line_id, tenant_id, company_id, employee_id, component_id,
                                     scheme_id, share, quantity, amount, rate_table_id, rate_table_version,
@@ -5560,7 +5560,7 @@ describe("Manual statutory override (spec:2087)", () => {
         from app.payroll_line pl join app.document_line dl on dl.id = pl.document_line_id
        where dl.document_id = ${r.documentId} and pl.employee_id = ${f.employeeAId} and pl.share = 'employee'`;
     expect(line!.amount).toBe("77.0000");
-    expect(line!.entered_by).toBe(s.human);     // stamped from the session, never from a payload (SAH-044)
+    expect(line!.entered_by).toBe(s.human);     // stamped from the session, never from a payload (LEGACY-044)
 
     // Employee B's share is the computed one and carries no reason.
     const [untouched] = await db.admin<{ override_reason: string | null }[]>`
@@ -5614,7 +5614,7 @@ Run: `bun run --cwd packages/db test -- payroll/recalculation`
 --
 -- WHY A TRIGGER (and why migration 0090 is not spare — amendment A1): R3 is a data-layer rule. Putting it in
 -- the compensation handler would leave the seed CLI, the Phase 9 importer and any direct `app_rw` update
--- outside it, which is SAH-032's shape — an authority rule the data layer does not hold.
+-- outside it, which is LEGACY-032's shape — an authority rule the data layer does not hold.
 
 create function app.compensation_change_returns_run() returns trigger language plpgsql as $$
 declare
@@ -5624,7 +5624,7 @@ declare
   r record;
 begin
   -- Only the two statuses R3 names. `draft` needs nothing (it is already there) and `posted`, `issued`,
-  -- `void` and `reversed` are never touched: a posted run's figures are history (SAH-041).
+  -- `void` and `reversed` are never touched: a posted run's figures are history (LEGACY-041).
   for r in
     select d.id
       from app.payroll_run pr
@@ -5692,7 +5692,7 @@ export interface OverrideRow {
  * the *next* calculation would be approved unseen. `loadPayrollInputs` reads it back out of the draft's own
  * `payroll_line` rows as `manualOverrides`, which is why it survives the recalculation that follows.
  *
- * `entered_by` is stamped by `app.stamp_actor` from the session and is never a parameter (SAH-044).
+ * `entered_by` is stamped by `app.stamp_actor` from the session and is never a parameter (LEGACY-044).
  */
 export async function setStatutoryOverride(
   tx: Sql, ctx: TenantContext, input: SetOverrideInput,
@@ -5728,7 +5728,7 @@ export async function setStatutoryOverride(
   if (updated.length > 1) {
     // One (run, employee, scheme, share) is one payroll_line by construction — `payroll_line_shape_check`
     // and the run service's own writer both say so. More than one row means the invariant has moved, and
-    // guessing which line the operator meant is exactly what SAH-011 punishes.
+    // guessing which line the operator meant is exactly what LEGACY-011 punishes.
     throw new Error(`ERR_INTERNAL: payroll run ${input.documentId} has ${updated.length} ${input.share} lines for employee ${input.employeeId} and scheme ${input.schemeId}; one was expected`);
   }
 
@@ -5789,7 +5789,7 @@ change is picked up by the next supplementary run (spec:2174).
 The override is written on the draft and the run is recalculated immediately, so
 what the approver sees is what the override produced; loadPayrollInputs reads it
 back as manualOverrides, which is why it survives every later recalculation.
-entered_by is stamped from the session and is never a parameter (SAH-044).
+entered_by is stamped from the session and is never a parameter (LEGACY-044).
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 EOF
@@ -5957,7 +5957,7 @@ EOF
 - Create: `tests/golden/payroll/synth-proration/{input,expected}.json`
 - Create: `tests/golden/payroll/synth-missing-input/{input,expected}.json`
 - Create: `tests/invariants/payroll-one-posting-path.test.ts`
-- Modify: `tests/regression/sah-003.test.ts`, `tests/regression/sah-009.test.ts`
+- Modify: `tests/regression/legacy-003.test.ts`, `tests/regression/legacy-009.test.ts`
 - Test: `tests/golden/payroll.test.ts`, `tests/invariants/payroll-one-posting-path.test.ts`
 
 **Interfaces:**
@@ -6399,7 +6399,7 @@ beforeAll(async () => {
 }, 180_000);
 afterAll(async () => { await db.stop(); });
 
-describe("acceptance test 28 — one payroll posting path (spec:2446, SAH-003, SAH-009)", () => {
+describe("acceptance test 28 — one payroll posting path (spec:2446, LEGACY-003, LEGACY-009)", () => {
   it("a PAYROLL run and a hand-keyed JOURNAL with the same lines produce IDENTICAL ledger rows", async () => {
     // ── the PAYROLL side ────────────────────────────────────────────────────────────────────────────
     const run = await withTenant(db.rw, ctx(s.human), (tx) =>
@@ -6480,26 +6480,26 @@ export interface JournalLine {
                        ${JSON.stringify(l.dimensions ?? {})}::jsonb)`;
 ```
 
-**Why that is enough to make the comparison real.** `JOURNAL_POLICY_V1`'s two rules declare **no** `dimensions` block (1a:2371–2374), so 2A's `dimensionsFor` falls back to its documented default `["line.dimensions", "document.branch"]` (2a:1754–1759): the line's own bag is read, and the header's BRANCH then wins over whatever the bag held (2a:1766, SAH-042/SAH-050). So EMPLOYEE arrives from the bag and BRANCH from the JOURNAL document's own header — which is `s.hq`, the same branch employee A's PAYROLL line carries, because test 28 runs on `f.employeeAId` alone. `postLines` is deliberately not used: §4.17.1 makes `postJournal` "the only way a test creates ledger rows" from 1A onward, and test 28's whole claim is *two documents, one posting service*.
+**Why that is enough to make the comparison real.** `JOURNAL_POLICY_V1`'s two rules declare **no** `dimensions` block (1a:2371–2374), so 2A's `dimensionsFor` falls back to its documented default `["line.dimensions", "document.branch"]` (2a:1754–1759): the line's own bag is read, and the header's BRANCH then wins over whatever the bag held (2a:1766, LEGACY-042/LEGACY-050). So EMPLOYEE arrives from the bag and BRANCH from the JOURNAL document's own header — which is `s.hq`, the same branch employee A's PAYROLL line carries, because test 28 runs on `f.employeeAId` alone. `postLines` is deliberately not used: §4.17.1 makes `postJournal` "the only way a test creates ledger rows" from 1A onward, and test 28's whole claim is *two documents, one posting service*.
 
-- [ ] **Step 6: Append the 8B blocks to `sah-003` and `sah-009`**
+- [ ] **Step 6: Append the 8B blocks to `legacy-003` and `legacy-009`**
 
 **Every appended block below mints its OWN tenant, and that is load-bearing rather than tidy.**
-`payrollFixture` is **not idempotent**: it calls `seedAccount` for eleven fixed codes, `seedDocumentType('PAYROLL')`, `seedStatutoryScheme('EPF')`, `seedRateTable(scheme, version 1)`, `seedBranch('BR2')` and `seedEmployee('E-0001'/'E-0002')`, and every one of those is unique per company. Two blocks calling it against `sharedDb()`'s shared `seedA` would make the second die on a duplicate key — the symptom the Execution handoff's `T10 / T13 / T14` row names. The remedy is the first of the two that row gives: **one `seedTenantV2` tenant per block, on `sharedDb()`'s shared container**, which is 3B's `costingContext(sah)` precedent (3b:6106) applied without a new shared module. The second remedy — `on conflict do nothing` inside the fixture — is the one the handoff rules out, because it hides which suite owns the row.
+`payrollFixture` is **not idempotent**: it calls `seedAccount` for eleven fixed codes, `seedDocumentType('PAYROLL')`, `seedStatutoryScheme('EPF')`, `seedRateTable(scheme, version 1)`, `seedBranch('BR2')` and `seedEmployee('E-0001'/'E-0002')`, and every one of those is unique per company. Two blocks calling it against `sharedDb()`'s shared `seedA` would make the second die on a duplicate key — the symptom the Execution handoff's `T10 / T13 / T14` row names. The remedy is the first of the two that row gives: **one `seedTenantV2` tenant per block, on `sharedDb()`'s shared container**, which is 3B's `costingContext(legacyDefect)` precedent (3b:6106) applied without a new shared module. The second remedy — `on conflict do nothing` inside the fixture — is the one the handoff rules out, because it hides which suite owns the row.
 
-The five blocks' tenant names are `"SAH-003"`, `"SAH-009"`, `"SAH-013"`, `"SAH-031"` and `"SAH-042"`; `seedTenantV2(db, name)` takes the name as its only argument (§4.17, 1A) and each is distinct, so no two blocks can collide however the files are ordered.
+The five blocks' tenant names are `"LEGACY-003"`, `"LEGACY-009"`, `"LEGACY-013"`, `"LEGACY-031"` and `"LEGACY-042"`; `seedTenantV2(db, name)` takes the name as its only argument (§4.17, 1A) and each is distinct, so no two blocks can collide however the files are ordered.
 
 **Imports for each block go into the file's existing import block at the top**, beside whatever 0B put there — the same placement 2A used (2a:4664) and 3B restates (3b:6384). Each block below names the ones it needs on the line above its `describe`; append only those, and leave every existing import alone.
 
 ```ts
-// tests/regression/sah-003.test.ts — APPEND
+// tests/regression/legacy-003.test.ts — APPEND
 // Add to the file's existing import block: `seedTenantV2` from "@dulja/db/test", and
 // `payrollFixture`, `postPayrollRun` from "../invariants/support/payroll".
-describe("SAH-003 Nothing enforces that debits equal credits — 8B", () => {
+describe("LEGACY-003 Nothing enforces that debits equal credits — 8B", () => {
   it("a posted PAYROLL run balances in base currency, and the constraint is what says so", async () => {
     const { db } = await sharedDb();
     // This block's OWN tenant on the shared container — payrollFixture is not idempotent (see the box above).
-    const s = await seedTenantV2(db, "SAH-003");
+    const s = await seedTenantV2(db, "LEGACY-003");
     const f = await payrollFixture(db, s);
     const documentId = await postPayrollRun(db, s, f, {
       periodStart: "2026-01-01", periodEnd: "2026-01-31", payDate: "2026-02-05", effectiveDate: "2026-01-31",
@@ -6515,12 +6515,12 @@ describe("SAH-003 Nothing enforces that debits equal credits — 8B", () => {
 ```
 
 ```ts
-// tests/regression/sah-009.test.ts — APPEND
+// tests/regression/legacy-009.test.ts — APPEND
 // Add to the file's existing import block: `seedTenantV2` from "@dulja/db/test",
 // `payrollFixture`, `postPayrollRun` from "../invariants/support/payroll", and `sourceFiles` (§4.17.1).
-describe("SAH-009 Three different weighted-average formulas … — 8B (the payroll analogue)", () => {
+describe("LEGACY-009 Three different weighted-average formulas … — 8B (the payroll analogue)", () => {
   it("there is ONE payroll calculator and the run service is its only caller", async () => {
-    // SAH-009's root cause was three implementations of one formula. The payroll analogue would be a
+    // LEGACY-009's root cause was three implementations of one formula. The payroll analogue would be a
     // figure computed once in the calculator and again in a report or a payslip.
     const files = await sourceFiles(["packages/db/src", "apps/api/src", "apps/worker/src"]);
     const callers = files.filter((f) => /payrollCalculator\s*\.\s*calculate/.test(f.text)).map((f) => f.path);
@@ -6530,9 +6530,9 @@ describe("SAH-009 Three different weighted-average formulas … — 8B (the payr
 
   it("a PAYROLL run and a hand-keyed JOURNAL agree to the cent — test 28's claim, restated as a defect", async () => {
     // The full multiset comparison lives in tests/invariants/payroll-one-posting-path.test.ts; this block
-    // asserts the property SAH-009 names: two paths, one arithmetic.
+    // asserts the property LEGACY-009 names: two paths, one arithmetic.
     const { db } = await sharedDb();
-    const s = await seedTenantV2(db, "SAH-009");     // this block's own tenant; the fixture is not idempotent
+    const s = await seedTenantV2(db, "LEGACY-009");     // this block's own tenant; the fixture is not idempotent
     const f = await payrollFixture(db, s);
     const documentId = await postPayrollRun(db, s, f, {
       periodStart: "2026-02-01", periodEnd: "2026-02-28", payDate: "2026-03-05", effectiveDate: "2026-02-28",
@@ -6548,7 +6548,7 @@ describe("SAH-009 Three different weighted-average formulas … — 8B (the payr
 
 Run: `bun run --cwd tests test -- golden/payroll` — **expected:** PASS (3 cases).
 Run: `bun run --cwd tests test -- payroll-one-posting-path` — **expected:** PASS (2 tests).
-Run: `bun run --cwd tests test -- sah-003` and `-- sah-009` — **expected:** PASS.
+Run: `bun run --cwd tests test -- legacy-003` and `-- legacy-009` — **expected:** PASS.
 Run: `bun run --cwd tests test` — **expected:** the whole `tests` workspace green.
 
 **Two failures worth naming in advance.** If test 28's first comparison differs by one row, read which: an extra `5920` FX-rounding line on one side means the two documents' base sums differed by a residue, which cannot happen at rate 1.00000000 and points at `postJournal` writing a different `exchange_rate`. If the *dimension* multisets differ, the hand-keyed side lost EMPLOYEE — Step 5's `JournalLine.dimensions` edit (A13) is what carries it, so check that the `document_line` insert really gained the column.
@@ -6559,7 +6559,7 @@ Run: `bun run --cwd tests test` — **expected:** the whole `tests` workspace gr
 git add tests/golden/payroll.test.ts tests/golden/payroll \
         tests/invariants/payroll-one-posting-path.test.ts \
         tests/invariants/support/post-journal.ts \
-        tests/regression/sah-003.test.ts tests/regression/sah-009.test.ts
+        tests/regression/legacy-003.test.ts tests/regression/legacy-009.test.ts
 git commit -m "$(cat <<'EOF'
 test(golden): tests/golden/payroll on SYNTH, and acceptance tests 33 and 28 [8B T13]
 
@@ -6603,7 +6603,7 @@ EOF
 
 **Files:**
 - Create: `tests/invariants/payroll-pinning.test.ts`
-- Modify: `tests/regression/sah-013.test.ts`, `sah-031.test.ts`, `sah-032.test.ts`, `sah-042.test.ts`
+- Modify: `tests/regression/legacy-013.test.ts`, `legacy-031.test.ts`, `legacy-032.test.ts`, `legacy-042.test.ts`
 - Test: `tests/invariants/payroll-pinning.test.ts`, all four regression files
 
 **Interfaces:**
@@ -6648,7 +6648,7 @@ beforeAll(async () => {
 }, 180_000);
 afterAll(async () => { await db.stop(); });
 
-describe("acceptance test 29 — rate-table pinning (spec:2447, SAH-013, SAH-020)", () => {
+describe("acceptance test 29 — rate-table pinning (spec:2447, LEGACY-013, LEGACY-020)", () => {
   it("run M pins the version effective at M; a later version leaves M byte-identical", async () => {
     const january = await postPayrollRun(db, s, f, {
       periodStart: "2026-01-01", periodEnd: "2026-01-31", payDate: "2026-02-05", effectiveDate: "2026-01-31",
@@ -6771,7 +6771,7 @@ describe("acceptance test 29 — rate-table pinning (spec:2447, SAH-013, SAH-020
   }, 180_000);
 });
 
-describe("acceptance test 38 — payroll period lock (spec:2456, SAH-031)", () => {
+describe("acceptance test 38 — payroll period lock (spec:2456, LEGACY-031)", () => {
   it("a run whose period is CLOSED cannot post, and reopening with a reason is the only remedy", async () => {
     const marchPeriod = await db.admin<{ id: string }[]>`
       select id from app.fiscal_period where company_id = ${s.company}
@@ -6811,7 +6811,7 @@ describe("acceptance test 38 — payroll period lock (spec:2456, SAH-031)", () =
     expect(audit!.reason).toBe("March payroll approved after close");
   }, 180_000);
 
-  it("test 9 re-run — a LOCKED period reaches the payroll LINES, not only the ledger (SAH-031)", async () => {
+  it("test 9 re-run — a LOCKED period reaches the payroll LINES, not only the ledger (LEGACY-031)", async () => {
     const documentId = await postPayrollRun(db, s, f, {
       periodStart: "2026-04-01", periodEnd: "2026-04-30", payDate: "2026-05-05", effectiveDate: "2026-04-30",
     });
@@ -6926,16 +6926,16 @@ Run: `bun run --cwd tests test -- payroll-pinning`
 - [ ] **Step 3: Append the four regression blocks**
 
 ```ts
-// tests/regression/sah-013.test.ts — APPEND
+// tests/regression/legacy-013.test.ts — APPEND
 // Add to the file's existing import block: `seedRateTable`, `seedTenantV2` from "@dulja/db/test",
 // `payrollFixture`, `postPayrollRun`, `SYNTH_TABLE` from "../invariants/support/payroll",
 // and `repoFile` (§4.17.1).
-describe("SAH-013 Reversal reads current document-type flags instead of what was originally applied — 8B", () => {
+describe("LEGACY-013 Reversal reads current document-type flags instead of what was originally applied — 8B", () => {
   it("a posted payroll line keeps the rate-table version it USED, whatever version is current", async () => {
     const { db } = await sharedDb();
     // This block's own tenant on the shared container: `payrollFixture` is not idempotent and five 8B
     // regression blocks call it, so none of them may share `sharedDb()`'s `seedA` (Execution handoff).
-    const s = await seedTenantV2(db, "SAH-013");
+    const s = await seedTenantV2(db, "LEGACY-013");
     const f = await payrollFixture(db, s);
     const documentId = await postPayrollRun(db, s, f, {
       periodStart: "2026-01-01", periodEnd: "2026-01-31", payDate: "2026-02-05", effectiveDate: "2026-01-31",
@@ -6967,15 +6967,15 @@ describe("SAH-013 Reversal reads current document-type flags instead of what was
 ```
 
 ```ts
-// tests/regression/sah-031.test.ts — APPEND
+// tests/regression/legacy-031.test.ts — APPEND
 // `withTenant` in every file under `tests/` is the PRODUCTION one from `@dulja/db`, taking a TenantContext
 // (§4.2.2, §4.2.12); the 4-argument test helper is `packages/db/test/*`-only. 0B's regression files already
 // import it that way. Add to the file's existing import block: `seedTenantV2` from "@dulja/db/test" and
 // `payrollFixture`, `postPayrollRun` from "../invariants/support/payroll".
-describe("SAH-031 Period locks … do not reach the line items — 8B", () => {
+describe("LEGACY-031 Period locks … do not reach the line items — 8B", () => {
   it("the lock reaches app.payroll_line, which is where every payslip figure lives", async () => {
     const { db } = await sharedDb();
-    const s = await seedTenantV2(db, "SAH-031");     // this block's own tenant; the fixture is not idempotent
+    const s = await seedTenantV2(db, "LEGACY-031");     // this block's own tenant; the fixture is not idempotent
     const f = await payrollFixture(db, s);
     const documentId = await postPayrollRun(db, s, f, {
       periodStart: "2026-01-01", periodEnd: "2026-01-31", payDate: "2026-02-05", effectiveDate: "2026-01-31",
@@ -6992,8 +6992,8 @@ describe("SAH-031 Period locks … do not reach the line items — 8B", () => {
 ```
 
 ```ts
-// tests/regression/sah-032.test.ts — APPEND
-describe("SAH-032 A user can raise a document's approval level above their own — 8B", () => {
+// tests/regression/legacy-032.test.ts — APPEND
+describe("LEGACY-032 A user can raise a document's approval level above their own — 8B", () => {
   it("the PAYROLL policy names three DIFFERENT codes, which is what makes the levels real", async () => {
     const envelope = JSON.parse(await repoFile("packages/db/seed/my/document-types/PAYROLL.json")) as
       { policy: { approval: { required: boolean; create: string; approve: string; post: string } } };
@@ -7013,14 +7013,14 @@ describe("SAH-032 A user can raise a document's approval level above their own �
 ```
 
 ```ts
-// tests/regression/sah-042.test.ts — APPEND
+// tests/regression/legacy-042.test.ts — APPEND
 // Add to the file's existing import block: `seedTenantV2` from "@dulja/db/test", `payrollFixture`,
 // `secondApprover` from "../invariants/support/payroll", and `calculatePayrollRun`, `transitionDocument`
 // from "@dulja/db".
-describe("SAH-042 Ownership and paid-record checks fail open when the user row is missing — 8B", () => {
+describe("LEGACY-042 Ownership and paid-record checks fail open when the user row is missing — 8B", () => {
   it("a principal with NO role assignment is refused, never defaulted through", async () => {
     const { db } = await sharedDb();
-    const s = await seedTenantV2(db, "SAH-042");     // this block's own tenant; the fixture is not idempotent
+    const s = await seedTenantV2(db, "LEGACY-042");     // this block's own tenant; the fixture is not idempotent
     const f = await payrollFixture(db, s);
     // A principal with a membership and nothing else. seedTenant grants s.human nothing either (§4.1), so
     // the failure mode this defect describes — an absent row read as "allowed" — has two ways to appear.
@@ -7047,7 +7047,7 @@ describe("SAH-042 Ownership and paid-record checks fail open when the user row i
 
 - [ ] **Step 4: Run the whole suite**
 
-Run: `bun run --cwd tests test -- sah-013 sah-031 sah-032 sah-042` — **expected:** PASS.
+Run: `bun run --cwd tests test -- legacy-013 legacy-031 legacy-032 legacy-042` — **expected:** PASS.
 Run: `bun run --cwd tests test` — **expected:** the whole `tests` workspace green.
 Run: `bun run lint`, `bun run lint:rules`, `bun run format:check`, `bun run typecheck`, `bun run test` at the repository root — **expected:** all green. This is the slice's last full gate before the screen task.
 
@@ -7055,8 +7055,8 @@ Run: `bun run lint`, `bun run lint:rules`, `bun run format:check`, `bun run type
 
 ```bash
 git add tests/invariants/payroll-pinning.test.ts \
-        tests/regression/sah-013.test.ts tests/regression/sah-031.test.ts \
-        tests/regression/sah-032.test.ts tests/regression/sah-042.test.ts
+        tests/regression/legacy-013.test.ts tests/regression/legacy-031.test.ts \
+        tests/regression/legacy-032.test.ts tests/regression/legacy-042.test.ts
 git commit -m "$(cat <<'EOF'
 test(invariants): acceptance tests 29 and 38, and the re-runs of 9, 10, 31 [8B T14]
 
@@ -7084,7 +7084,7 @@ Test 38: a closed period refuses the post, and a reopen WITH A REASON by a
 holder of accounting.period.reopen is the only remedy; the reason is read back
 out of the audit row's after-image, which is why ADR 0023 made it a column.
 
-Test 9's re-run is the half SAH-031 names verbatim: the lock reaches
+Test 9's re-run is the half LEGACY-031 names verbatim: the lock reaches
 app.payroll_line, where every payslip figure lives, and not only the ledger.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
@@ -7192,7 +7192,7 @@ describe("PayrollApproval", () => {
 });
 ```
 
-The component itself is written from the screenshots. **Its only data source is `GET /v1/companies/{companyId}/payroll-runs/{documentId}` and its only action is `POST …/documents/{documentId}/transitions`** — a screen that computed a figure of its own would be a second payroll implementation, which is SAH-009 in a browser.
+The component itself is written from the screenshots. **Its only data source is `GET /v1/companies/{companyId}/payroll-runs/{documentId}` and its only action is `POST …/documents/{documentId}/transitions`** — a screen that computed a figure of its own would be a second payroll implementation, which is LEGACY-009 in a browser.
 
 - [ ] **Step 4: Commit (⚠️ OD-24 only)**
 
@@ -7225,15 +7225,15 @@ Run against the spec and the contracts card with fresh eyes, per the writing-pla
 
 | Spec clause | Task |
 |---|---|
-| **spec:2080** "no rate, threshold, ceiling or formula"; "a run cannot pin an unverified table or one whose effective range does not cover the pay period (SAH-020)" | T5 (every figure comes from `RateTable`), T6 (both refusals), T12 (the `SYNTH` guard), T14 (test 29 through the service and a job's system principal) and T10 Step 10 (the same refusal through the wire, 422) |
+| **spec:2080** "no rate, threshold, ceiling or formula"; "a run cannot pin an unverified table or one whose effective range does not cover the pay period (LEGACY-020)" | T5 (every figure comes from `RateTable`), T6 (both refusals), T12 (the `SYNTH` guard), T14 (test 29 through the service and a job's system principal) and T10 Step 10 (the same refusal through the wire, 422) |
 | **spec:2081** a `PAYROLL` Document, kind `regular \| supplementary \| final`, 1:1 with `document`, **the document state machine not its own**, calculate → submit → approve → post, one posting service, pinned policy, every line pins its rate-table versions | T1 (the two extension tables), T4 (the type and policy), T10 (the service and the routes — and **no** type-specific transition route) |
 | **spec:2081** "A run may be recalculated only while draft or submitted; any recalculation after submit returns it to draft and voids the pending approval" | T10 (`recalculatePayrollRun` refuses a non-draft), T11 (R3's trigger performs the return) |
-| **spec:2081** "Correction after posting is a reversal plus a supplementary run; nothing is edited in place (SAH-041)" | T4 (ADR 0076 — the supplementary half ships; the reversal half is refused with both mechanics stated), T1 (`payroll_line_change_draft_only` is "nothing is edited in place") |
+| **spec:2081** "Correction after posting is a reversal plus a supplementary run; nothing is edited in place (LEGACY-041)" | T4 (ADR 0076 — the supplementary half ships; the reversal half is refused with both mechanics stated), T1 (`payroll_line_change_draft_only` is "nothing is edited in place") |
 | **spec:2086** proration by a company-configured rule the accountant confirms | T6 (both rules), T7 (OD-28, isolated) |
 | **spec:2087** manual statutory override with a reason and `entered_by`, flagged, listed at approval, in the audit trail | T1 (the two columns and their CHECK), T11 (`setStatutoryOverride`, `listOverrides`), T15 (the screen's flag) |
 | **spec:2093** ⚠️ levy, foreign workers, hourly/part-time, staff purchases | T8 (OD-14, isolated) |
 | **spec:2099–2101** the whole posting paragraph — every account, both dimensions, per-line account resolution | T4 (the seven policy rules and the eleven §4.15 accounts), T2 (the `EMPLOYEE` dimension), T9 (the three snapshot slots), T10 (the home-branch tag on every line) |
-| **spec:2105** SAH-011, 013, 019, 020, 029/030, 031/041, 032, 033/045, 044, 078 | T6 (011), T14 (013), T5 (019), T12 (020), T1 (`attach_audit`, no flag → 029/030), T1 + T14 (031/041), T3 + T14 (032), 8A (033/045), T1 + T11 (044 — every actor stamped), T12 (078 — rules as version-controlled data) |
+| **spec:2105** LEGACY-011, 013, 019, 020, 029/030, 031/041, 032, 033/045, 044, 078 | T6 (011), T14 (013), T5 (019), T12 (020), T1 (`attach_audit`, no flag → 029/030), T1 + T14 (031/041), T3 + T14 (032), 8A (033/045), T1 + T11 (044 — every actor stamped), T12 (078 — rules as version-controlled data) |
 | **spec:2109** golden fixtures from worked examples; the per-employee override surfaced on approval | T13 (the harness the worked examples plug into), T12 (what OD-23 delivers), T11 + T15 (the override) |
 | **spec:2172–2174** R1, R2, R3 | T4 (`approval.required = true` with three distinct codes — R1 and R2 are 2B's triggers reading it), T11 (R3's trigger), T14 (all three re-run through service, worker and raw SQL) |
 | **spec:2229** the payroll statutory pack | T5, T6, T12 |
@@ -7281,7 +7281,7 @@ Checked every name that crosses a task boundary.
 **Four defects found and fixed inline on the last pass**, before any of this was declared done.
 
 1. **Money through a float.** `loadPayrollInputs` and `ytdFromPostedLines` both read `numeric` columns as text and then wrote `Money.of(Number.parseFloat(x).toFixed(4), cur)`. That is a `double` in the middle of a money path — Global Constraint 3 and spec:2041 forbid exactly that, and `no-number-money` would not have caught it because the local is typed `string`. §4.6.1 makes `compensation_line.amount` `numeric(19,4)` and `quantity` `numeric(19,6)`, so `::text` already yields `"2000.0000"` and `"1.000000"` — precisely the strings `Money.of` and `Quantity.of` are documented to take. They now go in whole, with no conversion at all: fewer moving parts than `Decimal`, no new dependency in `packages/db` (`decimal.js` is `packages/domain`'s, D11), and `ERR_MONEY_SCALE` fires loudly if a column's scale ever drifts, where a rounding conversion would have hidden it. `Quantity` — **used but never imported** in `inputs.ts` — is now imported. The word `parseFloat` survives in this plan in exactly one place: the comment that says never to use it.
-2. **The `sah-020` numeric-literal scan cried wolf, and then hid a real one.** It scanned raw file text, so `SAH-011`, `spec:2080` and `§4.12.3` in the *comments* of `banded-contribution.ts`, `progressive-schedule.ts`, `types.ts` and `calculator.ts` all read as rates — and a check that fails on every commit is a check someone deletes. It now strips twice: block and line comments first (sparing `https://`), then the citation forms `spec:NNNN`, `SAH-NNN`, `OD-NN`, `RC-N` in **what is left**, because `calculator.ts` and `progressive-schedule.ts` cite spec:2080 inside a *thrown error's template literal*, which is not a comment. Every other digit in every other string stays in scope, so a rate smuggled in as `"0.11"` is still caught. The allowlist is now exactly `0` and `1` — `4` and `6` are gone, and the one real `toFixed(4)` became `toFixed(MONEY_SCALE)`. `period.ts` is excluded from that list and checked **structurally** instead — it imports neither `Money` nor `decimal.js` and its only constants are `MS_PER_DAY`, `SUNDAY` and `SATURDAY` — because an allowlist wide enough to admit `86_400_000` is wide enough to admit a contribution rate. **The rule was then run by hand over all nine files as this plan writes them, and passes.**
+2. **The `legacy-020` numeric-literal scan cried wolf, and then hid a real one.** It scanned raw file text, so `LEGACY-011`, `spec:2080` and `§4.12.3` in the *comments* of `banded-contribution.ts`, `progressive-schedule.ts`, `types.ts` and `calculator.ts` all read as rates — and a check that fails on every commit is a check someone deletes. It now strips twice: block and line comments first (sparing `https://`), then the citation forms `spec:NNNN`, `LEGACY-NNN`, `OD-NN`, `RC-N` in **what is left**, because `calculator.ts` and `progressive-schedule.ts` cite spec:2080 inside a *thrown error's template literal*, which is not a comment. Every other digit in every other string stays in scope, so a rate smuggled in as `"0.11"` is still caught. The allowlist is now exactly `0` and `1` — `4` and `6` are gone, and the one real `toFixed(4)` became `toFixed(MONEY_SCALE)`. `period.ts` is excluded from that list and checked **structurally** instead — it imports neither `Money` nor `decimal.js` and its only constants are `MS_PER_DAY`, `SUNDAY` and `SATURDAY` — because an allowlist wide enough to admit `86_400_000` is wide enough to admit a contribution rate. **The rule was then run by hand over all nine files as this plan writes them, and passes.**
 3. **T4's chart-file assertion contradicted T4's chart file.** The file ships **twelve** rows — eleven §4.15 leaves plus the `2410` presentation parent — and the test compared all twelve codes against a list of eleven, behind a `.filter((c) => c !== "5315")` that filtered nothing. The test now partitions on `isGroup`, asserts the eleven leaves and the one parent separately, and checks every `parentCode`. The word "ten" was wrong in nine other places and is now "eleven" in all of them.
 4. **spec:2174's last clause was parked behind an owner gate.** “The approval screen lists everyone who changed compensation in the period” had been written as work inside T15, which OD-24 blocks — so a clause of the spec would have shipped only if the owner sent screenshots. It is a **read**, not a screen: `compensationChangedBy` now ships in T10 with the rest of the run API (amendment A12), T10 tests it in both directions, and T15 renders it. OD-24 now blocks a picture and nothing else.
 
@@ -7295,7 +7295,7 @@ Every bullet of §2.9's **Delivers** list has a task: the three calculator types
 
 **One defect found while fixing (3), not reported.** `runGoldenCase` wrote the raw refusal message into `refusal.detailContains`, and that message names the employee and component **by uuid** — so `synth-missing-input`'s `expected.json` would have differed on every run and the byte-comparison would have failed for a reason unrelated to payroll, in the one case that is acceptance test 33. `toCodes` now applies the same ids-out/codes-in projection to the message that the three queries already applied to the rows.
 
-**Review round 3 — an independent audit against the contracts document, plan 0A and the spec; eleven findings, ten applied and one applied with a corrected diagnosis.** (1) **The blocker:** four SQL joins named `led.ledger_entry_id` on `app.ledger_entry_dimension`. Plan 0A's migration 0001 declares that column as **`entry_id`** (plan0A:2041–2049 — `primary key (entry_id, dimension_type_id)`, `foreign key (tenant_id, entry_id) references app.ledger_entry(tenant_id, id)`), so all four failed with `column led.ledger_entry_id does not exist` — killing the second multiset comparison of acceptance test 28 and the `ledger` half of every golden `expected.json`. All four now read `led.entry_id`, and both commit bodies cite plan0A:2041–2049 and 2A's Self-Review item 16 (which records the same misspelling in 2A's own suites) so it cannot come back. (2) Five appended regression blocks called the non-idempotent `payrollFixture` against `sharedDb()`'s shared `seedA` — the exact failure this plan's own Execution handoff row describes. Each now mints its own `seedTenantV2` tenant on the shared container (3B's `costingContext` precedent, without a new shared module or a new amendment row), every `seedA` reference in them is rewritten, each block names the imports it adds, and the handoff row now says the five already do it. (3) `payroll_line.quantity` was declared, selected back, byte-compared by the golden fixture and **never written**: `EmployeeResult` is frozen at `{ componentId; amount }` (§4.12.1), so the quantity is on the *input* and `writeLines` was not reading it. A `quantityOf` lookup now carries it onto every component line, and a tenth case in T10's run suite seeds a `quantity_based` component and asserts `3.000000` on its line and `null` on a fixed one. (4) **The one finding whose diagnosis was wrong, and the fix is right anyway.** The audit said no test reaches `ERR_SOD_MAKER_IS_CHECKER` because every self-approver lacks `hr.payroll.approve` and is refused by RBAC first. It is the other way round: 2B's `app.document_status_before` evaluates R1 (§2b) **before** R2 (§2c) and `transitionDocument` performs no permission check of its own, so the service and raw-SQL legs do reach R1 — 2B's own `bySql(doc, "approved", maker)` case, with an equally unprivileged maker, asserts the same token. The **real** defect is the alternation `/ERR_SOD_MAKER_IS_CHECKER|ERR_RBAC_FORBIDDEN/`, which would stay green if R1 were deleted and the case fell through to R2. Both legs now assert R1's token *and* its message shape; the worker leg, whose system principal never submitted and therefore reaches R2, asserts `ERR_RBAC_FORBIDDEN` exactly and says so; a new case has a job submit its own run and be refused approval, which is R1 binding the system principal; and T10 Step 10 gains a wire leg with a principal holding **both** `hr.payroll.prepare` and `hr.payroll.approve` — the only shape that clears §4.5.4's middleware and reaches the trigger — asserting 409 `ERR_SOD_MAKER_IS_CHECKER`. The pre-existing 403 case is kept and relabelled R2, which is what it proves. (5) The DoD row *"under pinned policy … versions"* cited a test that did not exist. T14 Step 1 now carries it: post a run, record `document.posting_policy_id`, seed a version 9 `posting_policy` effective **inside the run's own month** so `app.effective_policy` resolves that month to the newer row, and assert the document's pin and every `ledger_entry.posting_policy_id` are unchanged and non-null. (6) Task 3 declared a test-file append no step wrote and no commit staged — and named the wrong file (`attachment-read.test.ts`; 2C shipped `require-attachment-read.test.ts`, 2c:1799). Step 4 now carries three cases in full, replacing the two of 2C's that the new `hr` row **falsifies** (`Object.keys(MODULE_READ_CODE)` equal to `["accounting"]`, and `MODULE_READ_CODE.hr` undefined) with row-by-row assertions 3A's and 6D's rows will not have to edit again; the suite is run before and after the map edit, and the file is staged in Step 7. (7) `PayrollGoldenInput` — §2 above. (8) `tests/invariants/support/payroll.ts` used `uuidv7`, `calculatePayrollRun`, `transitionDocument` and `postDocument` without importing any of them, `REPO_ROOT` was imported a step after its module-level use, and `probes.ts` named three imports nowhere; all are in the blocks now. (9) The DoD table's four cross-references into Task 14 pointed at Steps 2, 3 and 4, which are *Run it*, the regression appends and the full-suite gate; every one of those tests is written in **Step 1**, and the rows say so. The `posting_policy_id` row's "Task 10 Step 4" is gone too — Step 4 is `inputs.ts`, and the sentence's own point is that the run service never writes the column. (10) The SAH-019 rounding comment read `0.00005 × 0.5 = 0.000025` over inputs of `0.0001 × 0.5`; the code and the assertions were right and only the comment misled, so the comment now reads `0.0001 × 0.5 = 0.00005`. (11) T14's unverified-table case was titled "service, API and worker" with two legs in it; it is now "the service and a job's system principal", and it points at T10 Step 10's route case for the wire leg rather than claiming it.
+**Review round 3 — an independent audit against the contracts document, plan 0A and the spec; eleven findings, ten applied and one applied with a corrected diagnosis.** (1) **The blocker:** four SQL joins named `led.ledger_entry_id` on `app.ledger_entry_dimension`. Plan 0A's migration 0001 declares that column as **`entry_id`** (plan0A:2041–2049 — `primary key (entry_id, dimension_type_id)`, `foreign key (tenant_id, entry_id) references app.ledger_entry(tenant_id, id)`), so all four failed with `column led.ledger_entry_id does not exist` — killing the second multiset comparison of acceptance test 28 and the `ledger` half of every golden `expected.json`. All four now read `led.entry_id`, and both commit bodies cite plan0A:2041–2049 and 2A's Self-Review item 16 (which records the same misspelling in 2A's own suites) so it cannot come back. (2) Five appended regression blocks called the non-idempotent `payrollFixture` against `sharedDb()`'s shared `seedA` — the exact failure this plan's own Execution handoff row describes. Each now mints its own `seedTenantV2` tenant on the shared container (3B's `costingContext` precedent, without a new shared module or a new amendment row), every `seedA` reference in them is rewritten, each block names the imports it adds, and the handoff row now says the five already do it. (3) `payroll_line.quantity` was declared, selected back, byte-compared by the golden fixture and **never written**: `EmployeeResult` is frozen at `{ componentId; amount }` (§4.12.1), so the quantity is on the *input* and `writeLines` was not reading it. A `quantityOf` lookup now carries it onto every component line, and a tenth case in T10's run suite seeds a `quantity_based` component and asserts `3.000000` on its line and `null` on a fixed one. (4) **The one finding whose diagnosis was wrong, and the fix is right anyway.** The audit said no test reaches `ERR_SOD_MAKER_IS_CHECKER` because every self-approver lacks `hr.payroll.approve` and is refused by RBAC first. It is the other way round: 2B's `app.document_status_before` evaluates R1 (§2b) **before** R2 (§2c) and `transitionDocument` performs no permission check of its own, so the service and raw-SQL legs do reach R1 — 2B's own `bySql(doc, "approved", maker)` case, with an equally unprivileged maker, asserts the same token. The **real** defect is the alternation `/ERR_SOD_MAKER_IS_CHECKER|ERR_RBAC_FORBIDDEN/`, which would stay green if R1 were deleted and the case fell through to R2. Both legs now assert R1's token *and* its message shape; the worker leg, whose system principal never submitted and therefore reaches R2, asserts `ERR_RBAC_FORBIDDEN` exactly and says so; a new case has a job submit its own run and be refused approval, which is R1 binding the system principal; and T10 Step 10 gains a wire leg with a principal holding **both** `hr.payroll.prepare` and `hr.payroll.approve` — the only shape that clears §4.5.4's middleware and reaches the trigger — asserting 409 `ERR_SOD_MAKER_IS_CHECKER`. The pre-existing 403 case is kept and relabelled R2, which is what it proves. (5) The DoD row *"under pinned policy … versions"* cited a test that did not exist. T14 Step 1 now carries it: post a run, record `document.posting_policy_id`, seed a version 9 `posting_policy` effective **inside the run's own month** so `app.effective_policy` resolves that month to the newer row, and assert the document's pin and every `ledger_entry.posting_policy_id` are unchanged and non-null. (6) Task 3 declared a test-file append no step wrote and no commit staged — and named the wrong file (`attachment-read.test.ts`; 2C shipped `require-attachment-read.test.ts`, 2c:1799). Step 4 now carries three cases in full, replacing the two of 2C's that the new `hr` row **falsifies** (`Object.keys(MODULE_READ_CODE)` equal to `["accounting"]`, and `MODULE_READ_CODE.hr` undefined) with row-by-row assertions 3A's and 6D's rows will not have to edit again; the suite is run before and after the map edit, and the file is staged in Step 7. (7) `PayrollGoldenInput` — §2 above. (8) `tests/invariants/support/payroll.ts` used `uuidv7`, `calculatePayrollRun`, `transitionDocument` and `postDocument` without importing any of them, `REPO_ROOT` was imported a step after its module-level use, and `probes.ts` named three imports nowhere; all are in the blocks now. (9) The DoD table's four cross-references into Task 14 pointed at Steps 2, 3 and 4, which are *Run it*, the regression appends and the full-suite gate; every one of those tests is written in **Step 1**, and the rows say so. The `posting_policy_id` row's "Task 10 Step 4" is gone too — Step 4 is `inputs.ts`, and the sentence's own point is that the run service never writes the column. (10) The LEGACY-019 rounding comment read `0.00005 × 0.5 = 0.000025` over inputs of `0.0001 × 0.5`; the code and the assertions were right and only the comment misled, so the comment now reads `0.0001 × 0.5 = 0.00005`. (11) T14's unverified-table case was titled "service, API and worker" with two legs in it; it is now "the service and a job's system principal", and it points at T10 Step 10's route case for the wire leg rather than claiming it.
 
 **Card size:** 13–15 tasks; **this plan has 15.** Four of them are the isolated owner gates hazards 5 and 6 require (T7 OD-28, T8 OD-14, T12 OD-23, T15 OD-24) — OD-24 is in the orchestrator's gate list for this slice and spec:2174 gives it a screen to gate, so it is written rather than dropped.
 
@@ -7323,7 +7323,7 @@ Every bullet of §2.9's **Delivers** list has a task: the three calculator types
 
 All thirty-five re-read against the finished plan. The ones that bite here, and where:
 
-**1** (no statutory rate anywhere) — Global Constraint 8, T5's `SYNTH`-only fixtures, T12's guard, and `sah-020`'s numeric-literal scan over every file in `packages/domain/payroll/`. **6** (one isolated task per owner decision) — T7, T8, T12, T15. **8** (Plan 0A names) — every helper cited by its exact name in the Assumptions block. **9** (`fixtures.ts` additive, only the assigned helper) — T1 adds `seedPayrollRun` and nothing else; amendment A6 records the three added options. **10** (no per-tenant rows in a migration) — Global Constraint 10 and T2's `ensureEmployeeDimensionValue`, which exists **because** of it. **13** (`lint-schema.ts`) — T1 Step 6, two names, nothing else. **14** (never assert `max(version)`) — T1 Step 1 asserts *membership* of 80–86 and says Phase 6's range may or may not be present. **18** (test 22/28's fixed projection) — T13's two multiset helpers, with `posting_policy_id` projected out and a second case explaining why. **20** (jobs as the system principal) — T14 exercises the worker path and asserts the system principal is refused just the same. **22** (nothing outside the posting service writes the ledger) — Global Constraint 1; `packages/db/src/hr/**` writes four tables and the `posting-only-tables` lint is the check. **23** (`HALF_AWAY_FROM_ZERO` at scale 4 for base) — T5's `DEFAULT_MODE` and T6's `PRORATION_MODE` are that mode, so a prorated amount rounds the way a base amount does. **26** (closed permission vocabulary) — Global Constraint 12, four codes. **28** (8A–8C need no 7A/2C) — this plan consumes neither the report engine nor the print engine; the payslip PDF is 8D's. **31** (a probe per route module) — T10 Step 9, one module, one entry. **32** (no invented literal in a shared namespace) — the Assumptions block's namespace paragraph names every one **including the test-only `PAYROLL_DDL_TEST` / `PDT`, registered by amendment A15 rather than invented in a test**, and T12 explains why `SYNTH` and `SYNTHETIC-TEST-v1` are two different strings. **33** (the slice that seeds a policy seeds its accounts) — T4, all eleven rows, plus `linkPayrollAccounts` and its `missingCodes` refusal, **and the wiring is a step the runbook runs rather than a side effect of a loader that could not be reached**. **34** (a seed file is an envelope) — T4's `PAYROLL.json` carries `module: "hr"` outside `policy`, and §4.14's own note about `hr` versus `accounting.payment.*` is quoted where it is decided. **35** (real code, failing test first, a commit per task) — every task.
+**1** (no statutory rate anywhere) — Global Constraint 8, T5's `SYNTH`-only fixtures, T12's guard, and `legacy-020`'s numeric-literal scan over every file in `packages/domain/payroll/`. **6** (one isolated task per owner decision) — T7, T8, T12, T15. **8** (Plan 0A names) — every helper cited by its exact name in the Assumptions block. **9** (`fixtures.ts` additive, only the assigned helper) — T1 adds `seedPayrollRun` and nothing else; amendment A6 records the three added options. **10** (no per-tenant rows in a migration) — Global Constraint 10 and T2's `ensureEmployeeDimensionValue`, which exists **because** of it. **13** (`lint-schema.ts`) — T1 Step 6, two names, nothing else. **14** (never assert `max(version)`) — T1 Step 1 asserts *membership* of 80–86 and says Phase 6's range may or may not be present. **18** (test 22/28's fixed projection) — T13's two multiset helpers, with `posting_policy_id` projected out and a second case explaining why. **20** (jobs as the system principal) — T14 exercises the worker path and asserts the system principal is refused just the same. **22** (nothing outside the posting service writes the ledger) — Global Constraint 1; `packages/db/src/hr/**` writes four tables and the `posting-only-tables` lint is the check. **23** (`HALF_AWAY_FROM_ZERO` at scale 4 for base) — T5's `DEFAULT_MODE` and T6's `PRORATION_MODE` are that mode, so a prorated amount rounds the way a base amount does. **26** (closed permission vocabulary) — Global Constraint 12, four codes. **28** (8A–8C need no 7A/2C) — this plan consumes neither the report engine nor the print engine; the payslip PDF is 8D's. **31** (a probe per route module) — T10 Step 9, one module, one entry. **32** (no invented literal in a shared namespace) — the Assumptions block's namespace paragraph names every one **including the test-only `PAYROLL_DDL_TEST` / `PDT`, registered by amendment A15 rather than invented in a test**, and T12 explains why `SYNTH` and `SYNTHETIC-TEST-v1` are two different strings. **33** (the slice that seeds a policy seeds its accounts) — T4, all eleven rows, plus `linkPayrollAccounts` and its `missingCodes` refusal, **and the wiring is a step the runbook runs rather than a side effect of a loader that could not be reached**. **34** (a seed file is an envelope) — T4's `PAYROLL.json` carries `module: "hr"` outside `policy`, and §4.14's own note about `hr` versus `accounting.payment.*` is quoted where it is decided. **35** (real code, failing test first, a commit per task) — every task.
 
 ---
 
@@ -7364,13 +7364,13 @@ Tasks run **in order**. The PR boundaries are the ones the File Structure sectio
 | **T9** | `refs.components` and `refs.schemes` are already populated | 8A did part of this slice's work (amendment A11's second outcome). Do Steps 3–5 only; keep the test file; say so in the commit body. |
 | **T10** | The isolation harness fails with "a ROUTES entry has no PROBES entry" | Step 9's key does not match `payrollRunRouteModule.path` byte for byte. It is `/v1/companies/:companyId/payroll-runs` — a colon, not a brace. |
 | **T10** | `postJournal`'s `JournalLine` has no `dimensions` | **Expected — 1B ships it without one** (1b:592–598). T13 Step 5 makes the additive edit under amendment A13; do it there, not here. The member name for the account is `account`, never `accountId`. |
-| **T10 / T13 / T14** | `payrollFixture` throws on `seedAccount('2400')`, on `seedDocumentType('PAYROLL')` or on employee number `E-0001` | The fixture is **not idempotent** and was called twice against one `Seed` — almost always because two regression blocks share `sharedDb()`'s `seedA`. **The five 8B regression blocks already mint their own tenant for exactly this reason** (`seedTenantV2(db, "SAH-003" \| "SAH-009" \| "SAH-013" \| "SAH-031" \| "SAH-042")`, T13 Step 6 and T14 Step 3), so if you see this symptom a block was typed with `seedA` after all — give it its own tenant. A sixth caller does the same, or follows 3B's precedent and adds a per-file regression tenant (`costingContext(sah)`, `tests/regression/support/costing.ts`, 3B's amendment A21) before reusing `payrollFixture` across files. Do **not** make the fixture "safe" with `on conflict do nothing`: that hides which of two suites owns the row. |
+| **T10 / T13 / T14** | `payrollFixture` throws on `seedAccount('2400')`, on `seedDocumentType('PAYROLL')` or on employee number `E-0001` | The fixture is **not idempotent** and was called twice against one `Seed` — almost always because two regression blocks share `sharedDb()`'s `seedA`. **The five 8B regression blocks already mint their own tenant for exactly this reason** (`seedTenantV2(db, "LEGACY-003" \| "LEGACY-009" \| "LEGACY-013" \| "LEGACY-031" \| "LEGACY-042")`, T13 Step 6 and T14 Step 3), so if you see this symptom a block was typed with `seedA` after all — give it its own tenant. A sixth caller does the same, or follows 3B's precedent and adds a per-file regression tenant (`costingContext(legacyDefect)`, `tests/regression/support/costing.ts`, 3B's amendment A21) before reusing `payrollFixture` across files. Do **not** make the fixture "safe" with `on conflict do nothing`: that hides which of two suites owns the row. |
 | **T10 / T14** | `update app.statutory_rate_table set verified_by = …` raises `ERR_ACTOR_IMMUTABLE`, or a re-verified table comes back with `verified_by` null | `verified_by` is **stamped and immutable** (8a:4183 attaches `stamp_verified_by`; plan0A:2372–2377 raises on any change to a non-null `*_by`, and `app.stamp_actor` overwrites an INSERT/UPDATE value with `app.current_actor()`, which is NULL under `db.admin` with no session actor). A table therefore cannot be un-verified and cannot be re-verified through `db.admin`, and `check ((verified_at is null) = (verified_by is null))` catches the half-write. **Do not fight the trigger, and none of the three tests in this plan does — read them rather than reinventing this.** Get an unverified table the legal way: seed a *new* version with `verified: false`. `seedRateTable` inserts `effective_from '2026-01-01'` with an open end and **ignores the definition's own `effective_from`** (8a:4586–4589), so a new version covers every period from January on and, being the highest covering version, is the one `loadPayrollInputs` offers — which is what makes the refusal fire. Then get out of that state by **one of two legal moves, and pick by what the cases after it need**: (a) verify it — `withTenant(db.rw, ctx(f.verifier), (tx) => tx\`update … set verified_at = now(), verified_by = app.current_actor() …\`)`, the same statement 8A's `verifyRateTable` issues (8a:4325), which the stamp and `app.assert_rate_table_verifier()` both admit because `f.verifier` is not the loader (T14 does this — its later cases need a usable table); or (b) move it out of the period — `update … set effective_from = '2027-01-01'`, which is legal because **8A's freeze applies only once `verified_at` is set** (`if old.verified_at is not null and …`, 8a:4315–4322) and no `*_by` column changes, so neither stamp fires (T10's service and route tests do this — their later cases assert a line pins version **1**). `effective_to` may also be updated on a *verified* row; 8A's freeze deliberately excludes that one column (8a:4205–4207), which is how T14 closes v1's window at 2026-01-31. |
 | **T14** | A case fails with `ERR_PERIOD_NOT_FOUND` (April/May/June) or an unexpected `ERR_PERIOD_NOT_OPEN` (February) | `payrollFixture`'s first statement, `ensureOpenPeriods(db, s, 2026)`, did not run. 0A's `seedTenant` creates three periods and only January is open (§4.1). |
 | **T11** | R3's cases fail with `ERR_SOD_NO_SUBMISSION` or `ERR_DOC_STATUS_ILLEGAL` | 2B's `document_status_before` is gating a **backward** transition on authority. §4.5.1's table conditions `submitted → draft` and `approved → draft` on a reason and nothing else. Raise it against 2B; do not drop R3. |
 | **T13** | Test 28's ledger multisets differ by one `5920` row | The two documents' base sums differed by a rounding residue, which cannot happen at rate `1.00000000` — `postJournal` is writing a different `exchange_rate`. Fix the fixture, not the assertion. |
 | **T13** | Test 28's **dimension** multisets differ | The hand-keyed side lost EMPLOYEE. See T10's row above. |
-| **T14** | Test 31's raw-SQL case **passes** the update | 2B's trigger is not resolving the PAYROLL policy. A policy it cannot resolve makes it raise `ERR_POLICY_INVALID`; a silent success means the trigger is not firing at all. Stop — this is the SAH-032 hole the trigger exists to close. |
+| **T14** | Test 31's raw-SQL case **passes** the update | 2B's trigger is not resolving the PAYROLL policy. A policy it cannot resolve makes it raise `ERR_POLICY_INVALID`; a silent success means the trigger is not firing at all. Stop — this is the LEGACY-032 hole the trigger exists to close. |
 | **T14** | Test 38's close/reopen case finds March already locked | It is not, after `ensureOpenPeriods`. The case sets `status = 'closed'` itself and reopens with a reason; nothing in it depends on 0A's fixed period states. |
 | **T15** | No screenshots have arrived | **This task is blocked and the slice is not.** Ship T1–T14; leave T15 open with the owner request attached. |
 

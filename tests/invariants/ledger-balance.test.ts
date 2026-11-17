@@ -36,7 +36,7 @@ import {
 } from "./support/post-inventory";
 import { postJournal } from "./support/post-journal";
 
-describe("ledger balance invariant — Σbase debit = Σbase credit (spec:2246, 2419; SAH-003)", () => {
+describe("ledger balance invariant — Σbase debit = Σbase credit (spec:2246, 2419; LEGACY-003)", () => {
   let db: Db;
   let a: Seed;
   let b: Seed;
@@ -69,7 +69,7 @@ describe("ledger balance invariant — Σbase debit = Σbase credit (spec:2246, 
     expect(result).toEqual({ byPeriod: [], byDocument: [] });
   });
 
-  it("sees only its own tenant's entries — Beta's postings never enter Alpha's totals (SAH-035)", async () => {
+  it("sees only its own tenant's entries — Beta's postings never enter Alpha's totals (LEGACY-035)", async () => {
     await postJournal(db, b, [
       { account: b.cash, debit: "999.0000" },
       { account: b.sales, credit: "999.0000" },
@@ -179,7 +179,7 @@ describe("ledger balance invariant — Σbase debit = Σbase credit (spec:2246, 
 
 // ── 3B: appended at the END of the file — the invariant holds when the amounts come from the
 //        costing engine (test 1 re-run) ──────────────────────────────────────────────────────────
-describe("SAH-003 ledger invariant — inventory-bearing documents (test 1 re-run, 3B)", () => {
+describe("LEGACY-003 ledger invariant — inventory-bearing documents (test 1 re-run, 3B)", () => {
   let db: Db;
   let s: Seed;
   let receiptType: string;
@@ -363,7 +363,7 @@ function arArbitrary(): fc.Arbitrary<GenDoc> {
   });
 }
 
-describe("SAH-003 ledger invariant — the six 4A AR/AP types under fuzz (test 1 re-run, 4A)", () => {
+describe("LEGACY-003 ledger invariant — the six 4A AR/AP types under fuzz (test 1 re-run, 4A)", () => {
   let db: Db;
   let s: Seed;
   let types: Record<string, string>;

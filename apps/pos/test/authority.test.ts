@@ -142,7 +142,7 @@ describe("PIN login and offline authority (spec:1324, §4.6.3)", () => {
   });
 
   it("never stores or logs the PIN, and never compares it as a string", async () => {
-    // SAH-028's whole point. The stored value is an Argon2id PHC string and the comparison is verifyPin's.
+    // LEGACY-028's whole point. The stored value is an Argon2id PHC string and the comparison is verifyPin's.
     await mirrorCashier({ principalId: "p-1", pin: "4821", codes: [] });
     const hash = db.raw
       .prepare<[], { pin_hash: string }>("select pin_hash from catalogue_cashier")

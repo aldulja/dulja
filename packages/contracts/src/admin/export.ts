@@ -28,7 +28,7 @@ export const ExportAcceptedSchema = z.object({
   statusUrl: z.string().min(1),
 });
 
-/** `manifest.json` as the archive carries it (ADR 0069). No object-store key appears in it (SAH-038). */
+/** `manifest.json` as the archive carries it (ADR 0069). No object-store key appears in it (LEGACY-038). */
 export const ExportManifestSchema = z.object({
   formatVersion: z.literal(1),
   exportJobId: UuidSchema,
@@ -91,7 +91,7 @@ export const ExportJobSchema = z.object({
   /** `ERR_<CODE>: detail`, once `failed`. */
   error: z.string().nullable(),
   createdAt: TimestampSchema,
-  // `object_key` is deliberately NOT on the wire: the content route is the only way to the bytes (SAH-038).
+  // `object_key` is deliberately NOT on the wire: the content route is the only way to the bytes (LEGACY-038).
 });
 export type ExportJobDto = z.infer<typeof ExportJobSchema>;
 

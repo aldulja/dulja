@@ -91,7 +91,7 @@ describe("HttpSyncTransport — the till's whole network surface", () => {
     expect(seen!.headers.get(SYNC_TERMINAL_ID_HEADER)).toBe("019aaadb-0000-7000-8000-000000000001");
   });
 
-  it("sends NO tenant or actor header, ever — identity is the signature (SAH-044, test 11)", async () => {
+  it("sends NO tenant or actor header, ever — identity is the signature (LEGACY-044, test 11)", async () => {
     let seen: Request | null = null;
     const t = new HttpSyncTransport({
       baseUrl: "https://api.example",

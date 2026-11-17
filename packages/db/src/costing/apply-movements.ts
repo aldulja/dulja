@@ -41,7 +41,7 @@ export async function loadSentinelLots(
 /**
  * Every VALID open layer of one (company, item, warehouse), in the contracts §4.3.5 chronological order
  * `(effective_date, posting_seq, line_no, movement_no)` — all four columns, spelled out, never an index's
- * implicit order (spec:1225, SAH-067). `line_no` and `movement_no` live on the movement, which is why the
+ * implicit order (spec:1225, LEGACY-067). `line_no` and `movement_no` live on the movement, which is why the
  * join is here and not optional.
  *
  * NO DATE FILTER, deliberately. At step 9 the document being posted is the newest thing in the company, so
@@ -50,7 +50,7 @@ export async function loadSentinelLots(
  * already-posted issue has already emptied, driving that layer's `qty_remaining` below zero into
  * `cost_layer_qty_remaining_check`. The correct sequence is: post now against the layers as they stand, then
  * invalidate from this document's own key forward (step 14) and let the replay recompute the affected tail
- * (spec:1220-1223). A clever date filter here is SAH-005's incremental mode reintroduced.
+ * (spec:1220-1223). A clever date filter here is LEGACY-005's incremental mode reintroduced.
  *
  * The engine sorts its own input anyway (`byChronology`), so this ordering is belt and braces — and it is
  * what makes the query plan use `cost_layer_open_idx` instead of a sort.
@@ -383,7 +383,7 @@ export async function applyMovements(
 
   // F-6 / test 18: the ONLY door to a shortfall is a recorded override event by a second principal (§4.5.3),
   // and since migration 0114 it admits only the stock lines it approved — `app.stock_override_admits`, the
-  // one spelling the trigger asks too (spec:624, SAH-048 "who overrode what"). `recorded` is kept apart so a
+  // one spelling the trigger asks too (spec:624, LEGACY-048 "who overrode what"). `recorded` is kept apart so a
   // refusal can say when an override exists but approved other lines than the document now carries.
   const [override] = await tx<{ admits: boolean; recorded: boolean }[]>`
     select app.stock_override_admits(${documentId}) as admits,
@@ -598,7 +598,7 @@ export async function applyMovements(
         );
       } else {
         // 4. No source line at all — an internal inconsistency, not a free receipt. Left null on purpose so
-        //    the engine raises ERR_COST_VALUE_MISSING naming the movement (SAH-007).
+        //    the engine raises ERR_COST_VALUE_MISSING naming the movement (LEGACY-007).
         value = null;
       }
     }

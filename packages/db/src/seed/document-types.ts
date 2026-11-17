@@ -28,7 +28,7 @@ interface Envelope {
  * and opens the tenant transaction itself. `documentTypesLoader` at the foot of this file is the same loader in
  * §4.2.13's `PackLoader` form, for callers that already hold a `tx` — which is every `--only` run. Per-tenant
  * rows cannot be written by a migration — FORCE ROW LEVEL SECURITY binds app_migrator too (spec:1366) — so every
- * document type and posting policy arrives this way, from version-controlled JSON, diffable in review (SAH-078).
+ * document type and posting policy arrives this way, from version-controlled JSON, diffable in review (LEGACY-078).
  *
  * `catalogue` is a parameter rather than an import because packages/db may import only @dulja/domain
  * (spec:2389, dependency-rule) — and both this file's callers, the loader below and the test, read the codes
@@ -103,7 +103,7 @@ async function applyDocumentTypes(
 
       // A policy version is `do update`, never `do nothing` (contracts §3.4.8): a placeholder seeded on
       // staging must not silently survive the real definition arriving in a later phase. But a version that a
-      // posted document PINS (SAH-013, spec:1753) is what that document was posted under, and rewriting it
+      // posted document PINS (LEGACY-013, spec:1753) is what that document was posted under, and rewriting it
       // would change how the document reverses months later. So the update is refused — here with a message
       // that names the fix, and by migration 0106's guard should any other path try — and the operator bumps
       // `policyVersion` in the pack file instead.
@@ -118,7 +118,7 @@ async function applyDocumentTypes(
       if (existing && !existing.same && existing.pinned) {
         throw new SeedError(
           `${envelope.code} policy version ${envelope.policyVersion} does not match the pack file but is pinned by posted documents; ` +
-            `bump policyVersion and its effective date in the pack file instead of editing a version in place (SAH-013, ADR 0027)`,
+            `bump policyVersion and its effective date in the pack file instead of editing a version in place (LEGACY-013, ADR 0027)`,
         );
       }
       // A version already equal to the pack file is left alone. `do update` rewrites the row even when nothing

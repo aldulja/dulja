@@ -70,7 +70,7 @@ describe("identity chain — spec:2004, 2132, §5.0 row 0.6; acceptance test 11"
     expect((await problem(blocked)).code).toBe("ERR_AUTH_AAL_INSUFFICIENT");
   });
 
-  it("a forged X-Tenant-Id or X-Actor-Id header changes nothing — identity comes from the token (SAH-026)", async () => {
+  it("a forged X-Tenant-Id or X-Actor-Id header changes nothing — identity comes from the token (LEGACY-026)", async () => {
     const b = await seedTenant(api.db, "Beta");
     const res = await api.request({
       method: "GET",

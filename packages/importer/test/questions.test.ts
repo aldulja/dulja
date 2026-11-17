@@ -100,7 +100,7 @@ describe("answerOpenQuestions — OD-27, and it decides nothing", () => {
     expect(six?.status).toBe("evidence_collected");
     expect(six?.evidence).toEqual([
       {
-        sah: "SAH-024",
+        legacyDefect: "LEGACY-024",
         table: "ACCOUNTS",
         columns: "CODE",
         declared: "PRIMARY KEY(SITE,ID)",
@@ -109,7 +109,7 @@ describe("answerOpenQuestions — OD-27, and it decides nothing", () => {
         claim: "Account codes are allocated with max() on a string, without locking (spec:425)",
       },
       {
-        sah: "SAH-049",
+        legacyDefect: "LEGACY-049",
         table: "MATOBJECTS",
         columns: "SITE,ID",
         declared: "none",
@@ -118,7 +118,7 @@ describe("answerOpenQuestions — OD-27, and it decides nothing", () => {
           "Aggregate tables have no unique key, so the upsert race creates duplicates (spec:630)",
       },
       {
-        sah: "SAH-051",
+        legacyDefect: "LEGACY-051",
         table: "BILLS",
         columns: "NUMBER",
         declared: "table absent from this source",
@@ -126,7 +126,7 @@ describe("answerOpenQuestions — OD-27, and it decides nothing", () => {
         claim: "Document numbering has no uniqueness constraint (spec:647)",
       },
       {
-        sah: "SAH-066",
+        legacyDefect: "LEGACY-066",
         table: "MATUNITS",
         columns: "EXCHANGE",
         declared: "PRIMARY KEY(SITE,ID,UNIT)",
@@ -135,7 +135,7 @@ describe("answerOpenQuestions — OD-27, and it decides nothing", () => {
       },
       // "declare", not "declares": the sentence is built from a count that is usually greater than one.
       {
-        sah: "SAH-074",
+        legacyDefect: "LEGACY-074",
         table: "*",
         columns: "",
         declared: "10 tables read",
@@ -145,13 +145,13 @@ describe("answerOpenQuestions — OD-27, and it decides nothing", () => {
     ]);
   });
 
-  it("#7 quantifies MatOpens.Job rather than asserting SAH-022", async () => {
+  it("#7 quantifies MatOpens.Job rather than asserting LEGACY-022", async () => {
     const seven = (await report()).answers.find((a) => a.id === "VII-7");
     expect(seven?.evidence).toEqual([
       { table: "MATOPENS", rows: "2", jobNonZero: "1", distinctJobs: "1" },
     ]);
     expect(seven?.finding).toBe(
-      "MatOpens.Job differs from 0 on 1 of 2 rows, so SAH-022's singleton SELECT ... INTO is a hard failure on this data, not inert.",
+      "MatOpens.Job differs from 0 on 1 of 2 rows, so LEGACY-022's singleton SELECT ... INTO is a hard failure on this data, not inert.",
     );
   });
 
@@ -209,12 +209,12 @@ describe("answerOpenQuestions — OD-27, and it decides nothing", () => {
   });
 
   it("declares one claim per Part VII #6 defect and no more", () => {
-    expect(CONSTRAINT_CLAIMS.map((c) => c.sah)).toEqual([
-      "SAH-024",
-      "SAH-049",
-      "SAH-051",
-      "SAH-066",
-      "SAH-074",
+    expect(CONSTRAINT_CLAIMS.map((c) => c.legacyDefect)).toEqual([
+      "LEGACY-024",
+      "LEGACY-049",
+      "LEGACY-051",
+      "LEGACY-066",
+      "LEGACY-074",
     ]);
   });
 });
@@ -224,7 +224,7 @@ describe("answerOpenQuestions against a source that cannot answer — it says so
     const r = await probe(loadCorpus());
     const byId = new Map(r.answers.map((a) => [a.id, a]));
     expect(byId.get("VII-6")?.evidence[0]).toMatchObject({
-      sah: "SAH-024",
+      legacyDefect: "LEGACY-024",
       finding: "column PARENT is not declared on this table; cannot be checked here",
     });
     expect(byId.get("VII-7")?.status).toBe("unanswerable_here");

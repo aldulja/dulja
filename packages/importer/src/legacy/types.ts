@@ -32,7 +32,7 @@ export interface LegacyColumn {
 
 /**
  * A real constraint, as the engine declares it — not as the schema dump's naming convention implies. Part VII
- * #6 (spec:2470) exists because five Part I findings rest on the convention: SAH-024, 049, 051, 066 and 074.
+ * #6 (spec:2470) exists because five Part I findings rest on the convention: LEGACY-024, 049, 051, 066 and 074.
  */
 export interface LegacyConstraint {
   readonly table: string;

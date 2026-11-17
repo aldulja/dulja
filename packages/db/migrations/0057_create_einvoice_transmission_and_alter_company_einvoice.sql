@@ -15,7 +15,7 @@ create table app.einvoice_transmission (
   company_id       uuid not null,
   document_id      uuid not null,
   transmitter      text not null,                                          -- 'synthetic' | 'myinvois'
-  profile_version  int,                                                    -- amendment 6: SAH-013 pinning
+  profile_version  int,                                                    -- amendment 6: LEGACY-013 pinning
   external_id      text,                                                   -- the authority's own id
   status           text not null default 'pending',                        -- §4.9.3's six labels
   attempts         int  not null default 0,                                -- spec:2225 "retry"
@@ -59,7 +59,7 @@ create table app.einvoice_transmission (
   constraint einvoice_transmission_external_id_check
     check (status not in ('submitted', 'accepted', 'cancelled') or external_id is not null),
   -- The three timestamps are set once and never cleared, so a cancelled transmission keeps the
-  -- accepted_at that preceded it. An equality here would forbid exactly that (SAH-041's shape).
+  -- accepted_at that preceded it. An equality here would forbid exactly that (LEGACY-041's shape).
   constraint einvoice_transmission_accepted_at_check
     check (status <> 'accepted' or accepted_at is not null),
   constraint einvoice_transmission_cancelled_at_check
@@ -85,7 +85,7 @@ create index einvoice_transmission_open_idx
 -- ── 2. RLS and audit (§3.5.1 steps 2 and 3) ───────────────────────────────────────────────────
 call app_meta.enable_tenant_rls('app.einvoice_transmission');
 -- §3.5.3 puts this table in NO set: it is audited, has an id and a created_at, and is mutable —
--- a status change from 'submitted' to 'rejected' is exactly the before/after image SAH-029/030
+-- a status change from 'submitted' to 'rejected' is exactly the before/after image LEGACY-029/030
 -- exist to preserve. No attach_stamp: the table has no *_by column and never gains one (§3.3).
 call app_meta.attach_audit('app.einvoice_transmission');
 

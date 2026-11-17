@@ -69,7 +69,7 @@ the screens it renders.
 
 For **each** of the two screens, placed in `docs/owner/od-24/4b/`:
 
-1. **A screenshot** of the Sahlisoft screen the staff use for that job today: `ageing.png` and
+1. **A screenshot** of the legacy screen the staff use for that job today: `ageing.png` and
    `bank-reconciliation.png`.
 2. **A two-minute description**, from the person who actually does the job, of their real sequence: what they
    type first, what they never touch, which keys they press, and what they do when the figures do not agree.
@@ -238,7 +238,7 @@ deadline, against a paper statement, and it is exactly the screen whose rhythm a
 ## The owner request, ready to send
 
 > **OD-24 (spec:2408), ageing and bank reconciliation.** Before we build these two screens, please provide:
-> **(a)** screenshots of the two Sahlisoft screens your staff use today: the **debtor/creditor ageing** and
+> **(a)** screenshots of the two legacy screens your staff use today: the **debtor/creditor ageing** and
 > the **bank reconciliation** sheet. **(b)** A **two-minute description** of each, from whoever does the job,
 > of what they do in order and which keys they press. For the ageing, say what they do next from a customer's
 > line. For the reconciliation, say how the bank statement gets into the system, how a line is ticked off

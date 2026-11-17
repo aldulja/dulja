@@ -300,7 +300,7 @@ describe("match and unmatch (§4.8.3, ADR 0048)", () => {
     expect(open).toEqual([]);
   });
 
-  it("stamps matched_by with the actor, never a parameter (SAH-044)", async () => {
+  it("stamps matched_by with the actor, never a parameter (LEGACY-044)", async () => {
     const [row] = await withTenant(
       db.rw,
       s.tenant,
@@ -392,7 +392,7 @@ describe("match and unmatch (§4.8.3, ADR 0048)", () => {
     ).rejects.toThrow(/ERR_BANK_MATCH_AMOUNT.*USD.*MYR/);
   });
 
-  it("unmatch sets unmatched_at and the row SURVIVES — nothing is deleted (spec:2049, SAH-041)", async () => {
+  it("unmatch sets unmatched_at and the row SURVIVES — nothing is deleted (spec:2049, LEGACY-041)", async () => {
     const id = await liveMatchOf(paymentId);
     await prodWithTenant(db.rw, ctx, (tx) =>
       unmatch(tx, ctx, { companyId: s.company, matchId: id, reason: "matched to the wrong line" }),
@@ -520,7 +520,7 @@ describe("match and unmatch (§4.8.3, ADR 0048)", () => {
   });
 });
 
-describe("a bank_match row is fixed at insert; only the unmatch changes it, once (SAH-041)", () => {
+describe("a bank_match row is fixed at insert; only the unmatch changes it, once (LEGACY-041)", () => {
   const refused = (fn: Parameters<typeof withTenant>[3]) =>
     withTenant(db.rw, s.tenant, s.human, fn);
 

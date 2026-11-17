@@ -25,7 +25,7 @@ export interface OverrideRow {
   /** `numeric(19,4)::text`, the run's currency. */
   amount: string;
   reason: string;
-  /** The principal accountable for the override (spec:2087), stamped from the session (SAH-044). */
+  /** The principal accountable for the override (spec:2087), stamped from the session (LEGACY-044). */
   enteredBy: string;
   enteredByName: string;
   enteredAt: string;
@@ -39,7 +39,7 @@ export interface OverrideRow {
  * The override is an INPUT to the draft's own recalculation, not an edit of an output: the run is recalculated at
  * once with the override applied, so the figures the approver sees are the ones the override produced (an override
  * that only took effect at the next calculation would be approved unseen). The line it lands on carries the reason
- * and `entered_by` (stamped from the session, never a parameter — SAH-044), and `loadPayrollInputs` reads it back out
+ * and `entered_by` (stamped from the session, never a parameter — LEGACY-044), and `loadPayrollInputs` reads it back out
  * of the draft's own `payroll_line` rows as `manualOverrides`, which is why it survives every later recalculation.
  *
  * Refused: a run that is not a draft (`ERR_DOC_NOT_DRAFT` — "the approver approves what will post", spec:2081), a run
@@ -136,7 +136,7 @@ export async function setStatutoryOverride(
   }
   if (targets.length > 1) {
     // One (run, employee, scheme, share) is one payroll_line by construction — the run service's single writer
-    // says so. More than one means the invariant moved, and guessing which line was meant is what SAH-011 punishes.
+    // says so. More than one means the invariant moved, and guessing which line was meant is what LEGACY-011 punishes.
     throw new PayrollRunError(
       "ERR_VALIDATION_FAILED",
       `payroll run ${input.documentId} has ${targets.length} ${input.share} lines for employee ${input.employeeId} and scheme ${input.schemeId}; one was expected`,

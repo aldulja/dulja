@@ -138,7 +138,7 @@ export const ERRORS = {
     "Assign another administrator first.",
   ),
   ERR_ACTOR_IMMUTABLE: def(409, "Actor cannot be rewritten", "Create a correcting record."),
-  // 8A — R4 (spec:2175, SAH-045): raised by migration 0080's app.forbid_self_pay() on the four HR write targets.
+  // 8A — R4 (spec:2175, LEGACY-045): raised by migration 0080's app.forbid_self_pay() on the four HR write targets.
   ERR_HR_SELF_PAY: def(
     409,
     "Self-pay refused",
@@ -278,7 +278,7 @@ export const ERRORS = {
     "An override needs a SECOND principal who holds the override permission at the document's branch; ask a supervisor.",
   ),
   // 3A — raised as a token by app.warehouse_no_cycle() (migration 0029), the ONE recursive-CTE tree
-  // guard of SAH-071. A state conflict, not a malformed request: the body is well-formed and the
+  // guard of LEGACY-071. A state conflict, not a malformed request: the body is well-formed and the
   // parent it names simply cannot be this warehouse's, so 409 rather than ERR_VALIDATION_FAILED.
   ERR_WAREHOUSE_TREE_CYCLE: def(
     409,
@@ -295,8 +295,8 @@ export const ERRORS = {
   ),
   // 3B — the two codes the pure costing engine raises (packages/domain/src/costing/engine.ts). Both are 422:
   // the request is well-formed and the state is legal, but the movement cannot be costed without storing a
-  // number SAH-007/SAH-008 forbid. ERR_COST_VALUE_MISSING covers BOTH arms the engine raises it for — a
-  // movement with no value (SAH-007) and a movement of zero quantity (SAH-008(c)) — deliberately, because a
+  // number LEGACY-007/LEGACY-008 forbid. ERR_COST_VALUE_MISSING covers BOTH arms the engine raises it for — a
+  // movement with no value (LEGACY-007) and a movement of zero quantity (LEGACY-008(c)) — deliberately, because a
   // remedy naming only the unit price would point a user at the wrong field on a wash line.
   ERR_COST_NEGATIVE: def(
     422,
@@ -423,7 +423,7 @@ export function fromDatabaseError(error: unknown): AppError {
   };
   const extra = state ? { sqlstate: state } : {};
   // The detail is fixed rather than derived from the driver's, which quotes the rejected value straight back
-  // (SAH-083) — and this is the one branch whose text a caller will actually read.
+  // (LEGACY-083) — and this is the one branch whose text a caller will actually read.
   if (state && BAD_INPUT_STATES.has(state))
     return new AppError(
       "ERR_VALIDATION_FAILED",

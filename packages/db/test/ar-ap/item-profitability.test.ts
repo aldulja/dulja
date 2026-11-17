@@ -235,7 +235,7 @@ describe("item_profitability — the attribution (§4.6.1, amendments 6 and 7)",
 
     // The delivery's own line carries amount 250.0000 and a unit price. If revenue were read from
     // `document_line` rather than anchored to a REVENUE LEDGER ROW, this would rise by 250 — the double-count
-    // amendment 7 exists to prevent, and the defect SAH-012 is the ledger analogue of.
+    // amendment 7 exists to prevent, and the defect LEGACY-012 is the ledger analogue of.
     expect(after[0]!.revenueBase).toBe(before[0]!.revenueBase);
 
     // …while quantity and cost DO move, because the movement and its cost_consumption are real.

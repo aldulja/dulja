@@ -12,7 +12,7 @@ import { requirePermission } from "../middleware/require-permission";
  * rows). The code is `mutating: true`, so `assertRouteGates` admits it on an unsafe method with no marker.
  *
  * Its first consumer is 8D Task 5's `POST …/payroll-runs/{documentId}/payslips`; until that route is composed onto
- * 8B's `payroll-runs` module and the code joins that module's `permissions`, `tests/regression/sah-047.test.ts`
+ * 8B's `payroll-runs` module and the code joins that module's `permissions`, `tests/regression/legacy-047.test.ts`
  * reports the code unrouted (contracts round 19, 8D A13 item 8).
  */
 export function requireFilingGenerate(): MiddlewareHandler<AppEnv> {

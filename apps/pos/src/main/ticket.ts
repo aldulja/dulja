@@ -25,7 +25,7 @@ const MODE: RoundingMode = "HALF_AWAY_FROM_ZERO"; // 6C's `MODE`; the two limit 
  * `document.client_ref`"*, and spec:1302 makes it the deduplication key. `crypto.randomUUID()` is a **v4**
  * and would lose the time ordering `document.client_ref`'s index and 6A's cursor both rely on; 0A's
  * `uuidv7(sql)` is a database round trip and there is no database here. The layout is RFC 9562 §5.7:
- * 48-bit big-endian milliseconds, version 7, variant 0b10, the rest random. `tests/regression/sah-051.test.ts`
+ * 48-bit big-endian milliseconds, version 7, variant 0b10, the rest random. `tests/regression/legacy-051.test.ts`
  * gains a `— 6B` block in Task 12 asserting this is the only id source in `apps/pos`.
  */
 export function tillUuidv7(at: Date = new Date()): string {

@@ -3,7 +3,7 @@
 #   1. migrate (app_migrator)  2. install pg-boss queues (app_migrator)  3. deploy the Worker and both containers
 #   4. re-apply the seed (§3.4.8: re-applying the seed against staging after deploy is a release-runbook step)
 # Migrations run BEFORE the deploy because they are expand-only (§3.4.7): the running old code tolerates the new
-# schema. A contract migration is a separate, later PR, which is the whole point of expand/contract (SAH-080).
+# schema. A contract migration is a separate, later PR, which is the whole point of expand/contract (LEGACY-080).
 name: deploy-staging
 # `workflow_dispatch` only, and that is a deliberate hold rather than an oversight: the workflow below is
 # complete, and unrunnable until OD-19–OD-22 supply its six secrets — DATABASE_URL, DATABASE_URL_MIGRATOR,

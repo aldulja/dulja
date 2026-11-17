@@ -10,7 +10,7 @@
 
 **Tech Stack:** Bun 1.4 (install, scripts, the API entrypoint) · Node 24 LTS (runs Vitest) · TypeScript strict · PostgreSQL 18 (Testcontainers `postgres:18`) · `postgres` (postgres.js) tagged templates for every write and every read · Drizzle ORM mirrors for typed reads and as the migration diff source (ADR-0002) · Hono + `@hono/zod-openapi` · Zod · Ajv (the validator 1A already installed for `posting-policy.schema.json`, ADR 0022) for `einvoice-profile.schema.json` · `node:crypto` `createHash` for the canonical-payload digest · the platform `fetch` for the one HTTP call, injected as `fetchImpl` so every test runs against a `node:http` server started inside the test process · pg-boss for `accounting.tax.submit` (0D) · Vitest + Testcontainers · oxlint + oxfmt · Turborepo. No package version appears in any source file — the lockfile owns versions (spec:104). **No HTTP client library is added**; `fetch` is in both runtimes.
 
-**Spec:** `docs/spec/rebuild-spec.md` v1.2 — §0.2 the never/always lists (spec:97–108), §0.3 **First tax jurisdiction** (spec:982), §3.0.4 the Tax row (spec:1046 — this slice completes its "e-invoicing hooks" clause), §3.5 country seed-data packs (spec:1242), §3.8 the linter columns and `FORCE ROW LEVEL SECURITY` (spec:1366–1370), §3.9 Identifiers / Time / Money / Naming / Enumerations / Deletion / Error codes / Database access / API / Logging (spec:2037–2063), §4.2.1 `accounting.tax.file` and the `accountant` row (spec:2147, 2158), §4.7 the **e-invoicing bullets** (spec:2225–2226) and the tax-engine and rounding bullets (spec:2227–2228), §4.11 engineering practice (spec:2258–2266), §5.2 `apps/worker` "tax submission" (spec:2356), §5.3 the **Phase 5** owner row (spec:2405), Part V the Phase 5 row (spec:2291), Part VI tests **13** (spec:2431) and **26** (spec:2444), Part VII **#3** (spec:2467), Part I **SAH-020** (spec:388), **SAH-019** (spec:381), **SAH-013**, **SAH-029/030**, **SAH-036/037/069**.
+**Spec:** `docs/spec/rebuild-spec.md` v1.2 — §0.2 the never/always lists (spec:97–108), §0.3 **First tax jurisdiction** (spec:982), §3.0.4 the Tax row (spec:1046 — this slice completes its "e-invoicing hooks" clause), §3.5 country seed-data packs (spec:1242), §3.8 the linter columns and `FORCE ROW LEVEL SECURITY` (spec:1366–1370), §3.9 Identifiers / Time / Money / Naming / Enumerations / Deletion / Error codes / Database access / API / Logging (spec:2037–2063), §4.2.1 `accounting.tax.file` and the `accountant` row (spec:2147, 2158), §4.7 the **e-invoicing bullets** (spec:2225–2226) and the tax-engine and rounding bullets (spec:2227–2228), §4.11 engineering practice (spec:2258–2266), §5.2 `apps/worker` "tax submission" (spec:2356), §5.3 the **Phase 5** owner row (spec:2405), Part V the Phase 5 row (spec:2291), Part VI tests **13** (spec:2431) and **26** (spec:2444), Part VII **#3** (spec:2467), Part I **LEGACY-020** (spec:388), **LEGACY-019** (spec:381), **LEGACY-013**, **LEGACY-029/030**, **LEGACY-036/037/069**.
 
 ## Assumptions and contracts (from docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md)
 
@@ -28,7 +28,7 @@
 - **Interfaces consumed:** §4.1 (the whole Plan 0A surface), §4.2.1 (`Money`, `currency`, `round`, `RoundingMode`), §4.2.2 (`withTenant`, `TenantContext`, `systemContext`, `createDb`), §4.2.3 (`AppEnv`, `RequestContext`, `Logger`, `FORBIDDEN_LOG_FIELD`, `readConfig`, the middleware order), §4.2.4 (`Problem`, `ERRORS`, `AppError`, `fromDatabaseError`, `PostingError` — and this slice's three registry rows), §4.2.5 (`PERMISSION`, `requirePermission`, `ROLES`, `INCOMPATIBLE_PAIRS`, `assertRouteGates`), §4.2.6 (`JOBS`, `JobName`, `JobPayload`, `JobEnvelope`, `JobClient`, `EnqueueOptions`, `registerHandler`, `runJob`, `JOB_PROBES`), §4.2.7 (`RouteModule`, `buildRoutes`, `IdempotencyHeader`, `createApp`, `PROBES`, `companyRoutes`), §4.2.8 (the common schemas, the list envelope, the cursor codec, **the one list-filter convention**), §4.2.9 (`idempotency`, `RECLAIM_AFTER_SECONDS`), §4.2.12 (`startApi`, `ApiRequest`, `StartedApi`), §4.2.13 (`readPackFile`), §4.3.1 (`postDocument`, `loadSnapshot`, `resolvePolicy`, `PostResult`), §4.3.2 (**the fixed algorithm — steps 3, 4, 6, 13 and above all 14**, and its closed write list), §4.3.4 (`document_line.tax_code_id`, `document.tax_inclusive`), §4.3.7 (the seed envelope), §4.4.1 (`posting-policy.schema.json`'s **`tax` block** — the one place this slice widens it), §4.4.2 (`DocumentSnapshot`, `LineSnapshot`, `PostingPolicy`, sign normalisation A9), §4.5.1 (legal transitions), §4.9.1 (5A's `TaxEngine` and `JurisdictionPack` — consumed, never re-declared), §4.9.2 (5A's four tables), **§4.9.3 in full**, §4.14 (document-type codes), §4.15 (account codes), §4.16.1 / §4.16.2 (report codes and the closed `DatasetId` registry — this slice adds to neither), §4.17 / §4.17.1 (the two helper registers), §5 (all thirty-five hazards, and **1** and **2** as the two that bind hardest), §6.1 rows 13 and 26, §6.2 row spec:1046.
 - **Interfaces produced:** **§4.9.3 in full** — `EInvoiceDocument`, `TransmissionStatus`, `EInvoiceTransmitter`, `EInvoiceCredentials` verbatim, and `app.einvoice_transmission` with §4.9.3's column list; the `accounting.tax.submit` job with `retryLimit 8` and exponential backoff; §3.6.2's one code `accounting.tax.file`. Everything else this slice names is listed under **Contract additions** in the Self-Review and lands through **Task 0**.
 - **Owner decisions:** **OD-15** — LHDN MyInvois credentials and the current requirement set (spec:92, 982, 2226, 2405, 2467; Part VII #3) → **Task 9, one isolated task**, per hazard 6. §2.12's default is written into every other task: **the abstract interface only**, with the `synthetic` transmitter as the sole registered implementation and `myinvois` refused by name with `ERR_EINVOICE_TRANSMITTER_UNAVAILABLE` until Task 9 registers it. **The card says "the adapter tasks are written against the abstract interface and are implemented only against ADR 0051" and "the plan's Task 1 is fetch-and-record"; hazard 6 says one task per decision, and hazard 6 wins on the *count*.** The *ordering* clause is honoured differently and deliberately: ADR 0051 fills a profile whose **schema is Task 3's**, so Task 9 cannot literally be Task 1 without inventing the schema twice. What the card actually protects — that no MyInvois value enters the repository before the authority's documentation is read — is enforced mechanically instead, by Task 0's gate script grepping every file this slice writes for an `http(s)://` literal outside `packages/db/einvoice-profiles/` and `tests/`, and by Task 11 re-running that grep at phase exit. **OD-24 is not engaged: this slice ships no screen** (see "Deliberately not in this slice"). **OD-05 is not engaged:** 5B's scope contains no ⚠️ row of §3.0.3 or §3.0.4 — spec:1046's Tax row carries no warning triangle; the ⚠️ on the Phase 5 row is OD-15's own subject.
-- **Part VI tests owned / re-run:** **owns none** (the card says so). **Re-runs: 26** (tax-return determinism, with e-invoicing hooks **on** — Task 10, a new file over 5A's fixtures; 5A's own golden test is never edited) and **13** (audit completeness, over the transmission log and the three new `company` columns — Task 10). Also re-run because this slice adds a table, a route module, a job and a permission code: **12** (tenant isolation — T1, T7, T8), **27** (no SQL text across the API — T11), **36** (permission catalogue ↔ handler — T2, T8). **§3.0.4 rows owned:** none new; this slice completes the "**e-invoicing hooks**" clause of spec:**1046**, whose other clauses are 5A's. **Regression files created / appended:** **creates none.** **Appends** one `describe("SAH-020 … — 5B", …)` block to `tests/regression/sah-020.test.ts` (created by **5A**, §3.7.3's rule; Task 0's gate reports its absence rather than this slice creating it) and one to `tests/regression/sah-019.test.ts` (created by **0B**, appended by 4B; this slice's block asserts no local rounding or float appears on the e-invoice path).
+- **Part VI tests owned / re-run:** **owns none** (the card says so). **Re-runs: 26** (tax-return determinism, with e-invoicing hooks **on** — Task 10, a new file over 5A's fixtures; 5A's own golden test is never edited) and **13** (audit completeness, over the transmission log and the three new `company` columns — Task 10). Also re-run because this slice adds a table, a route module, a job and a permission code: **12** (tenant isolation — T1, T7, T8), **27** (no SQL text across the API — T11), **36** (permission catalogue ↔ handler — T2, T8). **§3.0.4 rows owned:** none new; this slice completes the "**e-invoicing hooks**" clause of spec:**1046**, whose other clauses are 5A's. **Regression files created / appended:** **creates none.** **Appends** one `describe("LEGACY-020 … — 5B", …)` block to `tests/regression/legacy-020.test.ts` (created by **5A**, §3.7.3's rule; Task 0's gate reports its absence rather than this slice creating it) and one to `tests/regression/legacy-019.test.ts` (created by **0B**, appended by 4B; this slice's block asserts no local rounding or float appears on the e-invoice path).
 - **Shared namespaces this slice writes into:** **document-type codes (§4.14) — none, and no test-only code either.** Every type this slice's tests configure is a **4A pack envelope read off disk** through 4B's `seedTypeFromPack`, re-seeded at `policyVersion + 1` with `tax.einvoice: true` — which is precisely the mechanism Task 9 uses in production, so the test exercises the shipped path. **Account codes (§4.15) — seeds none.** Consumed and asserted-not-reseeded, each with its seeding slice: **`2300` output tax payable (5A)** and **`1350` input tax receivable (5A)** reached only through 5A's own tax codes, and `1000`/`4000`/`5920` (0C, through `seedTenantV2`) and `1200`/`2100` (0C, through `seedParty`) reached only through 4A's and 1A's own policies. **This slice resolves no account by code anywhere** — it plans no ledger line, posts no document of its own and seeds no policy that names an `account: { code }` literal, so hazard 33 has nothing to bite on. **Report codes (§4.16.1) — none.** §4.16.1 is closed for v1 and has no e-invoicing row; the transmission log is read through this slice's route module, and `accounting.tax_return_view` is **7C's** row over 5A's `tax_transaction`. **`DatasetId` members (§4.16.2) — none, deliberately, and the reason is recorded** (Task 0 amendment 12): §4.16.2's *rule* sentence would sweep in every table at migration ≤ 0058, but its *enumeration* — which is the register — names `tax_transaction` and stops, and the rule's real criterion is "first report that reads it". No v1 report reads `einvoice_transmission`. **`fixtures.ts` helpers (§4.17) — none added.** §4.17 assigns 5B no row and hazard 9 forbids inventing one beside the register; every row this slice's tests need comes from `seedTenantV2`, `seedAccount`, `seedParty`, `seedDocumentType`, `seedTaxCode`, `seedBranch`, `grantCodes`, 3B's `ensureOpenPeriods`, 3C's `draftTypedDocument` or 4B's `arApFixture`. **Shared test helpers (§4.17.1) — two new files, one per tier, registered by Task 0 amendment 10:** `packages/db/test/support/einvoice-stub.ts` (`StubServer`, `StubScript`, `StubReply`, `StubCall`, `startStubServer`, `SYNTHETIC_PROFILE_PATH`, `stubProfile`, `snapshotFixture`, `enableEinvoice`, `optInDocumentType`), reached from the `tests` tier through the new `@dulja/db/test/einvoice-stub` `exports` subpath; and `tests/invariants/support/einvoice.ts` (`EinvoiceFixture`, `einvoiceFixture`), which composes it with 4B's `arApFixture`. **Two files rather than one because `packages/db/test/**` is not on §4.17.1's list of workspaces that may import `tests/invariants/support/**`, and adding it would close a module cycle through `packages/db/test/index.ts`** — amendment 10 states it.
 - **Five facts every test in this plan depends on, stated once because getting one wrong is a silent failure.** (1) **`Seed` has no `branch` member** — it is `{ tenant; system; human; company; period; closedPeriod; lockedPeriod; cash; sales; docType; policy; branchType; hq }` (§4.1), so every `branchId:` in this plan is `<seed>.hq` unless a second value came from `seedBranch`. (2) **`seedTenant` grants `s.human` nothing** (§4.1, pinned) and 2B's R2 evaluates `policy.approval.post` *inside* the posting transaction, so every posting test calls `grantCodes` first — 4B's `arApFixture` already does. (3) **Plan 0A seeds exactly three fiscal periods and only 2026-01 is open** (`s.closedPeriod` = 2026-02 closed, `s.lockedPeriod` = 2026-03 locked); every test that posts outside January calls 3B's `ensureOpenPeriods(db, s, 2026)` first — again, `arApFixture` already does. (4) **`app.company` is a migration-0001 table holding production rows**, so 0057's three columns are the *expand* half of §3.4.7 and the down file drops **only those three columns**, never the table (§3.4.5). (5) **`app_rw` holds DELETE on exactly five tables** (§3.5.4) and 2B is the only slice that ever extends that list, so **nothing in this slice deletes a transmission row**: a cancelled transmission is `status = 'cancelled'`, which is spec:2049's rule applied to an integration log.
 - **Never re-decide:** D1–D27 (spec:114–142); every name in the contracts document is frozen — a needed change goes to that document first (that is what Task 0 is).
@@ -38,12 +38,12 @@
 
 Copied verbatim from the spec and the contracts document; every task's requirements implicitly include this section.
 
-1. **Never**, at any phase, for any reason (spec:97–104): write to a ledger or movement table outside the posting service; represent money as a float, anywhere, including in TypeScript; build SQL by string concatenation (SAH-036/037/069); issue DDL from application code (SAH-053); disable an invariant, constraint or trigger "temporarily" (SAH-027, 041, 053); gate an audit write on any flag (SAH-030); hard-code a package version into a source file — the lockfile owns versions.
+1. **Never**, at any phase, for any reason (spec:97–104): write to a ledger or movement table outside the posting service; represent money as a float, anywhere, including in TypeScript; build SQL by string concatenation (LEGACY-036/037/069); issue DDL from application code (LEGACY-053); disable an invariant, constraint or trigger "temporarily" (LEGACY-027, 041, 053); gate an audit write on any flag (LEGACY-030); hard-code a package version into a source file — the lockfile owns versions.
 2. **Always**, for every new table (spec:106): `tenant_id`, an RLS policy named exactly `tenant_isolation`, `created_at`, a migration with a hand-written down, and a test that a second tenant cannot see it. For every new endpoint: Zod schema, OpenAPI entry, idempotency on unsafe methods, and a tenant-isolation test. **This slice creates exactly one table** — `app.einvoice_transmission` — and it carries the §3.3 binding form and a two-tenant test in Task 1.
 3. **Nothing outside `packages/db/src/posting/` and `packages/db/src/costing/` writes `ledger_entry`, `ledger_entry_dimension`, `inventory_movement`, `cost_layer`, `cost_consumption`, `account_balance`, `stock_on_hand` or `tax_transaction`** (§4.3.2, the `posting-only-tables` lint, hazard 22). **This slice writes none of them, ever.** It reads `document`, `document_line`, `document_type`, `posting_policy`, `company` and `party` through `loadSnapshot`, and writes only `app.einvoice_transmission` and three `app.company` columns. `einvoice_transmission` is **not** on the `posting-only-tables` list and must not be added to it — step 14 writes it from inside `posting/`, and the submit path writes it from `packages/db/src/einvoice/`, which is the same relationship `party_ageing` has to its job (§3.7.5 names that exclusion by name).
-4. **Money** is `numeric(19,4)` in Postgres and the opaque `Money` type in `@dulja/domain` in TypeScript; no `number` ever holds a monetary value (spec:2041, §3.7.5 `no-number-money`). **Every amount in an e-invoice payload is `Money.toJSON()`'s `{ amount, currency }` or `Money.toString()`'s fixed 4-dp string, taken from `LineSnapshot` — never re-derived, never re-rounded, never `Number()`, never `.toFixed()`.** This is the whole of SAH-019 on this path and Task 10's `sah-019` block asserts it as a source fact.
+4. **Money** is `numeric(19,4)` in Postgres and the opaque `Money` type in `@dulja/domain` in TypeScript; no `number` ever holds a monetary value (spec:2041, §3.7.5 `no-number-money`). **Every amount in an e-invoice payload is `Money.toJSON()`'s `{ amount, currency }` or `Money.toString()`'s fixed 4-dp string, taken from `LineSnapshot` — never re-derived, never re-rounded, never `Number()`, never `.toFixed()`.** This is the whole of LEGACY-019 on this path and Task 10's `legacy-019` block asserts it as a source fact.
 5. **Every query, reads included, runs inside `withTenant`** (spec:2053). `db.` is a lint violation; only a `tx` obtained from `withTenant` may tag SQL. `sql.unsafe` has exactly three homes and **none is in this slice** (§3.3, hazard 21). The profile loader takes a directory and returns parsed JSON; it never builds SQL. The path template is interpolated into a **URL**, never into a query.
-6. **One migration per PR** (spec:2057); each file runs whole in one transaction (so no `create index concurrently`); every statement carries a comment naming the SAH-/spec reference it serves; SQL keywords lowercase; section banners `-- ── N. title ───`; a hand-written `NNNN.down.sql` that drops only what the up added, in reverse dependency order (§3.4.5).
+6. **One migration per PR** (spec:2057); each file runs whole in one transaction (so no `create index concurrently`); every statement carries a comment naming the LEGACY-/spec reference it serves; SQL keywords lowercase; section banners `-- ── N. title ───`; a hand-written `NNNN.down.sql` that drops only what the up added, in reverse dependency order (§3.4.5).
 7. **No enum label is added** (§3.4.4, hazard 11). This slice's two closed vocabularies are `text` + a named `check`: `einvoice_transmission.status` (§4.9.3's six labels) and `company.einvoice_transmitter` (`synthetic | myinvois`).
 8. **Deletion** (spec:2049): financial rows never; master data is `archived_at`. §3.5.4's pinned `app_rw` DELETE list is **unchanged** by this slice and Task 11 re-asserts it as an equality. A transmission is cancelled, never deleted.
 9. **Error codes** are `ERR_<DOMAIN>_<REASON>` enumerated in `packages/contracts/src/errors.ts`, and a code no code raises fails the build (spec:2051). **This slice adds exactly three rows to the §4.2.4 registry and to `ERRORS`, each in the PR that raises it:** `ERR_EINVOICE_NOT_ENABLED` (422, T5), `ERR_EINVOICE_TRANSMITTER_UNAVAILABLE` (422, T4/T5), `ERR_EINVOICE_STATUS_ILLEGAL` (409, T5). Everything else it raises is already shipped: `ERR_VALIDATION_FAILED`, `ERR_NOT_FOUND`, `ERR_RBAC_FORBIDDEN`, `ERR_RLS_DENIED`, `ERR_CONFLICT_UNIQUE`, `ERR_CONFLICT_REFERENCE`, `ERR_IDEMPOTENCY_KEY_MISSING`, **`ERR_DOC_STATUS_ILLEGAL`** and `ERR_INTERNAL`. **`ERR_DOC_STATUS_ILLEGAL` is on the list because of Task 8's `fileTaxReturn`, and only because of it:** 5A's `returns.ts` already raises that exact code for the mirror-image refusal ("tax return … is a draft — generate it first"), so the two transitions of one row speak one language and this slice adds no thirteenth `ERR_*` row to satisfy a case 5A had already answered. **This list is closed: a token in any test of this slice that is not on it is either a typo or an unregistered code, and both fail the `error-codes` lint.**
@@ -186,8 +186,8 @@ tests/
 ├─ invariants/probes.ts                                        EDIT one PROBES + one JOB_PROBES T7,T8
 ├─ invariants/phase-5-exit.test.ts                             NEW  the phase gate           T11
 ├─ golden/tax-einvoice.test.ts                                 NEW  test 26 with hooks on     T10
-├─ regression/sah-020.test.ts                                  EDIT append a `— 5B` block     T10
-└─ regression/sah-019.test.ts                                  EDIT append a `— 5B` block     T10
+├─ regression/legacy-020.test.ts                                  EDIT append a `— 5B` block     T10
+└─ regression/legacy-019.test.ts                                  EDIT append a `— 5B` block     T10
 ```
 
 **Twelve files carry the whole slice.** `packages/domain/src/tax/einvoice.ts` (the port and the profile types), `packages/domain/einvoice-profile.schema.json` (what a profile must be), the seven modules under `packages/db/src/einvoice/` that are not OD-15-gated (`profile`, `credentials`, `redact`, `errors`, `http-transmitter`, `synthetic`, `registry`, plus `transmission`, `settings` and `verify` — ten in all once Tasks 5 and 8 have run), migration 0057, the worker handler, the route module, and `tests/invariants/support/einvoice.ts`. Everything else is an edit of one or two lines in a file another slice owns — including all four of the files this slice touches in 5A's and 0B's territory, none of which loses a line: `packages/db/src/tax/returns.ts` and `packages/contracts/src/accounting/tax.ts` each gain one appended declaration, `apps/api/src/routes/accounting/tax-returns.ts` one route, and `companyRoutes` one `route()` call.
@@ -222,7 +222,7 @@ Each is one edit, in the section named. **Do not proceed to Task 1 until all thi
 | **3** | 4.3.2 | **Step 14's e-invoicing clause is realised here, and it does *not* fail closed.** After step 13, `postDocument` enqueues `accounting.tax.submit` when **all three** of `policy.tax.applies`, `policy.tax.einvoice` and `company.einvoice_transmitter is not null` hold — and **before** the enqueue it inserts the `app.einvoice_transmission` row at `status = 'pending'` inside the posting transaction. **When `input.jobs` is absent it pushes `einvoice_enqueue_skipped: no job client` onto `PostResult.warnings` and skips the enqueue but still writes the row** — 4B amendment 2's shape, not 3B's fail-closed branch, and the difference is that the *durable row* is the state of record: the manual `POST …/einvoice-transmissions/{id}/submit` route and the poll phase both drive it, so a missed enqueue delays a transmission and loses nothing. Throwing here would break every 4A and 6A call site that supplies no `JobClient`. **`app.einvoice_transmission` joins §4.3.2's closed write list as `einvoice_transmission` (5B+).** The company row is read with one `select einvoice_transmitter from app.company where id = $1` in `post.ts`; **`DocumentSnapshot.company` is NOT widened** — §4.3.1's stubbed-field list is closed and `einvoiceTransmitter` is a new field, not a stubbed one. |
 | **4** | 4.4.1 | **The policy `tax` block gains one optional property: `"einvoice": { "type": "boolean", "default": false }`.** The block becomes `"required": ["applies"]`, `"properties": { "applies": …, "inclusive": …, "einvoice": { "type": "boolean", "default": false } }` with `additionalProperties: false` unchanged. **Every existing policy keeps validating** — the property is optional and its absence means `false`, so 1A's `JOURNAL`, 2A's, 2B's and 2C's test types, and all of 3C's, 3D's, 4A's and 4B's seeded envelopes are untouched and no policy version is bumped by this slice. **This is the zero-code home for "which document types are transmitted", and that question is an ADR-0051 fact** (a jurisdiction's mandate covers some document classes and not others), so it must be data on the versioned, append-only policy rather than a list in TypeScript. The generated `PostingPolicy` type (ADR 0022) gains `tax.einvoice?: boolean` by regeneration, not by hand. |
 | **5** | 4.9.3 | **The transmitter's remote shape is a *profile*, and the profile is data.** §4.9.3's five declarations are unchanged and are implemented verbatim. Added beside them: `EInvoiceProfile`, `EInvoiceCallSpec`, `EInvoiceAuthSpec` and `TRANSMISSION_STATUSES` in `packages/domain/src/tax/einvoice.ts`; the JSON Schema `packages/domain/einvoice-profile.schema.json`; the profile files at **`packages/db/einvoice-profiles/<code>.v<n>.json`** — deliberately **outside `packages/db/seed/`**, because 2C made `assertPackShape` derive its allowed-directory set from `SUB_PACKS` (§4.2.13) and an unregistered directory under `seed/my/` makes `bun run seed` exit 3; and `createHttpTransmitter({ profile, canonicalise, qrPayload, fetchImpl?, env? })` in `packages/db/src/einvoice/http-transmitter.ts`, which turns any conforming profile into an `EInvoiceTransmitter`. **`env?` is the environment `readSecret` resolves the credential name against**, defaulting to `process.env` — the seam every test injects through, because the secret is read inside `call()` *before* `fetchImpl` is ever invoked and a `fetch` wrapper therefore cannot supply it. **`canonicalise` and `qrPayload` are constructor parameters, not profile data** — their content is ADR-0051 prose, not a call shape, and a body-templating language would be exactly the over-building the judge panel rejects. **The `transmitter` vocabulary is closed at two codes** — `synthetic` and `myinvois` (`text` + `check`, §3.2): `synthetic` is the CI and `bun run dev` implementation and **is registered only when `appEnv !== "production"`**; `myinvois` is registered only by Task 9. ⚠️ **When this amendment is written into §4.9.3, the sentence above goes in ordinary prose and NOT inside a markdown table** — a table cell would force `synthetic \| myinvois`, and the gate script's fixed-string search for `The `transmitter` vocabulary is closed at` is what depends on it. The GCC/ZATCA pack stays deferred (spec:2226) and adds a third label when a customer there exists. |
-| **6** | 4.9.3 | **`app.einvoice_transmission` ships §4.9.3's column list plus four, and `app.company` gains three columns in the same migration** (`0057`, §3.4.7's *expand* half on a live 0001 table). On the log: **`profile_version int`** (nullable — the version of the profile file the call was actually made with, written at submit, so an incident can be read against the file that produced it: this is SAH-013's "pinned versions" applied to an integration), **`qr_payload text`** (nullable — §4.9.3's `qrPayload` result, written when the status first reaches `accepted`, so the invoice template and the API return the payload the authority acknowledged rather than one recomputed later), **`polled_at timestamptz`** (nullable — **the last remote call that COMPLETED**, whether submit, poll or cancel: it makes the reconciliation job's own progress visible without reading pg-boss) and **`claimed_at timestamptz`** (nullable — **a remote call is in flight since this instant; null means none is**. Task 5 stamps it at claim and clears it the moment the call ends, in either direction, and a re-claim is refused only while it is set and younger than §4.2.9's 120-second window, reused rather than re-invented). **The two are separate columns and that is load-bearing:** one column cannot mean both "started and not yet finished" and "last finished", and conflating them refuses the `poll` that legitimately follows a `submit` seconds earlier and swallows every pg-boss retry that arrives inside the window. On `app.company`: **`einvoice_transmitter text`** (nullable; null = e-invoicing off — **one column carrying both the on/off and the choice, so a boolean and a name can never disagree**), **`einvoice_client_id text`** and **`einvoice_credential_ref text`** (the *name* of the secret, never its value — §4.9.3's `EInvoiceCredentials.secretRef` stored under a column name the §4.2.3 log filter will not eat). A `check` requires all three non-null together or all three null. |
+| **6** | 4.9.3 | **`app.einvoice_transmission` ships §4.9.3's column list plus four, and `app.company` gains three columns in the same migration** (`0057`, §3.4.7's *expand* half on a live 0001 table). On the log: **`profile_version int`** (nullable — the version of the profile file the call was actually made with, written at submit, so an incident can be read against the file that produced it: this is LEGACY-013's "pinned versions" applied to an integration), **`qr_payload text`** (nullable — §4.9.3's `qrPayload` result, written when the status first reaches `accepted`, so the invoice template and the API return the payload the authority acknowledged rather than one recomputed later), **`polled_at timestamptz`** (nullable — **the last remote call that COMPLETED**, whether submit, poll or cancel: it makes the reconciliation job's own progress visible without reading pg-boss) and **`claimed_at timestamptz`** (nullable — **a remote call is in flight since this instant; null means none is**. Task 5 stamps it at claim and clears it the moment the call ends, in either direction, and a re-claim is refused only while it is set and younger than §4.2.9's 120-second window, reused rather than re-invented). **The two are separate columns and that is load-bearing:** one column cannot mean both "started and not yet finished" and "last finished", and conflating them refuses the `poll` that legitimately follows a `submit` seconds earlier and swallows every pg-boss retry that arrives inside the window. On `app.company`: **`einvoice_transmitter text`** (nullable; null = e-invoicing off — **one column carrying both the on/off and the choice, so a boolean and a name can never disagree**), **`einvoice_client_id text`** and **`einvoice_credential_ref text`** (the *name* of the secret, never its value — §4.9.3's `EInvoiceCredentials.secretRef` stored under a column name the §4.2.3 log filter will not eat). A `check` requires all three non-null together or all three null. |
 | **7** | 4.2.7 | **One new route module: `/v1/companies/:companyId/einvoice-transmissions` → `einvoiceTransmissionRoutes` (module const `einvoiceTransmissionRouteModule`), slice 5B, gate `accounting.tax.file`**, with sub-paths `GET …` (list), `GET …/{transmissionId}`, `POST …/{transmissionId}/submit`, `POST …/{transmissionId}/cancel`. **One `PROBES` key.** **The company e-invoice settings are two sub-paths on 0B's existing `companyRoutes`** — `GET /v1/companies/{companyId}/einvoice-settings` and `PUT /v1/companies/{companyId}/einvoice-settings` — gated `admin.company.manage`, because §3.6.2 already places company configuration under that code and 2B set the precedent of adding sub-paths to another slice's module; they inherit `companyRoutes`' `PROBES` key and **this slice mounts no second module on `/v1/companies`**. **§4.2.7's table has no 5A row**, so if 5A shipped a `tax-codes` or `tax-returns` module its rows are 5A's to add and this slice touches neither. |
 | **8** | 3.6.4 | **`accounting.tax.file` → `accountant`.** spec:2158 gives the head-office bookkeeper "tax returns"; §3.6.4 requires every introducing slice to add its row to that sentence in the same PR. `admin`'s array is computed and is never edited. No `INCOMPATIBLE_PAIRS` entry involves the code, and it is `mutating: true`, so R7 holds for `auditor` (which does not receive it) and the route gate holds for the two unsafe routes. |
 | **9** | 3.11 | **One new environment name: `EINVOICE_CLIENT_SECRET`** — holder **api, worker**; set by **5B** (the name), **OD-15** (the value); meaning "the client secret the transmitter presents; referenced by `company.einvoice_credential_ref`, never stored in the database". It joins `containerSecrets(env, entrypoint)` in the same PR (§3.11's closing rule). **It is one fixed name, not a pattern**, because `containerSecrets` enumerates bindings explicitly and a wildcard cannot be added there; `EINVOICE_SECRET_NAMES = ["EINVOICE_CLIENT_SECRET"] as const` in `packages/db/src/einvoice/credentials.ts` is what `einvoice_credential_ref` is validated against, so an admin cannot point the column at `DATABASE_URL`. A second authority adds a second name here and a second member there. |
@@ -332,10 +332,10 @@ else
   echo "MISSING (repo): tests/golden/tax/ does not exist — 5A's corpus (§3.7.4), which Task 10 re-runs"
   fail=1
 fi
-if [ -f tests/regression/sah-020.test.ts ]; then
-  note "tests/regression/sah-020.test.ts exists — Task 10 APPENDS a '— 5B' block and edits no earlier block (§3.7.3)."
+if [ -f tests/regression/legacy-020.test.ts ]; then
+  note "tests/regression/legacy-020.test.ts exists — Task 10 APPENDS a '— 5B' block and edits no earlier block (§3.7.3)."
 else
-  echo "MISSING (repo): tests/regression/sah-020.test.ts — 5A creates it (§3.7.3); 5B only appends. Raise with 5A rather than creating it here."
+  echo "MISSING (repo): tests/regression/legacy-020.test.ts — 5A creates it (§3.7.3); 5B only appends. Raise with 5A rather than creating it here."
   fail=1
 fi
 
@@ -472,7 +472,7 @@ bun run check:5b
 
 **Read the four `NOTE:` lines rather than skimming past them.** They change what two later tasks do:
 - the `tests/golden/tax` case count decides whether Task 10 Step 3 asserts or **skips with a named message** — a vacuous re-run of test 26 is worse than a visible skip;
-- `sah-020.test.ts`'s presence decides whether Task 10 Step 6 appends or **stops and raises with 5A** (§3.7.3 makes 5A the creator and 5B has a fixed position, so create-if-absent is 9A's licence and not this slice's);
+- `legacy-020.test.ts`'s presence decides whether Task 10 Step 6 appends or **stops and raises with 5A** (§3.7.3 makes 5A the creator and 5B has a fixed position, so create-if-absent is 9A's licence and not this slice's);
 - `post.ts`'s `input.jobs` decides nothing but must be true, and the script fails rather than noting it, because Task 6 is a clause inside that branch;
 - `SALES_INVOICE.json`'s presence is what `einvoiceFixture` reads; if 4A named the file differently, **fix the fixture, not the pack**.
 
@@ -582,7 +582,7 @@ committed JSON Schema.**
   the file's `source`, and `scripts/check/no-authority-literals.sh` fails the build if the file
   exists without it.
 - An authority's schema-version bump is `myinvois.v2.json` beside `v1`, with
-  `einvoice_transmission.profile_version` recording which file each call was made with — SAH-013's
+  `einvoice_transmission.profile_version` recording which file each call was made with — LEGACY-013's
   "pinned versions" applied to an integration.
 - A profile cannot express an authority that needs request signing, mutual TLS or a multi-step
   handshake. If ADR 0051 finds one, **the OD-15 task widens the schema's `auth` block and this
@@ -834,7 +834,7 @@ create table app.einvoice_transmission (
   company_id       uuid not null,
   document_id      uuid not null,
   transmitter      text not null,                                          -- 'synthetic' | 'myinvois'
-  profile_version  int,                                                    -- amendment 6: SAH-013 pinning
+  profile_version  int,                                                    -- amendment 6: LEGACY-013 pinning
   external_id      text,                                                   -- the authority's own id
   status           text not null default 'pending',                        -- §4.9.3's six labels
   attempts         int  not null default 0,                                -- spec:2225 "retry"
@@ -878,7 +878,7 @@ create table app.einvoice_transmission (
   constraint einvoice_transmission_external_id_check
     check (status not in ('submitted', 'accepted', 'cancelled') or external_id is not null),
   -- The three timestamps are set once and never cleared, so a cancelled transmission keeps the
-  -- accepted_at that preceded it. An equality here would forbid exactly that (SAH-041's shape).
+  -- accepted_at that preceded it. An equality here would forbid exactly that (LEGACY-041's shape).
   constraint einvoice_transmission_accepted_at_check
     check (status <> 'accepted' or accepted_at is not null),
   constraint einvoice_transmission_cancelled_at_check
@@ -904,7 +904,7 @@ create index einvoice_transmission_open_idx
 -- ── 2. RLS and audit (§3.5.1 steps 2 and 3) ───────────────────────────────────────────────────
 call app_meta.enable_tenant_rls('app.einvoice_transmission');
 -- §3.5.3 puts this table in NO set: it is audited, has an id and a created_at, and is mutable —
--- a status change from 'submitted' to 'rejected' is exactly the before/after image SAH-029/030
+-- a status change from 'submitted' to 'rejected' is exactly the before/after image LEGACY-029/030
 -- exist to preserve. No attach_stamp: the table has no *_by column and never gains one (§3.3).
 call app_meta.attach_audit('app.einvoice_transmission');
 
@@ -1336,7 +1336,7 @@ describe("canonicalJson — the one deterministic serialiser (spec:2264, test 26
     expect(canonicalJson({ number: 42n })).toBe('{"number":"42"}');
   });
 
-  it("REFUSES a non-integer number — money is a string on this path (Global Constraint 4, SAH-019)", () => {
+  it("REFUSES a non-integer number — money is a string on this path (Global Constraint 4, LEGACY-019)", () => {
     expect(() => canonicalJson({ amount: 10.5 })).toThrow(CanonicalJsonError);
     expect(() => canonicalJson({ amount: 10.5 })).toThrow(/non-integer number at \/amount/);
   });
@@ -1512,7 +1512,7 @@ bun run --cwd packages/domain test -- tax/einvoice
       "enum": ["synthetic", "myinvois"]
     },
     "version": {
-      "description": "The profile file's own version. Recorded on every transmission as profile_version (SAH-013).",
+      "description": "The profile file's own version. Recorded on every transmission as profile_version (LEGACY-013).",
       "type": "integer",
       "minimum": 1
     },
@@ -1698,7 +1698,7 @@ export class CanonicalJsonError extends Error {
  * Deliberately narrow about what it accepts:
  *   - a non-integer `number` is REFUSED. Every money amount on this path is `Money.toString()`'s
  *     fixed 4-dp string or `Money.toJSON()`'s `{ amount, currency }` (Global Constraint 4); a float
- *     reaching here means someone re-derived an amount, which is SAH-019 in one line.
+ *     reaching here means someone re-derived an amount, which is LEGACY-019 in one line.
  *   - `undefined` OMITS its key, so an absent optional stays absent rather than becoming `null`.
  *   - `bigint` becomes its decimal string, because `DocumentSnapshot.header.number` is `bigint | null`.
  *   - a `Date`, a `Map`, a `Set`, a function or a class instance is REFUSED, naming its pointer: an
@@ -1725,7 +1725,7 @@ export function canonicalJson(value: unknown): string {
         }
         if (!Number.isInteger(node)) {
           throw new CanonicalJsonError(
-            `canonicalJson: non-integer number at ${path || "/"} — money is a string on this path (§3.9, SAH-019)`,
+            `canonicalJson: non-integer number at ${path || "/"} — money is a string on this path (§3.9, LEGACY-019)`,
           );
         }
         return String(node);
@@ -1881,7 +1881,7 @@ export function renderPath(template: string, vars: Readonly<Record<string, strin
  * An UNMAPPED label becomes `"error"` and is returned as `unmapped` so the caller can record it in
  * `last_error`. It deliberately does NOT throw and deliberately does NOT default to `"accepted"`:
  * an authority that adds a label must produce a visible, retryable state, and the reconciliation
- * poll then keeps asking. This is the whole of SAH-020's "a mismatched return refuses to run,
+ * poll then keeps asking. This is the whole of LEGACY-020's "a mismatched return refuses to run,
  * rather than producing a wrong number" applied to a transmission.
  */
 export function mapRemoteStatus(
@@ -1924,9 +1924,9 @@ feat(domain): the e-invoicing port, canonicalJson and the profile schema [5B T3]
 
 §4.9.3's five declarations verbatim; ADR 0052's profile types, JSON Schema and
 parseProfile; canonicalJson as the one deterministic serialiser, refusing a
-non-integer number so no re-derived amount can reach a payload (SAH-019);
+non-integer number so no re-derived amount can reach a payload (LEGACY-019);
 resolvePointer, renderPath and mapRemoteStatus, which maps an unknown remote
-label to 'error' and never to 'accepted' (SAH-020). No node: import: this file
+label to 'error' and never to 'accepted' (LEGACY-020). No node: import: this file
 is bundled into apps/backoffice through packages/contracts.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
@@ -2044,7 +2044,7 @@ A **profile** is the remote call shape of a fiscalisation authority, expressed a
 3. **A new authority schema version is a new file**, `<code>.v<n+1>.json`, beside the old one. The
    old one is never edited: `einvoice_transmission.profile_version` records which file each call was
    made with, so a completed transmission stays readable against the file that produced it
-   (SAH-013's pinning applied to an integration).
+   (LEGACY-013's pinning applied to an integration).
 4. **This directory is deliberately not under `packages/db/seed/`.** 2C made `assertPackShape`
    derive its allowed directories from `SUB_PACKS` (§4.2.13), so an unregistered directory there
    makes `bun run seed` exit 3. A profile is not per-tenant data and needs no loader.
@@ -2315,7 +2315,7 @@ describe("createHttpTransmitter — submit", () => {
     expect(res.externalId).toBe("R-3");
   });
 
-  it("maps an UNKNOWN remote label to error rather than to accepted (SAH-020)", async () => {
+  it("maps an UNKNOWN remote label to error rather than to accepted (LEGACY-020)", async () => {
     server = await startStubServer({ submit: { state: "in_review", receiptId: "R-4" } });
     const t = createSyntheticTransmitter({ profile: server.profile, env: ENV });
     const res = await t.submit(t.canonicalise(snapshotFixture()), CREDS);
@@ -2473,7 +2473,7 @@ export function availableProfileVersions(code: string): number[] {
 /**
  * Read and validate a profile. `version` omitted means the highest available, which is what the
  * registry uses at boot; an explicit version is what a re-read of a completed transmission uses,
- * so the call is interpreted against the file that produced it (SAH-013).
+ * so the call is interpreted against the file that produced it (LEGACY-013).
  *
  * A malformed file throws `EInvoiceProfileError` from `parseProfile` — NOT a `SyntaxError` and not
  * a silent `{}`: the registry then declines to register the transmitter and every caller receives
@@ -2699,7 +2699,7 @@ export class TransientTransmissionError extends Error {
 /**
  * What this factory returns: §4.9.3's frozen interface plus the two members the transmission log
  * needs and that interface has no room for — `profile.version`, written to
- * `einvoice_transmission.profile_version` (SAH-013), and `lastCall`, which carries the HTTP status
+ * `einvoice_transmission.profile_version` (LEGACY-013), and `lastCall`, which carries the HTTP status
  * and the unmapped remote label into `last_error`. Declared HERE rather than in `registry.ts` so
  * `synthetic.ts` can name it without closing a cycle (registry imports synthetic).
  */
@@ -2853,8 +2853,8 @@ export function sha256Hex(text: string): string {
 
 /**
  * A generic canonical projection. Every amount is taken STRAIGHT from the snapshot's `Money` via
- * `toJSON()` — nothing is re-derived, re-rounded or converted (Global Constraint 4, SAH-019), which
- * is also what makes `sah-020`'s "regime pinned on submission" true: the payload is a function of
+ * `toJSON()` — nothing is re-derived, re-rounded or converted (Global Constraint 4, LEGACY-019), which
+ * is also what makes `legacy-020`'s "regime pinned on submission" true: the payload is a function of
  * stored line figures, so a later `tax_code` version cannot change it.
  */
 export function syntheticCanonicalise(doc: DocumentSnapshot): EInvoiceDocument {
@@ -3472,7 +3472,7 @@ bun run typecheck && bun run lint && bun run lint:rules && bun run format:check
 - **a 4xx refusal is an outcome and a 5xx is a fault** — the first returns `rejected`, the second throws `TransientTransmissionError`, and Task 7's handler treats them differently;
 - **the submit body is byte-identical to a second `canonicalJson` of the same document**, which is test 26's determinism claim moved onto the wire.
 
-`lint:rules` covers `no-bare-db` (this task writes no SQL outside `packages/db/test/**`, which is allow-listed), `no-sql-concat` (the path template is interpolated into a URL and the `no-sql-concat` rule fires only on a concatenation containing `select|insert|update|delete|where` — `renderPath`'s output contains none, and Task 11's `sah-019`/test-27 block asserts it) and `no-number-money` (`httpStatus`, `version`, `attempts`, `length` and `port` are `number` and none matches the money pattern).
+`lint:rules` covers `no-bare-db` (this task writes no SQL outside `packages/db/test/**`, which is allow-listed), `no-sql-concat` (the path template is interpolated into a URL and the `no-sql-concat` rule fires only on a concatenation containing `select|insert|update|delete|where` — `renderPath`'s output contains none, and Task 11's `legacy-019`/test-27 block asserts it) and `no-number-money` (`httpStatus`, `version`, `attempts`, `length` and `port` are `number` and none matches the money pattern).
 
 - [ ] **Step 9: Commit**
 
@@ -3776,7 +3776,7 @@ describe("the transmission log's state machine (ADR 0053)", () => {
     expect(row.lastError).toContain("503");
   });
 
-  it("an UNMAPPED remote label lands in error with the label in last_error (SAH-020)", async () => {
+  it("an UNMAPPED remote label lands in error with the label in last_error (LEGACY-020)", async () => {
     await arm({ submit: { state: "in_review", receiptId: "R-15" } });
     const id = await pending();
     const row = await submitTransmission(db.rw, ctx, { transmissionId: id });
@@ -4202,7 +4202,7 @@ export async function submitTransmission(
 
     // The snapshot is read in its own short transaction, and canonicalisation is pure — so the
     // payload is a function of STORED line figures and a later tax_code version cannot change it
-    // (SAH-020's "regime pinned on submission"; tests/regression/sah-020.test.ts proves it).
+    // (LEGACY-020's "regime pinned on submission"; tests/regression/legacy-020.test.ts proves it).
     const snapshot = await withTenant(sql, ctx, (tx) => loadSnapshot(tx, claimed.documentId));
     doc = transmitter.canonicalise(snapshot);
 
@@ -4378,7 +4378,7 @@ and in `packages/db/src/index.ts`, one line beside the existing re-exports:
 export * from "./einvoice";
 ```
 
-**`packages/db/src/index.ts` gains `./einvoice` and nothing else.** In particular it does not gain `./seed` at any depth — §3.1's `sah-039` assertion still holds, and `einvoice/profile.ts` reads its own directory and imports no seed module.
+**`packages/db/src/index.ts` gains `./einvoice` and nothing else.** In particular it does not gain `./seed` at any depth — §3.1's `legacy-039` assertion still holds, and `einvoice/profile.ts` reads its own directory and imports no seed module.
 
 - [ ] **Step 6: Run the test to green**
 
@@ -4388,7 +4388,7 @@ bun run --cwd packages/db test -- einvoice
 bun run typecheck && bun run lint && bun run lint:rules && bun run format:check
 ```
 
-**Expected:** **sixteen** passing `it`s in this file and every earlier e-invoicing file still green. The sixteenth — "ENDS THE CLAIM when the refusal comes before the call" — is the one that fails if the settings/credentials/registry resolution is written outside the `try`. `lint:rules` must be green — the projection is written out inline in both readers and there is no `sql.unsafe` in this slice at all, which the `sah-019` block of Task 10 re-asserts as a source fact.
+**Expected:** **sixteen** passing `it`s in this file and every earlier e-invoicing file still green. The sixteenth — "ENDS THE CLAIM when the refusal comes before the call" — is the one that fails if the settings/credentials/registry resolution is written outside the `try`. `lint:rules` must be green — the projection is written out inline in both readers and there is no `sql.unsafe` in this slice at all, which the `legacy-019` block of Task 10 re-asserts as a source fact.
 
 - [ ] **Step 7: Commit**
 
@@ -4403,7 +4403,7 @@ ADR 0053: claim, call, record — three short transactions with the HTTP call
 between them, never inside one (spec:1368). A 4xx is an outcome and moves the row
 to rejected; a 5xx throws TransientTransmissionError for pg-boss. An unmapped
 remote label lands in `error` with the label in last_error, never in `accepted`
-(SAH-020). The claim reuses §4.2.9's 120-second window and lives in claimed_at,
+(LEGACY-020). The claim reuses §4.2.9's 120-second window and lives in claimed_at,
 which every verb clears when its call ends, success or fault -- polled_at records
 the last COMPLETED call and is a different question. Keeping them apart is what
 lets the poll follow the submit, and what lets pg-boss's 60-second retry
@@ -4692,7 +4692,7 @@ and, inside step 14's existing block, **after** the `inventory.cost.replay` and 
   // JobClient the row is still written and a warning is pushed — the DURABLE ROW is the state of
   // record (ADR 0053), and the manual submit route and the poll phase both drive it, so a missed
   // enqueue delays a transmission and loses nothing. This is deliberately NOT 3B's fail-closed
-  // branch: a missed cost replay leaves a wrong number in the ledger for ever (SAH-005), while a
+  // branch: a missed cost replay leaves a wrong number in the ledger for ever (LEGACY-005), while a
   // missed enqueue leaves a pending row anyone can see.
   if (policy.tax?.applies === true && policy.tax.einvoice === true) {
     const [companyEinvoice] = await tx<{ transmitter: string | null }[]>`
@@ -5820,7 +5820,7 @@ import { recordingJobs } from "./post-inventory";                 // 3B, §4.17.
 //
 // §4.2.8's naming: <Resource>Schema, <Resource>Query, <Resource>List, <Verb><Resource>Body.
 // Money does not appear here: a transmission carries no amount of its own — the amounts are in the
-// document it points at, and duplicating one would give SAH-019 a second place to disagree.
+// document it points at, and duplicating one would give LEGACY-019 a second place to disagree.
 
 import { z } from "@hono/zod-openapi";
 import { ListEnvelope, ListQuery, ProblemSchema, TimestampSchema, UuidSchema } from "../common";
@@ -6321,7 +6321,7 @@ export async function fileTaxReturn(
   }
   // ONE update, and that is load-bearing: the audit trigger writes a row per UPDATE, so a second
   // statement to default `filed_at` would put two audit rows behind one status change — the same
-  // SAH-041 shape the `for update` two lines above exists to prevent.
+  // LEGACY-041 shape the `for update` two lines above exists to prevent.
   await tx`
     update app.tax_return
        set status        = 'filed',
@@ -6335,7 +6335,7 @@ export async function fileTaxReturn(
 }
 ```
 
-**`for update` and not a bare select.** Two operators filing the same return in the same second would otherwise both read `generated` and both write `filed`, producing two audit rows for one transition — the SAH-041 shape applied to a status column. The row lock makes the second read `filed` and refuse.
+**`for update` and not a bare select.** Two operators filing the same return in the same second would otherwise both read `generated` and both write `filed`, producing two audit rows for one transition — the LEGACY-041 shape applied to a status column. The row lock makes the second read `filed` and refuse.
 
 Appended to **5A's** `packages/contracts/src/accounting/tax.ts`:
 
@@ -6462,7 +6462,7 @@ the wire: it is a lock, not a fact about the transmission, and an operator who n
 | `pending` | The document posted; no remote call has succeeded yet. Either the job has not run or every attempt failed. | `POST …/{id}/submit` |
 | `submitted` | The authority accepted the request and has not yet returned a final verdict. | Nothing — the poll phase re-enqueues itself with backoff up to `POLL_LIMIT`. After that `lastError` says it stopped. |
 | `accepted` | Final. `qrPayload` and `externalId` are set. | Nothing |
-| `rejected` | The authority refused the document. `lastError` carries its reason. | Correct the document by **reversal** (SAH-041, never by editing), post the correction, and let its own transmission run |
+| `rejected` | The authority refused the document. `lastError` carries its reason. | Correct the document by **reversal** (LEGACY-041, never by editing), post the correction, and let its own transmission run |
 | `cancelled` | Withdrawn with the authority. | Nothing |
 | `error` | A transport or configuration failure. | Read `lastError`, then `POST …/{id}/submit` |
 
@@ -6878,8 +6878,8 @@ function headerValue(doc: DocumentSnapshot, path: string): string {
     case "number": return doc.header.number === null ? "" : doc.header.number.toString();
     case "issuedAt": return doc.header.effectiveDate;
     case "currency": return doc.header.currency;
-    // Every total is a `Money` fixed-scale string. NEVER `Number()`, NEVER `.toFixed()` — SAH-019,
-    // Global Constraint 4, and the sah-019 block of Task 10 asserts no local rounding exists here.
+    // Every total is a `Money` fixed-scale string. NEVER `Number()`, NEVER `.toFixed()` — LEGACY-019,
+    // Global Constraint 4, and the legacy-019 block of Task 10 asserts no local rounding exists here.
     // `reduce` seeds from `zero` rather than from `lines[0]`, so a line-less document produces
     // "0.0000" instead of throwing on an undefined index — which is what the fourth test below
     // exercises, and what a credit note with every line removed would otherwise do in production.
@@ -7163,8 +7163,8 @@ EOF
 
 **Files:**
 - Create: `tests/golden/tax-einvoice.test.ts`
-- Modify: `tests/regression/sah-020.test.ts` — one appended `describe`, nothing existing edited (§3.7.3)
-- Modify: `tests/regression/sah-019.test.ts` — one appended `describe`, nothing existing edited
+- Modify: `tests/regression/legacy-020.test.ts` — one appended `describe`, nothing existing edited (§3.7.3)
+- Modify: `tests/regression/legacy-019.test.ts` — one appended `describe`, nothing existing edited
 
 **Interfaces**
 
@@ -7544,9 +7544,9 @@ describe("acceptance test 13 over slice 5B's surface (spec:2431, 5B T10)", () =>
 
 **`runIntegrityCheck`'s exact result shape is 1B's.** If `report.auditChain` is spelled differently in 1B's file, use 1B's spelling and change nothing else — this assertion's content is "the chain verifies", not its field name. That is the one place in this file where a reviewer should reach for 1B's plan rather than reasoning from here.
 
-- [ ] **Step 6: Append the SAH-020 block**
+- [ ] **Step 6: Append the LEGACY-020 block**
 
-`tests/regression/sah-020.test.ts` — **created by 5A** (§3.7.3 makes the first slice to need a file its creator, and Task 0's gate reports its absence rather than this slice creating it). If the gate said it is missing, **stop and raise with 5A**; do not create it here.
+`tests/regression/legacy-020.test.ts` — **created by 5A** (§3.7.3 makes the first slice to need a file its creator, and Task 0's gate reports its absence rather than this slice creating it). If the gate said it is missing, **stop and raise with 5A**; do not create it here.
 
 Appended, editing nothing above it. **Add these imports at the top of the file if it does not already carry them** — 5A's own blocks import the first four, so in practice only the last two are new:
 
@@ -7559,13 +7559,13 @@ import { postTaxedDocument, taxFixture } from "../invariants/support/tax";
 import { einvoiceFixture } from "../invariants/support/einvoice";
 ```
 
-**Nothing else goes at module scope.** `sah-020.test.ts` is **5A's file** (§3.7.3) and a second
+**Nothing else goes at module scope.** `legacy-020.test.ts` is **5A's file** (§3.7.3) and a second
 `ctxOf` or `requestId` at its top level would collide with whatever 5A put there. The two live inside
 this slice's own `describe`, below.
 
 ```ts
-describe("SAH-020 — a return names its regime, and the regime is pinned at submission — 5B", () => {
-  // SAH-020 in the legacy system: tax was recomputed from whatever rate table happened to be current,
+describe("LEGACY-020 — a return names its regime, and the regime is pinned at submission — 5B", () => {
+  // LEGACY-020 in the legacy system: tax was recomputed from whatever rate table happened to be current,
   // so a reprint of an old return produced different numbers. 5A pins the regime on the RETURN. This
   // block adds 5B's half: the transmission is pinned to the regime the DOCUMENT carried, so a rate
   // change after transmission cannot move a transmitted invoice either.
@@ -7583,12 +7583,12 @@ describe("SAH-020 — a return names its regime, and the regime is pinned at sub
     resetTransmitters();
     registerDefaultTransmitters("dev");
     requestId = await uuidv7(db.admin);
-    stub = await startStubServer({ submit: { state: "queued", receiptId: "SAH020-1" }, poll: { state: "cleared" }, cancel: { state: "withdrawn" } });
+    stub = await startStubServer({ submit: { state: "queued", receiptId: "LEGACY020-1" }, poll: { state: "cleared" }, cancel: { state: "withdrawn" } });
   }, 120_000);
   afterAll(async () => { await stub.stop(); });
 
   it("pins the regime on the document's tax transactions, and transmitting does not consult a rate table", async () => {
-    const f = await taxFixture(db, "sah-020-5b");
+    const f = await taxFixture(db, "legacy-020-5b");
     // ONE fixture per tenant. `einvoiceFixture` opts a document type in at `policyVersion + 1`, so
     // calling it twice on one tenant either bumps the version twice or violates the policy's unique
     // key — both are defects and neither is what this test is about.
@@ -7608,12 +7608,12 @@ describe("SAH-020 — a return names its regime, and the regime is pinned at sub
       tx<{ regime_id: string; tax: string }[]>`
         select regime_id, tax::text from app.tax_transaction where document_id = ${documentId} order by line_no`);
     // Transmission is a read of the document. If a tax_transaction row moved, something on the
-    // e-invoicing path recomputed tax — which is SAH-020 reintroduced through a new door.
+    // e-invoicing path recomputed tax — which is LEGACY-020 reintroduced through a new door.
     expect(after).toEqual(before);
   });
 
   it("records the profile version the call was actually made with, so an incident is readable", async () => {
-    const f = await taxFixture(db, "sah-020-5b-version");
+    const f = await taxFixture(db, "legacy-020-5b-version");
     const e = await einvoiceFixture(db, f.s);
     const { transmissionId } = await e.postOptedInDocument();
     await e.driveToAccepted(transmissionId);
@@ -7624,9 +7624,9 @@ describe("SAH-020 — a return names its regime, and the regime is pinned at sub
 });
 ```
 
-- [ ] **Step 7: Append the SAH-019 block**
+- [ ] **Step 7: Append the LEGACY-019 block**
 
-`tests/regression/sah-019.test.ts` — created by 0B, appended by 4B and 5A. This slice's block is a **source-fact** block: SAH-019 is inconsistent rounding, and the e-invoicing path's whole exposure to it is whether any amount is re-derived on the way to the payload. **Add this import at the top of the file if it does not already carry it** — 0B's own blocks import `sourceFiles` already, and `startDb`/`db` are in the file's `beforeAll`:
+`tests/regression/legacy-019.test.ts` — created by 0B, appended by 4B and 5A. This slice's block is a **source-fact** block: LEGACY-019 is inconsistent rounding, and the e-invoicing path's whole exposure to it is whether any amount is re-derived on the way to the payload. **Add this import at the top of the file if it does not already carry it** — 0B's own blocks import `sourceFiles` already, and `startDb`/`db` are in the file's `beforeAll`:
 
 ```ts
 // §4.17.1, owner 0B: `tests/support/source.ts`, reached relatively from `tests/regression/`.
@@ -7635,7 +7635,7 @@ import { sourceFiles } from "../support/source";
 ```
 
 ```ts
-describe("SAH-019 — no local rounding and no float on the e-invoice path — 5B", () => {
+describe("LEGACY-019 — no local rounding and no float on the e-invoice path — 5B", () => {
   const SURFACE = [
     "packages/db/src/einvoice",
     "packages/domain/src/tax/einvoice.ts",
@@ -7659,7 +7659,7 @@ describe("SAH-019 — no local rounding and no float on the e-invoice path — 5
     }
     // Every amount on this path is a Money fixed-scale string taken from LineSnapshot and passed
     // through unchanged (Global Constraint 4). A single Number() here would round MYR 1234.5678 to a
-    // double and reintroduce SAH-019 at the one place the customer's regulator reads.
+    // double and reintroduce LEGACY-019 at the one place the customer's regulator reads.
     expect(offenders).toEqual([]);
   });
 
@@ -7680,17 +7680,17 @@ describe("SAH-019 — no local rounding and no float on the e-invoice path — 5
 
 ```bash
 bun run --cwd tests test -- golden/tax-einvoice
-bun run --cwd tests test -- regression/sah-020 regression/sah-019
+bun run --cwd tests test -- regression/legacy-020 regression/legacy-019
 bun run --cwd tests test -- invariants/tenant-isolation
 bun run typecheck && bun run lint && bun run lint:rules && bun run format:check
 ```
 
-**Expected:** five `it`s in the test-26 describe (the fifth may log its SKIP line), four in the hooks describe, six in the test-13 describe, two appended to sah-020 and two to sah-019 — **nineteen new assertions, none of which existed before this task**. The `beforeAll` takes minutes: it starts a container, posts ten documents and drives five transmissions, which is why its timeout is 600 s and not the default.
+**Expected:** five `it`s in the test-26 describe (the fifth may log its SKIP line), four in the hooks describe, six in the test-13 describe, two appended to legacy-020 and two to legacy-019 — **nineteen new assertions, none of which existed before this task**. The `beforeAll` takes minutes: it starts a container, posts ten documents and drives five transmissions, which is why its timeout is 600 s and not the default.
 
 - [ ] **Step 9: Commit**
 
 ```bash
-git add tests/golden/tax-einvoice.test.ts tests/regression/sah-020.test.ts tests/regression/sah-019.test.ts
+git add tests/golden/tax-einvoice.test.ts tests/regression/legacy-020.test.ts tests/regression/legacy-019.test.ts
 git commit -m "$(cat <<'EOF'
 test: acceptance tests 26 and 13 re-run over the e-invoicing hooks [5B T10]
 
@@ -7705,8 +7705,8 @@ under a server actor, app_rw can neither update nor delete an audit row nor
 delete a transmission, the chain verifies, and no source file on the path names a
 suppression flag.
 
-The sah-020 append proves transmitting recomputes no tax and pins the profile
-version; the sah-019 append proves no toFixed, Number, parseFloat or Math.round
+The legacy-020 append proves transmitting recomputes no tax and pins the profile
+version; the legacy-019 append proves no toFixed, Number, parseFloat or Math.round
 exists on the path and the log carries no money column at all.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
@@ -8093,7 +8093,7 @@ EOF
 - Scripts and documents — `scripts/check/contracts-5b-amendments.sh`, `scripts/check/no-authority-literals.sh`, the root `check:5b` script, the `einvoice:verify` script and the `einvoice-verify` CLI sub-command (both **T4**); `docs/adr/0052`, `docs/adr/0053`, ⚠️ `docs/adr/0051` (**OD-15**); `docs/decisions/od-15-5b-myinvois-requirement-set.md`, `docs/owner/od-15/README.md`, `docs/runbooks/einvoice-transmission.md`, `docs/review/2026-09-05-phase-5-exit.md`; `tests/invariants/phase-5-exit.test.ts`.
 - Environment — **one name**, `EINVOICE_CLIENT_SECRET` (§3.11, amendment 9), joining `containerSecrets` in the same PR.
 
-**Against the never/always lists.** **One** table is created and it carries `tenant_id`, `FORCE ROW LEVEL SECURITY`, a policy named exactly `tenant_isolation`, `created_at`, the audit trigger, composite `(tenant_id, x)` foreign keys, `uuidv7` ids, snake_case singular naming, a hand-written down and a two-tenant test in its own task (T1). **It carries NO `*_by` column and therefore no `app_meta.attach_stamp` call, deliberately** — §3.5.3's row for `einvoice_transmission` is four dashes, the acting principal of every write is the audit row's `actor_id`, and a transmission is not attributed to a person; T1's first `it` asserts `rows.filter(r => r.column_name.endsWith("_by"))` is empty and T1's migration comment says why. **The three `app.company` columns DO reach `updated_by` through that table's existing `attach_stamp`, which 0001 installed and this slice does not touch** — that is what makes T10's test-13 assertion on the company UPDATE's `actor_id` true. Everything else in T1 — re-asserted at the phase gate (T11). `app.company`'s three columns are §3.4.7's expand half on a live 0001 table and the down drops **only those three columns**. Every endpoint has a Zod schema, an OpenAPI entry regenerated in the same commit, `IdempotencyHeader` on every unsafe method, and a probe on the one new module. **No ledger, movement, layer, projection or `tax_transaction` write happens anywhere in this slice** — Task 10's fourth hooks assertion proves it empirically by fingerprinting `ledger_entry` across a transmission. No `number` holds money and Task 10's sah-019 block asserts it as a source fact over five paths. No `sql.unsafe`, no string-concatenated SQL, no DDL from application code, no disabled invariant, no gated audit write, no enum label added, no package version in a source file. Every commit message carries the trailer.
+**Against the never/always lists.** **One** table is created and it carries `tenant_id`, `FORCE ROW LEVEL SECURITY`, a policy named exactly `tenant_isolation`, `created_at`, the audit trigger, composite `(tenant_id, x)` foreign keys, `uuidv7` ids, snake_case singular naming, a hand-written down and a two-tenant test in its own task (T1). **It carries NO `*_by` column and therefore no `app_meta.attach_stamp` call, deliberately** — §3.5.3's row for `einvoice_transmission` is four dashes, the acting principal of every write is the audit row's `actor_id`, and a transmission is not attributed to a person; T1's first `it` asserts `rows.filter(r => r.column_name.endsWith("_by"))` is empty and T1's migration comment says why. **The three `app.company` columns DO reach `updated_by` through that table's existing `attach_stamp`, which 0001 installed and this slice does not touch** — that is what makes T10's test-13 assertion on the company UPDATE's `actor_id` true. Everything else in T1 — re-asserted at the phase gate (T11). `app.company`'s three columns are §3.4.7's expand half on a live 0001 table and the down drops **only those three columns**. Every endpoint has a Zod schema, an OpenAPI entry regenerated in the same commit, `IdempotencyHeader` on every unsafe method, and a probe on the one new module. **No ledger, movement, layer, projection or `tax_transaction` write happens anywhere in this slice** — Task 10's fourth hooks assertion proves it empirically by fingerprinting `ledger_entry` across a transmission. No `number` holds money and Task 10's legacy-019 block asserts it as a source fact over five paths. No `sql.unsafe`, no string-concatenated SQL, no DDL from application code, no disabled invariant, no gated audit write, no enum label added, no package version in a source file. Every commit message carries the trailer.
 
 **Against §4.4.2's A9.** This slice **plans no ledger line at all** and reads the sign of no planned amount. The one place it touches a monetary figure is `myinvoisCanonicalise`'s three header totals, which sum `LineSnapshot.amount` / `.taxAmount` / `.totalInclTax` through `Money.add` and render with `Money.toString()` — no direction is inferred, no amount is negated, and `PlannedTaxLine`'s signed exception never enters the picture because nothing here builds a plan.
 
@@ -8132,10 +8132,10 @@ EOF
 **Where to stop and raise rather than working around.**
 
 - **A `MISSING (repo):` line from Task 0's gate.** That is a reconciliation with 5A or 4B, and **the owning plan is the authority for what it exports** (§4.18). Correct *this* plan's import path or name; never add a second spelling.
-- **`tests/regression/sah-020.test.ts` absent.** §3.7.3 makes **5A** its creator. Task 10 Step 6 appends to it and must not create it — creating it here would give 5A's own Task 11 a merge conflict on a file it owns. Raise it as a 5A gap.
+- **`tests/regression/legacy-020.test.ts` absent.** §3.7.3 makes **5A** its creator. Task 10 Step 6 appends to it and must not create it — creating it here would give 5A's own Task 11 a merge conflict on a file it owns. Raise it as a 5A gap.
 - **`tests/golden/tax/` empty.** Task 10's fifth `it` skips with a named message and the other four still run. That is the designed behaviour, not a failure — but **tell the 5A owner**, because it means test 26's file comparison is not running anywhere.
 - **`assertRouteGates` throwing `ERR_ROUTE_GATE_READONLY` after Task 8.** Read the error before changing anything: it names the code and the method. `accounting.tax.file` and `admin.company.manage` are both `mutating: true`, so the cause is a route gated by a code its `RouteModule.permissions` array does not declare — add the code to the array, never change the gate.
-- **`ERR_EINVOICE_TRANSMITTER_UNAVAILABLE` in CI, or from the `cancel` route.** The registry is module-level process state and is filled by exactly three kinds of caller: the two entrypoints at boot (`apps/worker/src/index.ts` from T7, `apps/api/src/index.ts` from T8), `startApi()` in the API test harness (T8), and a `beforeAll` in every root `tests/` file that transmits (T10, and the sah-020 append). **A root `tests/` file starts no entrypoint**, so a suite that forgets `resetTransmitters(); registerDefaultTransmitters("dev")` sees this on every row. **Never register `synthetic` unconditionally to make it go away** — amendment 5's whole point is that the CI transmitter cannot exist in production.
+- **`ERR_EINVOICE_TRANSMITTER_UNAVAILABLE` in CI, or from the `cancel` route.** The registry is module-level process state and is filled by exactly three kinds of caller: the two entrypoints at boot (`apps/worker/src/index.ts` from T7, `apps/api/src/index.ts` from T8), `startApi()` in the API test harness (T8), and a `beforeAll` in every root `tests/` file that transmits (T10, and the legacy-020 append). **A root `tests/` file starts no entrypoint**, so a suite that forgets `resetTransmitters(); registerDefaultTransmitters("dev")` sees this on every row. **Never register `synthetic` unconditionally to make it go away** — amendment 5's whole point is that the CI transmitter cannot exist in production.
 - **A `permission-catalogue` failure reading "code introduced in 5B has no reference", or a `permission-catalogue.test.ts` failure naming `accounting.tax.file`.** Part of Task 2 was committed on its own. All four of its files belong in Task 8's PR together (Task 2 Step 5's table says which check each subset breaks); **never add a dummy reference and never add a lint suppression** — that is the lie the rule exists to catch.
 - **Any proposal to call the authority from inside a request.** The submit route enqueues for the three reasons Task 8's opening states. A "quick synchronous submit for the operator" holds a socket for the request's whole timeout budget against a system nobody here controls, and its retry semantics would then live in two places.
 - **Any proposal to put the transmitter's `raw` response on the wire or in a log field.** ADR 0053 fixes what may reach `response jsonb` and `redactResponse` is the one gate. `toDto` deliberately omits `response`, and Global Constraint 16 forbids the log field.

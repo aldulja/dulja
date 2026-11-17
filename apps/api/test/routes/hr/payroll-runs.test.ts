@@ -279,7 +279,7 @@ describe("recalculate, read and list", () => {
       employeeNumber: "E-0001",
       schemeCode: "EPF",
       amount: { amount: "77.0000", currency: "MYR" },
-      enteredBy: preparer, // the session's actor; the body has no actor member at all (SAH-044)
+      enteredBy: preparer, // the session's actor; the body has no actor member at all (LEGACY-044)
     });
     expect(run.lines.filter((l) => l.overrideReason !== null)).toHaveLength(1);
 

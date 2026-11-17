@@ -2,7 +2,7 @@ import { defineDataset, type Dataset, type DatasetColumn } from "../query";
 
 /**
  * Every `ref` below is a literal tagged template. A ReportDefinition contributes a `field` STRING, which is
- * looked up in the `columns` array; the fragment it maps to was authored here (test 27, SAH-036/037/069).
+ * looked up in the `columns` array; the fragment it maps to was authored here (test 27, LEGACY-036/037/069).
  *
  * Every `date` is emitted as `to_char(x, 'YYYY-MM-DD')` and every `timestamptz` as
  * `to_char(x at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')`, so a DatasetRow value is never a JS `Date`

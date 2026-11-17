@@ -7,7 +7,7 @@ import {
   PIN_MAX_LENGTH,
 } from "../../src/staff/pin";
 
-describe("PIN hashing — the one credential the application hashes (spec:2132; SAH-028)", () => {
+describe("PIN hashing — the one credential the application hashes (spec:2132; LEGACY-028)", () => {
   it("produces a PHC-encoded argon2id string carrying its own parameters", async () => {
     const phc = await hashPin("1234");
     expect(phc.startsWith("$argon2id$")).toBe(true);

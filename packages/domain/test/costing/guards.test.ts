@@ -66,8 +66,8 @@ function move(
   };
 }
 
-describe("costing guards — acceptance test 6 (spec:2424; SAH-007, SAH-008)", () => {
-  it("(a) a return exceeding stock is REFUSED, not absorbed — SAH-008(a)'s exact numbers", () => {
+describe("costing guards — acceptance test 6 (spec:2424; LEGACY-007, LEGACY-008)", () => {
+  it("(a) a return exceeding stock is REFUSED, not absorbed — LEGACY-008(a)'s exact numbers", () => {
     // On hand 5 @ 10; return 6 to the supplier. The old system computed (10·5 − 30)/(−1) = −20.00 and
     // stored it, so every later sale booked negative COGS. Here the issue is refused before any arithmetic.
     const layers = [layer("L1", "5.000000", "10.0000", 1)];
@@ -84,7 +84,7 @@ describe("costing guards — acceptance test 6 (spec:2424; SAH-007, SAH-008)", (
     }
   });
 
-  it("(b) a sub-micro divisor is unrepresentable, and one micro-unit is a real denominator — SAH-008(b)", () => {
+  it("(b) a sub-micro divisor is unrepresentable, and one micro-unit is a real denominator — LEGACY-008(b)", () => {
     // The old guard was `if (aCurrentQnt <> 0)`, which excludes only exact zero; the smallest non-zero
     // numeric(18,4) is 0.0001, so returning 5.0001 against 5.0000 left a divisor of −0.0001 and stored a unit
     // cost of 500,020.00. Two things close that here, and this case asserts both.
@@ -100,7 +100,7 @@ describe("costing guards — acceptance test 6 (spec:2424; SAH-007, SAH-008)", (
     // SECOND: the smallest representable quantity IS a denominator, and the boundary sits ON
     // MIN_MEANINGFUL_QTY, which `lessThan` admits. A one-micro-unit issue against a one-micro-unit layer
     // therefore posts: it empties the layer and its value rounds to 0.0000 at MONEY_SCALE. Nothing explodes
-    // and nothing is falsely refused — which is the pair of failures SAH-008(b) actually produced.
+    // and nothing is falsely refused — which is the pair of failures LEGACY-008(b) actually produced.
     const layers = [layer("L1", "0.000001", "10.0000", 1)];
     const out = costingEngine.cost(move({ quantity: qty("0.000001") }, layers));
     expect(out.value.toString()).toBe("0.0000"); // round(0.000001 × 10.0000, 4) = 0.0000
@@ -108,7 +108,7 @@ describe("costing guards — acceptance test 6 (spec:2424; SAH-007, SAH-008)", (
     expect(out.updatedRemaining).toEqual([{ layerId: "L1", qtyRemaining: qty("0.000000") }]);
   });
 
-  it("(c) a wash line — a movement of zero quantity — is refused, never costed at zero (SAH-008(c))", () => {
+  it("(c) a wash line — a movement of zero quantity — is refused, never costed at zero (LEGACY-008(c))", () => {
     // A landed-cost or reconciliation line posted at zero stock set Cost = 0 in the old system and every
     // later sale booked zero COGS. A movement of nothing has no cost; in 3C a landed cost adjusts a LAYER's
     // unit_cost and is not a movement at all.
@@ -132,7 +132,7 @@ describe("costing guards — acceptance test 6 (spec:2424; SAH-007, SAH-008)", (
     ).toThrow(/ERR_COST_VALUE_MISSING.*quantity is zero/s);
   });
 
-  it("(d) a value-less receipt is refused — SAH-007's NULL poisoning", () => {
+  it("(d) a value-less receipt is refused — LEGACY-007's NULL poisoning", () => {
     // procProducePackage inserted both legs with no BtmPureTotal; (42·500 + NULL)/500 = NULL, coalesced to
     // 0.00 on the next sale, and a full recompute hit the same NULL. Value is mandatory here.
     expect(() =>

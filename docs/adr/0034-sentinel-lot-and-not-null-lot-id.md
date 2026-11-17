@@ -4,7 +4,7 @@
 **Date:** 2026-09-20
 **Deciders:** architect
 **Slice:** 3A
-**Supersedes:** nothing. **Related:** contracts §4.7.3, spec:1022, Part I SAH-050
+**Supersedes:** nothing. **Related:** contracts §4.7.3, spec:1022, Part I LEGACY-050
 
 ## Context
 
@@ -13,7 +13,7 @@
 `document_line.lot_id` is deliberately nullable, and a great many lines — services, non-food goods,
 a quick counter sale — legitimately carry none.
 
-SAH-050 is what happens when the aggregate key admits NULL. `MtoJob = NULL` is unknown, so the old
+LEGACY-050 is what happens when the aggregate key admits NULL. `MtoJob = NULL` is unknown, so the old
 system's increment matched no row, reported `ROW_COUNT = 0` and inserted a fresh one; the decrement
 matched no row either and there was **no `ROW_COUNT = 0` fallback on the decrement**, so the row
 stayed. Every NULL-job line accumulated one orphan, and the repair procedure grouped by the same

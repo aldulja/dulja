@@ -1,7 +1,7 @@
 -- ── 0084_create_statutory_scheme_rate_table.sql ────────────────────────────────────────────────
 -- §3.10.1 "Statutory schemes as data" (spec:2080). A scheme is a ROW, never an enum, so a levy the
 -- owner confirms under OD-14 is data and not a migration. A rate table is version-controlled data
--- with a source and two DIFFERENT principals behind it (SAH-078, SAH-020).
+-- with a source and two DIFFERENT principals behind it (LEGACY-078, LEGACY-020).
 -- THIS FILE STATES NO RATE, THRESHOLD, CEILING OR FORMULA (spec:2080, hazard 1). It states where
 -- one may be stored and who has to sign it.
 
@@ -33,7 +33,7 @@ call app_meta.enable_tenant_rls('app.statutory_scheme');
 call app_meta.attach_audit('app.statutory_scheme');
 
 comment on column app.statutory_scheme.rounding_mode is
-  'The FALLBACK rounding for this scheme, applied through the one round() of §4.2.1 when a rate table declares none. It is a SYSTEM default (the same value every other Dulja money path uses), not an authority claim; a table that declares rounding_mode overrides it, which is what SAH-019 asks for ("each scheme''s rounding rule is declared in its table").';
+  'The FALLBACK rounding for this scheme, applied through the one round() of §4.2.1 when a rate table declares none. It is a SYSTEM default (the same value every other Dulja money path uses), not an authority claim; a table that declares rounding_mode overrides it, which is what LEGACY-019 asks for ("each scheme''s rounding rule is declared in its table").';
 comment on column app.statutory_scheme.employer_registration is
   '⚠️ OD-23. The employer''s registration number with this authority. Relational, per scheme -- spec:2088 forbids a blob.';
 
@@ -92,11 +92,11 @@ call app_meta.attach_audit('app.statutory_rate_table');
 call app_meta.attach_stamp('app.statutory_rate_table', 'loaded_by');
 call app_meta.attach_stamp('app.statutory_rate_table', 'verified_by');
 
--- ── verified_by <> loaded_by, and a verified table is frozen (spec:2080, 1651-1652; SAH-020, 041) ──
+-- ── verified_by <> loaded_by, and a verified table is frozen (spec:2080, 1651-1652; LEGACY-020, 041) ──
 -- The comparison is app.current_actor() against OLD.loaded_by, NOT against NEW.verified_by. BEFORE
 -- ROW triggers on one table fire in TRIGGER-NAME order, so whether stamp_verified_by has already
 -- replaced NEW.verified_by by now turns on how two names happen to sort, and NEW.verified_by may
--- still hold whatever the caller sent -- the value SAH-044 says never to trust. Reading the session
+-- still hold whatever the caller sent -- the value LEGACY-044 says never to trust. Reading the session
 -- and the immutable loaded_by is order-independent: stamp_actor raises ERR_ACTOR_IMMUTABLE on any
 -- change to a non-null *_by value, so loaded_by cannot move under us.
 --
@@ -128,7 +128,7 @@ begin
     -- effective_to is deliberately NOT in the list above and the message must not claim it is: a
     -- successor version has to be able to close its predecessor's open window, which is an UPDATE of
     -- effective_to on a verified row. Every other field is frozen, the verification itself included.
-    raise exception 'ERR_HR_SELF_VERIFY: rate table version % of scheme % is already verified; its definition, version, effective_from, source and verification are frozen (effective_to may still be closed by a successor). Load a NEW version rather than editing a signed one (SAH-041, spec:2080)',
+    raise exception 'ERR_HR_SELF_VERIFY: rate table version % of scheme % is already verified; its definition, version, effective_from, source and verification are frozen (effective_to may still be closed by a successor). Load a NEW version rather than editing a signed one (LEGACY-041, spec:2080)',
       old.version, old.scheme_id using errcode = 'check_violation';
   end if;
   return new;
@@ -139,4 +139,4 @@ create trigger statutory_rate_table_verifier
   for each row execute function app.assert_rate_table_verifier();
 
 comment on table app.statutory_rate_table is
-  'spec:2080. The PRIMARY load path is the seed pull request (packages/db/seed/my/statutory/<scheme>/vN.json), so every change is a reviewed diff (SAH-078); the runtime statutory-table load is BREAK-GLASS (ADR 0073). No file under seed/my/statutory/<scheme>/ exists until OD-23 supplies verified tables.';
+  'spec:2080. The PRIMARY load path is the seed pull request (packages/db/seed/my/statutory/<scheme>/vN.json), so every change is a reviewed diff (LEGACY-078); the runtime statutory-table load is BREAK-GLASS (ADR 0073). No file under seed/my/statutory/<scheme>/ exists until OD-23 supplies verified tables.';

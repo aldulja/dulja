@@ -4,11 +4,11 @@
 
 **Goal:** Open Phase 4 by shipping the six AR/AP document types the accounting module still owes — `SALES_INVOICE`, `SALES_CREDIT_NOTE`, `PURCHASE_INVOICE`, `PURCHASE_CREDIT_NOTE`, `RECEIPT`, `PAYMENT` — as configuration over the frozen posting service; `app.payment_term`, credit limits and the credit-control block with its second-principal override; `app.allocation` with `allocateSettlement`, `openBalance` and `partyBalance`; the `DELIVERY_ORDER` → `SALES_INVOICE` conversion that closes the `1250` corridor spec:1051 opens; and the revenue-and-margin half of `inventory.sales_by_item`, which 3D could only ship as quantity and cost because no revenue-posting type existed.
 
-**Architecture:** This slice is the first one where money moves without stock moving, and its whole design follows from one fact: **`inventory.effect` is a single value per posting policy and `posting-policy.schema.json` is frozen at `$id` `urn:dulja:posting-policy:1` from 2A onward (§4.4.1), so an effect cannot be conditional.** Stock therefore stays where Phase 3 put it — out on `DELIVERY_ORDER`, in on `GOODS_RECEIPT`/`SHIPMENT` — and **every one of this slice's six types is `inventory: { effect: "none" }`**. The invoice is the financial half: it moves a *clearing corridor* to its final home (`1250` goods delivered not invoiced → cost of goods sold; `2150` goods received not invoiced → trade payables) and recognises revenue, tax and the party balance. That makes `1250` and `2150` genuine clearing accounts that net to zero per delivery and per receipt, which is exactly what §4.15 registers them for, and it is the model spec:1051 states ("stock leaves before the invoice; converted into the invoice"). Three thin seams of TypeScript hold it together: (1) **two conversion services** in `packages/db/src/ar-ap/` that build an invoice from a delivery or a goods receipt, copying `unit_price`, `amount` and — for the sales side — `document_line.cost`, so the corridor is relieved by *the same figure that filled it* rather than by a second costing answer (SAH-009); (2) **`allocation.ts`**, the settlement record §4.8.1 freezes, which never writes a ledger row; (3) **`app.assert_credit_available()`**, a second BEFORE UPDATE OF status trigger on `app.document` that refuses `→ issued` over a party's limit unless a second principal has recorded an `accounting.credit_limit.override` event. **This slice adds one route module (`payment-terms`) and one `PROBES` key**; everything else is a sub-path of 1A's generic `documents` module or of 2A's `parties` module.
+**Architecture:** This slice is the first one where money moves without stock moving, and its whole design follows from one fact: **`inventory.effect` is a single value per posting policy and `posting-policy.schema.json` is frozen at `$id` `urn:dulja:posting-policy:1` from 2A onward (§4.4.1), so an effect cannot be conditional.** Stock therefore stays where Phase 3 put it — out on `DELIVERY_ORDER`, in on `GOODS_RECEIPT`/`SHIPMENT` — and **every one of this slice's six types is `inventory: { effect: "none" }`**. The invoice is the financial half: it moves a *clearing corridor* to its final home (`1250` goods delivered not invoiced → cost of goods sold; `2150` goods received not invoiced → trade payables) and recognises revenue, tax and the party balance. That makes `1250` and `2150` genuine clearing accounts that net to zero per delivery and per receipt, which is exactly what §4.15 registers them for, and it is the model spec:1051 states ("stock leaves before the invoice; converted into the invoice"). Three thin seams of TypeScript hold it together: (1) **two conversion services** in `packages/db/src/ar-ap/` that build an invoice from a delivery or a goods receipt, copying `unit_price`, `amount` and — for the sales side — `document_line.cost`, so the corridor is relieved by *the same figure that filled it* rather than by a second costing answer (LEGACY-009); (2) **`allocation.ts`**, the settlement record §4.8.1 freezes, which never writes a ledger row; (3) **`app.assert_credit_available()`**, a second BEFORE UPDATE OF status trigger on `app.document` that refuses `→ issued` over a party's limit unless a second principal has recorded an `accounting.credit_limit.override` event. **This slice adds one route module (`payment-terms`) and one `PROBES` key**; everything else is a sub-path of 1A's generic `documents` module or of 2A's `parties` module.
 
 **Tech Stack:** Bun 1.4 (install, scripts, the API entrypoint) · Node 24 LTS (runs Vitest) · TypeScript strict · PostgreSQL 18 (Testcontainers `postgres:18`) · `postgres` (postgres.js) tagged templates · Drizzle ORM mirrors for reads · Hono + `@hono/zod-openapi` · Zod · `decimal.js` behind `@dulja/domain`'s `Money`/`Quantity` · React 19 + `@dulja/ui` + i18next (the OD-24 screens) · Vitest + Testcontainers · Playwright (the both-directions re-run of test 23) · oxlint + oxfmt · Turborepo.
 
-**Spec:** `docs/spec/rebuild-spec.md` v1.2 — §0.2 (spec:97–108), §3.0.3 rows **Customer credit control** (spec:1026) and Purchase in foreign currency (spec:1023), §3.0.4 rows 1042 (the row this slice owns) and 1051 (the invoice-link half), §3.3 Party and the projections paragraph (spec:1169, 1204), §3.8 `document.currency`/`exchange_rate`/`rate_source` (spec:1760–1762), the posting-policy example (spec:2008–2028) and the `ledger_entry` base check (spec:1816), §3.9 Money/Naming/Deletion/Error codes (spec:2037–2053), §3.10.1 "Money out on Phase 4 machinery" (spec:2082), §4.2.1 the `accounting.*` catalogue and the receipt/payment sentence (spec:2147) with the `accountant` and `user` rows (spec:2157–2158), §4.2.2 R1, R2, R6, R8 and the credit-limit override (spec:2172–2179), §4.11 engineering practice (spec:2258–2266), Part V Phase 4 row (spec:2290) and the reporting sequencing note (spec:2300), Part VI tests 1, 8, 10, 14, 31 (spec:2419, 2426, 2428, 2432, 2449), Part I SAH-011 (spec:311), SAH-012 (spec:320), SAH-014 (spec:340), SAH-017 (spec:361), SAH-018 (spec:374), SAH-019 (spec:381), SAH-042 (spec:576).
+**Spec:** `docs/spec/rebuild-spec.md` v1.2 — §0.2 (spec:97–108), §3.0.3 rows **Customer credit control** (spec:1026) and Purchase in foreign currency (spec:1023), §3.0.4 rows 1042 (the row this slice owns) and 1051 (the invoice-link half), §3.3 Party and the projections paragraph (spec:1169, 1204), §3.8 `document.currency`/`exchange_rate`/`rate_source` (spec:1760–1762), the posting-policy example (spec:2008–2028) and the `ledger_entry` base check (spec:1816), §3.9 Money/Naming/Deletion/Error codes (spec:2037–2053), §3.10.1 "Money out on Phase 4 machinery" (spec:2082), §4.2.1 the `accounting.*` catalogue and the receipt/payment sentence (spec:2147) with the `accountant` and `user` rows (spec:2157–2158), §4.2.2 R1, R2, R6, R8 and the credit-limit override (spec:2172–2179), §4.11 engineering practice (spec:2258–2266), Part V Phase 4 row (spec:2290) and the reporting sequencing note (spec:2300), Part VI tests 1, 8, 10, 14, 31 (spec:2419, 2426, 2428, 2432, 2449), Part I LEGACY-011 (spec:311), LEGACY-012 (spec:320), LEGACY-014 (spec:340), LEGACY-017 (spec:361), LEGACY-018 (spec:374), LEGACY-019 (spec:381), LEGACY-042 (spec:576).
 
 ## Assumptions and contracts (from docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md)
 
@@ -18,7 +18,7 @@
 - **Interfaces consumed:** §4.1 (the Plan 0A surface), §4.2.1 (`Money`, `Quantity`, `toBase`, `ExchangeRate`, `Rational`, `rational`), §4.2.2 (`withTenant`, `TenantContext`, `systemContext`), §4.2.3 (`AppEnv`, `Logger`), §4.2.4 (`Problem`, `ERRORS`, `AppError`, `fromDatabaseError`, `PostingError`), §4.2.5 (`PERMISSION`, `requirePermission`, `ROLES`, `INCOMPATIBLE_PAIRS`), §4.2.7 (`RouteModule`, `buildRoutes`, `IdempotencyHeader`, `createApp`, `PROBES`), §4.2.8 (the common schemas, the list envelope, the one list-filter convention and 3C's document-sub-resource money exception), §4.2.9 (`idempotency`), §4.2.10 (`app.rate_for`), §4.2.12 (`startApi`, `ApiRequest`, `StartedApi`), §4.2.13 (`SubPack`, `readPackFile`), §4.3.1 (`postDocument`, `issueDocument`, `reverseDocument`, `voidDocument`, `transitionDocument`, `recordOverride`, `loadSnapshot`, `resolvePolicy`), §4.3.2 (the fixed posting algorithm — steps 4, 5, 6, 9, 10, 12, 13), §4.3.4 (`document_line` and the `document` header additions), §4.3.5 (`posting_seq`), §4.3.6 (numbering at issue), §4.3.7 (the document-type seed envelope), §4.4.1 (`posting-policy.schema.json` — consumed **unchanged**, same `$id`, same `"version": 1`), §4.4.2 (`evaluatePolicy`, `DocumentSnapshot`, `LineSnapshot`, `PlannedLedgerLine`, sign normalisation A9), §4.5.1 (legal transitions), §4.5.2 (`document_event`, `app.effective_policy`), §4.5.3 (overrides, `app.principal_has`), §4.5.4 (`requireDocumentPermission`, and 3C's rule that a `POST` sub-path of an existing document uses stage `"submit"`), §4.5.7 (`app.party` and the four columns 4A adds), §4.6.1 (the table register rows `payment_term` and `allocation`), §4.7.2 (`applyMovements` and the four-branch receipt-value rule), §4.8.1 (allocation — implemented verbatim), §4.8.2 (ageing — consumed as the contract 4B will read), §4.14 (document-type codes), §4.15 (account codes), §4.16.1 / §4.16.3 (report codes and the Phase 1 report surface), §4.17 / §4.17.1 (the two helper registers), §5 (every hazard), §6.1 (tests 1, 10, 14, 31 re-run), §6.2 (row 1042, which this slice owns, and its four-capability proof table).
 - **Interfaces produced:** §4.8.1 in full (`app.allocation` — **including the two columns and three constraint/index names Task 0 adds to that block: `unallocated_by`, `unallocation_reason`, `allocation_distinct_check`, `allocation_settlement_idx`, `allocation_settled_idx`** — plus `AllocationLine`, `AllocationRow`, `PartyBalance`, `allocateSettlement`, `unallocate`, `openBalance`, `partyBalance`, `listAllocations`); `app.payment_term` (§4.6.1) and `app.assert_credit_available()`; the §4.5.7 additions `party.credit_limit`, `party.payment_term_id`, `party.credit_hold` **and `party.price_list_id`** (6B's Task 0 amendment A10(b) registers the column and names 0045 as the file that adds it — the customer's trade level, so the till and the sales screens have a key to resolve "customer-specific pricing" on); the §4.3.4 addition `document.payment_term_id`; the six §4.14 rows `SALES_INVOICE`, `SALES_CREDIT_NOTE`, `PURCHASE_INVOICE`, `PURCHASE_CREDIT_NOTE`, `RECEIPT`, `PAYMENT` as seed-pack envelopes; the §3.6.2 codes `accounting.sales.post`, `accounting.receipt.create`, `accounting.receipt.post`, `accounting.payment.create`, `accounting.payment.approve`, `accounting.payment.post`, `accounting.credit_limit.override`; `ERR_CREDIT_LIMIT_EXCEEDED` and `ERR_CREDIT_HOLD` in `ERRORS`; the revenue-and-margin extension of `inventory.sales_by_item` (§4.16.1, the same code). Everything else is listed under *Contract additions* in the Self-Review and lands through **Task 0**.
 - **Owner decisions:** **OD-05** (confirmation of every ⚠️ row in §3.0.3/§3.0.4 — for this slice the **Customer credit control** row, spec:1026) → **Task 12**, isolated; default: the spec text as written ("limits, ageing, and a block on over-limit sales"), built as designed, with ageing itself 4B's. **OD-24** (screenshots and a two-minute operator description before any screen) → **Task 13**, isolated; default: the screen task is blocked, the slice is not. **OD-09** (post-dated cheques) is 4B's and no line of this slice references `app.pdc` or `PDC_RECEIPT`. **OD-06** (costing method) is 3B's and is consumed here only through the costs 3D already wrote.
-- **Part VI tests owned / re-run:** **owns none exclusively** — §6.1 gives this slice no test of its own, and §6.2 explains why row 1042's only acceptance proof (test 8) sits in 4B. **Re-runs:** **10** (approval authority, over `PAYMENT`'s approve/post pair — Task 10), **31** (segregation of duties, the `PAYMENT` clause spec:2449 names — Task 10), **14** (the one-query permission answer against the full accounting catalogue, `PURCHASE_RETURN` included — Task 11), **1** (the ledger invariant under fuzz through the six new types — Task 14), **8** (the invoice and receipt legs — **owned by 4B**; this slice proves only that `base = round(value × rate, 4)` holds on every line it posts, Task 14). **§3.0.4 rows owned:** **spec:1042** (party, invoices, credit notes, receipts/payments, allocation, credit limits, payment terms — ageing completed in 4B), and the **"4 (invoice link)"** half of spec:1051. **Regression files created / appended:** **creates `tests/regression/sah-014.test.ts`** (the caller's exchange rate is never discarded — 4A is the first slice in execution order to touch SAH-014, §6.3); **appends** a `— 4A` block to `tests/regression/sah-018.test.ts` (created by 3D — the invoiced-return block), `sah-012`, `sah-017`, `sah-031`, `sah-041`, `sah-042` (all created by 0B or 3B), and **appends, create-if-absent** to `sah-011` and `sah-019`, whose creators the catalogue does not name — §3.7.3's rule makes the file order-independent, so the block is written the same way whether the file exists or not, exactly as 3C handled `sah-005`.
+- **Part VI tests owned / re-run:** **owns none exclusively** — §6.1 gives this slice no test of its own, and §6.2 explains why row 1042's only acceptance proof (test 8) sits in 4B. **Re-runs:** **10** (approval authority, over `PAYMENT`'s approve/post pair — Task 10), **31** (segregation of duties, the `PAYMENT` clause spec:2449 names — Task 10), **14** (the one-query permission answer against the full accounting catalogue, `PURCHASE_RETURN` included — Task 11), **1** (the ledger invariant under fuzz through the six new types — Task 14), **8** (the invoice and receipt legs — **owned by 4B**; this slice proves only that `base = round(value × rate, 4)` holds on every line it posts, Task 14). **§3.0.4 rows owned:** **spec:1042** (party, invoices, credit notes, receipts/payments, allocation, credit limits, payment terms — ageing completed in 4B), and the **"4 (invoice link)"** half of spec:1051. **Regression files created / appended:** **creates `tests/regression/legacy-014.test.ts`** (the caller's exchange rate is never discarded — 4A is the first slice in execution order to touch LEGACY-014, §6.3); **appends** a `— 4A` block to `tests/regression/legacy-018.test.ts` (created by 3D — the invoiced-return block), `legacy-012`, `legacy-017`, `legacy-031`, `legacy-041`, `legacy-042` (all created by 0B or 3B), and **appends, create-if-absent** to `legacy-011` and `legacy-019`, whose creators the catalogue does not name — §3.7.3's rule makes the file order-independent, so the block is written the same way whether the file exists or not, exactly as 3C handled `legacy-005`.
 - **Shared namespaces this slice writes into:** **document-type codes (§4.14)** — `SALES_INVOICE` (`accounting`, `INV`), `SALES_CREDIT_NOTE` (`accounting`, `CN`), `PURCHASE_INVOICE` (`accounting`, `PINV`), `PURCHASE_CREDIT_NOTE` (`accounting`, `PCN`), `RECEIPT` (`accounting`, `RCT`), `PAYMENT` (`accounting`, `PAY-OUT`), all six seeded as files under `packages/db/seed/my/document-types/`; plus **`CREDIT_TEST` (`accounting`, `CRT`) — test only**, registered by Task 0 exactly as 2A's `POLICY_TEST` and 3D's `COUNT_TEST` are, because Task 3's credit-control trigger must be proven against an outbound type before `SALES_INVOICE` exists. **Account codes (§4.15) — seeds none.** Every account this slice's policies name by code is already registered and seeded elsewhere: **`1250`** (3D), **`2150`** (3C), **`1100`**, **`1200`**, **`2100`**, **`5000`**, **`5900`**, **`5920`** (0C). Hazard 33 therefore binds in the *consuming* direction only, and **Task 2's first step asserts all eight resolve for the seeded company and re-seeds none**. **Report codes (§4.16.1)** — extends **`inventory.sales_by_item`**, the same registered code 3D shipped, with `revenue` and `margin`; **no new report code**. **`DatasetId` members (§4.16.2) — none**: 7A creates `datasets.ts` and this slice adds no member. **`fixtures.ts` helpers (§4.17) — one, and it is the row §4.17 already assigns 4A:** `seedPaymentTerm(db, s, opts?: { code?; dueDays? }) → string`. Nothing else is added there; every other row this slice's tests need comes from `seedTenantV2`, `seedAccount`, `seedBranch`, `seedParty`, `seedDocumentType`, `grantCodes`, `seedUnit`, `seedItem`, `seedWarehouse`, `seedLot`, `seedCurrency`, `seedRate` or 3C's `draftTypedDocument`. **Shared test helpers (§4.17.1) — one new file, registered by Task 0:** `postArDocument`, `ArLine`, `PostArOptions` in `tests/invariants/support/post-ar.ts`, the AR/AP twin of 3B's `postInventoryDocument`; 4B, 5A, 6A, 7C and 8C all need "post an invoice and a receipt against a party" and four file-local copies is the duplication hazard 9 forbids.
 - **Five `Seed` and fixture facts every test in this plan depends on, stated once because getting one wrong is a silent failure.** (1) **`Seed` has no `branch` member.** It is `{ tenant; system; human; company; period; closedPeriod; lockedPeriod; cash; sales; docType; policy; branchType; hq }` (§4.1); the BRANCH dimension *value* is **`hq`**, `app.document.branch_id` is NOT NULL, so every `branchId:` in this plan is `<seed>.hq` unless a second value came from `seedBranch`. (2) **`seedTenant` grants `s.human` nothing** (§4.1, pinned) and 2B's R2 evaluates `policy.approval.post` *inside* the posting transaction, so **every posting test calls `grantCodes` first**. (3) **`seedTenantV2` creates only `1000 Cash` and `4000 Sales`.** The eight accounts this slice's policies resolve — `1100`, `1200`, `1250`, `2100`, `2150`, `5000`, `5900`, `5920` — are created in a test by 1A's `seedAccount(db, s, { code, nameEn, type })` — `type ∈ ('asset','liability','equity','income','expense')` — through the per-suite `for` loop this plan repeats where it is needed. **`4000` is never passed to `seedAccount`**: `seedTenantV2` already made it and the `(company_id, code)` unique constraint would refuse the second. **`1300` is not one of the eight** — no 4A policy names it; it is 3C's `GOODS_RECEIPT` inventory leg, and the suites that seed it (Tasks 4, 6, 7, 11) do so because they *post a 3C/3D document* or assert `1300` unchanged, never because a 4A policy resolves it. (4) **`seedParty` defaults to `kind: 'customer'` with `1200`/`2100`** (§4.17), which is why no test in this plan sets `receivableAccountId` unless it is testing a per-party override. (5) **`seedItem` returns `{ itemId, baseUnitId }`**, not a bare string, and creates the item's sentinel lot `NONE`.
 - **Never re-decide:** D1–D27 (spec:114–142); every name in the contracts document is frozen — a needed change goes to that document first (that is what Task 0 is).
@@ -28,14 +28,14 @@
 
 Copied verbatim from the spec and the contracts document; every task's requirements implicitly include this section.
 
-1. **Never**, at any phase, for any reason (spec:97–104): write to a ledger or movement table outside the posting service; represent money as a float, anywhere, including in TypeScript; build SQL by string concatenation (SAH-036/037/069); issue DDL from application code (SAH-053); disable an invariant, constraint or trigger "temporarily" (SAH-027, 041, 053); gate an audit write on any flag (SAH-030); hard-code a package version into a source file — the lockfile owns versions.
+1. **Never**, at any phase, for any reason (spec:97–104): write to a ledger or movement table outside the posting service; represent money as a float, anywhere, including in TypeScript; build SQL by string concatenation (LEGACY-036/037/069); issue DDL from application code (LEGACY-053); disable an invariant, constraint or trigger "temporarily" (LEGACY-027, 041, 053); gate an audit write on any flag (LEGACY-030); hard-code a package version into a source file — the lockfile owns versions.
 2. **Always**, for every new table (spec:106): `tenant_id`, an RLS policy, `created_at`, a migration, and a test that a second tenant cannot see it. For every new endpoint: Zod schema, OpenAPI entry, idempotency on unsafe methods, and a tenant-isolation test. For every UI screen: verified in both text directions before merge. **This slice creates two tables** — `app.payment_term` (0044) and `app.allocation` (0046) — and each follows §3.5.1's recipe in full, with its `lintSchema` run to zero and its two-tenant test in the same task.
 3. **Nothing outside `packages/db/src/posting/` and `packages/db/src/costing/` writes `ledger_entry`, `ledger_entry_dimension`, `inventory_movement`, `cost_layer`, `cost_consumption`, `account_balance`, `stock_on_hand` or `tax_transaction`** (§4.3.2, the `posting-only-tables` lint, hazard 22). Every service in this slice writes `document`, `document_line`, `document_link`, `allocation` and `payment_term` rows and then calls `postDocument`. **`app.allocation` is not a ledger table and `unallocate` never touches a ledger entry** (§4.8.1, spec:2457).
 4. **Money** is `numeric(19,4)` in Postgres and the opaque `Money` type in `@dulja/domain` in TypeScript; **quantities** are `numeric(19,6)` and the opaque `Quantity`; no `number` ever holds a monetary value (spec:2041–2043, §3.7.5 `no-number-money`). Every wire amount is `{ amount, currency }` **except** the document-sub-resource fields 3C's registered exception covers, which are bare 4-dp decimal strings.
-5. **`Money.toBase` rounds `HALF_AWAY_FROM_ZERO` at scale 4** (hazard 23), the only mode satisfying `base_debit = round(debit * exchange_rate, 4)` (spec:1816). No task in this slice performs a base conversion of its own on a *ledger* amount — `evaluatePolicy` and `balanceInBase` do it. **`packages/db/src/ar-ap/allocation.ts` is the one file of this slice that converts to base in TypeScript, and every conversion in it goes through `toBase`**: `allocateSettlement` converts a settlement amount at the **settled document's** rate for `base_amount` and at the **settlement's** rate for `fx_difference`, and `openBalance` converts the settled document's total for its base figure. A `× exchange_rate` written out anywhere in this slice is a second implementation of spec:1816's identity and therefore a second answer; Task 9's `sah-019` block asserts the absence. **Relatedly, and for the same reason: no file under `packages/db/src` in this slice imports `decimal.js`.** It is `packages/domain`'s dependency (§4.2.1, D11) and is not declared in `packages/db/package.json`; every ratio here is an exact `Rational` and every product a `Money.multiply` with an explicit mode — the rule 3B fixed for `packages/db/src/costing` (3b:1124), applied to `invoice.ts`, `credit-note.ts` and `allocation.ts`.
+5. **`Money.toBase` rounds `HALF_AWAY_FROM_ZERO` at scale 4** (hazard 23), the only mode satisfying `base_debit = round(debit * exchange_rate, 4)` (spec:1816). No task in this slice performs a base conversion of its own on a *ledger* amount — `evaluatePolicy` and `balanceInBase` do it. **`packages/db/src/ar-ap/allocation.ts` is the one file of this slice that converts to base in TypeScript, and every conversion in it goes through `toBase`**: `allocateSettlement` converts a settlement amount at the **settled document's** rate for `base_amount` and at the **settlement's** rate for `fx_difference`, and `openBalance` converts the settled document's total for its base figure. A `× exchange_rate` written out anywhere in this slice is a second implementation of spec:1816's identity and therefore a second answer; Task 9's `legacy-019` block asserts the absence. **Relatedly, and for the same reason: no file under `packages/db/src` in this slice imports `decimal.js`.** It is `packages/domain`'s dependency (§4.2.1, D11) and is not declared in `packages/db/package.json`; every ratio here is an exact `Rational` and every product a `Money.multiply` with an explicit mode — the rule 3B fixed for `packages/db/src/costing` (3b:1124), applied to `invoice.ts`, `credit-note.ts` and `allocation.ts`.
 6. **`PlannedLedgerLine.amount` is never negative and `side` is the sole carrier of direction** (§4.4.2 A9). This slice's credit notes carry **negated** line magnitudes, which is exactly the mechanism A9 describes, and **no line of code in this slice tests the sign of an amount to decide a direction**. `PlannedTaxLine.amount` stays signed and this slice plans no tax line (`tax.applies: false` on all six types; 5A flips it in a policy **version 2**).
 7. **Every query, reads included, runs inside `withTenant`** (spec:2053). `db.` is a lint violation; only a `tx` obtained from `withTenant` may tag SQL. `sql.unsafe` has exactly three homes and none is in this slice (§3.3).
-8. **One migration per PR** (spec:2057); each file runs whole in one transaction (so no `create index concurrently`); every statement carries a comment naming the SAH-/spec reference it serves; SQL keywords lowercase; section banners `-- ── N. title ───`; a hand-written `NNNN.down.sql` that drops only what the up added (§3.4.5).
+8. **One migration per PR** (spec:2057); each file runs whole in one transaction (so no `create index concurrently`); every statement carries a comment naming the LEGACY-/spec reference it serves; SQL keywords lowercase; section banners `-- ── N. title ───`; a hand-written `NNNN.down.sql` that drops only what the up added (§3.4.5).
 9. **Expand only on a live table** (spec:2057, 2236, §3.4.7): migration 0045 adds five nullable-or-defaulted columns to `app.party` and `app.document` — `credit_limit`, `payment_term_id`, `credit_hold`, `price_list_id` on the party and `payment_term_id` on the document — and drops nothing; no column is renamed.
 10. **Deletion** (spec:2049): financial rows never — reversal only; master data `archived_at`. §3.5.4's pinned `app_rw` DELETE list is **unchanged** by this slice — `payment_term` archives with `archived_at` and `allocation` reverses with `unallocated_at` — and Task 14 re-asserts the five-row list.
 11. **Error codes** are `ERR_<DOMAIN>_<REASON>` enumerated in `packages/contracts/src/errors.ts`, and a code no code raises fails the build (spec:2051). This slice adds **two** rows to `ERRORS`: `ERR_CREDIT_LIMIT_EXCEEDED` (already allocated in §4.2.4) and **`ERR_CREDIT_HOLD`** (allocated by Task 0). Both are raised as tokens by migration 0045's trigger, so **both land in the same commit as that migration** — `error-codes` scans `packages/db/migrations/**` and must stay green at every commit. Everything else this slice raises or asserts is already shipped, and the list is **twenty-five** codes long: `ERR_VALIDATION_FAILED`, `ERR_NOT_FOUND`, `ERR_CONFLICT_UNIQUE`, `ERR_CONFLICT_REFERENCE`, `ERR_RBAC_FORBIDDEN`, `ERR_RLS_DENIED`, `ERR_DOC_STATUS_ILLEGAL`, `ERR_DOC_NOT_DRAFT`, `ERR_DOC_NO_LINES`, `ERR_POLICY_NOT_FOUND`, `ERR_POLICY_INVALID`, `ERR_POLICY_REQUIRES_MISSING`, `ERR_PERIOD_NOT_FOUND`, `ERR_PERIOD_NOT_OPEN`, `ERR_LEDGER_UNBALANCED`, `ERR_RATE_NOT_FOUND`, `ERR_SOD_NO_SUBMISSION`, `ERR_SOD_MAKER_IS_CHECKER`, `ERR_OVERRIDE_NOT_AUTHORISED`, `ERR_DOC_LINK_OVER_FULFILLED`, `ERR_IDEMPOTENCY_KEY_MISSING`, `ERR_MONEY_CURRENCY_MISMATCH`, `ERR_MONEY_SCALE`, `ERR_STOCK_INSUFFICIENT`, `ERR_ACTOR_IMMUTABLE`. **The last six are on the list because this slice's own text uses them** and every one is already allocated in §4.2.4 — `ERR_IDEMPOTENCY_KEY_MISSING` and `ERR_POLICY_INVALID` are 0B's and 2A's, `ERR_MONEY_CURRENCY_MISMATCH` / `ERR_MONEY_SCALE` are 0D's `Money`, `ERR_STOCK_INSUFFICIENT` is 3A's `assert_stock_available` and `ERR_ACTOR_IMMUTABLE` is Plan 0A's `stamp_actor`; this slice **adds none of them to `ERRORS`**, because their raisers shipped with their own slices. **This list is closed: a token in any test of this slice that is not on it is either a typo or an unregistered code, and both fail the `error-codes` lint.**
@@ -58,7 +58,7 @@ The Phase 4 row of the phase table, verbatim (spec:2290) — **Definition of don
 |---|---|
 | **Allocation** | **Task 9** — `allocateSettlement` refuses an over-allocation (Σ lines greater than the settlement total, or greater than the settled document's open balance) with `ERR_VALIDATION_FAILED`; `openBalance` after `unallocate` returns to the pre-allocation figure to the cent and the compelled reason is stored on the row; a **credit note** as the settlement has capacity `\|total\| − allocated`, never `\|total − allocated\|`; `partyBalance` reads the party's control account in the ledger and reports concrete figures — `0.0000` for a settled invoice in its own currency, and the realised FX residue in base |
 | **Credit limits** | **Task 3** (the trigger, over the `CREDIT_TEST` type) and **Task 5** (on a real `SALES_INVOICE`) — an outbound sales type at `submitted → issued` over `party.credit_limit` raises `ERR_CREDIT_LIMIT_EXCEEDED`; it issues when a **second** principal has recorded an `accounting.credit_limit.override` `document_event`; `party.credit_hold` raises `ERR_CREDIT_HOLD` even with the override |
-| **Payment terms** | **Task 1** — `document.payment_term_id` is pinned at draft from the party's term and never re-read (SAH-013); the derived due date is `document.effective_date + payment_term.due_days`, asserted on the document, and it is the figure 4B's ageing buckets are cut on (§4.8.2) |
+| **Payment terms** | **Task 1** — `document.payment_term_id` is pinned at draft from the party's term and never re-read (LEGACY-013); the derived due date is `document.effective_date + payment_term.due_days`, asserted on the document, and it is the figure 4B's ageing buckets are cut on (§4.8.2) |
 | **Invoices, credit notes, receipts, payments** | **Tasks 5–8 and 10**, with tests **10**, **14** and **31** re-run over them |
 | Ageing | **4B**, which owns test 8 and both DoD sentences |
 
@@ -177,15 +177,15 @@ tests/
 │  ├─ probes.ts                EDIT one PROBES entry for payment-terms                          T1
 │  └─ support/post-ar.ts       NEW  postArDocument, ArLine, PostArOptions (§4.17.1)              T5
 └─ regression/
-   ├─ sah-014.test.ts          NEW  the caller's rate is never discarded — 4A creates            T11
-   ├─ sah-018.test.ts          EDIT append the invoiced-return block (3D created)                T8
-   ├─ sah-011.test.ts          EDIT append, create-if-absent — no NULL reaches a balance         T14
-   ├─ sah-012.test.ts          EDIT append — base = value × rate on every AR/AP line             T14
-   ├─ sah-017.test.ts          EDIT append — delivered quantity is a projection                  T6
-   ├─ sah-019.test.ts          EDIT append, create-if-absent — one rounding function             T9
-   ├─ sah-031.test.ts          EDIT append — a posted invoice is immutable                       T14
-   ├─ sah-041.test.ts          EDIT append — allocation never alters a ledger entry              T9
-   └─ sah-042.test.ts          EDIT append — credit control never fails open                     T3
+   ├─ legacy-014.test.ts          NEW  the caller's rate is never discarded — 4A creates            T11
+   ├─ legacy-018.test.ts          EDIT append the invoiced-return block (3D created)                T8
+   ├─ legacy-011.test.ts          EDIT append, create-if-absent — no NULL reaches a balance         T14
+   ├─ legacy-012.test.ts          EDIT append — base = value × rate on every AR/AP line             T14
+   ├─ legacy-017.test.ts          EDIT append — delivered quantity is a projection                  T6
+   ├─ legacy-019.test.ts          EDIT append, create-if-absent — one rounding function             T9
+   ├─ legacy-031.test.ts          EDIT append — a posted invoice is immutable                       T14
+   ├─ legacy-041.test.ts          EDIT append — allocation never alters a ledger entry              T9
+   └─ legacy-042.test.ts          EDIT append — credit control never fails open                     T3
 ```
 
 ---
@@ -214,10 +214,10 @@ This task writes **no application code**. It lands the amendments the rest of th
 2. **§4.14 — one test-only row.** `CREDIT_TEST` · 4A (**test only**) · `accounting` · outbound / none / `accounting.sales.post` · `CRT` · *"the outbound type Task 3's credit-control trigger is proven against, configured through `seedDocumentType` inside a Testcontainers database and never a file under `packages/db/seed/my/document-types/`. A second code is needed because migration 0045's trigger must be red-then-green before `SALES_INVOICE` exists (Task 5), and 2A's `POLICY_TEST` is `direction: internal`, which the trigger deliberately ignores."*
 3. **§4.4.2 — `line.cost` on a negative-quantity line (ADR 0045; the amendment 3D filed as blocking Phase 4).** Add to `evaluatePolicy`'s contract: *"**`amountRef` `line.cost` and `line.variance_value` resolve to `cost.negate()` when the source line's `quantity` is negative**, and to `cost` otherwise. `document_line.cost` stays a non-negative magnitude (§4.7.2 A6) and `applyMovements`' receipt-value branch 1 still receives a magnitude; only the *evaluator's* reading is signed, so A9's sign normalisation has a negative amount to act on and flips the side. Without it a reversal of any cost-bearing outbound document — 3D's `DELIVERY_ORDER`, whose reversal is the registered sales-return path, and 4A's `SALES_INVOICE` — debits its corridor account a **second** time instead of relieving it (3d:2740 names this as the open item that must land before Phase 4 relies on it). A line with a zero or null quantity is unaffected."*
 4. **§4.7.2 — the unfilled-cost refusal, which is 2A's step-9b guard restored where step 9 now lives.** Add after the four-branch receipt-value rule: *"**A `fill`-tagged planned ledger line whose source `document_line` has no surviving `PlannedMovement` is left exactly as the evaluator emitted it** — `applyMovements` fills nothing and alters nothing on it. When that line's amount is `Money.zero` **and** the source line's `LineSnapshot.cost` is null, `applyMovements` **refuses the post** with `ERR_POLICY_REQUIRES_MISSING` naming the document line: the cost was never computed by a movement and never supplied by a conversion, and inserting the zero would understate cost of goods sold silently. When the source line carries a non-null `cost` — a figure another document computed and this one copied forward — the line stands at that figure and no movement is required. This is the branch 4A is the first slice to need, because it is the first with a `line.cost` ledger leg on a policy whose `inventory.effect` is `none`; 2A's step-9b guard said the same thing at step 9b and 3B removed it when it replaced the guard with this call (§4.3.2 step 9b)."*
-5. **§4.7.2 / §4.3.4 — who may write `document_line.cost`.** Add: *"**`document_line.cost` is written by `applyMovements` and by 4A's two conversion services in `packages/db/src/ar-ap/invoice.ts` and `credit-note.ts`, and by nothing else.** 3D's Global Constraint 3 ('a drafting service never sets it') binds every *drafting* service and is unchanged; a **conversion** service is the stated exception, and the reason is arithmetic rather than convenience: the `SALES_INVOICE` must relieve `1250` by **the same figure the `DELIVERY_ORDER` debited**, or the corridor never nets to zero. Recomputing it from current layers would be a second costing answer for one physical movement (SAH-009, spec:1228) and would leave a residue in `1250` after every recost. The copy is a magnitude, exactly as 3C's `reverseDocument` line copy is (3c:219)."*
+5. **§4.7.2 / §4.3.4 — who may write `document_line.cost`.** Add: *"**`document_line.cost` is written by `applyMovements` and by 4A's two conversion services in `packages/db/src/ar-ap/invoice.ts` and `credit-note.ts`, and by nothing else.** 3D's Global Constraint 3 ('a drafting service never sets it') binds every *drafting* service and is unchanged; a **conversion** service is the stated exception, and the reason is arithmetic rather than convenience: the `SALES_INVOICE` must relieve `1250` by **the same figure the `DELIVERY_ORDER` debited**, or the corridor never nets to zero. Recomputing it from current layers would be a second costing answer for one physical movement (LEGACY-009, spec:1228) and would leave a residue in `1250` after every recost. The copy is a magnitude, exactly as 3C's `reverseDocument` line copy is (3c:219)."*
 6. **§4.5.7 — the party additions, made explicit, and the fourth column 6B asked 0045 for.** §4.5.7 already says "4A adds `credit_limit numeric(19,4)`, `payment_term_id uuid`, `credit_hold boolean not null default false` (migration 0045)". Add the file name and the FK: *"the file is **`0045_alter_party_and_document_add_credit_terms.sql`** (§3.4.2's rename rule — it also adds `document.payment_term_id` and creates `app.assert_credit_available()`), and `payment_term_id` carries the composite FK `(tenant_id, payment_term_id) → app.payment_term(tenant_id, id)`."* **And add the fourth party column, which is 6B's request and not this slice's own idea:** *"**`price_list_id uuid`, nullable, with the composite FK `(tenant_id, price_list_id) → app.price_list(tenant_id, id)`, added by the same migration 0045**. It is registered here because 4A owns the customer's commercial terms and a price list is one of them, and because the column has to exist before the slice that reads it: 6B's Task 0 amendment **A10(b)** names `app.party.price_list_id` as the key §3.7.6's *customer-specific pricing* has nothing to resolve on — `app.price_list.customer_kind` is the trade *level* (3A) and no column ties a party to a list — and names **4A's 0045** as the file that adds it. 6A down-syncs `party` (customers) as a catalogue stream and 6B mirrors this column into `catalogue_customer`; until it exists, 6B's price resolution falls back to branch-then-company-wide and the row cannot close. **This amendment lands in 4A's Task 0 rather than 6B's** because 4A executes in Phase 4 and 6B in Phase 6, and Global Constraint 13 forbids a task writing a literal into a register that does not yet hold it — 0045 is written in Task 3, two phases before 6B's own Task 0 could amend the register. 6B's A10(b) is unchanged and stays true; when 6B runs, the sentence it asks for is already in §4.5.7."*
-7. **§4.3.4 — the `document` header addition.** In the `app.document` header-additions sentence, after 3A's entry, insert: *"4A (**0045**) `payment_term_id uuid` — the payment term **pinned at draft** from `party.payment_term_id`, with the composite FK to `app.payment_term`; it is never re-read from the party (SAH-013), and the due date is the derived `effective_date + payment_term.due_days` and has no column of its own."*
-8. **§4.8.2 — the pinned term, a latent SAH-013 in the ageing contract.** §4.8.2 says the buckets come "from `document.effective_date + payment_term.due_days`" without saying *which* term. Add: *"— the term **pinned on the document** (`document.payment_term_id`, 4A's 0045), never `party.payment_term_id` as it stands at rebuild time. A party's terms change; re-reading them would silently re-age every historical document, which is SAH-013 in the ageing projection. A document with a null `payment_term_id` is due on its `effective_date` and falls in the `current` bucket only on that day."*
+7. **§4.3.4 — the `document` header addition.** In the `app.document` header-additions sentence, after 3A's entry, insert: *"4A (**0045**) `payment_term_id uuid` — the payment term **pinned at draft** from `party.payment_term_id`, with the composite FK to `app.payment_term`; it is never re-read from the party (LEGACY-013), and the due date is the derived `effective_date + payment_term.due_days` and has no column of its own."*
+8. **§4.8.2 — the pinned term, a latent LEGACY-013 in the ageing contract.** §4.8.2 says the buckets come "from `document.effective_date + payment_term.due_days`" without saying *which* term. Add: *"— the term **pinned on the document** (`document.payment_term_id`, 4A's 0045), never `party.payment_term_id` as it stands at rebuild time. A party's terms change; re-reading them would silently re-age every historical document, which is LEGACY-013 in the ageing projection. A document with a null `payment_term_id` is due on its `effective_date` and falls in the `current` bucket only on that day."*
 9. **§4.2.4 — one new code, and one already-allocated row promoted.** Add to the allocated table: *`ERR_CREDIT_HOLD` | 422 | `assert_credit_available` — `party.credit_hold` is set (4A)*. And record in the per-slice row list: *"**4A adds two** — `ERR_CREDIT_LIMIT_EXCEEDED` (already allocated) and `ERR_CREDIT_HOLD`, both raised as tokens by migration 0045's trigger, each landing in the same commit as that migration."* The two are deliberately distinct because the remedies differ — raise the limit or obtain a second principal's override, versus release the hold — and **`ERR_CREDIT_HOLD` is not overridable** (§4.8.1: "`party.credit_hold` blocks regardless").
 10. **§4.6.1 — the two register rows completed.** `payment_term`'s columns cell gains `archived_at`; `allocation`'s cell already points at §4.8.1 and is unchanged. Add to `payment_term`: *"`archived_at timestamptz` — master data is archived, never deleted (spec:2049), and §3.5.4's DELETE list is unchanged by this slice."*
 11. **§4.8.1 — three names the block implies and does not give, two columns its DDL is missing, and the three constraint/index names 0046 adds.** §4's own rule is that a plan implements its code blocks verbatim and "may add members only by amending this document", so every one of these lands here before Task 9 writes it. Add after the `partyBalance` signature: *"`AllocationRow { id; companyId; partyId; settlementDocumentId; settledDocumentId; amount; baseAmount; fxDifference; allocatedBy; unallocatedAt; unallocatedBy; unallocationReason; createdAt }`, **plus the two derived read-only members `currency` and `baseCurrency` — the settled document's currency and the company's base currency, joined by `listAllocations` and stored in no column, because a row's three money fields are in two different currencies and the wire must name both**, and `PartyBalance { byCurrency: Record<string, Money>; base: Money }` are the two returned shapes, and **`listAllocations(tx, input: { settlementDocumentId?: string; settledDocumentId?: string; includeUnallocated?: boolean }): Promise<AllocationRow[]>`** is the read the allocation register and the 7C report both use. `allocateSettlement` computes `fx_difference` and stores it; **the gain/loss it implies is posted by 4B**, through `4900`/`5910` on an `FX_REVALUATION`, and 4A posts no FX line — which is why test 8 is 4B's."*
@@ -229,7 +229,7 @@ This task writes **no application code**. It lands the amendments the rest of th
     - **`partyBalance` reads `ledger_entry` on the party's control account**, not `document_line` totals — *"`Σ (debit − credit)` and `Σ (base_debit − base_credit)` grouped by `ledger_entry.currency`, on `party.receivable_account_id` for a customer and `payable_account_id` for a vendor (the `1200`/`2100` defaults §4.8.2 fixes), signed in the party's own direction. `app.allocation` keys on `settled_document_id` and a settlement is never a settled document, so a document-side sum matches no allocation row for a RECEIPT and adds its full total to the balance instead of netting it. This is the same source `app.party_open_balance` (0045) and 4B's ageing control read, so the three cannot disagree about the underlying rows. **They do not agree about the sign, and the convention is fixed here: `partyBalance` reports a party-facing figure — positive means *owed to us* for a customer and *owed by us* for a vendor — which for a vendor is `−(Σ base_debit − base_credit)` on the payable control account, while `app.party_open_balance` returns the raw ledger figure unflipped (and reads `receivable_account_id` only, because what it serves is credit control — the trigger and `creditStatus()` — which is a customer question with no vendor side to flip). For a customer the two are identical; for a vendor they differ by exactly one negation. Any consumer that compares a `partyBalance` figure against a control-account ledger balance must negate the vendor side first, and 4B's `ageingTieOut` — which reads the `1200`/`2100` balances directly (§4.8.2) — must not be routed through `partyBalance` unconverted.**"*
 12. **§4.8.3 — who registers the receipt and payment `ReconcilableSource`s.** §4.8.3's comment reads "4A registers receipt/payment", but `packages/db/src/ar-ap/reconciliation.ts` and `registerReconcilableSource` are **4B's** file and 4B's export, created by 4B's migrations 0049–0050 — 4A cannot register into a module that does not exist. Correct the comment to: *"**4B registers the `receipt` and `payment` sources over 4A's two document types** in the same PR as `registerReconcilableSource`; 6D adds `till_banking` and 8C `payroll_batch`. 4A ships nothing in this file."*
 13. **§4.16.1 / §4.16.3 — the sales-by-item extension, named.** §4.16.1's `inventory.sales_by_item` cell already says "**4A extends the same code** with revenue and margin in the PR that ships `SALES_INVOICE`". Add to §4.16.3, after 3D's three read functions: *"**4A grows `SalesByItemRow` by exactly two members — `revenue: string` and `margin: string`, both base-currency 4-dp strings — and changes neither `SalesByItemParams` nor the `cost` member 3D defined** (Σ `cost_consumption.value` over `DELIVERY_ORDER` issues), so 3D's tie-out test is re-run unchanged. `revenue` is Σ `round(document_line.amount × document.exchange_rate, 4)` over **posted** `SALES_INVOICE` and `SALES_CREDIT_NOTE` lines for the item in the range — the credit note's negated magnitudes make it a subtraction with no sign logic — and `margin` is `revenue − cost`. **The two figures are cut on different documents and may therefore be cut on different dates:** goods delivered in the range but invoiced after it contribute cost and no revenue, which is exactly what a non-zero `1250` balance means and is the honest answer rather than a gap. 4B's `item_profitability` projection, keyed per fiscal period from posted lines, is the reconciling view, and 7B re-expresses the report over it under the same code."*
-14. **§4.17.1 — the AR/AP posting helper.** Add a row: *`postArDocument(db, s, opts: PostArOptions)`, `ArLine`, `PostArOptions` | `tests/invariants/support/post-ar.ts` | **4A** | the AR/AP twin of 3B's `postInventoryDocument`: grants the type's `approval` codes once per `Seed`, drafts a typed document with account and item lines through 3C's `draftTypedDocument`, walks it through the real state machine (`transitionDocument` for a `required` approval, with a second principal from 3D's `secondPrincipal`) and posts it through the real `postDocument`. Returns `{ documentId, number, ledger: { code: string; debit: string; credit: string }[] }`, and writes `document.rate_source` — `"unit"` at rate `1.00000000`, `manual:<actor>` otherwise, the two spellings plan0A:1787's column comment gives — because `draftTypedDocument` does not and a posted document with a null provenance for its rate is SAH-012 itself. **`PostArOptions.twoPrincipal` is registered and is unexercised in 4A**: Task 10's `PAYMENT` cases walk the R1 approval explicitly in two sessions, because tests 10 and 31 are about which principal may do what and a helper that hid the two sessions would hide the thing under test. The member exists for 4B, 5A, 6A, 7C and 8C, whose two-principal walk is incidental to what they assert; the first slice to pass it is the first to prove it. 4B (ageing, FX, bank matching), 5A (tax on an invoice), 6A (test 22's `SALES_INVOICE` twin), 7C (the AR/AP reports) and 8C (statutory remittances as `PAYMENT`s) all need the helper, and five file-local copies is the duplication hazard 9 forbids*.
+14. **§4.17.1 — the AR/AP posting helper.** Add a row: *`postArDocument(db, s, opts: PostArOptions)`, `ArLine`, `PostArOptions` | `tests/invariants/support/post-ar.ts` | **4A** | the AR/AP twin of 3B's `postInventoryDocument`: grants the type's `approval` codes once per `Seed`, drafts a typed document with account and item lines through 3C's `draftTypedDocument`, walks it through the real state machine (`transitionDocument` for a `required` approval, with a second principal from 3D's `secondPrincipal`) and posts it through the real `postDocument`. Returns `{ documentId, number, ledger: { code: string; debit: string; credit: string }[] }`, and writes `document.rate_source` — `"unit"` at rate `1.00000000`, `manual:<actor>` otherwise, the two spellings plan0A:1787's column comment gives — because `draftTypedDocument` does not and a posted document with a null provenance for its rate is LEGACY-012 itself. **`PostArOptions.twoPrincipal` is registered and is unexercised in 4A**: Task 10's `PAYMENT` cases walk the R1 approval explicitly in two sessions, because tests 10 and 31 are about which principal may do what and a helper that hid the two sessions would hide the thing under test. The member exists for 4B, 5A, 6A, 7C and 8C, whose two-principal walk is incidental to what they assert; the first slice to pass it is the first to prove it. 4B (ageing, FX, bank matching), 5A (tax on an invoice), 6A (test 22's `SALES_INVOICE` twin), 7C (the AR/AP reports) and 8C (statutory remittances as `PAYMENT`s) all need the helper, and five file-local copies is the duplication hazard 9 forbids*.
 
 15. **§4.2.7 — the one new route module this slice mounts, registered in the module-path table.** §4.2.7's table exists precisely because "a `RouteModule.path` is also the `PROBES` key, so two slices must never mount two modules on one path" (hazard 31), and Task 1 mounts a genuinely new module. Add the row, immediately after 2C's `print-templates` row and in the same four-column shape:
 
@@ -459,7 +459,7 @@ rather than recomputing it.
 - **`1250` and `2150` become testable invariants**, not descriptive accounts: a non-zero balance means
   goods delivered and not yet invoiced, or received and not yet invoiced, and nothing else. Tasks 6
   and 7 assert `0.0000` after each pair.
-- **One physical movement keeps one cost** (spec:1228, SAH-009). Relieving `1250` by a recomputed
+- **One physical movement keeps one cost** (spec:1228, LEGACY-009). Relieving `1250` by a recomputed
   figure would leave a residue after every `inventory.cost.replay`.
 - **A sales invoice cannot be raised without a delivery for a product line.** The refusal is
   mechanical, not procedural: with no linked delivery there is no cost on the line, the evaluator
@@ -504,10 +504,10 @@ Expected: PASS if 3A–3D are merged with the shapes above. If a `MISSING (repo)
 | 4.14 | `CREDIT_TEST` / `CRT` — **test only**, the outbound type migration 0045's credit-control trigger is proven against before `SALES_INVOICE` exists | 4A | plan |
 | **4.4.2** | **ADR 0045 — `line.cost` and `line.variance_value` resolve to `cost.negate()` on a negative-quantity line.** This is the amendment 3D filed as blocking Phase 4 (3d:2740): without it a reversal of a cost-bearing outbound document debits its corridor a second time, because a copied cost is a magnitude and the fill rules never alter `side`. `document_line.cost` stays non-negative; only the evaluator's reading is signed | 4A, 3D | settlement |
 | 4.7.2 | **The unfilled-cost refusal** — a `fill`-tagged planned line whose source line has no surviving movement is left as emitted, and is **refused** with `ERR_POLICY_REQUIRES_MISSING` when its amount is zero and the source `cost` is null. 2A's step-9b guard, restored where step 9 now lives; 4A is the first slice with a `line.cost` leg on an `effect: "none"` policy | 4A, 2A | correction |
-| 4.7.2, 4.3.4 | **`document_line.cost` is written by `applyMovements` and by 4A's two conversion services, and by nothing else.** The corridor must be relieved by the figure that filled it or it never nets to zero (SAH-009) | 4A | plan |
+| 4.7.2, 4.3.4 | **`document_line.cost` is written by `applyMovements` and by 4A's two conversion services, and by nothing else.** The corridor must be relieved by the figure that filled it or it never nets to zero (LEGACY-009) | 4A | plan |
 | 4.5.7, 4.3.4, 3.4.2 | Migration **`0045_alter_party_and_document_add_credit_terms.sql`** — the card's short name understated the file, which also adds `document.payment_term_id` and creates `app.assert_credit_available()`; `party.payment_term_id` carries the composite FK | 4A | correction |
 | 4.5.7 | **`party.price_list_id uuid`**, nullable, composite FK `(tenant_id, price_list_id) → app.price_list(tenant_id, id)`, added by the same migration 0045 — the key §3.7.6's *customer-specific pricing* resolves on, requested by **6B's Task 0 amendment A10(b)** and landed here because 4A executes two phases earlier and owns the file | 4A (for 6B) | addition |
-| 4.8.2 | **The ageing buckets are cut on the term PINNED on the document**, never on the party's current term — a latent SAH-013 in the ageing contract | 4A | correction |
+| 4.8.2 | **The ageing buckets are cut on the term PINNED on the document**, never on the party's current term — a latent LEGACY-013 in the ageing contract | 4A | correction |
 | 4.2.4 | `ERR_CREDIT_HOLD` (422), distinct from `ERR_CREDIT_LIMIT_EXCEEDED` because a hold is **not** overridable (§4.8.1 "blocks regardless") and the remedies differ; both raised as tokens by 0045 and landing in that commit | 4A | plan |
 | 4.8.1 | `AllocationRow` (**including its two derived members `currency` and `baseCurrency`, which name the two currencies its three money fields are in**), `PartyBalance`, `listAllocations(tx, input)`; and the statement that **4A stores `fx_difference` and 4B posts the gain/loss** | 4A | plan |
 | **4.8.1** | **Two columns the DDL was missing and three names 0046 adds:** `unallocated_by uuid references app.principal(id)` (stamped, so 0046 carries **both** stamps as §4.8.3's `bank_match` does) and `unallocation_reason text` — `unallocate` compels a reason and `app.audit_row` writes `to_jsonb(new)`, so a reason with no column is a reason no auditor can recover (the ADR 0023 loss); plus `allocation_distinct_check` and the two partial indexes `allocation_settlement_idx` / `allocation_settled_idx` | 4A | correction |
@@ -591,7 +591,7 @@ export async function updatePaymentTerm(tx: Sql, ctx: TenantContext, input: Upda
 export async function archivePaymentTerm(tx: Sql, ctx: TenantContext, input: { paymentTermId: string }): Promise<PaymentTermRow>;
 export interface ListPaymentTermsInput { companyId: string; includeArchived?: boolean; cursor?: { code: string } | null; limit: number }
 export async function listPaymentTerms(tx: Sql, input: ListPaymentTermsInput): Promise<PaymentTermRow[]>;
-/** The party's current term, or null. Read at DRAFT time only — the document pins the id (§4.3.4, SAH-013). */
+/** The party's current term, or null. Read at DRAFT time only — the document pins the id (§4.3.4, LEGACY-013). */
 export async function resolvePartyTerm(tx: Sql, input: { partyId: string }): Promise<string | null>;
 /** `effective_date + due_days`, computed in SQL so no JavaScript date arithmetic and no timezone can enter it.
  *  A null `paymentTermId` returns `effectiveDate` unchanged — due on the day (§4.8.2). */
@@ -755,7 +755,7 @@ Expected: FAIL in `beforeAll`'s first case body with `error: relation "app.payme
 
 -- ── 1. the table ───────────────────────────────────────────────────────
 create table app.payment_term (
-  id             uuid primary key default uuidv7(),                       -- §3.2 identifiers (SAH-021)
+  id             uuid primary key default uuidv7(),                       -- §3.2 identifiers (LEGACY-021)
   tenant_id      uuid not null references app.tenant(id),
   company_id     uuid not null,
   code           text not null,
@@ -912,7 +912,7 @@ export async function listPaymentTerms(tx: Sql, input: ListPaymentTermsInput): P
 }
 
 /**
- * The party's current term. Read at DRAFT time only; the document pins the id (§4.3.4, SAH-013).
+ * The party's current term. Read at DRAFT time only; the document pins the id (§4.3.4, LEGACY-013).
  *
  * **This is the only reader of `app.party.payment_term_id` in the slice** — `convertToInvoice` (Task 6) and
  * `draftSettlement` (Task 10) both call it instead of carrying an inline subquery, because two spellings of
@@ -1637,7 +1637,7 @@ The credit-control half of the slice, and the second of row 1042's four capabili
 - Create: `docs/runbooks/credit-control-override.md`
 - Modify: `packages/db/src/schema/party.ts`, `packages/db/src/schema/document.ts`, `packages/db/src/ar-ap/index.ts`, `apps/api/src/routes/accounting/parties.ts` (the `creditLimit` field pre-flight and one `RouteModule.permissions` entry), `apps/api/test/routes/accounting/parties.test.ts` (2A's suite, one case appended)
 - Modify: `packages/contracts/src/errors.ts` (two rows), `packages/contracts/src/accounting/party.ts`, `packages/contracts/src/accounting/document.ts`
-- Modify: `tests/regression/sah-042.test.ts` (append a `— 4A` block)
+- Modify: `tests/regression/legacy-042.test.ts` (append a `— 4A` block)
 
 **Interfaces:**
 - Consumes: `app.party` (2A, migration 0017), `app.document` (plan0A 0001), `app.document_event` and `app.principal_has` (2B, §4.5.2–§4.5.3), `app.effective_policy` (2B), `app.payment_term` (Task 1), **`app.price_list` (3A, migration 0030 — the FK target of the `price_list_id` column Task 0 amendment 6 registers; 0030 is two ranges below 0045, so the table is live when this file runs, and it carries the `unique (tenant_id, id)` the composite FK needs)**, `seedPriceList` (3A, §4.17), `app.current_actor`, `app_meta.attach_stamp`, `lintSchema` (§4.1); `ERRORS`, `AppError` (§4.2.4); `Money`, `currency` (§4.2.1); `seedDocumentType`, `seedParty` (2A), `grantCodes` (2B), `secondPrincipal` (3D), `draftTypedDocument` (3C), `seedAccount`, `seedTenantV2` (1A), `seedPaymentTerm` and `resolvePartyTerm` (Task 1 — this task carries the DB-tier test for the second, since it is the migration that adds the column it reads), `uuidv7` (§4.1), `recordOverride`, `transitionDocument` (§4.3.1); **`accounting.sales.post` and `accounting.credit_limit.override` in `app.permission` and in `PERMISSIONS` (Task 2 — a hard dependency: `grantCodes` inserts into `app.role_permission`, whose `permission_code` references `app.permission(code)`, and `validatePolicy` refuses a policy naming an uncatalogued `approval` code, F-21)**; `sharedDb`, `thinRegression` (§4.17.1).
@@ -1649,7 +1649,7 @@ alter table app.party   add column credit_limit numeric(19,4);          -- null 
 alter table app.party   add column payment_term_id uuid;                -- composite FK to app.payment_term
 alter table app.party   add column credit_hold boolean not null default false;
 alter table app.party   add column price_list_id uuid;                  -- composite FK to app.price_list (3A/0030)
-alter table app.document add column payment_term_id uuid;               -- PINNED at draft (SAH-013)
+alter table app.document add column payment_term_id uuid;               -- PINNED at draft (LEGACY-013)
 create function app.party_open_balance(p_party_id uuid, p_as_of date) returns numeric;
 create function app.assert_credit_available() returns trigger;           -- BEFORE UPDATE OF status ON app.document
 ```
@@ -1677,9 +1677,9 @@ export async function creditStatus(tx: Sql, input: { partyId: string; asOf: stri
 1. `credit_hold` → raise `ERR_CREDIT_HOLD`. **Checked first and not overridable.**
 2. `credit_limit is null` → return. No limit configured is not the same as a zero limit.
 3. An `accounting.credit_limit.override` `document_event` exists for this document → return. The event's own guard (2B, §4.5.3) has already proved a *second* principal holding the code at the document's branch recorded it, so this trigger asks nothing further about authority — asking twice, differently, is how two answers appear.
-4. `app.party_open_balance(party_id, effective_date) + this document's base total > credit_limit` → raise `ERR_CREDIT_LIMIT_EXCEEDED` naming the party, the limit and the excess. **`app.party_open_balance` raises `ERR_POLICY_REQUIRES_MISSING` rather than returning zero when the party carries a limit and no `receivable_account_id`** — the column is nullable (§4.5.7) and `l.account_id = <null>` matches no row, so returning zero would let every over-limit sale through, which is SAH-042's "an absent row makes a check pass". Step 2 has already returned for a party with no limit, so the raise reaches only a party the owner asked to control.
+4. `app.party_open_balance(party_id, effective_date) + this document's base total > credit_limit` → raise `ERR_CREDIT_LIMIT_EXCEEDED` naming the party, the limit and the excess. **`app.party_open_balance` raises `ERR_POLICY_REQUIRES_MISSING` rather than returning zero when the party carries a limit and no `receivable_account_id`** — the column is nullable (§4.5.7) and `l.account_id = <null>` matches no row, so returning zero would let every over-limit sale through, which is LEGACY-042's "an absent row makes a check pass". Step 2 has already returned for a party with no limit, so the raise reaches only a party the owner asked to control.
 
-**Why the comparison is in base currency.** `credit_limit` is one figure per party while a party may be invoiced in several currencies (test 8's EUR/USD/base round trip is 4B's, but the data model is this slice's). Comparing a EUR document total against an MYR limit would be SAH-014 in a new place. `app.party_open_balance` therefore sums `ledger_entry.base_debit − base_credit` on the party's receivable account, and the document's own contribution is `round(Σ line.total_incl_tax × document.exchange_rate, 4)` — the same `base = value × rate` identity the `ledger_entry` CHECK enforces (spec:1816, SAH-012). The document is not yet posted at `→ issued`, so its own total cannot come from the ledger and must come from its lines; that asymmetry is stated in the function's comment so no later reader "simplifies" it into one query.
+**Why the comparison is in base currency.** `credit_limit` is one figure per party while a party may be invoiced in several currencies (test 8's EUR/USD/base round trip is 4B's, but the data model is this slice's). Comparing a EUR document total against an MYR limit would be LEGACY-014 in a new place. `app.party_open_balance` therefore sums `ledger_entry.base_debit − base_credit` on the party's receivable account, and the document's own contribution is `round(Σ line.total_incl_tax × document.exchange_rate, 4)` — the same `base = value × rate` identity the `ledger_entry` CHECK enforces (spec:1816, LEGACY-012). The document is not yet posted at `→ issued`, so its own total cannot come from the ledger and must come from its lines; that asymmetry is stated in the function's comment so no later reader "simplifies" it into one query.
 
 **The fifth column, `party.price_list_id`, and why it rides in this file rather than a file of its own.** It is **not** credit control and no line of the trigger reads it: it is the customer's **price list**, the key §3.7.6's *customer-specific pricing* resolves on, and it is here because **6B's Task 0 amendment A10(b)** asked 4A's 0045 for it by name — *"`app.party` has no `price_list_id` … Register `price_list_id uuid` on `app.party`, nullable, FK `(tenant_id, price_list_id) → app.price_list`, added by **4A's migration 0045** (the file that already adds `credit_limit` — 4A owns the customer's commercial terms and a price list is one)."* Three facts make that the right home rather than a sixth migration number. (1) **4A executes in Phase 4 and 6B in Phase 6**, so a column 6B added itself would arrive after every slice that could set it, and 6B's own till would have nothing to mirror into `catalogue_customer`; the register amendment is therefore Task 0's amendment 6 and the DDL is this file's. (2) **`app.price_list` is 3A's migration 0030** and carries `unique (tenant_id, id)`, so the composite FK §3.5.1 requires is available two ranges below this one — no ordering problem exists. (3) **One file, one transaction, one slice's range** (§3.4.3): 0045 is already the "customer's commercial terms" migration, which is what a trade-level price list is. `app.price_list.customer_kind` stays exactly what 3A made it — the trade *level*, a tenant's own vocabulary — and this column is the per-party pointer that was missing beside it; the two are not two spellings of one thing. **Nothing in this task's trigger, `app.party_open_balance` or `creditStatus` reads the column**, and the tests below prove only what this migration owes: the column's shape, its composite FK, and that the FK actually refuses a foreign list. Resolution against it is 6B's `resolvePrice` and 3D's sales screens, not 4A's.
 
@@ -1810,7 +1810,7 @@ describe("credit control — migration 0045, contracts §4.8.1, spec:1026, spec:
       tx`update app.party set credit_limit = ${"1000.0000"} where id = ${partyId}`);
   });
 
-  it("a party with a limit and NO receivable control account is REFUSED, never silently allowed (SAH-042)", async () => {
+  it("a party with a limit and NO receivable control account is REFUSED, never silently allowed (LEGACY-042)", async () => {
     // `app.party.receivable_account_id` is nullable (§4.5.7) and `l.account_id = <null>` matches no ledger
     // row, so a naive predicate would report a 0.0000 exposure and let every over-limit sale through — "an
     // absent row makes a check pass". This is the ONE case that discriminates the fail-closed branch: it is
@@ -1945,7 +1945,7 @@ Expected: FAIL in `beforeAll` with `error: column "credit_limit" of relation "pa
 ```sql
 -- 0045_alter_party_and_document_add_credit_terms.sql
 -- Slice 4A. Customer credit control (spec:1026 §3.0.3; spec:1042; contracts §4.5.7, §4.8.1) and the payment
--- term PINNED on a document (contracts §4.3.4; SAH-013 — a term is never re-read from the party).
+-- term PINNED on a document (contracts §4.3.4; LEGACY-013 — a term is never re-read from the party).
 -- EXPAND ONLY (§3.4.7, spec:2057): five nullable-or-defaulted columns, nothing renamed, nothing dropped.
 
 -- ── 1. app.party — the commercial-terms columns (§4.5.7) ───────────────
@@ -1980,16 +1980,16 @@ alter table app.document
   add constraint document_payment_term_fk
       foreign key (tenant_id, payment_term_id) references app.payment_term(tenant_id, id);
 comment on column app.document.payment_term_id is
-  'PINNED at draft from party.payment_term_id and never re-read (SAH-013). The due date is the derived '
+  'PINNED at draft from party.payment_term_id and never re-read (LEGACY-013). The due date is the derived '
   'effective_date + payment_term.due_days (app.payment_due_date) and has no column of its own; contracts §4.8.2.';
 
 -- ── 3. the party open balance, in BASE currency ────────────────────────
--- One figure per party, one limit per party, so the comparison is in base (SAH-014: never compare a
+-- One figure per party, one limit per party, so the comparison is in base (LEGACY-014: never compare a
 -- foreign-currency amount against a base-currency figure). Posted rows only: a draft is not a debt.
--- It FAILS CLOSED (SAH-042): `app.party.receivable_account_id` is NULLABLE (contracts §4.5.7), and a
+-- It FAILS CLOSED (LEGACY-042): `app.party.receivable_account_id` is NULLABLE (contracts §4.5.7), and a
 -- predicate `l.account_id = <null>` matches no row, so a party carrying a limit but no control account
 -- would report a 0.0000 exposure and every over-limit sale would issue — "an absent row makes a check
--- pass", which is SAH-042 exactly. This function therefore RAISES for that combination instead of
+-- pass", which is LEGACY-042 exactly. This function therefore RAISES for that combination instead of
 -- returning a zero. A party with no limit and no control account has no credit question to answer and
 -- gets 0 without a raise, which is why the guard tests both columns and not one.
 create function app.party_open_balance(p_party_id uuid, p_as_of date) returns numeric
@@ -2023,7 +2023,7 @@ end $$;
 comment on function app.party_open_balance(uuid, date) is
   'contracts §4.8.1: the party balance the credit-control trigger and creditStatus() both read. Base currency, '
   'posted rows only, on the party''s own receivable control account (§4.15 1200 by default). Raises '
-  'ERR_POLICY_REQUIRES_MISSING when a party carries a limit and no control account — SAH-042, never a silent 0.';
+  'ERR_POLICY_REQUIRES_MISSING when a party carries a limit and no control account — LEGACY-042, never a silent 0.';
 
 -- ── 4. the control: BEFORE UPDATE OF status ON app.document ────────────
 -- spec:2173 — the data layer is the control and the handler is a pre-flight. This is a SECOND before-trigger
@@ -2056,7 +2056,7 @@ begin
 
   -- 3. A second principal's override event, already authorised by 2B's document_event_override_guard
   --    (§4.5.3). This trigger asks nothing further about authority: two authority questions, asked
-  --    differently, is how two answers appear (SAH-032).
+  --    differently, is how two answers appear (LEGACY-032).
   if exists (select 1 from app.document_event e
               where e.document_id = new.id
                 and e.event_kind = 'override'
@@ -2066,7 +2066,7 @@ begin
 
   -- 4. The comparison. The document is not posted yet, so its own contribution comes from its LINES at its
   --    own rate — base = round(value × rate, 4), the identity ledger_entry's CHECK enforces (spec:1816,
-  --    SAH-012) — while the party's existing exposure comes from posted ledger rows. The asymmetry is
+  --    LEGACY-012) — while the party's existing exposure comes from posted ledger rows. The asymmetry is
   --    deliberate: a draft is not a debt, and this document is not yet posted.
   select coalesce(sum(round(dl.total_incl_tax * new.exchange_rate, 4)), 0)::numeric(19,4)
     into v_doc_base
@@ -2143,7 +2143,7 @@ export interface CreditStatus {
 /**
  * The read behind the credit screen and the route pre-flight. It calls `app.party_open_balance` — the SAME
  * function `app.assert_credit_available()` calls — so a screen can never disagree with the control
- * (spec:2173). Base currency throughout: one limit per party, several invoice currencies (SAH-014).
+ * (spec:2173). Base currency throughout: one limit per party, several invoice currencies (LEGACY-014).
  *
  * It therefore inherits that function's fail-closed behaviour: a party carrying a `credit_limit` with no
  * `receivable_account_id` raises `ERR_POLICY_REQUIRES_MISSING` here too, rather than showing a headroom
@@ -2294,12 +2294,12 @@ That case needs three helpers 2A's suite may not already import, each from its o
   dueDate: DateSchema.nullable(),
 ```
 
-- [ ] **Step 8: Append the `— 4A` block to `tests/regression/sah-042.test.ts`**
+- [ ] **Step 8: Append the `— 4A` block to `tests/regression/legacy-042.test.ts`**
 
-0B created the file (ownership and paid-record checks fail open when the user row is missing). This slice appends the credit-control block, because SAH-042's shape is exactly "an absent row makes a check pass". The third case needs seed helpers the file may not already import — add `seedAccount`, `seedParty`, `seedTenantV2` and `withTenant` from `@dulja/db/test` to the file's existing import block in the same edit, beside its `sharedDb` import:
+0B created the file (ownership and paid-record checks fail open when the user row is missing). This slice appends the credit-control block, because LEGACY-042's shape is exactly "an absent row makes a check pass". The third case needs seed helpers the file may not already import — add `seedAccount`, `seedParty`, `seedTenantV2` and `withTenant` from `@dulja/db/test` to the file's existing import block in the same edit, beside its `sharedDb` import:
 
 ```ts
-describe("SAH-042 Credit control never fails open — 4A", () => {
+describe("LEGACY-042 Credit control never fails open — 4A", () => {
   it("an unresolvable party makes the trigger RETURN, never skip a limit it should have applied", async () => {
     // The legacy defect was `select … into :X; if (X <> 0) then exception` — a missing row left X NULL,
     // NULL <> 0 was unknown, and the check was skipped. Here the equivalent branch is explicit: a document
@@ -2316,12 +2316,12 @@ describe("SAH-042 Credit control never fails open — 4A", () => {
     expect(fn!.src).not.toMatch(/current_setting|set_config/i);
   });
 
-  it("a NULL credit_limit is a documented 'no limit', and a NULL balance cannot arise (SAH-011)", async () => {
+  it("a NULL credit_limit is a documented 'no limit', and a NULL balance cannot arise (LEGACY-011)", async () => {
     const { rw } = await sharedDb();
     const [fn] = await rw.db.admin<{ src: string }[]>`
       select prosrc as src from pg_proc
        where proname = 'party_open_balance' and pronamespace = 'app'::regnamespace`;
-    // coalesce at the accumulation boundary — SAH-011's fix, applied to the one aggregate this slice adds.
+    // coalesce at the accumulation boundary — LEGACY-011's fix, applied to the one aggregate this slice adds.
     expect(fn!.src).toMatch(/coalesce\(sum\(l\.base_debit - l\.base_credit\), 0\)/);
   });
 
@@ -2330,7 +2330,7 @@ describe("SAH-042 Credit control never fails open — 4A", () => {
     // database. This one calls the function, because a source-text assertion would have passed against the
     // fail-open version this block exists to forbid.
     const { rw } = await sharedDb();
-    const seed = await seedTenantV2(rw.db, "sah-042-4a");
+    const seed = await seedTenantV2(rw.db, "legacy-042-4a");
     await seedAccount(rw.db, seed, { code: "1200", nameEn: "Trade receivables", type: "asset" });
     const party = await seedParty(rw.db, seed, { kind: "customer", code: "CUST-NOCTRL" });
     await withTenant(rw.db.rw, seed.tenant, seed.human, (tx) =>
@@ -2382,8 +2382,8 @@ refuses it (`ERR_OVERRIDE_NOT_AUTHORISED`, contracts §4.5.3).
 
 - [ ] **Step 10: Run everything to verify it passes**
 
-Run: `bun run --cwd packages/db db:migrate && bun run --cwd packages/db test ar-ap/credit-control && bun run --cwd packages/db db:lint && bun run --cwd apps/api test routes/accounting/parties && node --test tests/regression/sah-042.test.ts && bun run lint:rules && bun run --cwd packages/contracts openapi:generate`
-Expected: PASS — fifteen credit-control cases (the last two being the `price_list_id` composite-FK pair), 2A's parties suite green with Step 7's one appended case, all three new `sah-042` cases, `db:lint` at zero, `lint:rules` exit 0 (the `error-codes` rule is satisfied because Step 5 landed the two rows in this commit), and an OpenAPI diff showing **four** added properties on `Party` — `creditLimit`, `paymentTermId`, `creditHold` and `priceListId`, the fourth being 6B's A10(b) column — and two on `Document`.
+Run: `bun run --cwd packages/db db:migrate && bun run --cwd packages/db test ar-ap/credit-control && bun run --cwd packages/db db:lint && bun run --cwd apps/api test routes/accounting/parties && node --test tests/regression/legacy-042.test.ts && bun run lint:rules && bun run --cwd packages/contracts openapi:generate`
+Expected: PASS — fifteen credit-control cases (the last two being the `price_list_id` composite-FK pair), 2A's parties suite green with Step 7's one appended case, all three new `legacy-042` cases, `db:lint` at zero, `lint:rules` exit 0 (the `error-codes` rule is satisfied because Step 5 landed the two rows in this commit), and an OpenAPI diff showing **four** added properties on `Party` — `creditLimit`, `paymentTermId`, `creditHold` and `priceListId`, the fourth being 6B's A10(b) column — and two on `Document`.
 
 Two failures worth naming in advance. `ERR_CREDIT_LIMIT_EXCEEDED` firing on the *internal* JOURNAL case means `app.effective_policy` returned SQL NULL and `is distinct from 'outbound'` was read as `<>`; the guard must be `is distinct from`, because a type with no resolvable policy must be *ignored* by this trigger and refused by 2B's. `ERR_OVERRIDE_NOT_AUTHORISED` on the positive override case means `recordOverride` was called with a supervisor-flavoured context instead of `attributedTo` — `document_event.actor_id` defaults to `app.current_actor()` and is always the caller, so the second principal is the **attributed** one (2B, §4.5.3; 3D states the same at 3d:2650).
 
@@ -2397,15 +2397,15 @@ git add packages/db/migrations/0045_alter_party_and_document_add_credit_terms.sq
         packages/contracts/src/accounting/party.ts packages/contracts/src/accounting/document.ts \
         packages/contracts/openapi.json apps/api/src/routes/accounting/parties.ts \
         apps/api/test/routes/accounting/parties.test.ts \
-        tests/regression/sah-042.test.ts docs/runbooks/credit-control-override.md
+        tests/regression/legacy-042.test.ts docs/runbooks/credit-control-override.md
 git commit -m "feat(db): credit limit, credit hold and the pinned payment term [4A T3]
 
 app.assert_credit_available() is a SECOND before-update-of-status trigger on app.document, beside 2B's
 frozen one; it refuses an over-limit outbound sale with ERR_CREDIT_LIMIT_EXCEEDED unless a second
 principal recorded an accounting.credit_limit.override event, and refuses a held party with
 ERR_CREDIT_HOLD, which no override lifts (spec:1026, 2179). The comparison is in base currency
-(SAH-014) and coalesces at the accumulation boundary (SAH-011). document.payment_term_id is pinned at
-draft and never re-read (SAH-013). Both error rows land here because 0045's SQL raises their tokens.
+(LEGACY-014) and coalesces at the accumulation boundary (LEGACY-011). document.payment_term_id is pinned at
+draft and never re-read (LEGACY-013). Both error rows land here because 0045's SQL raises their tokens.
 
 0045 also adds app.party.price_list_id (nullable, composite FK to app.price_list) with its Drizzle mirror
 and its wire field. It is NOT credit control and nothing in 4A reads it: 6B's Task 0 amendment A10(b)
@@ -2428,7 +2428,7 @@ Two changes to surfaces other slices own, both landed here because 4A is the fir
 - Create: `packages/db/test/posting/negative-cost.test.ts`
 - Modify: `packages/domain/src/posting/evaluate.ts`
 - Modify: `packages/db/src/costing/apply-movements.ts`
-- Modify: `tests/regression/sah-017.test.ts` (append a `— 4A` block)
+- Modify: `tests/regression/legacy-017.test.ts` (append a `— 4A` block)
 
 **Interfaces:**
 - Consumes: `evaluatePolicy`, `PostingPolicy`, `DocumentSnapshot`, `LineSnapshot`, `PlannedLedgerLine`, `PlannedMovement`, `PostingPlan`, `PolicyEvaluationError`, `COST_AMOUNT_REFS` (2A/3B, `packages/domain/src/posting/evaluate.ts`); `PlannedLedgerLine.fill` (3D); `applyMovements` (3A/3B/3D, `packages/db/src/costing/apply-movements.ts`); `Money`, `currency`, `Quantity` (§4.2.1); `PostingError` (§4.2.4); `postDocument` (§4.3.1); `draftTypedDocument`, `seedDocumentType`, `seedItem`, `seedWarehouse`, `grantCodes`, `seedAccount`, `seedTenantV2` (§4.17); `sharedDb`, `thinRegression` (§4.17.1).
@@ -2840,12 +2840,12 @@ for (const planned of plan.ledgerLines) {
 
 **Two details that decide whether this is correct or merely present.** The guard tests `planned.amount.isZero()` **and** a null source cost, not either alone: a genuinely zero cost that a movement filled is legal (a free-of-charge line, spec:1055), and a non-zero amount with no movement is the copied-cost case. And it throws `PostingError`, not `AppError` — `packages/db/src/costing/**` cannot import `@dulja/contracts` (§3.1, and `PostingError` is the one declared exception, §4.2.4); `ERR_POLICY_REQUIRES_MISSING` is already a member of `PostingErrorCode`, so no type widens.
 
-- [ ] **Step 9: Append the `— 4A` block to `tests/regression/sah-017.test.ts`**
+- [ ] **Step 9: Append the `— 4A` block to `tests/regression/legacy-017.test.ts`**
 
 3B created the file (order-delivery tracking double-adds on edit and never reverses on re-pointing). The 4A block is the same defect shape in the corridor:
 
 ```ts
-describe("SAH-017 A reversal relieves what it posted, and never adds to it — 4A", () => {
+describe("LEGACY-017 A reversal relieves what it posted, and never adds to it — 4A", () => {
   it("the two cost amount references are resolved through ONE function, with the sign from the quantity", async () => {
     const { repoFile } = await import("../support/regression");
     const src = repoFile("packages/domain/src/posting/evaluate.ts");
@@ -2859,7 +2859,7 @@ describe("SAH-017 A reversal relieves what it posted, and never adds to it — 4
 
   it("delivered and returned quantity are PROJECTIONS of document_link, never stored counters", async () => {
     const { rw } = await sharedDb();
-    // SAH-017's root cause was a maintained counter (`OdtTransferredBonus`) updated by three triggers.
+    // LEGACY-017's root cause was a maintained counter (`OdtTransferredBonus`) updated by three triggers.
     // Here the figure is a view over the links, so there is nothing to double-add and nothing to forget.
     const [v] = await rw.db.admin<{ kind: string }[]>`
       select c.relkind::text as kind from pg_class c
@@ -2871,8 +2871,8 @@ describe("SAH-017 A reversal relieves what it posted, and never adds to it — 4
 
 - [ ] **Step 10: Run everything to verify it passes**
 
-Run: `bun run --cwd packages/domain test posting && bun run --cwd packages/db test posting && bun run --cwd packages/db test costing && node --test tests/regression/sah-017.test.ts && bun run lint:rules`
-Expected: PASS — the six new DB-tier cases, the seven pure cases, every 2A/3A/3B/3D posting and costing test still green, both new `sah-017` cases, and `lint:rules` exit 0.
+Run: `bun run --cwd packages/domain test posting && bun run --cwd packages/db test posting && bun run --cwd packages/db test costing && node --test tests/regression/legacy-017.test.ts && bun run lint:rules`
+Expected: PASS — the six new DB-tier cases, the seven pure cases, every 2A/3A/3B/3D posting and costing test still green, both new `legacy-017` cases, and `lint:rules` exit 0.
 
 One failure worth naming in advance. If a **3B golden fixture** turns red with a flipped side, do not edit the fixture: 3B's `tests/golden/costing/**` `expected.json` files are byte-compared on purpose (spec:2264), and a genuine change to what a formula produces must be visible as a diff and accepted deliberately. Check the fixture's input for a negative `quantity`; if it has one, the flip is ADR 0045 working and the `expected.json` is regenerated **in this commit** with the diff quoted in the PR body. If it has none, the change has reached a case it must not and Step 4's guard is wrong.
 
@@ -2884,7 +2884,7 @@ git add docs/adr/0045-negative-line-quantity-negates-line-cost.md \
         packages/domain/test/posting/evaluate-negative-cost.test.ts \
         packages/db/src/costing/apply-movements.ts \
         packages/db/test/posting/negative-cost.test.ts \
-        tests/regression/sah-017.test.ts
+        tests/regression/legacy-017.test.ts
 git commit -m "fix(domain): line.cost is negative on a negative-quantity line; refuse an unfilled cost leg [4A T4]
 
 ADR 0045 (a proposal) closes the amendment 3D filed as blocking Phase 4: a reversal's copied cost is a
@@ -2927,7 +2927,7 @@ export interface ArLine {
 export interface PostArOptions {
   documentTypeId: string; series: string; effectiveDate?: string;
   partyId?: string; currency?: string; exchangeRate?: string; paymentTermId?: string | null;
-  /** The provenance of `exchangeRate`, written to `document.rate_source` (plan0A:1787, SAH-012).
+  /** The provenance of `exchangeRate`, written to `document.rate_source` (plan0A:1787, LEGACY-012).
    *  Defaults to `"unit"` at rate 1.00000000 and `manual:<actorId>` otherwise — the two spellings that
    *  column's own comment gives, and the same rule `draftSettlement` applies (Task 10). */
   rateSource?: string;
@@ -2946,7 +2946,7 @@ export async function postArDocument(db: Db, s: Seed, opts: PostArOptions): Prom
 
 **`twoPrincipal` is registered here and is NOT exercised by 4A, and that is stated rather than left to be found.** Every `PAYMENT` case in Task 10 walks the state machine explicitly — `draftSettlement`, then `transitionDocument` to `submitted`, then a *second* `withTenant` session for the checker — because tests **10** and **31** are about *which principal* may do *what*, and a helper that hides the two sessions would hide the thing under test. The member exists because **4B, 5A, 6A, 7C and 8C** all post approval-required AR/AP documents whose two-principal walk is incidental to what they assert, and because adding it to a shared helper later means editing a file five slices already import. **An unexercised branch in a shared helper is a maintenance hazard, so it is not left silent:** Task 0's amendment 14 says so in the register, and the first slice that uses it is the one that proves it. Nothing in 4A calls it, and no case below is weaker for that.
 
-**`rateSource` closes a hole the helper would otherwise leave open.** `draftTypedDocument` (3C) writes `currency` and `exchange_rate` and **not** `rate_source`; `app.document.rate_source` is a plain nullable `text` with no default (plan0A:1787); and `convertToInvoice`, `creditNoteFrom` and `draftSettlement` all set or copy it. Without this member every document the §4.17.1 helper posts would carry a null provenance for its rate — which is exactly the absence SAH-012 is about — and Task 14's `sah-012` block would be asserting an invariant the helper itself breaks. It is written in the same post-draft `UPDATE` as `payment_term_id`, and Task 5's suite asserts it on a real posted invoice.
+**`rateSource` closes a hole the helper would otherwise leave open.** `draftTypedDocument` (3C) writes `currency` and `exchange_rate` and **not** `rate_source`; `app.document.rate_source` is a plain nullable `text` with no default (plan0A:1787); and `convertToInvoice`, `creditNoteFrom` and `draftSettlement` all set or copy it. Without this member every document the §4.17.1 helper posts would carry a null provenance for its rate — which is exactly the absence LEGACY-012 is about — and Task 14's `legacy-012` block would be asserting an invariant the helper itself breaks. It is written in the same post-draft `UPDATE` as `payment_term_id`, and Task 5's suite asserts it on a real posted invoice.
 
 - [ ] **Step 1: Write the shared helper `tests/invariants/support/post-ar.ts`**
 
@@ -3016,7 +3016,7 @@ export async function postArDocument(db: Db, s: Seed, opts: PostArOptions): Prom
   //
   // …and `rate_source`, for the same reason: `draftTypedDocument` writes `currency` and `exchange_rate`
   // and NOT the provenance column (3c's insert list), while every production writer in this slice sets or
-  // copies it. A null `rate_source` on a posted document is the SAH-012 absence itself — a base figure
+  // copies it. A null `rate_source` on a posted document is the LEGACY-012 absence itself — a base figure
   // whose rate nobody can account for — so the helper supplies the same two spellings plan0A:1787's own
   // comment gives and `draftSettlement` uses: `unit` at rate 1.00000000, `manual:<actor>` otherwise.
   const rate = opts.exchangeRate ?? "1.00000000";
@@ -3217,15 +3217,15 @@ describe("SALES_INVOICE — §4.14, ADR 0044, spec:2009–2028", () => {
       tx`update app.party set credit_limit = null where id = ${partyId}`);
   });
 
-  it("base = round(value × rate, 4) on every line — SAH-012, in a foreign currency", async () => {
+  it("base = round(value × rate, 4) on every line — LEGACY-012, in a foreign currency", async () => {
     const rows = await db.admin<{ n: number }[]>`
       select count(*)::int as n from app.ledger_entry
        where base_debit <> round(debit * exchange_rate, 4) or base_credit <> round(credit * exchange_rate, 4)`;
     expect(rows[0]!.n).toBe(0);   // the CHECK guarantees it; this asserts the CHECK is still attached
   });
 
-  it("every posted invoice carries a rate_source — a base figure with no provenance is SAH-012", async () => {
-    // This is the NON-VACUOUS half of Task 14's sah-012 block: that block runs against the thin
+  it("every posted invoice carries a rate_source — a base figure with no provenance is LEGACY-012", async () => {
+    // This is the NON-VACUOUS half of Task 14's legacy-012 block: that block runs against the thin
     // regression database, which holds no 4A document, so its count of null rate_sources is 0 for the
     // wrong reason. THIS database holds nothing but documents `postArDocument` built, so the same
     // assertion here has rows to be wrong about. `draftTypedDocument` (3C) does not write the column and
@@ -3548,7 +3548,7 @@ describe("DELIVERY_ORDER → SALES_INVOICE — spec:1051, §4.15's 1250 row", ()
     // 4 dp, so cost ÷ quantity is exact and every integer split's pro-rata already sums to the whole —
     // a case built that way passes with the branch and without it, and proves nothing.
     // NOTE: the delivery line's posted cost is READ, never re-written. Updating a posted document's line
-    // through SQL is the SAH-031 shape Task 14 asserts against, and it would also detach the figure from
+    // through SQL is the LEGACY-031 shape Task 14 asserts against, and it would also detach the figure from
     // the ledger row that actually filled the corridor.
     const dO = await deliver("3.333333", "2026-01-13", "30.0000");
     const [delivered] = await db.admin<{ cost: string }[]>`
@@ -3590,7 +3590,7 @@ describe("DELIVERY_ORDER → SALES_INVOICE — spec:1051, §4.15's 1250 row", ()
     }))).rejects.toThrow(/ERR_DOC_LINK_OVER_FULFILLED/);
   });
 
-  it("the open quantity is a PROJECTION of the links, and it reaches zero — SAH-017", async () => {
+  it("the open quantity is a PROJECTION of the links, and it reaches zero — LEGACY-017", async () => {
     const dO = await deliver("2.000000", "2026-01-17", "18.0000");
     await withTenant(db.rw, s.tenant, s.human, (tx) => convertToInvoice(tx, ctxOf(s), {
       sourceDocumentId: dO.documentId, targetDocumentTypeId: invType, targetSeries: "INV",
@@ -4030,7 +4030,7 @@ git commit -m "feat(accounting): convert a posted delivery into a sales invoice,
 
 spec:1051's invoice link. One function serves both directions; the cost is pro-rated by quantity and
 the CLOSING conversion takes the residue, so 1250 reaches exactly zero rather than within a cent of it.
-Over-fulfilment is refused by 3C's own guard and the open quantity stays a projection (SAH-017).
+Over-fulfilment is refused by 3C's own guard and the open quantity stays a projection (LEGACY-017).
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
@@ -4305,7 +4305,7 @@ spec:2024 makes `SALES_CREDIT_NOTE` the reversal target of `SALES_INVOICE`. That
 - Create: `packages/db/test/ar-ap/credit-note.test.ts`, `packages/db/test/ar-ap/stock-return.test.ts`
 - Modify: `packages/db/src/ar-ap/index.ts`, `packages/contracts/src/accounting/invoice.ts` (`CreditNoteLineSchema`, `CreditNoteBody`, `CreditNoteResultSchema` — Task 6's file, grown additively), `apps/api/src/routes/accounting/documents.ts` (one sub-path)
 - Modify: `apps/api/test/routes/accounting/invoices.test.ts` (**Task 6 creates it; this task appends the credit-note `describe` and one seeded type**)
-- Modify: `tests/regression/sah-018.test.ts` (append the `— 4A` invoiced-return block)
+- Modify: `tests/regression/legacy-018.test.ts` (append the `— 4A` invoiced-return block)
 
 **Interfaces:**
 - Consumes: `reverseDocument` (§4.3.1, with 3C's `l.cost` line-copy column and Task 4's negative-cost rule); `linkFulfilment` (3C); `postDocument`, `issueDocument`, `setEventContext` (§4.3.1 — `setEventContext` is what discharges the required `reason`, placed by the service exactly as 2B's `reverse.ts` places its own at 2b:1519); `micro` and `convertToInvoice`'s pro-rata arithmetic pattern (Task 6 — `micro` IS shared and the ratio rule is not: the credit note negates and the conversion does not); `Money`, `Quantity`, `rational`, `Rational`, `currency` (§4.2.1); and for Step 8's stock-return proof `postInventoryDocument`, `ensureOpenPeriods`, `recordingJobs` (3B/3D), `DELIVERY_ORDER` and `GOODS_RECEIPT` from the seed pack (3D/3C), `app.inventory_movement` and `app.stock_on_hand` (3A, read only).
@@ -4456,7 +4456,7 @@ describe("SALES_CREDIT_NOTE — spec:2024, §4.14, ADR 0044 and ADR 0045", () =>
     expect(orig!.status).toBe("posted");
   });
 
-  it("crediting more than the invoiced quantity is refused with ERR_DOC_LINK_OVER_FULFILLED (SAH-018)", async () => {
+  it("crediting more than the invoiced quantity is refused with ERR_DOC_LINK_OVER_FULFILLED (LEGACY-018)", async () => {
     const inv = await invoice("2026-01-17");
     const invLines = await db.admin<{ id: string }[]>`
       select id from app.document_line where document_id = ${inv.documentId} order by line_no`;
@@ -4659,7 +4659,7 @@ export async function creditNoteFrom(
   }
 
   // `returns` — 3C's registered link kind, and its own guard is what refuses a credit larger than the
-  // invoiced quantity (ERR_DOC_LINK_OVER_FULFILLED, SAH-018's structural fix: a projection, not a counter).
+  // invoiced quantity (ERR_DOC_LINK_OVER_FULFILLED, LEGACY-018's structural fix: a projection, not a counter).
   const links = await linkFulfilment(tx, ctx, {
     sourceDocumentId: input.settledDocumentId, targetDocumentId: target!.id,
     linkKind: "returns", lines: fulfilment, priceFromSource: false,
@@ -4821,7 +4821,7 @@ describe("POST /v1/companies/{companyId}/documents/{documentId}/credit-note (4A)
     expect((await problemOf(res)).code).toBe("ERR_VALIDATION_FAILED");
   });
 
-  it("crediting more than the invoiced quantity is 422 ERR_DOC_LINK_OVER_FULFILLED (SAH-018)", async () => {
+  it("crediting more than the invoiced quantity is 422 ERR_DOC_LINK_OVER_FULFILLED (LEGACY-018)", async () => {
     const inv = await postedSource("1.000000", "9.0000", "3.0000", "2026-01-25");
     const res = await api.request({
       method: "POST", path: `/v1/companies/${s.company}/documents/${inv.documentId}/credit-note`,
@@ -4837,12 +4837,12 @@ describe("POST /v1/companies/{companyId}/documents/{documentId}/credit-note (4A)
 });
 ```
 
-- [ ] **Step 7: Append the `— 4A` block to `tests/regression/sah-018.test.ts`**
+- [ ] **Step 7: Append the `— 4A` block to `tests/regression/legacy-018.test.ts`**
 
 3D created the file (deleting a return line never decrements; editing one double-counts). The 4A block is the invoiced-return half the card assigns this slice:
 
 ```ts
-describe("SAH-018 An invoiced return is bounded by what was invoiced, and is a projection — 4A", () => {
+describe("LEGACY-018 An invoiced return is bounded by what was invoiced, and is a projection — 4A", () => {
   it("returning more than the invoice carried is refused, and the refusal is the LINK's, not a counter's", async () => {
     // The legacy defect kept `BdtQnt` as a maintained counter on the invoice: deleting a return line left it
     // high, so no further return was possible, and editing one to a smaller figure made it larger. Here the
@@ -5010,8 +5010,8 @@ If instead the **third** case reports `value: "36.0000"`, `reverseDocument` did 
 
 - [ ] **Step 10: Run everything**
 
-Run: `bun run --cwd packages/db test ar-ap/credit-note && bun run --cwd packages/db test ar-ap/stock-return && bun run --cwd apps/api test routes/accounting/invoices && node --test tests/regression/sah-018.test.ts && bun run --cwd packages/db test ar-ap && bun run --cwd packages/contracts openapi:generate`
-Expected: PASS — seven credit-note cases, six stock-return cases, **twelve** route cases in `invoices.test.ts` (Task 6's seven plus this task's five), both new `sah-018` cases, every earlier `ar-ap` suite green, and an OpenAPI diff showing one added path and three added components (`CreditNoteBody`, `CreditNoteResult`, and `CreditNoteLine` if the line schema is given a component name).
+Run: `bun run --cwd packages/db test ar-ap/credit-note && bun run --cwd packages/db test ar-ap/stock-return && bun run --cwd apps/api test routes/accounting/invoices && node --test tests/regression/legacy-018.test.ts && bun run --cwd packages/db test ar-ap && bun run --cwd packages/contracts openapi:generate`
+Expected: PASS — seven credit-note cases, six stock-return cases, **twelve** route cases in `invoices.test.ts` (Task 6's seven plus this task's five), both new `legacy-018` cases, every earlier `ar-ap` suite green, and an OpenAPI diff showing one added path and three added components (`CreditNoteBody`, `CreditNoteResult`, and `CreditNoteLine` if the line schema is given a component name).
 
 **One failure worth naming in advance, and it is the one this task exists to prevent.** If the first case reports the invoice's own directions on the reversal — `1200` debit, `4000` credit — the credit note's policy was written with credit-note-correct sides. Do not "fix" it by negating in the service: `reverseDocument` already negates, and two negations are the identity. The policy's sides are the invoice's; that is the whole design.
 
@@ -5025,7 +5025,7 @@ git add packages/db/seed/my/document-types/SALES_CREDIT_NOTE.json \
         apps/api/src/routes/accounting/documents.ts \
         apps/api/test/routes/accounting/invoices.test.ts \
         packages/db/test/ar-ap/credit-note.test.ts packages/db/test/ar-ap/stock-return.test.ts \
-        tests/regression/sah-018.test.ts
+        tests/regression/legacy-018.test.ts
 git commit -m "feat(accounting): the two credit notes, as reversal targets with negated magnitudes [4A T8]
 
 spec:2024. Each credit note's policy carries the SAME sides as its invoice and the negation of the line
@@ -5054,7 +5054,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 - Create: `packages/contracts/src/accounting/allocation.ts`
 - Create: `packages/db/test/ar-ap/allocation.test.ts`, `apps/api/test/routes/accounting/allocations.test.ts`
 - Modify: `packages/db/src/ar-ap/index.ts`, `packages/db/src/lint-schema.ts` (verify `allocation` joins no exemption set), `apps/api/src/routes/accounting/documents.ts` (four sub-paths), `apps/api/src/routes/accounting/parties.ts` (one sub-path)
-- Modify: `tests/regression/sah-019.test.ts` (append, create-if-absent), `tests/regression/sah-041.test.ts` (append)
+- Modify: `tests/regression/legacy-019.test.ts` (append, create-if-absent), `tests/regression/legacy-041.test.ts` (append)
 
 **Interfaces:**
 - Consumes: `app_meta.enable_tenant_rls`, `app_meta.attach_audit`, `app_meta.attach_stamp`, `app.current_actor`, `lintSchema` (§4.1); `Money`, `currency`, `toBase`, `UNIT_RATE`, `ExchangeRate` (§4.2.1); `app.rate_for` (0D, §4.2.10); `AppError`, `ERRORS` (§4.2.4); `requireDocumentPermission("submit")`, `requirePermission`, `requireDocumentModuleRead` (§4.5.4, §4.2.5, 2C's `apps/api/src/middleware/require-attachment-read.ts`); `postArDocument` (Task 5); `SALES_CREDIT_NOTE` from the seed pack and **`creditNoteFrom` (Task 8)**, which is what the credit-note-as-settlement case builds its note with — `SALES_CREDIT_NOTE.json` carries `requires: ["party", "reverses_document"]` and `PostArOptions` has no member that sets `reverses_document_id`, so a note drafted through `postArDocument` is refused at post with `ERR_POLICY_REQUIRES_MISSING: reverses_document`; `issueDocument`, `postDocument` (§4.3.1); `loadTypesFromPack`, `accountByCode` (Task 5's `test/ar-ap/_support.ts`); `seedCurrency`, `seedRate` (0D).
@@ -5372,7 +5372,7 @@ Expected: FAIL with a module-resolution error on `../../src/ar-ap/allocation`, a
 -- Slice 4A. app.allocation — which settlement paid which invoice (contracts §4.8.1, spec:1042).
 -- It is NOT a ledger table: a receipt relieves the AR control account in total when it posts, and this table
 -- records the apportionment. That is what lets `unallocate` exist without touching a posted entry
--- (spec:2457, SAH-041). The `posting-only-tables` lint (§3.7.5) does not list it and must not gain it.
+-- (spec:2457, LEGACY-041). The `posting-only-tables` lint (§3.7.5) does not list it and must not gain it.
 
 -- ── 1. the table (§4.8.1's DDL, with Task 0's amendment 11 columns and CHECK) ───
 create table app.allocation (
@@ -5477,7 +5477,7 @@ async function docFacts(tx: Sql, documentId: string): Promise<DocFacts> {
  * slice performs in TypeScript, and it goes through `toBase` rather than through a hand-rolled multiply**
  * (Global Constraint 5): `toBase` is `round(value × rate, 4)` HALF_AWAY_FROM_ZERO, byte-for-byte the
  * identity `ledger_entry`'s CHECK enforces (spec:1816, §4.2.1). A second spelling of that arithmetic would
- * be a second answer, which is SAH-019 in a new place.
+ * be a second answer, which is LEGACY-019 in a new place.
  */
 function rateOf(facts: DocFacts, from: CurrencyCode, base: CurrencyCode): ExchangeRate {
   return {
@@ -5500,7 +5500,7 @@ export async function openBalance(
   const [company] = await tx<{ base: string }[]>`
     select base_currency as base from app.company where id = ${facts.companyId}`;
   const baseCur = currency(company!.base) as CurrencyCode;
-  // The document's total in base is `round(total × rate, 4)` — base = value × rate (spec:1816, SAH-012) —
+  // The document's total in base is `round(total × rate, 4)` — base = value × rate (spec:1816, LEGACY-012) —
   // through `toBase`, which is that identity's one implementation (§4.2.1).
   const totalBase = toBase(Money.of(facts.total, cur), rateOf(facts, cur, baseCur));
   // `.abs()` is deliberate and it is a MAGNITUDE, not a sign loss — and it is taken on the TOTAL, BEFORE
@@ -5604,7 +5604,7 @@ export async function allocateSettlement(
 
 /**
  * Sets `unallocated_at`, `unallocated_by` and `unallocation_reason`. Never touches a ledger entry
- * (spec:2457, SAH-041).
+ * (spec:2457, LEGACY-041).
  *
  * **The reason is WRITTEN, not merely validated.** `app.audit_row` records `to_jsonb(new)` of the row
  * (plan0A), so a value that never reaches a column cannot reach the audit image either — compelling a
@@ -6158,10 +6158,10 @@ describe("the five allocation routes (4A)", () => {
 
 - [ ] **Step 8: Append the two regression blocks**
 
-`tests/regression/sah-041.test.ts` — append (0B created it):
+`tests/regression/legacy-041.test.ts` — append (0B created it):
 
 ```ts
-describe("SAH-041 An allocation never alters a posted entry — 4A", () => {
+describe("LEGACY-041 An allocation never alters a posted entry — 4A", () => {
   it("app_rw holds no DELETE on app.allocation, and unallocate is an UPDATE of one column", async () => {
     const { rw } = await sharedDb();
     const [grant] = await rw.db.admin<{ n: number }[]>`
@@ -6180,10 +6180,10 @@ describe("SAH-041 An allocation never alters a posted entry — 4A", () => {
 });
 ```
 
-`tests/regression/sah-019.test.ts` — **append, create-if-absent** (§3.7.3's rule for a file whose creator the catalogue does not name; the `describe` block is order-independent so both orders produce the identical file):
+`tests/regression/legacy-019.test.ts` — **append, create-if-absent** (§3.7.3's rule for a file whose creator the catalogue does not name; the `describe` block is order-independent so both orders produce the identical file):
 
 ```ts
-describe("SAH-019 One rounding function, one mode, symmetric across sign — 4A", () => {
+describe("LEGACY-019 One rounding function, one mode, symmetric across sign — 4A", () => {
   it("this slice names ONE rounding mode and no rounding surface of its own", async () => {
     const { repoFile } = await import("../support/regression");
     for (const f of [
@@ -6234,7 +6234,7 @@ describe("SAH-019 One rounding function, one mode, symmetric across sign — 4A"
 
 - [ ] **Step 9: Run everything**
 
-Run: `bun run --cwd packages/db db:migrate && bun run --cwd packages/db test ar-ap/allocation && bun run --cwd packages/db db:lint && bun run --cwd apps/api test routes/accounting/allocations && node --test tests/regression/sah-019.test.ts tests/regression/sah-041.test.ts && bun run --cwd packages/contracts openapi:generate`
+Run: `bun run --cwd packages/db db:migrate && bun run --cwd packages/db test ar-ap/allocation && bun run --cwd packages/db db:lint && bun run --cwd apps/api test routes/accounting/allocations && node --test tests/regression/legacy-019.test.ts tests/regression/legacy-041.test.ts && bun run --cwd packages/contracts openapi:generate`
 Expected: PASS — twelve DB cases, ten route cases, `db:lint` at zero, both regression files green, and an OpenAPI diff showing five added paths and seven added components (`Allocation`, `AllocateSettlementBody`, `AllocateSettlementResult`, `UnallocateBody`, `AllocationQuery`, `OpenBalance`, `PartyBalance`).
 
 - [ ] **Step 10: Commit**
@@ -6246,7 +6246,7 @@ git add packages/db/migrations/0046_create_allocation.sql packages/db/migrations
         packages/contracts/openapi.json apps/api/src/routes/accounting/documents.ts \
         apps/api/src/routes/accounting/parties.ts packages/db/test/ar-ap/allocation.test.ts \
         apps/api/test/routes/accounting/allocations.test.ts \
-        tests/regression/sah-019.test.ts tests/regression/sah-041.test.ts
+        tests/regression/legacy-019.test.ts tests/regression/legacy-041.test.ts
 git commit -m "feat(db): app.allocation, allocateSettlement, openBalance and partyBalance [4A T9]
 
 §4.8.1 verbatim. Allocation is not a ledger fact: the settlement's own posting relieves the control
@@ -6269,7 +6269,7 @@ The two settlement types, and the slice's re-run of tests **10** and **31**. spe
 - Create: `packages/contracts/src/accounting/settlement.ts`
 - Create: `packages/db/test/ar-ap/settlement.test.ts`, `apps/api/test/routes/accounting/settlements.test.ts`
 - Modify: `packages/db/src/ar-ap/index.ts`, `apps/api/src/routes/accounting/documents.ts` (one sub-path)
-- Modify: `tests/regression/sah-031.test.ts` (append)
+- Modify: `tests/regression/legacy-031.test.ts` (append)
 
 **Interfaces:**
 - Consumes: `allocateSettlement` (Task 9); `transitionDocument`, `postDocument`, `issueDocument` (§4.3.1); `app.document_status_before` with R1 and R2 (2B); `grantCodes`, `secondPrincipal` (2B, 3D); `INCOMPATIBLE_PAIRS` (§4.2.5); the accounts `1100`, `1200`, `2100` (§4.15, 0C).
@@ -6617,7 +6617,7 @@ export async function draftSettlement(
 }
 ```
 
-**The BRANCH default in that insert is deliberate and narrow.** `document.branch_id` is NOT NULL (spec:1766) and a settlement is a head-office act with no branch of its own, so `branchId` is an optional member of `SettlementInput` and the SQL `coalesce`s the caller's value over the company's lowest-coded BRANCH value — the head-office value in every seeded company (`HQ`, §4.1). Silently defaulting where the caller *did* specify would be SAH-042's shape in reverse, which is why the caller's value is the first argument of the `coalesce` and **the route always sends one**. A reviewer who wants the default gone makes `branchId` required, which is one line here and one in the route.
+**The BRANCH default in that insert is deliberate and narrow.** `document.branch_id` is NOT NULL (spec:1766) and a settlement is a head-office act with no branch of its own, so `branchId` is an optional member of `SettlementInput` and the SQL `coalesce`s the caller's value over the company's lowest-coded BRANCH value — the head-office value in every seeded company (`HQ`, §4.1). Silently defaulting where the caller *did* specify would be LEGACY-042's shape in reverse, which is why the caller's value is the first argument of the `coalesce` and **the route always sends one**. A reviewer who wants the default gone makes `branchId` required, which is one line here and one in the route.
 
 Add `export * from "./settlement";` to `packages/db/src/ar-ap/index.ts`.
 
@@ -6884,10 +6884,10 @@ describe("POST /v1/companies/{companyId}/documents/settlements (4A)", () => {
 });
 ```
 
-- [ ] **Step 7: Append the `— 4A` block to `tests/regression/sah-031.test.ts`**
+- [ ] **Step 7: Append the `— 4A` block to `tests/regression/legacy-031.test.ts`**
 
 ```ts
-describe("SAH-031 A posted settlement and its allocations are immutable in place — 4A", () => {
+describe("LEGACY-031 A posted settlement and its allocations are immutable in place — 4A", () => {
   it("a posted RECEIPT's ledger rows cannot be updated or deleted by app_rw", async () => {
     const { rw } = await sharedDb();
     const [g] = await rw.db.admin<{ n: number }[]>`
@@ -6911,8 +6911,8 @@ describe("SAH-031 A posted settlement and its allocations are immutable in place
 
 - [ ] **Step 8: Run everything**
 
-Run: `bun run --cwd packages/db test ar-ap/settlement && bun run --cwd apps/api test routes/accounting/settlements && node --test tests/regression/sah-031.test.ts && bun run --cwd packages/contracts openapi:generate`
-Expected: PASS — eight DB cases (of which two are the tests 10 and 31 re-runs, each asserting the refusal through the service path *and* through direct `app_rw` SQL), nine route cases, both new `sah-031` cases, and an OpenAPI diff showing one added path and three added components (`DraftSettlementBody`, `SettlementAllocation`, `SettlementResult`).
+Run: `bun run --cwd packages/db test ar-ap/settlement && bun run --cwd apps/api test routes/accounting/settlements && node --test tests/regression/legacy-031.test.ts && bun run --cwd packages/contracts openapi:generate`
+Expected: PASS — eight DB cases (of which two are the tests 10 and 31 re-runs, each asserting the refusal through the service path *and* through direct `app_rw` SQL), nine route cases, both new `legacy-031` cases, and an OpenAPI diff showing one added path and three added components (`DraftSettlementBody`, `SettlementAllocation`, `SettlementResult`).
 
 - [ ] **Step 9: Commit**
 
@@ -6921,7 +6921,7 @@ git add packages/db/seed/my/document-types/RECEIPT.json packages/db/seed/my/docu
         packages/db/src/ar-ap/settlement.ts packages/db/src/ar-ap/index.ts \
         packages/contracts/src/accounting/settlement.ts packages/contracts/openapi.json \
         apps/api/src/routes/accounting/documents.ts packages/db/test/ar-ap/settlement.test.ts \
-        apps/api/test/routes/accounting/settlements.test.ts tests/regression/sah-031.test.ts
+        apps/api/test/routes/accounting/settlements.test.ts tests/regression/legacy-031.test.ts
 git commit -m "feat(accounting): RECEIPT and PAYMENT, with maker-checker on money out only [4A T10]
 
 spec:2147's asymmetry, expressed entirely in the two approval blocks: RECEIPT is approval.required
@@ -6944,7 +6944,7 @@ The minimal-report clause spec:2300 requires this slice to keep shipping (hazard
 - Modify: `packages/contracts/src/inventory/reports.ts` (`SalesByItemRowSchema` gains two)
 - Modify: `apps/api/src/routes/accounting/reports.ts` (the response gains two columns; the route is unchanged)
 - Create: `packages/db/test/reports/sales-by-item-revenue.test.ts`
-- Create: `tests/regression/sah-014.test.ts` (**4A creates it** — §3.7.3, this slice is first in execution order to touch SAH-014)
+- Create: `tests/regression/legacy-014.test.ts` (**4A creates it** — §3.7.3, this slice is first in execution order to touch LEGACY-014)
 
 **Interfaces:**
 - Consumes: `salesByItem`, `SalesByItemParams`, `SalesByItemRow` (3D, §4.16.3 — the params and the `cost` member are **not** changed); `ReportCodeSchema` (1B, already carrying the code); `reportsRoutes` (1B); `Money`, `currency` (§4.2.1); `postArDocument` (Task 5), `postInventoryDocument` (3B/3D), `convertToInvoice` (Task 6), `creditNoteFrom` (Task 8).
@@ -7180,9 +7180,9 @@ with the two projected columns:
 
 Extend `SalesByItemRowSchema` in `packages/contracts/src/inventory/reports.ts` by the two members (both `z.string().regex(/^-?\d+\.\d{4}$/)`), widen the route's response mapping in `apps/api/src/routes/accounting/reports.ts` by the two keys, and regenerate the OpenAPI document. **`SalesByItemParams` and `ReportCodeSchema` are not touched** (§4.16.3's amendment says so in as many words).
 
-- [ ] **Step 4: Create `tests/regression/sah-014.test.ts` — 4A is the creator (§3.7.3)**
+- [ ] **Step 4: Create `tests/regression/legacy-014.test.ts` — 4A is the creator (§3.7.3)**
 
-SAH-014 is "`procSumVouItems` silently discards the caller's exchange rate": the legacy procedure overwrote a supplied `vEqu` with 1 and printed base-currency figures under a foreign-currency heading, 1500× too large, with no error. This slice is the first in execution order to touch it, because it is the first with a report that converts a document amount to base.
+LEGACY-014 is "`procSumVouItems` silently discards the caller's exchange rate": the legacy procedure overwrote a supplied `vEqu` with 1 and printed base-currency figures under a foreign-currency heading, 1500× too large, with no error. This slice is the first in execution order to touch it, because it is the first with a report that converts a document amount to base.
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -7190,7 +7190,7 @@ import { describe, expect, it } from "vitest";
 // failure, and `repoFile` and `sharedDb` are both exported from that file (§4.17.1).
 import { repoFile, sharedDb } from "../support/regression";
 
-describe("SAH-014 The caller's exchange rate is never discarded — 4A", () => {
+describe("LEGACY-014 The caller's exchange rate is never discarded — 4A", () => {
   it("no query in this slice substitutes 1 for a supplied rate", () => {
     for (const f of [
       "packages/db/src/reports/sales-by-item.ts",
@@ -7239,8 +7239,8 @@ describe("SAH-014 The caller's exchange rate is never discarded — 4A", () => {
 
 - [ ] **Step 5: Run everything, including test 14's re-run**
 
-Run: `bun run --cwd packages/db test reports/sales-by-item-revenue reports/inventory-reports && bun run --cwd apps/api test routes/accounting/inventory-reports && node --test tests/regression/sah-014.test.ts && bun run --cwd packages/contracts openapi:generate`
-Expected: PASS — six new report cases, **3D's own `inventory-reports` suite green unchanged**, the route suite green, four `sah-014` cases, and the OpenAPI diff showing two added properties on `SalesByItemRow`.
+Run: `bun run --cwd packages/db test reports/sales-by-item-revenue reports/inventory-reports && bun run --cwd apps/api test routes/accounting/inventory-reports && node --test tests/regression/legacy-014.test.ts && bun run --cwd packages/contracts openapi:generate`
+Expected: PASS — six new report cases, **3D's own `inventory-reports` suite green unchanged**, the route suite green, four `legacy-014` cases, and the OpenAPI diff showing two added properties on `SalesByItemRow`.
 
 **Test 14's re-run** (`§6.1`: "the purchase-return one-query test against the full accounting catalogue") is one further case, added to `packages/db/test/seed/permission-phase4a.test.ts` in this task because the catalogue is now complete for accounting:
 
@@ -7258,7 +7258,7 @@ Expected: PASS — six new report cases, **3D's own `inventory-reports` suite gr
     // slice: 1A's six, 1B's one, 2A's one, 2B's one, 3C's two, 3D's one and this slice's seven. §3.6.2's
     // "accounting 23" is the complete v1 catalogue and includes 4B's `bank.reconcile`, 5A's `tax.manage`,
     // 5B's `tax.file` and 7A's `report.export`, none of which exists yet — asserting 23 here would go red
-    // on a slice that has not run. This is what spec:2432 asks and what SAH-034/047 made impossible.
+    // on a slice that has not run. This is what spec:2432 asks and what LEGACY-034/047 made impossible.
     const [n] = await db.admin<{ n: number }[]>`
       select count(*)::int as n from app.permission where module = 'accounting'`;
     expect(n!.n).toBe(19);
@@ -7271,14 +7271,14 @@ Expected: PASS — six new report cases, **3D's own `inventory-reports` suite gr
 git add packages/db/src/reports/sales-by-item.ts packages/contracts/src/inventory/reports.ts \
         packages/contracts/openapi.json apps/api/src/routes/accounting/reports.ts \
         packages/db/test/reports/sales-by-item-revenue.test.ts \
-        packages/db/test/seed/permission-phase4a.test.ts tests/regression/sah-014.test.ts
+        packages/db/test/seed/permission-phase4a.test.ts tests/regression/legacy-014.test.ts
 git commit -m "feat(reports): inventory.sales_by_item gains revenue and margin under the same code [4A T11]
 
 §4.16.1's one code, three shipments (hazard 4). Revenue is Sigma round(document_line.amount x rate, 4)
 over posted SALES_INVOICE and SALES_CREDIT_NOTE lines, in base — ledger_entry carries no item id, so it
 cannot be the source. A credit note's amount is already negated, so a return subtracts with no sign
 logic. 3D's params and cost member are untouched and its tie-out is re-run unchanged. Test 14 re-run
-over the complete accounting catalogue; sah-014 created.
+over the complete accounting catalogue; legacy-014 created.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
@@ -7379,7 +7379,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 - [ ] **Step 1: Owner provides the screenshots and the descriptions**
 
-**Owner provides:** for each of the four screens — the invoice list, the invoice editor, the receipt/payment editor and the allocation panel — a screenshot of the Sahlisoft equivalent and a two-minute description of the operator's actual sequence (what they type first, what they never touch, which field they tab to most).
+**Owner provides:** for each of the four screens — the invoice list, the invoice editor, the receipt/payment editor and the allocation panel — a screenshot of the legacy equivalent and a two-minute description of the operator's actual sequence (what they type first, what they never touch, which field they tab to most).
 
 **Verify:** `ls docs/ui/screenshots/ar-ap/ | wc -l` prints **4 or more**, and `test -s docs/ui/ar-ap-operator-notes.md && echo "OD-24 attached"` prints `OD-24 attached`.
 
@@ -7417,7 +7417,7 @@ The last task. It runs everything, re-asserts every pinned list this slice could
 **Files:**
 - Create: `docs/review/2026-09-05-phase-4a-exit.md`
 - Modify: `packages/db/test/privileges.test.ts` (re-assert the unchanged DELETE list)
-- Modify: `tests/regression/sah-011.test.ts` (append, create-if-absent), `tests/regression/sah-012.test.ts` (append)
+- Modify: `tests/regression/legacy-011.test.ts` (append, create-if-absent), `tests/regression/legacy-012.test.ts` (append)
 - Modify: `tests/invariants/ledger-balance.test.ts` (one case: the six new types under fuzz — test 1's re-run)
 
 **Interfaces:**
@@ -7441,10 +7441,10 @@ Expected: all four green. In `privileges.test.ts` the pinned expectation is re-s
 
 - [ ] **Step 2: Append the last two regression blocks**
 
-`tests/regression/sah-012.test.ts` — append (0B created it):
+`tests/regression/legacy-012.test.ts` — append (0B created it):
 
 ```ts
-describe("SAH-012 base = value × rate on every AR/AP line, and the rate has a source — 4A", () => {
+describe("LEGACY-012 base = value × rate on every AR/AP line, and the rate has a source — 4A", () => {
   it("EVERY writer of an AR/AP document header in this slice sets rate_source — asserted on the source", async () => {
     const { repoFile } = await import("../support/regression");
     // Asserted on the SOURCE and not on `sharedDb()`'s rows, because this file runs against the thin
@@ -7496,10 +7496,10 @@ describe("SAH-012 base = value × rate on every AR/AP line, and the rate has a s
 });
 ```
 
-`tests/regression/sah-011.test.ts` — **append, create-if-absent** (§3.7.3; the creator is not named in the catalogue, so the block is written to be order-independent):
+`tests/regression/legacy-011.test.ts` — **append, create-if-absent** (§3.7.3; the creator is not named in the catalogue, so the block is written to be order-independent):
 
 ```ts
-describe("SAH-011 No NULL reaches an AR/AP balance or an aggregate — 4A", () => {
+describe("LEGACY-011 No NULL reaches an AR/AP balance or an aggregate — 4A", () => {
   it("every monetary column this slice adds is NOT NULL with a default, or is deliberately nullable and documented", async () => {
     const { rw } = await sharedDb();
     const cols = await rw.db.admin<{ t: string; c: string; n: string; d: string | null }[]>`
@@ -7590,13 +7590,13 @@ Expected: every command exits 0, and the OpenAPI diff is empty (it was regenerat
 
 ```bash
 git add docs/review/2026-09-05-phase-4a-exit.md packages/db/test/privileges.test.ts \
-        tests/regression/sah-011.test.ts tests/regression/sah-012.test.ts \
+        tests/regression/legacy-011.test.ts tests/regression/legacy-012.test.ts \
         tests/invariants/ledger-balance.test.ts
 git commit -m "test: slice 4A exit — the re-run matrix, the pinned lists and the last regression blocks [4A T14]
 
 Tests 10, 14 and 31 pass over the six new types; 1, 12, 13, 27 and 36 re-run over this slice's rows,
 routes and codes (2 and 15 are not 4A re-runs — see contracts §6.1 rows 2 and 15). The app_rw DELETE list is re-asserted UNCHANGED (payment_term archives,
-allocation reverses). sah-011 and sah-012 appended, sah-014 created in T11.
+allocation reverses). legacy-011 and legacy-012 appended, legacy-014 created in T11.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
@@ -7615,11 +7615,11 @@ Read against the writing-plans skill, the contracts document and the four rule s
 | `CREDIT_TEST` / `CRT` — test only | §4.14 | Task 3's trigger must be red-then-green before `SALES_INVOICE` exists; 2A's `POLICY_TEST` is `internal`, which the trigger ignores |
 | ADR 0045: `line.cost` negates on a negative-quantity line | §4.4.2 | The amendment 3D filed as blocking Phase 4 (3d:2740) |
 | The unfilled-cost refusal in `applyMovements` | §4.7.2 | 2A's step-9b guard, removed by 3B, and 4A is the first slice with a `line.cost` leg on an `effect: none` policy |
-| `document_line.cost` may be written by a conversion service | §4.7.2, §4.3.4 | The corridor must be relieved by the figure that filled it (SAH-009) |
+| `document_line.cost` may be written by a conversion service | §4.7.2, §4.3.4 | The corridor must be relieved by the figure that filled it (LEGACY-009) |
 | `0045_alter_party_and_document_add_credit_terms.sql` | §3.4.2, §4.5.7 | The card's short name understates a file that also adds `document.payment_term_id` and a trigger |
 | **`party.price_list_id`** (part of the same amendment 6) | §4.5.7 | **Not this slice's own idea:** 6B's Task 0 amendment **A10(b)** names `app.party.price_list_id` as the key §3.7.6's *customer-specific pricing* has nothing to resolve on, and names **4A's 0045** as the file that adds it. It lands here because 4A executes in Phase 4 and 6B in Phase 6, and Global Constraint 13 forbids Task 3 writing a literal into a register that does not yet hold it. 4A **reads** it nowhere — not the trigger, not `app.party_open_balance`, not `creditStatus`; Task 3 adds the column, its composite FK, its Drizzle mirror entry (§3.4.9 makes the mirror the diff source, so an unmirrored column is a column the next generated diff proposes dropping) and its wire field, and two of that task's fifteen cases prove exactly that and nothing more |
-| `document.payment_term_id` | §4.3.4 | The term must be pinned, not re-read (SAH-013) |
-| The ageing buckets use the **pinned** term | §4.8.2 | A latent SAH-013 in 4B's contract |
+| `document.payment_term_id` | §4.3.4 | The term must be pinned, not re-read (LEGACY-013) |
+| The ageing buckets use the **pinned** term | §4.8.2 | A latent LEGACY-013 in 4B's contract |
 | `ERR_CREDIT_HOLD` (422) | §4.2.4 | A hold is not overridable and its remedy differs; one code would carry the wrong remedy for half its callers |
 | `AllocationRow`, `PartyBalance`, `listAllocations` | §4.8.1 | The block implied all three and named none |
 | `allocation.unallocated_by`, `allocation.unallocation_reason`, and the second `attach_stamp` | §4.8.1 | `unallocate` compels a reason and `app.audit_row` writes `to_jsonb(new)`, so a reason with no column is a reason no auditor can recover — the ADR 0023 loss in a new table |
@@ -7634,7 +7634,7 @@ Read against the writing-plans skill, the contracts document and the four rule s
 | 4A's seven codes added to §3.6.4's grants sentence (**Task 2**, not Task 0) | §3.6.4 | The section requires the sentence to be extended "in the same PR" as the catalogue entries, and those are Task 2's |
 | **⚠️ Test 22's POS/invoice comparison, with both admissible readings and 6A named as the decider** | §6.1 row 22 | ADR 0044 makes a financial-only `SALES_INVOICE` un-comparable to a `POS_TICKET`, and the `DO ∪ INV` union does not compare either against a frozen projection set that does not net pairs. Written down rather than left for 6A to hit cold — the courtesy 3D paid this slice at 3d:2723 |
 
-**Hazard sweep.** 1 no statutory figure appears (this slice has no HR surface) · 2 no MyInvois or LHDN detail; `tax.applies` is `false` on all six types and 5A flips it in a policy version 2 · 3 no Firebird assumption · 4 the minimal report ships **in this slice**, under 3D's code, and hazard 4's own sentence about "sales by item" is what Task 11 implements · 5 both owner tasks use the "owner provides X; verify with `<command>`" pattern with an explicit "until provided" clause · 6 OD-05 and OD-24 are one isolated task each, droppable without renumbering · 7 no D1–D27 re-opened · 8 every Plan 0A helper cited by its exact name · 9 one `fixtures.ts` helper — the row §4.17 assigns 4A — and one §4.17.1 row, registered in Task 0; the four `_support.ts` helpers are deliberately file-local and say so · 10 `app.permission` is the only migration data; the six document types are seed-pack files · 11 no enum label added (`payment_term` and `allocation` use CHECKs) · 12 0B's reversibility generalisation is relied on and both down files are hand-written · 13 `lint-schema.ts` is edited to exactly §3.5.3's state: `payment_term` and `allocation` join **no** exemption set · 14 migrations 0044–0047 only; no renumbering; the 0045 rename is registered · 15 the production `withTenant(sql, ctx, fn)` in every service, the 4-argument test helper in every test · 16 no `employee` surface · 17 test 7's negative stock is untouched · 18 the multiset projection set is untouched by this slice — and amendment 17 records, in §6.1 row 22 itself, that ADR 0044 leaves test 22's *comparison* needing 6A's choice between two named readings · 19 no POS surface, and none is invented: the POS half of test 22 is handed to 6A, not guessed at here · 20 no job added · 21 no `sql.unsafe` · 22 nothing outside `posting/` and `costing/` writes a ledger or movement table; `allocation` is deliberately not in `posting-only-tables` and a regression case asserts it · 23 `HALF_AWAY_FROM_ZERO` at scale 4 everywhere, asserted by `sah-019` · 24 `document_event` is written only by triggers and `recordOverride` · 25 the DELETE list is re-asserted unchanged · 26 exactly the seven codes §3.6.2 assigns · 27 no new principal kind · 28 no Phase 8 dependency · 29 the screen task begins with OD-24 and invents no workflow · 30 the PDF engine is not touched · 31 one new route module, one new `PROBES` key, no key for a sub-path · 32 no unregistered literal in any of the five namespaces · 33 **this slice seeds no account** and Task 2 asserts all eight it names resolve · 34 all six seed files are envelopes with an explicit `module` · 35 every task carries exact paths, exact signatures, real code, a failing test first and a commit.
+**Hazard sweep.** 1 no statutory figure appears (this slice has no HR surface) · 2 no MyInvois or LHDN detail; `tax.applies` is `false` on all six types and 5A flips it in a policy version 2 · 3 no Firebird assumption · 4 the minimal report ships **in this slice**, under 3D's code, and hazard 4's own sentence about "sales by item" is what Task 11 implements · 5 both owner tasks use the "owner provides X; verify with `<command>`" pattern with an explicit "until provided" clause · 6 OD-05 and OD-24 are one isolated task each, droppable without renumbering · 7 no D1–D27 re-opened · 8 every Plan 0A helper cited by its exact name · 9 one `fixtures.ts` helper — the row §4.17 assigns 4A — and one §4.17.1 row, registered in Task 0; the four `_support.ts` helpers are deliberately file-local and say so · 10 `app.permission` is the only migration data; the six document types are seed-pack files · 11 no enum label added (`payment_term` and `allocation` use CHECKs) · 12 0B's reversibility generalisation is relied on and both down files are hand-written · 13 `lint-schema.ts` is edited to exactly §3.5.3's state: `payment_term` and `allocation` join **no** exemption set · 14 migrations 0044–0047 only; no renumbering; the 0045 rename is registered · 15 the production `withTenant(sql, ctx, fn)` in every service, the 4-argument test helper in every test · 16 no `employee` surface · 17 test 7's negative stock is untouched · 18 the multiset projection set is untouched by this slice — and amendment 17 records, in §6.1 row 22 itself, that ADR 0044 leaves test 22's *comparison* needing 6A's choice between two named readings · 19 no POS surface, and none is invented: the POS half of test 22 is handed to 6A, not guessed at here · 20 no job added · 21 no `sql.unsafe` · 22 nothing outside `posting/` and `costing/` writes a ledger or movement table; `allocation` is deliberately not in `posting-only-tables` and a regression case asserts it · 23 `HALF_AWAY_FROM_ZERO` at scale 4 everywhere, asserted by `legacy-019` · 24 `document_event` is written only by triggers and `recordOverride` · 25 the DELETE list is re-asserted unchanged · 26 exactly the seven codes §3.6.2 assigns · 27 no new principal kind · 28 no Phase 8 dependency · 29 the screen task begins with OD-24 and invents no workflow · 30 the PDF engine is not touched · 31 one new route module, one new `PROBES` key, no key for a sub-path · 32 no unregistered literal in any of the five namespaces · 33 **this slice seeds no account** and Task 2 asserts all eight it names resolve · 34 all six seed files are envelopes with an explicit `module` · 35 every task carries exact paths, exact signatures, real code, a failing test first and a commit.
 
 **Five things a reviewer should push on, named rather than hidden.**
 
@@ -7648,7 +7648,7 @@ Read against the writing-plans skill, the contracts document and the four rule s
 
 1. **The credit-note-as-settlement case builds its note with `creditNoteFrom`, not with `postArDocument`** (Task 9's seventh case). `SALES_CREDIT_NOTE.json` declares `requires: ["party", "reverses_document"]` and `PostArOptions` has no member that sets `reverses_document_id` — `draftTypedDocument` does not write the column at all — so the helper-built note was refused at post by the very control Task 8's own fourth case asserts. The fix uses the production path, which is what the case should have exercised in the first place.
 2. **The six route handlers and the three route suites are written out, not described.** `POST …/documents/{documentId}/credit-note` (Task 8 Step 5), the four allocation sub-paths and `GET …/parties/{partyId}/balance` (Task 9 Step 6), and `POST …/documents/settlements` (Task 10 Step 5) each carry a complete `createRoute` block; `packages/contracts/src/accounting/allocation.ts` and `settlement.ts` carry real Zod source; and `invoices.test.ts` (Task 6 Step 5, appended by Task 8 Step 6), `allocations.test.ts` (Task 9 Step 7) and `settlements.test.ts` (Task 10 Step 6) are real suites rather than file names in a Run line. Every one of the three follows 3C's `document-links.test.ts` shape — `startApi()`, five levels up to `tests/support/api`, inline `seedDocumentType` policies — because a route suite that reached into `packages/db/test/ar-ap/_support.ts` would break §3.1's tier rule.
-3. **`PostArOptions` gained `rateSource`, and Task 5's suite asserts it.** `draftTypedDocument` writes no `rate_source`, `app.document.rate_source` has no default, and Task 14's `sah-012` block ran against a database holding no 4A document — so the invariant was asserted vacuously *and* broken by the helper. Both halves are fixed: the helper writes the column, Task 5 asserts it where the rows are, and the `sah-012` block now says which of its two cases is the proof and which is the guard.
+3. **`PostArOptions` gained `rateSource`, and Task 5's suite asserts it.** `draftTypedDocument` writes no `rate_source`, `app.document.rate_source` has no default, and Task 14's `legacy-012` block ran against a database holding no 4A document — so the invariant was asserted vacuously *and* broken by the helper. Both halves are fixed: the helper writes the column, Task 5 asserts it where the rows are, and the `legacy-012` block now says which of its two cases is the proof and which is the guard.
 4. **The TDD order in Tasks 5, 7, 8 and 10 is failing-test → red → configuration.** Each of the four wrote its seed JSON first and could not produce a red; each now has an explicit run-and-see-red step naming the exact failure (`the seed pack has no document type <CODE>`, thrown by `loadTypesFromPack`). No task was renumbered; only steps within those four moved.
 5. **Five defects in the newly written route code were caught on a second read of it and are fixed here, named because each would have failed at execution rather than at review.** (a) Task 6's route suite seeded `API_DELIVERY` with an **invented** approval code, `inventory.delivery.post`; §3.6.2 catalogues thirteen `inventory.*` codes and that is not one of them, so `grantCodes` would have failed the `app.role_permission.permission_code → app.permission(code)` foreign key inside `beforeAll`. It is now `inventory.transfer.post`, which is 3D's real `DELIVERY_ORDER` code (3d:2861). (b) The credit-note route drafted and returned, and its `reason` therefore reached nothing: 2B's only writer of `document_event` is an AFTER **UPDATE OF status** trigger, so inserting a draft records no row and the second route case asserted a reason that could never be there. `creditNoteFrom` now places the reason with `setEventContext` — the call that makes its required `reason` parameter load-bearing, and the same placement `reverse.ts` uses (2b:1519) — and the handler issues on the same transaction, which §4.5.1 admits without a second gate because the policy sets `approval.required: false` and block 2c evaluates no code for `issued`. **The route therefore returns an issued note, not a draft**, and both cases now assert that. (c) The `unallocate` handler returned `listAllocations(…)[0]` — the settlement's first allocation, not the reversed one; it now uses `.find((r) => r.id === allocationId)`, a bug a single-allocation fixture would have hidden. (d) The party-balance route was written against `PartyParams` and `PARTY_PAGE`, neither of which 2A exports — it declares a module-local `gate()` and spells its params inline (2a:3993, 2a:4072), and this route now does the same. (e) Task 6's gate case hedged `expect([201, 403]).toContain(res.status)` against a principal holding everything — a form that cannot fail, and the same one already removed from `settlements.test.ts`; it now calls with an un-granted `secondPrincipal` and pins `403` plus `ERR_RBAC_FORBIDDEN`. `toAllocationDto` also destructures `currency` and `baseCurrency` out rather than spreading them into a response typed by `AllocationSchema`, which does not declare them.
 

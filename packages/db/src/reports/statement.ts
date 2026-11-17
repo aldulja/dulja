@@ -25,7 +25,7 @@ export interface StatementParams {
 
 const UUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
-/** A malformed uuid would otherwise reach Postgres as SQLSTATE 22P02 and surface as a 500 (SAH-084). */
+/** A malformed uuid would otherwise reach Postgres as SQLSTATE 22P02 and surface as a 500 (LEGACY-084). */
 function assertUuid(value: string, field: string): void {
   if (!UUID.test(value)) {
     throw new ReportError(
@@ -39,7 +39,7 @@ function assertUuid(value: string, field: string): void {
  * The per-BRANCH read. `account_balance`'s key is (company, account, period, currency) and carries no branch
  * (§4.3.3), so the branch cut is the ledger summed to exactly that grain plus the branch. A posted amount's
  * branch is its document's `branch_id`: the posting service writes that same value as every line's BRANCH
- * dimension (`dimensionsFor` — the header's BRANCH always wins, SAH-042/050), and no seeded policy narrows a
+ * dimension (`dimensionsFor` — the header's BRANCH always wins, LEGACY-042/050), and no seeded policy narrows a
  * rule's `dimensions.from`, so the document join is the one branch tag every line has.
  *
  * It sums in SQL rather than collapsing a page of `ledger_entry` rows in TypeScript: a statement over a page

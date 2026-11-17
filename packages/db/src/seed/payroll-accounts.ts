@@ -10,8 +10,8 @@ import { systemContext, withTenant } from "../with-tenant";
  * It is NOT a `PackLoader`: `LOADERS` is keyed by `SubPack` and 0C already owns `chart-of-accounts`, so this runs
  * as its own step after `bun run seed --tenant <id> --only chart-of-accounts` (§3.4.8: add a file, never a
  * loader). It opens its own tenant transaction as **the tenant's system principal** — the wiring is reference
- * data nobody signs for, and a human actor stamped on it would be a lie the audit trail then carries (SAH-044).
- * Exported from the SEED barrel only (§3.1, sah-039), never from the main barrel.
+ * data nobody signs for, and a human actor stamped on it would be a lie the audit trail then carries (LEGACY-044).
+ * Exported from the SEED barrel only (§3.1, legacy-039), never from the main barrel.
  */
 export async function linkPayrollAccountsForTenant(
   sql: Sql,

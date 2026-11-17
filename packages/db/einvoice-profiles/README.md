@@ -16,7 +16,7 @@ A **profile** is the remote call shape of a fiscalisation authority, expressed a
 3. **A new authority schema version is a new file**, `<code>.v<n+1>.json`, beside the old one. The
    old one is never edited: `einvoice_transmission.profile_version` records which file each call was
    made with, so a completed transmission stays readable against the file that produced it
-   (SAH-013's pinning applied to an integration).
+   (LEGACY-013's pinning applied to an integration).
 4. **This directory is deliberately not under `packages/db/seed/`.** 2C made `assertPackShape`
    derive its allowed directories from `SUB_PACKS` (§4.2.13), so an unregistered directory there
    makes `bun run seed` exit 3. A profile is not per-tenant data and needs no loader.

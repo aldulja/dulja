@@ -10,7 +10,7 @@
 --     1,000 and 900 already issued at HQ — exposure 1,800, no override asked (DBS-04);
 --   - the over-fulfilment guard and app.document_open_quantity (0037 → 0116): a principal restricted to the
 --     source's branch did not see a fulfilment drafted in another branch and linked the same quantity again —
---     SAH-017's control bypassed (DBS-07 = INV-08);
+--     LEGACY-017's control bypassed (DBS-07 = INV-08);
 --   - the payment-term and party-control "pinned" guards (0045 §4a, §4b): a document at another branch did not
 --     pin the term or the control account (DBS-18).
 --
@@ -138,7 +138,7 @@ begin
 end $$;
 comment on function app.source_line_linked_quantity(uuid, uuid, uuid) is
   'ADR 0095 (DBS-07, INV-08): one quantity — the sum of standing links against a source line, over every branch '
-  'of the company, for the over-fulfilment guards (SAH-017) and app.document_open_quantity. Tenant- and '
+  'of the company, for the over-fulfilment guards (LEGACY-017) and app.document_open_quantity. Tenant- and '
   'company-bound, answered only to a live role in the company (else ERR_NOT_FOUND); app_auth-owned SECURITY '
   'DEFINER, never a policy predicate.';
 
@@ -215,14 +215,14 @@ begin
       'party.receivable_account_id (§4.15 1200 trade receivables is the default) or clear the limit',
       p_party_id using errcode = 'check_violation';
   end if;
-  -- coalesce at the accumulation boundary (SAH-011): a party with no posted row owes 0, never NULL.
+  -- coalesce at the accumulation boundary (LEGACY-011): a party with no posted row owes 0, never NULL.
   -- 0127 (ADR 0095, DBS-04): every branch of the company, through the bounded lookup.
   return app.party_company_open_balance(v_company_id, p_party_id, p_as_of);
 end $$;
 comment on function app.party_open_balance(uuid, date) is
   'contracts §4.8.1: the party balance the credit-control trigger and creditStatus() both read. Base currency, '
   'posted rows only, on the party''s own receivable control account (§4.15 1200 by default); a NULL date is no '
-  'date cut. Raises ERR_POLICY_REQUIRES_MISSING when a party carries a limit and no control account — SAH-042, '
+  'date cut. Raises ERR_POLICY_REQUIRES_MISSING when a party carries a limit and no control account — LEGACY-042, '
   'never a silent 0.';
 
 create or replace function app.party_credit_exposure(p_party_id uuid, p_excluding_document_id uuid) returns numeric
@@ -312,7 +312,7 @@ begin
     return new;                                               -- a header-only or amount-only link has no quantity to bound
   end if;
 
-  -- SAH-017's concurrency face — lock the SOURCE LINE, then read, correct at READ COMMITTED because each
+  -- LEGACY-017's concurrency face — lock the SOURCE LINE, then read, correct at READ COMMITTED because each
   -- statement takes a fresh snapshot (3a:5719-5727 applied to this table; 0037's comment has the argument).
   perform pg_advisory_xact_lock(hashtextextended('document_link:' || new.source_line_id::text, 0));
 
@@ -396,13 +396,13 @@ begin
   if app.payment_term_is_pinned(old.company_id, old.id) then
     raise exception
       'ERR_CONFLICT_REFERENCE: payment term % is pinned on a document that is no longer a draft; its days and '
-      'discount are what that document is aged on (SAH-013) — create a new term instead', old.code
+      'discount are what that document is aged on (LEGACY-013) — create a new term instead', old.code
       using errcode = 'check_violation';
   end if;
   return new;
 end $$;
 comment on function app.assert_payment_term_days_unpinned() is
-  'Phase 4 review A8, SAH-013: refuses changing due_days, discount_days or discount_pct of a payment term that '
+  'Phase 4 review A8, LEGACY-013: refuses changing due_days, discount_days or discount_pct of a payment term that '
   'a non-draft document pins (ERR_CONFLICT_REFERENCE).';
 
 create or replace function app.assert_party_control_unchanged() returns trigger language plpgsql as $$

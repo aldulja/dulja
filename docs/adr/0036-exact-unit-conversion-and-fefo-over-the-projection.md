@@ -10,11 +10,11 @@
 Two decisions in one record, because they share a root cause: the legacy system computed an answer at each
 call site instead of once, and the answer therefore depended on which call site ran.
 
-**SAH-066** — `MatUnits.Exchange` held a conversion factor per (material, unit) and no code multiplied by it.
+**LEGACY-066** — `MatUnits.Exchange` held a conversion factor per (material, unit) and no code multiplied by it.
 Quantities were entered in cartons and stored as if they were pieces. The factor existed as data and as
 documentation and as nothing else.
 
-**SAH-067** — stock on hand was computed by replaying the entire movement history under a hinted
+**LEGACY-067** — stock on hand was computed by replaying the entire movement history under a hinted
 index-navigation plan. Two consequences: it was slow in proportion to history rather than to stock, and the
 row order — and so the answer to "which batch do I pick?" — was a property of the chosen plan rather than of
 the data.
@@ -37,7 +37,7 @@ would then refuse a legitimate line. Same scale by `QUANTITY_SCALE`, same mode b
 same _order_: numerator first, denominator second, one rounding at the end, matching
 `unit_quantity * num::numeric / den::numeric`. `Quantity.multiply(rational, mode)` is not used, because 0D
 implements it by collapsing the rational to a decimal before multiplying, and rounding before multiplying is
-the SAH-066 shape.
+the LEGACY-066 shape.
 
 **2. FEFO reads `app.stock_on_hand`, and its ordering is total.**
 `app.pick_lots_fefo(item_id, warehouse_id, quantity)` (migration 0031) walks the synchronous projection

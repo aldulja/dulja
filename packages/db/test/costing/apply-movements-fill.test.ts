@@ -94,7 +94,7 @@ describe("applyMovements — the 3D fill rules (§4.7.2 as amended)", () => {
     // `jobs` is not optional here, unlike in the plan's draft of this fixture: the LAST case tops the
     // corridor up with a second receipt dated 2026-01-05 while movements already exist at 2026-01-20, which
     // is back-dating, and §4.3.2 step 14 refuses a back-dated inventory post whose caller supplied no
-    // JobClient rather than silently skipping the recost (SAH-005).
+    // JobClient rather than silently skipping the recost (LEGACY-005).
     await withTenant(db.rw, s.tenant, s.human, (tx) =>
       postDocument(tx, ctxOf(s), { documentId: docId, jobs: recordingJobs() }),
     );

@@ -66,7 +66,7 @@ export const TILL_CODES = [
  * It is the till's copy of 6C's `OVERRIDE_LIFTS` because that module imports `postgres` and the till carries
  * no PostgreSQL driver (Global Constraint 3). **Task 12's pinned test asserts the two maps are equal**, so a
  * change to one that is not made to the other fails the build rather than letting a till authorise something
- * the server will refuse — which is the SAH-027 shape 6C's nightly comparison exists to catch.
+ * the server will refuse — which is the LEGACY-027 shape 6C's nightly comparison exists to catch.
  *
  * `price_override` appears here and **not** in 6C's server-side map on purpose: 6C's Task 9 decision (c)
  * records that `max_price_override_pct` is enforced **at the till only**, because checking it server-side
@@ -106,7 +106,7 @@ interface CashierRow {
  * PIN login (spec:1324): the PIN is a **till credential and never a login** — no route accepts one and the
  * server never compares one. The stored value is the Argon2id PHC string 6C's `hashPin` produced, down-synced
  * in `catalogue_cashier`, and `verifyPin` is 6C's function imported through `@dulja/db/staff/pin` (A3) so
- * there is exactly one Argon2id call site in the product (SAH-025, 026, 028).
+ * there is exactly one Argon2id call site in the product (LEGACY-025, 026, 028).
  *
  * **Every failure answers `ERR_TILL_PIN_INVALID`** — unknown cashier, wrong PIN, revoked credential alike.
  * Distinguishing them would let anyone standing at a till enumerate the branch's cashier list.
@@ -216,7 +216,7 @@ export function pinLockoutMs(failures: number): number {
 }
 
 /**
- * SAH-028's *"rate limiting and lockout on failed attempts"* (spec:476). It binds here because the cashier
+ * LEGACY-028's *"rate limiting and lockout on failed attempts"* (spec:476). It binds here because the cashier
  * PIN is the only credential the application hashes itself (spec:2132), and a four-digit PIN is ten thousand
  * guesses. **Every PIN the till takes from the screen comes through this function** — a sign-in and a
  * supervisor's approval alike — so both share one counter per employee number.

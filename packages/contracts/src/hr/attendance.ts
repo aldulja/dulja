@@ -17,7 +17,7 @@ export const AttendanceEventSchema = z
   })
   .meta({ id: "AttendanceEvent" });
 
-/** No `recordedBy`: the actor is the session's (SAH-044). No `terminalId` either — a back-office
+/** No `recordedBy`: the actor is the session's (LEGACY-044). No `terminalId` either — a back-office
  *  correction has no till, and the sync path supplies it from the signed call, never from a body. */
 export const RecordAttendanceBody = z
   .object({

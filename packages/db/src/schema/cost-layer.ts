@@ -63,7 +63,7 @@ export const costLayer = app.table(
       table.effectiveAt,
       table.sequence,
     ),
-    // 7B, migration 0077 (SAH-070) — NOT partial: inventory.stock_ageing reads every layer of an item.
+    // 7B, migration 0077 (LEGACY-070) — NOT partial: inventory.stock_ageing reads every layer of an item.
     index("cost_layer_company_item_warehouse_idx").on(
       table.companyId,
       table.itemId,

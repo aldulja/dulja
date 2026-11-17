@@ -26645,7 +26645,7 @@
         "tags": [
           "accounting"
         ],
-        "summary": "The chart as a tree, in one recursive CTE (SAH-071)",
+        "summary": "The chart as a tree, in one recursive CTE (LEGACY-071)",
         "parameters": [
           {
             "schema": {
@@ -27028,7 +27028,7 @@
         "tags": [
           "accounting"
         ],
-        "summary": "Archive an account — accounts are never deleted (spec:2049, SAH-021)",
+        "summary": "Archive an account — accounts are never deleted (spec:2049, LEGACY-021)",
         "parameters": [
           {
             "schema": {
@@ -32104,7 +32104,7 @@
         "tags": [
           "accounting"
         ],
-        "summary": "Ordered, linked and open quantity per line (SAH-017, SAH-018)",
+        "summary": "Ordered, linked and open quantity per line (LEGACY-017, LEGACY-018)",
         "parameters": [
           {
             "schema": {
@@ -56239,7 +56239,7 @@
             }
           },
           "409": {
-            "description": "The days or discount of a term a non-draft document pins (ERR_CONFLICT_REFERENCE, SAH-013) — create a new term",
+            "description": "The days or discount of a term a non-draft document pins (ERR_CONFLICT_REFERENCE, LEGACY-013) — create a new term",
             "content": {
               "application/problem+json": {
                 "schema": {

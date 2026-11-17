@@ -49,7 +49,7 @@ async function draftWithLines(
   return id;
 }
 
-describe("postDocument — contracts §4.3.2 (SAH-003, 012, 031, 041, 044)", () => {
+describe("postDocument — contracts §4.3.2 (LEGACY-003, 012, 031, 041, 044)", () => {
   let db: Db;
   let a: Seed;
   let plain: Seed;
@@ -97,7 +97,7 @@ describe("postDocument — contracts §4.3.2 (SAH-003, 012, 031, 041, 044)", () 
         from app.document where id = ${doc}`,
     );
     expect(header!.status).toBe("posted");
-    // Stamped from the session, never a parameter (SAH-044).
+    // Stamped from the session, never a parameter (LEGACY-044).
     expect(header!.posted_by).toBe(a.human);
     expect(header!.posting_policy_id).toBe(result.postingPolicyId);
     expect(header!.posted_at).not.toBeNull();
@@ -157,7 +157,7 @@ describe("postDocument — contracts §4.3.2 (SAH-003, 012, 031, 041, 044)", () 
     expect(balance).toMatchObject({ debit: "100.0000", base_debit: "100.0000" });
   });
 
-  it("accumulates the projection over two documents rather than replacing it (SAH-002)", async () => {
+  it("accumulates the projection over two documents rather than replacing it (LEGACY-002)", async () => {
     // The tenant is seeded once in beforeAll and the first test in this file posts 100.0000 to a.cash, so
     // the value is deterministic. Asserted as the exact numeric(19,4) STRING: converting a money column to
     // a JS float to compare it approximately is the thing spec:97-104 forbids, and this is a test, which is
@@ -272,7 +272,7 @@ describe("postDocument — contracts §4.3.2 (SAH-003, 012, 031, 041, 044)", () 
     ).rejects.toMatchObject({ code: "ERR_DOC_NO_LINES" });
   });
 
-  it("refuses an unbalanced document before writing any row (SAH-003)", async () => {
+  it("refuses an unbalanced document before writing any row (LEGACY-003)", async () => {
     const doc = await draftWithLines(db, a, [
       { account: a.cash, debit: "100.0000" },
       { account: a.sales, credit: "90.0000" },

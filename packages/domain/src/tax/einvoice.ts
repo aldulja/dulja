@@ -226,7 +226,7 @@ export function renderPath(template: string, vars: Readonly<Record<string, strin
  * An UNMAPPED label becomes `"error"` and is returned as `unmapped` so the caller can record it in
  * `last_error`. It deliberately does NOT throw and deliberately does NOT default to `"accepted"`:
  * an authority that adds a label must produce a visible state, never a false acceptance. This is
- * the whole of SAH-020's "a mismatched return refuses to run, rather than producing a wrong number"
+ * the whole of LEGACY-020's "a mismatched return refuses to run, rather than producing a wrong number"
  * applied to a transmission.
  *
  * `"error"` here is what the authority SAID, not what the transmission log records. The log

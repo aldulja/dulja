@@ -22,7 +22,7 @@ export interface JournalLine {
    * 8B, contracts round 17 amendment A13. Dimension-type CODE → `dimension_value.id`, the exact shape of
    * `document_line.dimensions` (§4.3.4). Omitted, the column takes its `'{}'::jsonb` default and every pre-8B
    * caller behaves exactly as before. JOURNAL_POLICY_V1 declares no `dimensions` block, so 2A's evaluator reads
-   * this bag by default and the header's BRANCH then wins over the bag's (SAH-042/SAH-050).
+   * this bag by default and the header's BRANCH then wins over the bag's (LEGACY-042/LEGACY-050).
    */
   dimensions?: Record<string, string>;
 }

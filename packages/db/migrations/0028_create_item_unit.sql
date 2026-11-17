@@ -1,6 +1,6 @@
 -- ── 0028 · app.unit_of_measure, app.item, app.unit_conversion ──────────────────────────────────
 -- spec:1178–1181 (§3.3 Item / UnitOfMeasure / conversions), spec:1048 (§3.0.4 Inventory core),
--- spec:2043 (§3.9 Quantities: conversions are exact rationals, never floats — SAH-066),
+-- spec:2043 (§3.9 Quantities: conversions are exact rationals, never floats — LEGACY-066),
 -- spec:158–160 (§0.4 Material → Item, MatUnits.Exchange → UnitConversion).
 -- Contracts §4.6.1 fixes every column below.
 
@@ -24,7 +24,7 @@ create table app.unit_of_measure (
 -- The four account columns are the policy paths item.revenue_account / inventory_account /
 -- cogs_account / expense_account (§4.4.1). They are filled from the §4.15 codes 4000 / 1300 / 5000 /
 -- 5900 by resolveItemAccounts at create — there is no DDL default, because a default cannot look a
--- code up in this company's chart, and a wrong account is SAH-064 in a new costume.
+-- code up in this company's chart, and a wrong account is LEGACY-064 in a new costume.
 create table app.item (
   id                   uuid primary key default uuidv7(),
   tenant_id            uuid not null references app.tenant(id),
@@ -40,7 +40,7 @@ create table app.item (
   cogs_account_id      uuid,
   expense_account_id   uuid,
   track_lots           boolean not null default true,               -- spec:1022 food is batch-tracked
-  shelf_life_days      int constraint item_shelf_life_days_check check (shelf_life_days > 0),   -- SAH-063: a guarded divisor-shaped value
+  shelf_life_days      int constraint item_shelf_life_days_check check (shelf_life_days > 0),   -- LEGACY-063: a guarded divisor-shaped value
   archived_at          timestamptz,                                 -- spec:2049 master data is archived, never deleted
   created_at           timestamptz not null default now(),
   unique (company_id, code),
@@ -55,7 +55,7 @@ create table app.item (
 -- the till and the back office both scan; a partial index keeps it out of the way of items with none.
 create index item_barcode_idx on app.item (company_id, barcode) where barcode is not null;
 
--- ── 3. exact-rational unit conversion (SAH-066) ─────────────────────────────────────────────────
+-- ── 3. exact-rational unit conversion (LEGACY-066) ─────────────────────────────────────────────────
 -- "1 <unit> = numerator / denominator base units". bigint parts, never a float: MatUnits.Exchange was
 -- `double precision` against `numeric(18,4)` quantities, so 10 boxes → 30 units → 9.9999… boxes.
 -- The denominator CHECK is contracts §4.6.1 verbatim (`<> 0`); the numerator CHECK is added here

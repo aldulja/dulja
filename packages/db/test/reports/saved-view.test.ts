@@ -75,7 +75,7 @@ describe("app.saved_view — contracts §4.11.2; archived, never deleted (spec:2
       select tgname from pg_trigger where tgrelid = 'app.saved_view'::regclass and not tgisinternal order by tgname`;
     // owner_principal_id records WHOM the view belongs to, which is data — so it takes the column default and
     // gets no stamp trigger. A *_by spelling would either fail the stamp_actor linter rule or silently replace
-    // the owner with whoever last touched the row, which is SAH-044 in the opposite direction (§3.3).
+    // the owner with whoever last touched the row, which is LEGACY-044 in the opposite direction (§3.3).
     expect(triggers.map((t) => t.tgname)).toEqual(["audit_row"]);
   });
 

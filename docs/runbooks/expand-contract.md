@@ -10,7 +10,7 @@ Governed by ADR 0033. Applies to every migration that touches a table already ca
 4. The Drizzle mirror (`packages/db/src/schema/`) is updated in the same PR; readers that do not select
    the column are untouched.
 5. CI: `up`, `down`, `up` on Testcontainers (`packages/db/test/expand-contract.test.ts` is the shape);
-   `lintSchema` reports zero violations; the request-loop test in `tests/regression/sah-080.test.ts`
+   `lintSchema` reports zero violations; the request-loop test in `tests/regression/legacy-080.test.ts`
    records zero non-2xx.
 
 ## Between the two PRs

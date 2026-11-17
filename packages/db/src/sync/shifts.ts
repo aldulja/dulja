@@ -160,7 +160,7 @@ export function moneyFromMessage(
  * The OPEN transition. Idempotent on the primary key: the id is the uuidv7 the till minted when the drawer
  * was counted in, so the read below is the whole of "zero duplicates" for this message kind — a re-send
  * after a timeout answers `duplicate` and the first write's `opening_float` stands. Overwriting it on a
- * re-send would let a till change a figure a Z-report has already been built on, which is SAH-020's shape
+ * re-send would let a till change a figure a Z-report has already been built on, which is LEGACY-020's shape
  * ("the server does not overwrite a figure the shop chose") applied to cash. The insert carries no
  * `on conflict` (Plan Contracts' 6D shift integrity corrections): a collision the read cannot see —
  * another tenant's or company's id, or another terminal's uncommitted open — raises 23505 and is rejected

@@ -76,7 +76,7 @@ describe("migration 0060 — terminal enrolment and the needs-attention queue", 
     );
 
     // A brand-new app_rw connection with NO set_config at all: exactly what the public /v1/sync/enrol
-    // route has when it arrives (SAH-026 — identity is never client-supplied context).
+    // route has when it arrives (LEGACY-026 — identity is never client-supplied context).
     const rows = await db.rw<
       { enrolment_id: string; tenant_id: string; company_id: string; branch_id: string }[]
     >`
@@ -103,7 +103,7 @@ describe("migration 0060 — terminal enrolment and the needs-attention queue", 
     expect(await db.rw`select * from app.resolve_enrolment(${sha256(stale)})`).toHaveLength(0);
   });
 
-  it("needs_attention.resolved_by is NULL at insert and stamped on resolve, never client-supplied (SAH-044)", async () => {
+  it("needs_attention.resolved_by is NULL at insert and stamped on resolve, never client-supplied (LEGACY-044)", async () => {
     const clientRef = await uuidv7(db.admin);
     const id = await withTenant(db.rw, a.tenant, a.human, async (tx) => {
       const [row] = await tx<{ id: string; resolved_by: string | null }[]>`

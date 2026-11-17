@@ -25,8 +25,8 @@ export function sha256Hex(text: string): string {
 
 /**
  * A generic canonical projection. Every amount is taken STRAIGHT from the snapshot's `Money` via
- * `toJSON()` — nothing is re-derived, re-rounded or converted (Global Constraint 4, SAH-019), which
- * is also what makes `sah-020`'s "regime pinned on submission" true: the payload is a function of
+ * `toJSON()` — nothing is re-derived, re-rounded or converted (Global Constraint 4, LEGACY-019), which
+ * is also what makes `legacy-020`'s "regime pinned on submission" true: the payload is a function of
  * stored line figures, so a later `tax_code` version cannot change it.
  */
 export function syntheticCanonicalise(doc: DocumentSnapshot): EInvoiceDocument {

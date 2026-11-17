@@ -39,6 +39,6 @@ once rather than in whichever slice hits it first (contracts §4.2.10 fixes the 
 
 - 4B's FX settlement and revaluation read the same function; there is one lookup rule in the system, not two.
 - A tenant that forgets to enter a rate gets a refused document with a named remedy rather than a silently wrong
-  base amount — the SAH-011/SAH-012 class of defect.
+  base amount — the LEGACY-011/LEGACY-012 class of defect.
 - Decision 7 lives here because migration `0005` carries no explanatory comment for the column: the migration is
   applied and forward-only, so the rule is recorded in the ADR rather than by editing it.

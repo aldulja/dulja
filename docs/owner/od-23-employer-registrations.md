@@ -25,7 +25,7 @@ The company's registration number with each authority (EPF, SOCSO, EIS, LHDN). T
 **one per scheme**, on `app.statutory_scheme.employer_registration` — relational, because spec:2088
 says these are "relational company settings supplied by the owner — never a blob". The
 `employer_registrations jsonb` "display copy" §4.6.1 once named is deliberately not built
-(contracts round 16, amendment A4): a second store with no rebuild path is SAH-078 in miniature.
+(contracts round 16, amendment A4): a second store with no rebuild path is LEGACY-078 in miniature.
 
 They can be entered by an administrator holding `admin.company.manage` through
 `PUT /v1/companies/{companyId}/hr-settings` (the back office's HR settings screen), or delivered in

@@ -4,7 +4,7 @@ import type { LintRule, LintViolation, SourceFile } from "../types";
 const MONEYISH = /amount|price|cost|debit|credit|total|balance|rate|tax|net|gross/i;
 // packages/db is where SQL numeric(19,4) becomes TypeScript — the one place in the tree the conversion
 // physically happens — so a service there declaring `{ amount: number }` over a postgres.js row is exactly
-// what SAH-008 forbids, and the rule was not reading it.
+// what LEGACY-008 forbids, and the rule was not reading it.
 const IN_SCOPE = [
   /(^|\/)packages\/domain\//,
   /(^|\/)packages\/contracts\//,
@@ -148,13 +148,13 @@ function violationsFor(file: SourceFile): LintViolation[] {
         file: file.path,
         line: file.text.slice(0, name.start).split("\n").length,
         rule: "no-number-money",
-        detail: `'${name.value}' is typed number — a monetary or rate value must be Money, Quantity, Decimal or string (spec §3.9, SAH-008)`,
+        detail: `'${name.value}' is typed number — a monetary or rate value must be Money, Quantity, Decimal or string (spec §3.9, LEGACY-008)`,
       },
     ];
   });
 }
 
-/** Source-token-only enforcement of spec §3.9 / SAH-008 declared monetary number annotations. */
+/** Source-token-only enforcement of spec §3.9 / LEGACY-008 declared monetary number annotations. */
 export const rule: LintRule = {
   name: "no-number-money",
   run(files: SourceFile[]): LintViolation[] {

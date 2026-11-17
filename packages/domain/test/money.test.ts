@@ -12,7 +12,7 @@ import {
 const MYR = currency("MYR");
 const m = (s: string) => Money.of(s, MYR);
 
-describe("Money — spec §3.9 'opaque, carries its currency, never a float' (SAH-008)", () => {
+describe("Money — spec §3.9 'opaque, carries its currency, never a float' (LEGACY-008)", () => {
   it("currency() accepts three upper-case letters and rejects everything else", () => {
     expect(currency("MYR")).toBe("MYR");
     for (const bad of ["myr", "MY", "MYRR", "M1R", " MYR", ""]) {

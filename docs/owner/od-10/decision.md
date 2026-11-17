@@ -22,5 +22,5 @@ No plan specified a till screen for these three movements, and AGENTS.md forbids
 owner approved, in the same session on 2026-11-04, a **Cash movement** form on the till's existing Shift view
 (F10), beside the void and close-shift forms and built the same way: a movement selector (paid-out, safe drop,
 banking from the safe, banking from the drawer), the amount, the reference (required for a paid-out), and a
-supervisor's employee number and PIN shown only for a paid-out. Legacy Sahlisoft parity is not claimed; the
+supervisor's employee number and PIN shown only for a paid-out. Legacy parity is not claimed; the
 form can change when OD-24 screenshots arrive.

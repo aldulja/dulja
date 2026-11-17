@@ -257,7 +257,7 @@ describe("7B re-expresses 3D's three minimal-set codes (§4.16.1, spec:2300, ame
         ["WH-TR", "20.0000"],
       ]);
       // No unit-cost comparison: the `stock_valuation` dataset has no `unit_cost` column (A3), and a
-      // per-warehouse unit cost is `value / quantity`, a division whose one home is 3B's engine (SAH-009).
+      // per-warehouse unit cost is `value / quantity`, a division whose one home is 3B's engine (LEGACY-009).
       await assertTieOut(tx, readDefinition(VALUATION), {
         params: valuationParams(),
         baseCurrency: MYR,

@@ -3,7 +3,7 @@ import { lintSchema } from "../src/lint-schema";
 import { seedParty, seedTenant, type Seed } from "./fixtures";
 import { startDb, uuidv7, withTenant, type Db } from "./harness";
 
-describe("app.party — contracts §4.5.7, spec:1169 (SAH-072: one discriminator, not twenty Is* flags)", () => {
+describe("app.party — contracts §4.5.7, spec:1169 (LEGACY-072: one discriminator, not twenty Is* flags)", () => {
   let db: Db;
   let a: Seed;
   let b: Seed;
@@ -99,7 +99,7 @@ describe("app.party — contracts §4.5.7, spec:1169 (SAH-072: one discriminator
     expect(updated.count).toBe(0);
   });
 
-  it("every write is audited with the acting principal (spec:106, SAH-030)", async () => {
+  it("every write is audited with the acting principal (spec:106, LEGACY-030)", async () => {
     const id = await seedParty(db, a, { code: "AUD" });
     const rows = await withTenant(
       db.rw,

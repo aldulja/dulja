@@ -6,7 +6,7 @@
 -- inventory_movement.posting_seq, cost_layer.sequence and tax_transaction.posting_seq are all NOT NULL in
 -- the slices that add them. Gaps are irrelevant — a rolled-back post burns a number and blocks nobody. What
 -- matters is a total order per company, which the unique below guarantees. Contrast document_series, which
--- is a locked per-period counter because a document NUMBER must be gapless-provable (spec:2222, SAH-051).
+-- is a locked per-period counter because a document NUMBER must be gapless-provable (spec:2222, LEGACY-051).
 create sequence app.posting_seq;
 grant usage on sequence app.posting_seq to app_rw;      -- 0001 grants default privileges on TABLES only (plan0A:2564)
 

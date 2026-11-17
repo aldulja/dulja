@@ -33,7 +33,7 @@ const REPLAY = "inventory.cost.replay";
  * The receipts are the only movements that move the one issue's cost, so the issue's `document_line.cost`
  * (rewritten by the replay, ADR 0038 decision 2) is the witness of which receipts a replay saw.
  */
-describe("inventory.cost.replay on its stately queue — two back-dated posts in one day (SAH-005)", () => {
+describe("inventory.cost.replay on its stately queue — two back-dated posts in one day (LEGACY-005)", () => {
   let db: Db;
   let s: Seed;
   let boss: PgBoss;

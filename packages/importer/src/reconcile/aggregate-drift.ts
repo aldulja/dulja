@@ -41,11 +41,11 @@ function base(
 
 /**
  * §5.1 #1. For every rule: recompute the figure from the source, read the stored figure, and report the
- * difference (`stored − recomputed`, signed). Nothing is repaired and nothing is chosen — SAH-079 is a system with
+ * difference (`stored − recomputed`, signed). Nothing is repaired and nothing is chosen — LEGACY-079 is a system with
  * 44 repair objects that silently "fixed" numbers, and this report exists so the customer decides instead.
  *
  * The two directions are different defects and stay apart: a key in the stored table that the source never
- * produces is `drift` against `0.0000` (the orphan aggregate row, SAH-050); a key the source produces with no
+ * produces is `drift` against `0.0000` (the orphan aggregate row, LEGACY-050); a key the source produces with no
  * stored row is `missing_stored_row` (the decrement that never fired).
  */
 export async function aggregateDrift(reader: LegacyReader): Promise<ReconciliationReport> {

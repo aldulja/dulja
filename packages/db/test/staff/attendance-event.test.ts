@@ -53,7 +53,7 @@ describe("app.attendance_event (§4.6.1; spec:2089)", () => {
     expect(enumCount!.n).toBe(0);
   });
 
-  it("recorded_by is STAMPED — a supplied value is overwritten with the acting principal (SAH-044)", async () => {
+  it("recorded_by is STAMPED — a supplied value is overwritten with the acting principal (LEGACY-044)", async () => {
     const [row] = await insert(a, a.human, {
       employee_id: employee,
       branch_id: a.hq,

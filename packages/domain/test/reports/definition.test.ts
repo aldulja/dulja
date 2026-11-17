@@ -271,7 +271,7 @@ describe("validateReportDefinition — contracts §4.11.1", () => {
     expect(validateReportDefinition(withTotal, SETS)).toEqual({ ok: true, errors: [] });
   });
 
-  it("refuses additional properties anywhere (the anti-blob rule of spec:1246, SAH-078)", () => {
+  it("refuses additional properties anywhere (the anti-blob rule of spec:1246, LEGACY-078)", () => {
     const def = { ...base(), sqlOverride: "select * from app.ledger_entry" };
     const result = validateReportDefinition(def, SETS);
     expect(result.ok).toBe(false);

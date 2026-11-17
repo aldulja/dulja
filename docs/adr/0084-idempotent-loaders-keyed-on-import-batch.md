@@ -13,7 +13,7 @@
 
 The Phase 9 load runs against a customer's frozen Firebird database, over hours, on a machine that may lose its
 connection. It runs more than once — a dry run, a rehearsal and the real cut-over (§5.1 #10) — so it must be
-restartable without double-loading. SAH-049 says the source itself holds duplicate aggregate rows, so "insert
+restartable without double-loading. LEGACY-049 says the source itself holds duplicate aggregate rows, so "insert
 everything again and let the unique keys sort it out" would hide both real duplicates and real changes.
 
 Three constraints shape the design. Hazard 3: no legacy table's column list is confirmed, and a TypeScript row
@@ -56,7 +56,7 @@ row, so loaders write master data and build documents, never post. And migration
    nets to zero; any loader, for a row whose reason it reports through C15's `skips`). Such a row is never retried,
    since its hash is unchanged on a re-run; correcting a dependency alone does not re-open it, and the runbook says
    so.
-8. **A key met twice in one run is a duplicate in the source (SAH-049).** The run remembers each key and hash per
+8. **A key met twice in one run is a duplicate in the source (LEGACY-049).** The run remembers each key and hash per
    loader. A second identical sighting is loaded once and reported in the skip register; a second sighting with
    different data refuses the run — across a page boundary and in a dry run alike, because the memory is the run's
    and not the database's. The cost is a key and a hash per source row in memory while that loader runs.
@@ -71,8 +71,8 @@ row, so loaders write master data and build documents, never post. And migration
     run opens, because `map(row, refs)` has no `LoadContext` and must still mint `Money` in the tenant's currency.
     Both throw outside a run, and a second concurrent run in one process is refused.
 11. **One scalar boundary.** `requireText`, `optionalText`, `moneyOf`, `quantityOf`, `dateOf` and `optionalDateOf` are
-    where legacy text becomes a Dulja type. A NULL amount or quantity is refused, never read as zero (SAH-007,
-    SAH-011); a decimal may carry any number of fraction digits or an exponent (a Firebird `float` cast to text) and
+    where legacy text becomes a Dulja type. A NULL amount or quantity is refused, never read as zero (LEGACY-007,
+    LEGACY-011); a decimal may carry any number of fraction digits or an exponent (a Firebird `float` cast to text) and
     is rounded once, HALF_AWAY_FROM_ZERO, at the column's scale, through the domain's one `round`; a value
     numeric(19,4) or numeric(19,6) cannot hold is refused; a date is a real calendar date or a refusal.
 12. **Every refusal names itself and leaves evidence.** `LoadError` carries `ERR_IMPORT_DUPLICATE_SOURCE_KEY`,
@@ -308,6 +308,6 @@ opening.
     person's stock in one and the opening in the other) and reporting the row (an item skip orphans its stock).
 30. **The account loader reads no amount** (HRP-21). It read `ACCOPENBAL` only to skip — and so never link — an
     account whose stored balance was NULL, though no figure is taken from that column; the account's real AccTotals
-    balance then went to `3900` in a one-shot opening. The column is no longer declared. SAH-007 stays guarded where an
+    balance then went to `3900` in a one-shot opening. The column is no longer declared. LEGACY-007 stays guarded where an
     amount is read: the trial-balance opening refuses a NULL `ACTDEBIT`/`ACTCREDIT` at its row (`moneyOf`), and 9A's
     `null_poison` report lists every NULL legacy amount before any load.

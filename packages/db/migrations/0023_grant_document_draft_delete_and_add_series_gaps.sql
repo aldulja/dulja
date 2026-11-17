@@ -1,7 +1,7 @@
 -- 0023_grant_document_draft_delete_and_add_series_gaps.sql ────────────────────────────────────────────────
 -- Two halves of one guarantee (ADR 0030).
 --   (a) spec:2049 admits genuine deletion for drafts, and both cases "write an audit row first";
---       spec:2224 forbids deleting a posted document at any privilege level (SAH-041).
+--       spec:2224 forbids deleting a posted document at any privilege level (LEGACY-041).
 --   (b) spec:2222 wants numbering gapless-PROVABLE, and spec:2288 makes that the Phase 2 definition of done.
 -- The DELETE grant below is the ONE extension of the pinned app_rw DELETE list in the whole of v1
 -- (contracts §3.5.4); every other table is archived with archived_at.
@@ -40,7 +40,7 @@ create trigger document_line_delete_draft_only before delete on app.document_lin
 
 -- ── 2. the grant (contracts §3.5.4 row two — the only one this system ever adds) ─────────────────────
 -- app.audit_row() is already attached to both tables and fires AFTER DELETE with the before-image, which is
--- spec:2049's "both write an audit row first". No flag can suppress it (SAH-030).
+-- spec:2049's "both write an audit row first". No flag can suppress it (LEGACY-030).
 grant delete on app.document, app.document_line to app_rw;
 
 -- ── 3. the gapless proof (contracts §4.5.5; spec:2222, 2288) ─────────────────────────────────────────

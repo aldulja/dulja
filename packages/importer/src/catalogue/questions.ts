@@ -27,7 +27,7 @@ export interface OpenQuestionReport {
 }
 
 export interface ConstraintClaim {
-  readonly sah: string;
+  readonly legacyDefect: string;
   readonly table: string;
   readonly columns: readonly string[];
   readonly claim: string;
@@ -37,42 +37,42 @@ export interface ConstraintClaim {
 type Row = Record<string, LegacyScalar>;
 
 /**
- * Part VII #6, verbatim (spec:2470): "Several findings (SAH-024, 049, 051, 066, 074) rest on the schema dump's
+ * Part VII #6, verbatim (spec:2470): "Several findings (LEGACY-024, 049, 051, 066, 074) rest on the schema dump's
  * key convention rather than real DDL. Confirm against RDB$RELATION_CONSTRAINTS and RDB$INDICES before rating
  * them." One row per named defect, in the spec's own order. `confirmedBy` says what would confirm the claim,
  * so the artefact is falsifiable rather than rhetorical.
  */
 export const CONSTRAINT_CLAIMS: readonly ConstraintClaim[] = [
   {
-    sah: "SAH-024",
+    legacyDefect: "LEGACY-024",
     table: "ACCOUNTS",
     columns: ["CODE"],
     confirmedBy: "code_shape",
     claim: "Account codes are allocated with max() on a string, without locking (spec:425)",
   },
   {
-    sah: "SAH-049",
+    legacyDefect: "LEGACY-049",
     table: "MATOBJECTS",
     columns: ["SITE", "ID"],
     confirmedBy: "absent_unique",
     claim: "Aggregate tables have no unique key, so the upsert race creates duplicates (spec:630)",
   },
   {
-    sah: "SAH-051",
+    legacyDefect: "LEGACY-051",
     table: "BILLS",
     columns: ["NUMBER"],
     confirmedBy: "absent_unique",
     claim: "Document numbering has no uniqueness constraint (spec:647)",
   },
   {
-    sah: "SAH-066",
+    legacyDefect: "LEGACY-066",
     table: "MATUNITS",
     columns: ["EXCHANGE"],
     confirmedBy: "declared_type",
     claim: "Unit conversion is defined in the schema and applied nowhere (spec:736)",
   },
   {
-    sah: "SAH-074",
+    legacyDefect: "LEGACY-074",
     table: "*",
     columns: [],
     confirmedBy: "absent_primary_key",
@@ -99,11 +99,11 @@ export const SALARIES_LIVENESS_TABLES: readonly string[] = [
 const QUESTIONS: Readonly<Record<QuestionId, { line: number; text: string }>> = {
   "VII-6": {
     line: 2470,
-    text: "Actual DDL constraints. Several findings (SAH-024, 049, 051, 066, 074) rest on the schema dump's key convention rather than real DDL. Confirm against RDB$RELATION_CONSTRAINTS and RDB$INDICES before rating them.",
+    text: "Actual DDL constraints. Several findings (LEGACY-024, 049, 051, 066, 074) rest on the schema dump's key convention rather than real DDL. Confirm against RDB$RELATION_CONSTRAINTS and RDB$INDICES before rating them.",
   },
   "VII-7": {
     line: 2471,
-    text: "Does MatOpens.Job ever differ from 0 in production? SAH-022 is a hard failure if so, and inert if not.",
+    text: "Does MatOpens.Job ever differ from 0 in production? LEGACY-022 is a hard failure if so, and inert if not.",
   },
   "VII-8": {
     line: 2472,
@@ -185,7 +185,7 @@ async function sixDdlConstraints(
   const evidence: Record<string, string>[] = [];
   for (const claim of CONSTRAINT_CLAIMS) {
     const base = {
-      sah: claim.sah,
+      legacyDefect: claim.legacyDefect,
       table: claim.table,
       columns: claim.columns.join(","),
       claim: claim.claim,
@@ -264,7 +264,7 @@ async function sixDdlConstraints(
         }
       }
       // A sibling group whose codes differ in width is one where `max()` on the string picks the wrong code
-      // ('9' over '10') — SAH-024's collision. Equal widths throughout means the codes are zero-padded.
+      // ('9' over '10') — LEGACY-024's collision. Equal widths throughout means the codes are zero-padded.
       const misordered = [...siblings.values()].filter(
         (codes) => new Set(codes.map((c) => c.length)).size > 1,
       ).length;
@@ -309,7 +309,7 @@ async function sixDdlConstraints(
   return answer(
     "VII-6",
     evidence,
-    "Each claim is reported against what the engine declares. Rating SAH-024, 049, 051, 066 and 074 — and un-skipping tests/regression/sah-024.test.ts, which 1A created marked it.skip pending this answer (contracts §3.7.3) — is the owner's and the architect's call, not this report's.",
+    "Each claim is reported against what the engine declares. Rating LEGACY-024, 049, 051, 066 and 074 — and un-skipping tests/regression/legacy-024.test.ts, which 1A created marked it.skip pending this answer (contracts §3.7.3) — is the owner's and the architect's call, not this report's.",
   );
 }
 
@@ -352,12 +352,12 @@ async function sevenMatOpensJob(
           String(nonZero),
           "of",
           String(rows),
-          "rows, so SAH-022's singleton SELECT ... INTO is a hard failure on this data, not inert.",
+          "rows, so LEGACY-022's singleton SELECT ... INTO is a hard failure on this data, not inert.",
         ].join(" ")
       : [
           "MatOpens.Job is 0 or null on all",
           String(rows),
-          "rows, so SAH-022 is inert on this data — which rates the defect and does not remove it from the new design.",
+          "rows, so LEGACY-022 is inert on this data — which rates the defect and does not remove it from the new design.",
         ].join(" "),
   );
 }

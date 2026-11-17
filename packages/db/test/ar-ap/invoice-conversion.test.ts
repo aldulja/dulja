@@ -281,7 +281,7 @@ describe("DELIVERY_ORDER → SALES_INVOICE — spec:1051, §4.15's 1250 row", ()
     ]);
   });
 
-  it("the draft pins the party's payment term and the rate's provenance at draft (SAH-013, SAH-012)", async () => {
+  it("the draft pins the party's payment term and the rate's provenance at draft (LEGACY-013, LEGACY-012)", async () => {
     const dO = await deliver("1.000000", "9.0000", "2026-01-11");
     const inv = await draftInvoice({
       sourceDocumentId: dO.documentId,
@@ -371,7 +371,7 @@ describe("DELIVERY_ORDER → SALES_INVOICE — spec:1051, §4.15's 1250 row", ()
     ).rejects.toThrow(/ERR_DOC_LINK_OVER_FULFILLED/);
   });
 
-  it("the open quantity is a PROJECTION of the links, and it reaches zero — SAH-017", async () => {
+  it("the open quantity is a PROJECTION of the links, and it reaches zero — LEGACY-017", async () => {
     const dO = await deliver("2.000000", "18.0000", "2026-01-17");
     await draftInvoice({ sourceDocumentId: dO.documentId, effectiveDate: "2026-01-17", lines: [] });
     const open = await withTenant(db.rw, s.tenant, s.human, (tx) =>

@@ -4,7 +4,7 @@ import { MONEY_SCALE, QUANTITY_SCALE, RATE_SCALE, round } from "../src/index";
 
 const d = (s: string) => new Decimal(s);
 
-describe("round() — spec §3.9 'one rounding function, explicit mode, symmetric across sign' (SAH-019)", () => {
+describe("round() — spec §3.9 'one rounding function, explicit mode, symmetric across sign' (LEGACY-019)", () => {
   it("the three scales are the SQL column scales", () => {
     expect([MONEY_SCALE, RATE_SCALE, QUANTITY_SCALE]).toEqual([4, 8, 6]);
   });

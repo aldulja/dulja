@@ -7,5 +7,5 @@
 -- app.tenant_id, so forced RLS hides every role_permission row from it; and app.tenant is itself
 -- policy-guarded, so it cannot enumerate tenants to set a context for. The operator removes the grant per tenant
 -- first and re-runs `bun run seed --tenant <id> --only roles` after re-migrating. NEVER disable or drop the
--- policy to make this file "work" — SAH-027, SAH-041, SAH-053.
+-- policy to make this file "work" — LEGACY-027, LEGACY-041, LEGACY-053.
 delete from app.permission where code = 'admin.data.export';

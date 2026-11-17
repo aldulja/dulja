@@ -649,7 +649,7 @@ describe("revalueAtPeriodEnd and reverseRevaluation — the unrealised half", ()
     expect(open).toEqual([]);
   });
 
-  it("base = round(value × rate, 4) holds on EVERY ledger line of this company, FX documents included (SAH-012)", async () => {
+  it("base = round(value × rate, 4) holds on EVERY ledger line of this company, FX documents included (LEGACY-012)", async () => {
     await withTenant(db.rw, s.tenant, s.human, async (tx) => {
       const [bad] = await tx<{ n: number }[]>`
         select count(*)::int as n from app.ledger_entry
@@ -739,7 +739,7 @@ describe("revalueAtPeriodEnd and reverseRevaluation — the unrealised half", ()
     expect(result).toMatchObject({ documentId: null, lines: [] });
   });
 
-  it("a missing rate for an exposed currency raises ERR_RATE_NOT_FOUND naming the pair (SAH-012)", async () => {
+  it("a missing rate for an exposed currency raises ERR_RATE_NOT_FOUND naming the pair (LEGACY-012)", async () => {
     // The GBP exposure below has no exchange_rate row at all: the revaluation must refuse, never assume 1.
     const gbp = await seedTenantV2(db, "fx-norate");
     const g = await arApFixture(db, gbp);

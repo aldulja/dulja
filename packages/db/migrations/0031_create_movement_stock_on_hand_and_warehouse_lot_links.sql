@@ -24,10 +24,10 @@ create table app.inventory_movement (                        -- IMMUTABLE, audit
                                                              -- MERGE at runtime. Every item has one sentinel lot
                                                              -- coded 'NONE' created with it (migration 0029);
                                                              -- applyMovements resolves a line's null lot_id to it
-                                                             -- before insert (SAH-050, ADR 0034).
+                                                             -- before insert (LEGACY-050, ADR 0034).
   unit_id         uuid not null,
   quantity        numeric(19,6) not null check (quantity <> 0),   -- base unit; + receipt, − issue (spec:2043)
-  value           numeric(19,4) not null,                    -- mandatory (SAH-007); base currency; sign follows quantity
+  value           numeric(19,4) not null,                    -- mandatory (LEGACY-007); base currency; sign follows quantity
   effective_date  date not null,                             -- the accounting date, never derived from posted_at (spec:2039)
   posting_seq     bigint not null,                           -- document.posting_seq, assigned at step 8 (§4.3.5)
   posted_at       timestamptz not null default now(),        -- the posting instant (spec:1370's ledger_entry pattern)
@@ -43,7 +43,7 @@ create table app.inventory_movement (                        -- IMMUTABLE, audit
   foreign key (tenant_id, lot_id)       references app.lot(tenant_id, id),
   foreign key (tenant_id, unit_id)      references app.unit_of_measure(tenant_id, id)
 );
--- The total chronological key of spec:1225 and §4.3.5, as an index and not as a plan hint (SAH-067).
+-- The total chronological key of spec:1225 and §4.3.5, as an index and not as a plan hint (LEGACY-067).
 create index inventory_movement_chrono_idx on app.inventory_movement
   (company_id, item_id, warehouse_id, effective_date, posting_seq, line_no, movement_no);
 call app_meta.enable_tenant_rls('app.inventory_movement');
@@ -54,7 +54,7 @@ create trigger inventory_movement_immutable before update or delete on app.inven
   for each row execute function app.forbid_change();
 revoke update, delete on app.inventory_movement from app_rw;
 
--- ── 2. assert_stock_available — §4.7.3's comment, as code (test 18, SAH-048, spec:2436) ───────────────
+-- ── 2. assert_stock_available — §4.7.3's comment, as code (test 18, LEGACY-048, spec:2436) ───────────────
 -- Availability is summed from THIS table, which already includes the current transaction's earlier rows, and
 -- NEVER from stock_on_hand, which is MERGEd only at step 12. The one door is an override document_event
 -- recorded by a second principal (§4.5.3): document_event_override_guard is what proves the second principal
@@ -116,13 +116,13 @@ create table app.stock_on_hand (
 -- No `id` and no unique (tenant_id, id): the natural key IS the key, which is why the table joins NO_ID_TABLES
 -- in lint-schema.ts in this same PR (§3.5.3). No attach_audit either — it is derived (AUDIT_EXEMPT).
 -- `lot_id` is NOT NULL on both sides: every item has one sentinel lot coded 'NONE' and applyMovements resolves
--- a line's null lot to it, so the primary key never contains NULL (SAH-050). document_line.lot_id stays
+-- a line's null lot to it, so the primary key never contains NULL (LEGACY-050). document_line.lot_id stays
 -- nullable — the user need not enter a lot; the posting service is what resolves the sentinel.
 call app_meta.enable_tenant_rls('app.stock_on_hand');
 
--- ── 4. pick_lots_fefo — FEFO over the projection, not over a replay of history (SAH-067, ADR 0036) ────
+-- ── 4. pick_lots_fefo — FEFO over the projection, not over a replay of history (LEGACY-067, ADR 0036) ────
 -- Reads the SYNCHRONOUS projection, so outside a posting transaction it is current to the last commit. The
--- ordering is total — expiry, then lot code, then lot id — so two identical calls cannot disagree; SAH-067's
+-- ordering is total — expiry, then lot code, then lot id — so two identical calls cannot disagree; LEGACY-067's
 -- root cause was an answer that depended on which index the planner chose.
 -- Returns fewer rows than asked when the warehouse cannot satisfy the quantity: refusing is
 -- assert_stock_available's job, and a picker that raised would hide a partial pick a user may legitimately want.

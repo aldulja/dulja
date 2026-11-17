@@ -19,7 +19,7 @@ of Phase 7's range used.
 | Slice | What | Where |
 |---|---|---|
 | **7A** — the engine (T1–T14; T15 built 2026-11-06 on the default baseline) | `app.report_definition` (0074), `app.saved_view` and `app.report_run` (0075), `accounting.report.export` granted to `auditor` (0076); the `ReportDefinition` JSON Schema (`urn:dulja:report-definition:1`, `additionalProperties: false` throughout), its generated type and `validateReportDefinition` over the closed dataset and permission sets; **25** named datasets (no `pdc`, OD-09); `renderReport` (sort, group level by level, subtotals, totals in `Decimal`, logical column order with `dir` carrying direction) and the CSV, XLSX and Chromium-PDF renderers; the balance-sheet and P&L layouts, per BRANCH; the `reporting.render` job; `POST …/reports/{code}/runs`, the run resource and its download; clone-and-edit definitions and saved views; the `reports` seed sub-pack | `packages/domain/src/reports/`, `packages/db/src/reports/`, `apps/worker/src/{reports,jobs/report-render.ts}`, `apps/api/src/{reports,routes/accounting/report-*.ts}`; ADRs 0065–0067 |
-| **7B** — accounting and inventory catalogue (T0–T14; T12 dropped, T13 no screen) | **22** definitions in `packages/db/seed/my/reports/7b/` (17 new, 5 re-expressed at `definitionVersion` 2 beside their 1B/3D JSON routes); the executed tie-out harness `tests/invariants/support/reports.ts`; migration **0077**, fourteen report-filter indexes (twenty-one since the 2026-11-06 remediation, below), and the SAH-070 EXPLAIN gate | ADR 0068; `tests/invariants/report-tie-out.test.ts`; `packages/db/test/reports/7b-*.test.ts` |
+| **7B** — accounting and inventory catalogue (T0–T14; T12 dropped, T13 no screen) | **22** definitions in `packages/db/seed/my/reports/7b/` (17 new, 5 re-expressed at `definitionVersion` 2 beside their 1B/3D JSON routes); the executed tie-out harness `tests/invariants/support/reports.ts`; migration **0077**, fourteen report-filter indexes (twenty-one since the 2026-11-06 remediation, below), and the LEGACY-070 EXPLAIN gate | ADR 0068; `tests/invariants/report-tie-out.test.ts`; `packages/db/test/reports/7b-*.test.ts` |
 | **7C** — AR/AP, POS, cross-module, tenant export (T0–T10, T14; T11–T12 dropped, T13 built 2026-11-06 on the default baseline) | the `shift`, `till_event` and `needs_attention` datasets (registry closes at **28**); **10** definitions in `…/reports/7c/` (7 new, 3 re-expressed at version 2: `accounting.ageing`, `pos.z_report`, `pos.sales_by_cashier`); `app.export_job` (0078) and `admin.data.export` granted to `auditor` (0079); `EXPORT_TABLES` / `NEVER_EXPORTED` classifying every `app` table; the deterministic `.tar.gz` (`schema.json`, `manifest.json`, CSV and newline-delimited JSON per table, attachments); the `admin.export.run` job; four export routes, requester-only | `packages/db/src/{reports/datasets/pos.ts,export/}`, `apps/worker/src/jobs/export-run.ts`, `apps/api/src/{export,routes/admin/exports.ts}`, `packages/contracts/src/admin/export.ts`; ADRs 0069–0070 |
 
 `ReportCodeSchema` holds **32** codes — exactly the 32 shipped seed files (pinned both ways in
@@ -41,7 +41,7 @@ of Phase 7's range used.
 
 | Scope item (spec:2293) | Evidence | Strength and limits |
 |---|---|---|
-| Report definition format | ADR 0065; `packages/domain/test/reports/definition.test.ts`, `report-type.test.ts`; `tests/regression/sah-077.test.ts` (7A and 7C blocks: committed text, no blob, no SQL-shaped value, a registered dataset id as the only source) | Pure and structural. A definition can never carry SQL text (test 27): a dataset column is a literal SQL fragment authored in `packages/db/src/reports/datasets/*.ts`. |
+| Report definition format | ADR 0065; `packages/domain/test/reports/definition.test.ts`, `report-type.test.ts`; `tests/regression/legacy-077.test.ts` (7A and 7C blocks: committed text, no blob, no SQL-shaped value, a registered dataset id as the only source) | Pure and structural. A definition can never carry SQL text (test 27): a dataset column is a literal SQL fragment authored in `packages/db/src/reports/datasets/*.ts`. |
 | Server-side render (PDF/XLSX/CSV) | ADR 0066; `apps/worker/test/reports/{render,renderers,pdf}.test.ts` — test 23 read back from real PDF bytes through `pdfText` (labels, Arabic numerals, Hijri dates, column order); `apps/api/test/routes/accounting/report-runs.test.ts` | Executed with this container's Chromium. **Chromium is the only PDF engine** (ADR 0016's set; Typst refused by name). The worker image still ships no Chromium and no Arabic-capable font, so a deployed worker cannot render a PDF yet; CSV and XLSX need neither. |
 | ~60 parameterised core reports | 32 definitions; §4.16.1 counts _parameterised outputs_ (`accounting.document_register` covers thirty document types through one parameter; round 14, A15) | Catalogue as registered; 8D adds eight HR codes. |
 | Saved views | ADR 0067; `packages/db/test/reports/saved-view*.test.ts`; §3.5.4's DELETE pin re-asserted unchanged (archive, never delete) | Executed. The run screen chooses, saves and archives views (7A T15, 2026-11-06). |
@@ -69,20 +69,20 @@ The plan's nine clauses, with round 15's A16 item 1 applied (OD-09 = not built):
 8. Every export is audited: the request under the requester, the claim and completion under the system
    principal; the chain verifies afterwards; the strict body has no opt-out (`export-audit.test.ts`, test 13).
 9. `AGENTS.md`'s **Current phase** names Phase 7 — as **implemented, not exited** (the plan's "complete" text is
-   not used: the phase gates below are open) — and `sah-077` and `sah-085` each carry a 7C block.
+   not used: the phase gates below are open) — and `legacy-077` and `legacy-085` each carry a 7C block.
 
 ### 7A's and 7B's slice tables
 
 7A's eleven DoD rows (the plan's "Definition of done for this slice") all have their named evidence in the tree:
-the clone clause above; text format (`definition.test.ts`, `sah-077`); no SQL text (`datasets.test.ts`,
-`sah-069`'s 7A block, `bun run lint:rules`); `ERR_REPORT_DATASET_UNKNOWN` (`datasets.test.ts`); render and status
-resource (`render.test.ts`, `report-runs.test.ts`); RTL/LTR parity (`pdf.test.ts`, `sah-085`'s 7A block); saved
+the clone clause above; text format (`definition.test.ts`, `legacy-077`); no SQL text (`datasets.test.ts`,
+`legacy-069`'s 7A block, `bun run lint:rules`); `ERR_REPORT_DATASET_UNKNOWN` (`datasets.test.ts`); render and status
+resource (`render.test.ts`, `report-runs.test.ts`); RTL/LTR parity (`pdf.test.ts`, `legacy-085`'s 7A block); saved
 views archive (`saved-view.test.ts`, `privileges.test.ts`); statements per BRANCH (`statement*.test.ts`); the
 export code and its auditor grant (`permission-catalogue.test.ts`, `roles-seed.test.ts`,
 `apps/api/test/reports/authorise.test.ts`); two-tenant isolation per table; `lintSchema` zero violations.
 7B's four rows: the eighteen totalled definitions and the five `none` ones are executed by its roll-up (the
 plan said four `none`; `inventory.expiry_list` joined them because the `lot` dataset carries no quantity,
-round 14 A3); the five re-expressions re-run their owners' tests and carry parity cases; the SAH-070 gate
+round 14 A3); the five re-expressions re-run their owners' tests and carry parity cases; the LEGACY-070 gate
 (`packages/db/test/reports/7b-report-indexes.test.ts`) judges every filter of all thirty-two definitions.
 
 ## Deviations from the plans
@@ -138,7 +138,7 @@ each (subject suffix `[7 remediation]`):
   day's first instant computed so that a DST change repeating midnight (America/Havana) still starts the day
   correctly. `packages/db/test/reports/7c-datasets.test.ts` proves the rows identical to the timezone
   expression's for every operator, one microsecond either side of local midnight, in Asia/Kuala_Lumpur and on
-  Havana's skipped and repeated midnights. The SAH-070 gate's `UNSERVED` list is gone: a new selective filter
+  Havana's skipped and repeated midnights. The LEGACY-070 gate's `UNSERVED` list is gone: a new selective filter
   with no seekable index fails it, and a new case requires every date-over-timestamptz field to compile to bounds
   the planner puts in an `Index Cond`. Contracts round 14 and round 15 A17 record it.
 - **The ageing prints its buckets in 4B's order.** `party_ageing.bucket_rank` (0–4, 0048's vocabulary order) and

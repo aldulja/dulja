@@ -128,7 +128,7 @@ export function replayLegacyMovements(
     if (move.direction === "in" && move.value === null)
       throw new LoadError(
         "ERR_VALIDATION_FAILED",
-        `legacy receipt ${move.itemKey}/${move.warehouseKey} on ${move.effectiveDate} has no value; a receipt with no cost is never costed at zero (SAH-011, §5.1 #6)`,
+        `legacy receipt ${move.itemKey}/${move.warehouseKey} on ${move.effectiveDate} has no value; a receipt with no cost is never costed at zero (LEGACY-011, §5.1 #6)`,
       );
     if (move.value !== null && move.value.currency !== baseCurrency)
       throw new LoadError(
@@ -161,7 +161,7 @@ export function replayLegacyMovements(
     pool.batches.set(lot, batch);
 
     if (move.direction === "out" && move.quantity.compare(batch.quantity) > 0) {
-      // The legacy system permitted it (SAH-009/018); Dulja does not without an override a second principal records.
+      // The legacy system permitted it (LEGACY-009/018); Dulja does not without an override a second principal records.
       negatives.push({
         itemKey: move.itemKey,
         warehouseKey: move.warehouseKey,

@@ -49,7 +49,7 @@ export interface ComputedTaxLine {
  * spec:2228 requires rounding "applied server-side at persist time", and ADR 0050 fixes this as the one
  * call site: the evaluator, the ledger and the return then all read one number. `tax_amount` and
  * `total_incl_tax` are never accepted from the wire (§4.2.8's `DocumentLineInput`), so a client cannot
- * state a tax the server did not compute — SAH-020's commented-out per-transaction tax, inverted.
+ * state a tax the server did not compute — LEGACY-020's commented-out per-transaction tax, inverted.
  *
  * Idempotent: it derives everything from `amount` and `total_incl_tax`, taking the ENTERED figure for an
  * inclusive line from `total_incl_tax` once one has been written, so a second call cannot tax a tax.
@@ -76,7 +76,7 @@ export async function computeDocumentTax(
   if (header.status !== "draft") {
     throw new PostingError(
       "ERR_DOC_STATUS_ILLEGAL",
-      `document ${documentId} is ${header.status}, not draft — a posted document is corrected by reversal (SAH-041)`,
+      `document ${documentId} is ${header.status}, not draft — a posted document is corrected by reversal (LEGACY-041)`,
     );
   }
 
@@ -186,7 +186,7 @@ export async function computeDocumentTax(
     });
   }
   for (const l of untaxed) {
-    // A code-less line is ZEROED, never left alone: SAH-011's whole finding is that one un-populated
+    // A code-less line is ZEROED, never left alone: LEGACY-011's whole finding is that one un-populated
     // monetary column nulls a whole period's box. `0.0000` is a figure; a stale one is not.
     await tx`
       update app.document_line set tax_amount = 0, total_incl_tax = ${l.amount} where id = ${l.id}`;

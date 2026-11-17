@@ -12,6 +12,6 @@ Migration 0001 is handwritten PL/pgSQL containing triggers, policies, and a SECU
 
 ## Consequences
 
-- One monotonic schema version addresses SAH-080.
+- One monotonic schema version addresses LEGACY-080.
 - CI proves up → down → up in Task 10.
 - Production deployments remain forward-only.

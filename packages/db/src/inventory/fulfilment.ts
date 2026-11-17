@@ -57,7 +57,7 @@ export interface ConvertResult {
   /** 3C's rows, `linkKind: "converts_to"`. */
   links: DocumentLinkRow[];
   /** The source order's open quantity AFTER the links were written — read back from 3C's view, never
-   *  computed here (SAH-017/SAH-018: the remaining quantity is a projection, never a stored column). */
+   *  computed here (LEGACY-017/LEGACY-018: the remaining quantity is a projection, never a stored column). */
   remaining: OpenQuantityRow[];
 }
 
@@ -190,7 +190,7 @@ export async function convertOrderToDelivery(
   }
 
   // PR 11 review, round 3: what earlier deliveries of each asked order line already carry — read AFTER the
-  // locks above (SAH-017's order, as `convertToInvoice` and `creditNoteFrom` read their residues), so two
+  // locks above (LEGACY-017's order, as `convertToInvoice` and `creditNoteFrom` read their residues), so two
   // conversions of one line cannot both read "nothing delivered yet" and both take the pro-rata share. A
   // delivery counts exactly when `app.document_open_quantity` counts its claim (0116): not void, and reversed
   // only while its reversal chain reinstates it (`app.document_claim_stands`). Both order → delivery kinds
@@ -270,7 +270,7 @@ export async function convertOrderToDelivery(
   for (const wanted of input.lines) {
     const src = byId.get(wanted.sourceLineId)!;
     // One (lotId, quantity) pair per drafted line. FEFO off, or an item with no lot-tracked stock, gives
-    // exactly one pair with a null lot — applyMovements resolves the item's 'NONE' sentinel (SAH-050).
+    // exactly one pair with a null lot — applyMovements resolves the item's 'NONE' sentinel (LEGACY-050).
     let pairs: { lotId: string | null; quantity: string }[] = [
       { lotId: null, quantity: wanted.quantity },
     ];
@@ -286,7 +286,7 @@ export async function convertOrderToDelivery(
         // FEFO returns FEWER rows than asked when the warehouse cannot cover the quantity (3A: "the refusal
         // is the trigger's job"). The requested quantity is NEVER reduced here: the uncovered remainder
         // becomes one final pair with a null lot, which `applyMovements` resolves to the item's `NONE`
-        // sentinel (SAH-050) so `app.assert_stock_available` sees the true over-issue and either raises
+        // sentinel (LEGACY-050) so `app.assert_stock_available` sees the true over-issue and either raises
         // ERR_STOCK_INSUFFICIENT or admits it against an `inventory.negative_stock.override` event
         // (§4.5.3). Capping the draft to on-hand would make test 18's re-run and test 7's "gone negative"
         // leg vacuous, and would link only the capped quantity to the order line.

@@ -38,7 +38,7 @@ slice that writes the column; spec:2090 names the direct-SQL path, so a bypassab
    terminating actor: RLS, 8A's `employee_no_self_pay` (R4), Plan 0A's `forbid_self_grant` and
    `keep_last_admin_assignment` all apply, and `hr_payroll` needs no `admin.role.assign`. R4 is a BEFORE trigger on
    the same column, so it runs first and this AFTER trigger only ever sees a termination R4 admitted. The audit rows of
-   the employee and of every expired assignment name the terminating principal (SAH-044).
+   the employee and of every expired assignment name the terminating principal (LEGACY-044).
    **One exception, for the credential only:** the two statements that find and revoke `pos_cashier` rows run as the
    tenant's **system principal**, and the caller's actor is restored straight after — ADR 0061's `refresh_pos_cashier`
    precedent. `pos_cashier` carries Form A of `branch_isolation` keyed on the credential's branch, which may differ

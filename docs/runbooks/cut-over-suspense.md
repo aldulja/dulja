@@ -13,8 +13,8 @@ cut-over document balances against. After a clean load, ADR 0086 decomposes it e
 
 with every part named:
 
-- **the legacy trial balance's own imbalance** (SAH-003 — nothing prevented unbalanced vouchers): Σ `ACCTOTALS` debit −
-  credit, matched exactly by 9A's `unbalanced_vouchers` and `aggregate_drift` totals (SAH-001), or the run exits 4;
+- **the legacy trial balance's own imbalance** (LEGACY-003 — nothing prevented unbalanced vouchers): Σ `ACCTOTALS` debit −
+  credit, matched exactly by 9A's `unbalanced_vouchers` and `aggregate_drift` totals (LEGACY-001), or the run exits 4;
 - **the recost** on the inventory control: the legacy stored control less the valuation 3B's engine recomputed from the
   movement history (§5.1 #6) — `OPENING_STOCK` credits `3900` with the recomputed figure, never `MatCosts`;
 - **the AR and AP controls' own drift** from their open items: each open item opens against `3900` (ADR 0085), so the

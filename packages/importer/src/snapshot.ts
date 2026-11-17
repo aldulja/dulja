@@ -144,7 +144,7 @@ export function planSnapshot(
         column: column.name,
         action: "omit",
         kind: "credential",
-        why: "On the deny-list: spec §5.1 #7 and #11 forbid reading this column at all (SAH-028).",
+        why: "On the deny-list: spec §5.1 #7 and #11 forbid reading this column at all (LEGACY-028).",
       };
     }
     if (column.kind === "blob") {

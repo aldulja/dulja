@@ -13,7 +13,7 @@
 --         cannot write them". A `delete from app.role_permission` here would silently affect ZERO rows.
 --      3. Nor can this file discover the tenants to set a context FOR: `app.tenant` is itself forced with
 --         `using (id = app.current_tenant())` (plan0A:980-981), so the migrator enumerating it sees nothing.
---    Disabling or dropping the policy "temporarily" is forbidden outright (Global Constraint 1; SAH-027,
+--    Disabling or dropping the policy "temporarily" is forbidden outright (Global Constraint 1; LEGACY-027,
 --    041, 053), so the down file does the one thing it legitimately can and the ROLLBACK CARRIES A
 --    PRECONDITION instead: it is exercised on a freshly migrated database with no seeded tenant -- exactly
 --    where §3.4.6's generalised reversibility test exercises every down file -- and on a database where

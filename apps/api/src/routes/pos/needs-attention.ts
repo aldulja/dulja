@@ -119,7 +119,7 @@ needsAttentionRoutes.openapi(
     const { companyId, id } = c.req.valid("param");
     const { note } = c.req.valid("json");
     // `resolved_by` is NOT a parameter anywhere on this path: `resolveNeedsAttention` sets it from `ctx` and
-    // `app.stamp_actor` overwrites it from the session regardless (SAH-044). A caller cannot name a resolver.
+    // `app.stamp_actor` overwrites it from the session regardless (LEGACY-044). A caller cannot name a resolver.
     await c.var.withTenant((tx) => resolveNeedsAttention(tx, c.get("ctx"), companyId, id, note));
     return c.body(null, 204);
   },

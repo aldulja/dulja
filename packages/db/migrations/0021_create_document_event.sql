@@ -2,7 +2,7 @@
 -- The append-only record of every status change and every override on a document.
 -- spec:1782–1787 forward-declares it; contracts §4.5.2 fixes the columns; C11 is resolved with event_kind.
 -- Handlers never write this table: the AFTER UPDATE OF status trigger of migration 0022 writes 'transition'
--- rows and the override door below is the only other way in (spec:1786, SAH-044).
+-- rows and the override door below is the only other way in (spec:1786, LEGACY-044).
 
 -- ── 1. the table ──────────────────────────────────────────────────────────────────────────────────────
 create table app.document_event (
@@ -14,7 +14,7 @@ create table app.document_event (
   from_status    app.document_status not null,
   to_status      app.document_status not null,                  -- override: from_status = to_status = the status at the time
   override_code  text references app.permission(code),          -- overrides only; plain FK: permission is a global catalogue
-  actor_id       uuid not null default app.current_actor() references app.principal(id),   -- stamped; never from a payload (SAH-044)
+  actor_id       uuid not null default app.current_actor() references app.principal(id),   -- stamped; never from a payload (LEGACY-044)
   attributed_to  uuid references app.principal(id),             -- the supervisor or cashier the event belongs to — DATA (spec:1785)
   occurred_at    timestamptz not null default now(),            -- the business time; created_at is the row time
   reason         text,
@@ -42,7 +42,7 @@ revoke update, delete on app.document_event from app_rw;
 -- Identical body to app.actor_has (0001 §3) with p_principal in place of app.current_actor().
 -- app.actor_has itself is untouched. A NULL branch asks for company-wide authority and is granted only by an
 -- assignment with no branch rows, so a branch-restricted principal never gains anything by omitting the
--- branch (SAH-042, SAH-050 — never fail open).
+-- branch (LEGACY-042, LEGACY-050 — never fail open).
 create function app.principal_has(p_principal uuid, p_code text, p_company_id uuid, p_branch_id uuid default null)
 returns boolean language sql stable as $$
   select exists (
@@ -64,7 +64,7 @@ returns boolean language sql stable as $$
                      and b.branch_id = p_branch_id))))
 $$;
 
--- ── 3. the override door (R8, spec:2179; SAH-027, SAH-048) ────────────────────────────────────────────
+-- ── 3. the override door (R8, spec:2179; LEGACY-027, LEGACY-048) ────────────────────────────────────────────
 -- An override is an explicit permission exercised per document by a SECOND principal and recorded here,
 -- never a session flag. POS: actor_id is the terminal and attributed_to the supervisor whose PIN authorised
 -- it; back office: actor_id is the second principal and attributed_to is null.

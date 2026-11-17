@@ -186,7 +186,7 @@ describe("malaysiaPack (§4.9.1, amendment A3)", () => {
     expect(boxes.find((b) => b.code === "S2")!.amount.toString()).toBe("51.7000");
   });
 
-  it("a box with no matching transaction is present and ZERO, never absent (SAH-011's shape)", () => {
+  it("a box with no matching transaction is present and ZERO, never absent (LEGACY-011's shape)", () => {
     const { boxes } = malaysiaPack.buildReturn({
       regime: REGIME,
       periodStart: "2026-01-01",
@@ -271,7 +271,7 @@ describe("malaysiaPack (§4.9.1, amendment A3)", () => {
     expect(fwd.payload).toBe(rev.payload);
   });
 
-  it("a transaction outside the period is REFUSED, not silently included (SAH-059)", () => {
+  it("a transaction outside the period is REFUSED, not silently included (LEGACY-059)", () => {
     expect(() =>
       malaysiaPack.buildReturn({
         regime: REGIME,
@@ -284,7 +284,7 @@ describe("malaysiaPack (§4.9.1, amendment A3)", () => {
     );
   });
 
-  it("a transaction of another regime is REFUSED (SAH-020, spec:2444's clause)", () => {
+  it("a transaction of another regime is REFUSED (LEGACY-020, spec:2444's clause)", () => {
     expect(() =>
       malaysiaPack.buildReturn({
         regime: REGIME,

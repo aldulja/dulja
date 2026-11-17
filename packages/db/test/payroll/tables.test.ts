@@ -169,7 +169,7 @@ describe("migration 0087 — payroll_run and payroll_line (§4.12.6, amendment A
     );
     const [row] = await db.admin<{ entered_by: string | null }[]>`
       select entered_by::text as entered_by from app.payroll_line where document_line_id = ${d.lineIds[0]!}`;
-    // The payload named the system principal; app.stamp_actor wrote the SESSION actor over it (SAH-044).
+    // The payload named the system principal; app.stamp_actor wrote the SESSION actor over it (LEGACY-044).
     expect(row!.entered_by).toBe(a.human);
     // A reason with no principal at all is refused: the write-once stamp fills a supplied column only.
     const n = await draftTypedDocument(db, a, {
@@ -207,7 +207,7 @@ describe("migration 0087 — payroll_run and payroll_line (§4.12.6, amendment A
     ).rejects.toThrow(/payroll_line_override_check/);
   });
 
-  it("a POSTED run's payroll_line cannot be updated, and its parent line cannot be deleted — ERR_DOC_NOT_DRAFT (spec:2105, SAH-031/041)", async () => {
+  it("a POSTED run's payroll_line cannot be updated, and its parent line cannot be deleted — ERR_DOC_NOT_DRAFT (spec:2105, LEGACY-031/041)", async () => {
     const d = await draftTypedDocument(db, a, {
       documentTypeId: typeId,
       series: "PDT",
@@ -322,7 +322,7 @@ describe("migration 0087 — payroll_run and payroll_line (§4.12.6, amendment A
     expect(await lintSchema(db.admin)).toEqual([]);
   });
 
-  it("a run's pinned_tables survives a round trip as jsonb (SAH-013 — what was originally applied)", async () => {
+  it("a run's pinned_tables survives a round trip as jsonb (LEGACY-013 — what was originally applied)", async () => {
     const docId = await uuidv7(db.admin);
     await withTenant(db.rw, a.tenant, a.human, async (tx) => {
       await tx`
@@ -340,6 +340,6 @@ describe("migration 0087 — payroll_run and payroll_line (§4.12.6, amendment A
     >`
       select pinned_tables, calculated_by::text as calculated_by from app.payroll_run where document_id = ${docId}`;
     expect(row!.pinned_tables).toEqual([{ schemeId: "s1", version: 3 }]);
-    expect(row!.calculated_by).toBe(a.human); // stamped by app.stamp_actor, never from a payload (SAH-044)
+    expect(row!.calculated_by).toBe(a.human); // stamped by app.stamp_actor, never from a payload (LEGACY-044)
   });
 });

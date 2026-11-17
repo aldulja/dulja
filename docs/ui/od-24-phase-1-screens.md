@@ -37,7 +37,7 @@ advisory, which is a change from 0E's posture and is deliberate.
 
 For each of **chart of accounts**, **journal entry** and **fiscal periods**:
 
-1. A screenshot of the equivalent Sahlisoft screen — `docs/spec/screens/1b/accounts.png`,
+1. A screenshot of the equivalent legacy screen — `docs/spec/screens/1b/accounts.png`,
    `journal-entry.png`, `periods.png`.
 2. A two-minute description of the keyboard path a fast operator takes through it, all three together in
    `docs/spec/screens/1b/operator-notes.md` (at least 300 words): tab order, defaults, which fields are

@@ -12,7 +12,7 @@ create table app.import_batch (
   tenant_id     uuid not null references app.tenant(id),
   company_id    uuid not null,
   source_table  text not null,                                    -- the legacy relation, upper case as Firebird stores it
-  source_key    text not null,                                    -- the legacy row's own key, as a string (SAH-051)
+  source_key    text not null,                                    -- the legacy row's own key, as a string (LEGACY-051)
   target_table  text not null,                                    -- the app.* table the row became
   target_id     uuid not null,                                    -- the Dulja row's id (polymorphic, so no FK)
   source_hash   text not null,                                    -- sha256 of the mapped payload (round 20 C7)

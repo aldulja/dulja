@@ -2,10 +2,10 @@
 -- Contracts §4.9.2 (tax_transaction, tax_return) and §4.3.4's 5A row (document.tax_inclusive).
 -- The file name states all three because §3.4.2 requires it (amendment A1; 2A's 0018_… is the precedent).
 --
--- SAH-011 (VAT half): procCalculateVATReturn accumulated without coalesce, so ONE bill line with a NULL
+-- LEGACY-011 (VAT half): procCalculateVATReturn accumulated without coalesce, so ONE bill line with a NULL
 -- base nulled Output_Total for the whole period while Output_Tax still reported a figure — a return filed
 -- with tax and no base. Here all four monetary columns are NOT NULL with no default, so a tax without a
--- base is not representable. SAH-059: the return reads THIS table with both period bounds always bound
+-- base is not representable. LEGACY-059: the return reads THIS table with both period bounds always bound
 -- (packages/db/src/tax/returns.ts), never a concatenated query that can lose its date filter.
 
 -- ── 1. tax_transaction — one row per posted tax line, written ONLY by the posting service at step 11 ───
@@ -36,7 +36,7 @@ create table app.tax_transaction (
 );
 call app_meta.enable_tenant_rls('app.tax_transaction');
 -- No attach_audit: AUDIT_EXEMPT (§3.5.3). The table is append-only, so an audit copy is a second copy of
--- the same rows; correction is a reversing document, which writes its own negative rows (SAH-041).
+-- the same rows; correction is a reversing document, which writes its own negative rows (LEGACY-041).
 create trigger tax_transaction_immutable before update or delete on app.tax_transaction
   for each row execute function app.forbid_change();
 revoke update, delete on app.tax_transaction from app_rw;
@@ -48,7 +48,7 @@ create table app.tax_return (
   id              uuid primary key default uuidv7(),
   tenant_id       uuid not null references app.tenant(id),
   company_id      uuid not null,
-  regime_id       uuid not null,                                -- SAH-020: a return NAMES its regime
+  regime_id       uuid not null,                                -- LEGACY-020: a return NAMES its regime
   period_start    date not null,
   period_end      date not null check (period_end >= period_start),
   status          text not null default 'draft',
@@ -60,12 +60,12 @@ create table app.tax_return (
   -- PostgreSQL refuses the DDL outright: "number of referencing and referenced columns for foreign key
   -- disagree". §3.5.1's composite rule is about tenant-SCOPED parents; a global parent is the exception
   -- every earlier slice already takes.
-  generated_by    uuid references app.principal(id),             -- NULL until generated; stamped then (SAH-044)
+  generated_by    uuid references app.principal(id),             -- NULL until generated; stamped then (LEGACY-044)
   filed_at        timestamptz,                                   -- written by 5B under accounting.tax.file
   attachment_id   uuid,                                          -- 5B or the print path; NULL in 5A
   created_at      timestamptz not null default now(),
   constraint tax_return_status_check check (status in ('draft', 'generated', 'filed')),
-  -- A generated return has both halves or neither: the SAH-011 shape applied to the return row itself.
+  -- A generated return has both halves or neither: the LEGACY-011 shape applied to the return row itself.
   constraint tax_return_payload_pair_check
     check ((payload is null) = (payload_sha256 is null)),
   constraint tax_return_generated_has_payload_check

@@ -18,7 +18,7 @@ import {
 /**
  * Acceptance test 24 (spec:2442): "Restore to an arbitrary point in time; the trial balance computed
  * from the restored ledger equals the trial balance the live system reported at that timestamp, and the
- * audit chain verifies up to that point." SAH-081: backup and restore were manual, whole-file and
+ * audit chain verifies up to that point." LEGACY-081: backup and restore were manual, whole-file and
  * destructive, and were never rehearsed.
  *
  * Three modes, one set of assertions. `DRILL_PHASE` selects; `describe.runIf` means the modes that do
@@ -65,7 +65,7 @@ function assertDrillVerdict(verdict: DrillVerdict, capture: DrillCapture): void 
 }
 
 describe.runIf(phase === "local")(
-  "restore drill — local equivalent (acceptance test 24; SAH-081)",
+  "restore drill — local equivalent (acceptance test 24; LEGACY-081)",
   () => {
     let db: Db;
     let s: Seed;

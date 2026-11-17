@@ -31,7 +31,7 @@ describe("account_balance under concurrency — the pin behind ADR 0024's open q
     );
     // PostgreSQL's MERGE takes `when not matched then insert` in BOTH sessions for a key that does not
     // yet exist, so one may raise 23505. §4.2.2's withTenant retries only 40P01/40001. Whatever happens,
-    // a DUPLICATE ROW must be impossible — that is what SAH-049 was, and the primary key forbids it.
+    // a DUPLICATE ROW must be impossible — that is what LEGACY-049 was, and the primary key forbids it.
     expect(rejected.length).toBeLessThanOrEqual(1);
     for (const result of rejected)
       expect(String(result.reason)).toMatch(/23505|duplicate key|ERR_CONFLICT_UNIQUE/);

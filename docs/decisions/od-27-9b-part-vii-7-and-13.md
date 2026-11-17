@@ -2,7 +2,7 @@
 
 - Owner decision: **OD-27** (contracts §2.12; spec:2470–2473, 2477). Two of its five items change what 9B does:
   **#7** (does `MatOpens.Job` ever differ from 0?) and **#13** (is the legacy Salaries module in live use?). #6 is 9A's
-  `constraints()` probe and 1A's `sah-024`; #8 and #9 are 7B/7C's template mapping (`od-27-7b-…`, `od-27-7c-…`).
+  `constraints()` probe and 1A's `legacy-024`; #8 and #9 are 7B/7C's template mapping (`od-27-7b-…`, `od-27-7c-…`).
 - Asked: by 9A's `bun run legacy questions` (`part7-7`, `part7-13` — row counts and job values, evidence only).
 - Answered: pending. §2.12's default is **none**.
 - Recorded by: the 9B Task 15 agent, 2026-11-14. Implementation authorization: `docs/review/2026-11-13-phase-9-decisions.md`,

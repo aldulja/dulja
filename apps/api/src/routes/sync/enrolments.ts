@@ -54,13 +54,13 @@ enrolmentRoutes.openapi(
   async (c) => {
     const body = c.req.valid("json");
     // The raw pool, not `c.var.withTenant`: there is no tenant yet and inventing one from the request would
-    // be SAH-026 rebuilt. `db` is an `AppEnv["Variables"]` member set by createApp from AppDeps (Task 0
+    // be LEGACY-026 rebuilt. `db` is an `AppEnv["Variables"]` member set by createApp from AppDeps (Task 0
     // amendment 7), and this handler is one of exactly two call sites in the system.
     const db = c.get("db");
     // Step 1 runs with NO tenant: the SECURITY DEFINER door of migration 0060.
     const found = await resolveEnrolment(db, hashEnrolmentCode(body.code));
     if (found.length === 0) {
-      // The SAME problem for unknown, expired and spent. A probe learns only "that is not a code" (SAH-025).
+      // The SAME problem for unknown, expired and spent. A probe learns only "that is not a code" (LEGACY-025).
       throw new AppError("ERR_TERMINAL_ENROLMENT_INVALID", "that enrolment code is not valid");
     }
     const enrolment = found[0]!;

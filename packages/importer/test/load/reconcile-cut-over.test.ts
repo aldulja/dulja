@@ -66,13 +66,13 @@ describe("explain — a difference is matched exactly by 9A's reports, or it is 
 
   it("names the report whose trial-balance effect equals the difference", () => {
     expect(explain("100.0000", [unbalanced("100.0000")])).toBe(
-      "unbalanced_vouchers: 1 of 4 vouchers does not balance, netting 100.0000 (SAH-003) — posted to 3900",
+      "unbalanced_vouchers: 1 of 4 vouchers does not balance, netting 100.0000 (LEGACY-003) — posted to 3900",
     );
   });
 
   it("names BOTH reports when their effects sum to the difference, in kind order", () => {
     expect(explain("200.0000", [unbalanced("100.0000", "2"), debitDrift])).toBe(
-      "aggregate_drift: ACCTOTALS' stored totals less their VOUITEMS recomputation net 100.0000 across 1 account (SAH-001) — posted to 3900; unbalanced_vouchers: 2 of 4 vouchers do not balance, netting 100.0000 (SAH-003) — posted to 3900",
+      "aggregate_drift: ACCTOTALS' stored totals less their VOUITEMS recomputation net 100.0000 across 1 account (LEGACY-001) — posted to 3900; unbalanced_vouchers: 2 of 4 vouchers do not balance, netting 100.0000 (LEGACY-003) — posted to 3900",
     );
   });
 
@@ -108,7 +108,7 @@ describe("explain — a difference is matched exactly by 9A's reports, or it is 
     ]);
     // −50 (the stored credit is 50 higher) − 30 (a debit the stored table never got) = −80.
     expect(explain("-80.0000", [credit])).toBe(
-      "aggregate_drift: ACCTOTALS' stored totals less their VOUITEMS recomputation net -80.0000 across 2 accounts (SAH-001) — posted to 3900",
+      "aggregate_drift: ACCTOTALS' stored totals less their VOUITEMS recomputation net -80.0000 across 2 accounts (LEGACY-001) — posted to 3900",
     );
   });
 
@@ -245,7 +245,7 @@ describe("reconcileCutOver — Phase 9's definition of done, computed (spec:2295
       "8300.0000",
     ]);
     expect(imbalance!.explanation).toBe(
-      "unbalanced_vouchers: 3 of 3 vouchers do not balance, netting 8300.0000 (SAH-003) — posted to 3900",
+      "unbalanced_vouchers: 3 of 3 vouchers do not balance, netting 8300.0000 (LEGACY-003) — posted to 3900",
     );
     expect([closing!.key, closing!.source, closing!.dulja, closing!.difference]).toEqual([
       "3900",
@@ -296,7 +296,7 @@ describe("reconcileCutOver — Phase 9's definition of done, computed (spec:2295
     );
     expect(drifted.ok).toBe(true);
     expect(find(drifted.trialBalance, "1200").explanation).toBe(
-      "supplied by the open-item load, one OPENING_BALANCE per open legacy receivable (ADR 0085): the legacy BILLS total 1800.0000 while the legacy control holds 1850.0000 — the 50.0000 between them is the legacy control's own drift against its open items (SAH-001), standing on 3900",
+      "supplied by the open-item load, one OPENING_BALANCE per open legacy receivable (ADR 0085): the legacy BILLS total 1800.0000 while the legacy control holds 1850.0000 — the 50.0000 between them is the legacy control's own drift against its open items (LEGACY-001), standing on 3900",
     );
     expect(find(drifted.suspense, "3900").difference).toBe("0.0000");
 
@@ -319,7 +319,7 @@ describe("reconcileCutOver — Phase 9's definition of done, computed (spec:2295
 
   it("explains the part of 3900 that is ACCTOTALS' own drift from VOUITEMS, read in 9B's spelling (9B review, finding 8)", async () => {
     // The stored total of 1101 says 5050 where its VOUITEMS lines sum to 5000. The load opens what ACCTOTALS says, so
-    // the legacy imbalance is 8350: the vouchers' own 8300 (SAH-003) plus that 50 of drift (SAH-001). Only
+    // the legacy imbalance is 8350: the vouchers' own 8300 (LEGACY-003) plus that 50 of drift (LEGACY-001). Only
     // aggregate_drift can name the 50, and it reads ACCTOTALS by ACTACC/ACTDEBIT/ACTCREDIT, the load's spelling.
     const drifted = withTable(
       "ACCTOTALS",
@@ -341,7 +341,7 @@ describe("reconcileCutOver — Phase 9's definition of done, computed (spec:2295
     const imbalance = find(rec.suspense, "legacy imbalance");
     expect(imbalance.difference).toBe("8350.0000");
     expect(imbalance.explanation).toBe(
-      "aggregate_drift: ACCTOTALS' stored totals less their VOUITEMS recomputation net 50.0000 across 1 account (SAH-001) — posted to 3900; unbalanced_vouchers: 3 of 3 vouchers do not balance, netting 8300.0000 (SAH-003) — posted to 3900",
+      "aggregate_drift: ACCTOTALS' stored totals less their VOUITEMS recomputation net 50.0000 across 1 account (LEGACY-001) — posted to 3900; unbalanced_vouchers: 3 of 3 vouchers do not balance, netting 8300.0000 (LEGACY-003) — posted to 3900",
     );
     expect(rec.suspenseBalance).toBe("-6130.0000");
     expect(find(rec.suspense, "3900").difference).toBe("0.0000");

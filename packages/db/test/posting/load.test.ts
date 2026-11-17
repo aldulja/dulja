@@ -149,7 +149,7 @@ describe("loadSnapshot and resolvePolicy — contracts §4.3.1", () => {
     ).rejects.toMatchObject({ code: "ERR_POLICY_NOT_FOUND" });
   });
 
-  it("raises ERR_POLICY_INVALID for a stored definition that fails the schema (SAH-013)", async () => {
+  it("raises ERR_POLICY_INVALID for a stored definition that fails the schema (LEGACY-013)", async () => {
     await expect(
       withTenant(db.rw, plain.tenant, plain.human, (tx) =>
         resolvePolicy(tx, plain.docType, "2026-01-15"),

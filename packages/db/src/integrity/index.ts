@@ -35,7 +35,7 @@ export interface IntegrityCheckOptions {
 /**
  * One tenant's nightly integrity run (spec:2246 — the SLI "single most valuable thing you can build").
  * Every part is a READ; the only write in this module is recordIntegrityIncident below, and it writes to
- * app.audit_log and nothing else. The job never repairs a projection: SAH-079 is a system that
+ * app.audit_log and nothing else. The job never repairs a projection: LEGACY-079 is a system that
  * accumulated forty-four repair objects instead of detecting drift at source.
  *
  * The caller supplies the transaction, so a handler can run this and the incident insert in one

@@ -112,7 +112,7 @@ interface SourceLine {
  * `unit_price`, the CONVERTED `quantity`, and three money figures pro-rated by `quantity ÷ source.quantity`
  * — `discount`, `amount` and, load-bearing, **`cost`** (contracts §4.7.2 amendment 5: `applyMovements` and
  * the two 4A conversion services are the only writers of `document_line.cost`), so the invoice relieves the
- * corridor by THE figure that filled it (SAH-009). That figure is what the source's movement BOOKED —
+ * corridor by THE figure that filled it (LEGACY-009). That figure is what the source's movement BOOKED —
  * |inventory_movement.value| of the movement the line's cost leg was filled from, immutable —
  * `costLegMovement`, the one definition `applyMovements` fills a delivery's `1250` leg by: the line's issue
  * movement, or its only one. Not the sum over the line's movements: a `transfer` line carries two, its leg
@@ -269,7 +269,7 @@ export async function convertToInvoice(
     );
   }
 
-  // SAH-017's concurrency face, taken BEFORE the read. The closing branch below decides on the converted
+  // LEGACY-017's concurrency face, taken BEFORE the read. The closing branch below decides on the converted
   // quantity it reads, and at READ COMMITTED two conversions of one line that each read "one third done"
   // would both take the pro-rata and leave the residue in 1250 forever. The key and the order are 3C's own
   // (0037's trigger locks `document_link:<source line>`, and `linkFulfilment` sorts by source line id), so
@@ -471,12 +471,12 @@ export async function convertToInvoice(
   }
 
   // The pinned term, through the ONE reader of `app.party.payment_term_id` (4A Task 1) — pinned here, at
-  // draft, and never re-read (SAH-013).
+  // draft, and never re-read (LEGACY-013).
   const paymentTermId =
     head.partyId === null ? null : await resolvePartyTerm(tx, { partyId: head.partyId });
-  // The rate travels with the goods, and so does its provenance (SAH-012). A base-currency source whose rate
+  // The rate travels with the goods, and so does its provenance (LEGACY-012). A base-currency source whose rate
   // is the identity pair carries none when the API drafted it; that pair's label is `unit` everywhere else
-  // (§4.2.10), and a posted base figure with no provenance is the absence SAH-012 is about.
+  // (§4.2.10), and a posted base figure with no provenance is the absence LEGACY-012 is about.
   const identity = head.currency === head.baseCurrency && head.exchangeRate === "1.00000000";
   const rateSource = head.rateSource ?? (identity ? "unit" : null);
 

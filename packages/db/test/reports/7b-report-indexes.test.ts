@@ -16,7 +16,7 @@ import {
 import { CATALOGUE_7C, readEnvelope7C } from "../../../../tests/invariants/support/reports-7c";
 
 /**
- * 7B Task 10 — SAH-070's EXPLAIN gate: every report filter column of the twenty-two definitions is served by
+ * 7B Task 10 — LEGACY-070's EXPLAIN gate: every report filter column of the twenty-two definitions is served by
  * an index (contracts round 14, amendments A7 and A17). 7C judges its own definitions here too (round 15, A17):
  * its filter pairs join the map, and the two closed lists below say why a pair is not judged by seekability.
  * Nothing is recorded unserved: the seven pairs 7C first listed so have their indexes in 0077 (round 15, A17 as
@@ -30,7 +30,7 @@ import { CATALOGUE_7C, readEnvelope7C } from "../../../../tests/invariants/suppo
  *    using the pair requires by `eq`. Key order is a property of the index, not of the data, which is why this
  *    half decides. "The column is in some index" is not enough — `inventory_movement_chrono_idx (company_id,
  *    item_id, warehouse_id, effective_date, …)` contains `effective_date` and still reads every item's entries
- *    for a company-wide date range, precisely SAH-070's full scan wearing an index's name. A PARTIAL index is
+ *    for a company-wide date range, precisely LEGACY-070's full scan wearing an index's name. A PARTIAL index is
  *    not counted: a ReportDefinition filter cannot state "is null", so a report's WHERE never implies
  *    `archived_at is null` or `invalidated_at is null` and the planner cannot use one.
  * 2. **The planner (corroborating).** With `enable_seqscan = off`, a probe binding an ABSENT value of the
@@ -253,7 +253,7 @@ const COLUMN_OF: Readonly<Record<string, Target>> = {
 };
 
 /**
- * Low-selectivity enumerations, judged NOT by seekability, each with its reason. SAH-070's own table names
+ * Low-selectivity enumerations, judged NOT by seekability, each with its reason. LEGACY-070's own table names
  * this class ("`ItmSite` ~1 distinct value", "`ItmLevel` very low selectivity") as columns an index does not
  * help: an index on a handful of values reads a large fraction of the table either way. Each is an
  * OPTIONAL narrowing over a report whose rows are already bounded — by a required, seekable filter, or (for
@@ -330,7 +330,7 @@ const ABSENT: Readonly<Record<string, string>> = {
   uuid: "00000000-0000-7000-8000-000000000000",
   date: "1900-01-01",
   "timestamp with time zone": "1900-01-01T00:00:00Z",
-  text: "sah-070-probe",
+  text: "legacy-070-probe",
   "character(3)": "ZZZ",
 };
 
@@ -369,7 +369,7 @@ function nodes(node: PlanNode): PlanNode[] {
   return [node, ...(node.Plans ?? []).flatMap(nodes)];
 }
 
-describe("SAH-070 — every report filter column is served by an index (7B, migration 0077)", () => {
+describe("LEGACY-070 — every report filter column is served by an index (7B, migration 0077)", () => {
   let db: Db;
   let f: ReportFixture;
 
@@ -513,7 +513,7 @@ describe("SAH-070 — every report filter column is served by an index (7B, migr
     });
     expect(
       failures,
-      "SAH-070: a report filter no index can seek on — the index is missing (contracts A7/A17)",
+      "LEGACY-070: a report filter no index can seek on — the index is missing (contracts A7/A17)",
     ).toEqual([]);
   });
 

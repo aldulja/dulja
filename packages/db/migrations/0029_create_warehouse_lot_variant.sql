@@ -1,8 +1,8 @@
 -- ── 0029 · app.warehouse, app.lot, app.variant, and the per-item sentinel lot ──────────────────
 -- spec:1182 (§3.3 Warehouse tree ── StockBalance), spec:1022–1023 (§3.0.3 Batch/lot with expiry;
 -- Multi-branch stock), spec:161 (§0.4 Batch → Lot), spec:1048 (§3.0.4 Inventory core).
--- SAH-071: the tree check is ONE recursive CTE in ONE function, not a recursive procedure called per
--- row in three modules. SAH-050: every item gets a sentinel lot so the stock_on_hand primary key,
+-- LEGACY-071: the tree check is ONE recursive CTE in ONE function, not a recursive procedure called per
+-- row in three modules. LEGACY-050: every item gets a sentinel lot so the stock_on_hand primary key,
 -- which contains lot_id, never holds NULL (ADR 0034).
 
 -- ── 1. warehouses, as a tree, one branch each ───────────────────────────────────────────────────
@@ -31,7 +31,7 @@ create table app.warehouse (
 create index warehouse_parent_idx on app.warehouse (parent_id) where parent_id is not null;
 create index warehouse_branch_idx on app.warehouse (company_id, branch_id);
 
--- SAH-071: cycle detection as one recursive CTE walking UP from the proposed parent. The old system
+-- LEGACY-071: cycle detection as one recursive CTE walking UP from the proposed parent. The old system
 -- called a recursive procedure per row inside a trigger, duplicated in at least three modules, and
 -- RecursiveRecord was the most-raised exception in the corpus. This is the only such check in Dulja.
 create function app.warehouse_no_cycle() returns trigger language plpgsql as $$
@@ -87,7 +87,7 @@ create index lot_expiry_idx on app.lot (company_id, expires_on)
   where expires_on is not null and archived_at is null;
 create index lot_item_idx on app.lot (item_id);
 
--- SAH-050 / ADR 0034: one sentinel lot per item, created with the item, code 'NONE'. stock_on_hand's
+-- LEGACY-050 / ADR 0034: one sentinel lot per item, created with the item, code 'NONE'. stock_on_hand's
 -- primary key contains lot_id (§4.7.3), and a NULL there is exactly the old defect: MtoJob = NULL is
 -- unknown, so the increment matched nothing and inserted an orphan, and the decrement matched nothing
 -- and left the row. applyMovements resolves a line's null lot to this row before insert.

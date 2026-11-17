@@ -8,7 +8,7 @@
 
 ## Context
 
-Dulja never stores or checks a password (spec:2131, SAH-028); Supabase Auth does. But nothing in the product let anyone choose one. The seed creates the owner with no password (`packages/db/src/seed/auth-admin.ts`), `POST /v1/admin/users` invites with none (`apps/api/src/auth-admin.ts`), and the back office's sign-in screen offered e-mail and password only. Supabase's invite and recovery e-mails carry a link, which opens a browser at the project's Site URL; the back office runs at `dulja://app` inside `backoffice.exe`, which no link reaches, and nothing registers a protocol handler. So nobody could sign in without an engineer setting a password in the Supabase console.
+Dulja never stores or checks a password (spec:2131, LEGACY-028); Supabase Auth does. But nothing in the product let anyone choose one. The seed creates the owner with no password (`packages/db/src/seed/auth-admin.ts`), `POST /v1/admin/users` invites with none (`apps/api/src/auth-admin.ts`), and the back office's sign-in screen offered e-mail and password only. Supabase's invite and recovery e-mails carry a link, which opens a browser at the project's Site URL; the back office runs at `dulja://app` inside `backoffice.exe`, which no link reaches, and nothing registers a protocol handler. So nobody could sign in without an engineer setting a password in the Supabase console.
 
 Two ways out were weighed:
 

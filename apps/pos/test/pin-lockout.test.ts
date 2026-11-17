@@ -1,4 +1,4 @@
-// apps/pos/test/pin-lockout.test.ts — SAH-028's "rate limiting and lockout on failed attempts" (spec:476).
+// apps/pos/test/pin-lockout.test.ts — LEGACY-028's "rate limiting and lockout on failed attempts" (spec:476).
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -82,7 +82,7 @@ afterEach(() => {
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
-describe("PIN lockout at the till (SAH-028, spec:476)", () => {
+describe("PIN lockout at the till (LEGACY-028, spec:476)", () => {
   it("locks an employee number after five wrong PINs and refuses even the right PIN, unverified, until the window passes", async () => {
     for (let i = 0; i < PIN_FAILURES_BEFORE_LOCKOUT; i++)
       await expect(attempt("E-001", "0000", at(i * 1000))).rejects.toMatchObject({

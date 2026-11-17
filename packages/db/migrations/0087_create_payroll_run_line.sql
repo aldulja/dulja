@@ -25,7 +25,7 @@ create table app.payroll_run (
   period_start    date not null,
   period_end      date not null,
   pay_date        date not null,
-  -- SAH-013: what was ORIGINALLY applied. [{ "schemeId": uuid, "version": int }], written by the run service
+  -- LEGACY-013: what was ORIGINALLY applied. [{ "schemeId": uuid, "version": int }], written by the run service
   -- from the pure calculator's `pinnedTables` and never re-read from statutory_rate_table afterwards.
   pinned_tables   jsonb not null default '[]'::jsonb,
   calculated_at   timestamptz not null default now(),
@@ -39,7 +39,7 @@ create table app.payroll_run (
   foreign key (tenant_id, document_id) references app.document(tenant_id, id) on delete cascade
 );
 comment on table app.payroll_run is
-  'spec:2081 — a payroll run is a PAYROLL document; this row carries the pay period, the run kind and the pinned rate-table versions (SAH-013).';
+  'spec:2081 — a payroll run is a PAYROLL document; this row carries the pay period, the run kind and the pinned rate-table versions (LEGACY-013).';
 call app_meta.enable_tenant_rls('app.payroll_run');
 call app_meta.attach_audit('app.payroll_run', 'tenant_column', 'document_id');
 call app_meta.attach_stamp('app.payroll_run', 'calculated_by');
@@ -60,11 +60,11 @@ create table app.payroll_line (
   -- A MAGNITUDE. §4.4.2 amendment A9 makes `side` the sole carrier of direction for a planned ledger line,
   -- and the policy's rules choose the side; a negative amount here would post a deduction as an earning.
   amount            numeric(19,4) not null,
-  rate_table_id     uuid,                        -- SAH-013: the version this line pinned
+  rate_table_id     uuid,                        -- LEGACY-013: the version this line pinned
   rate_table_version int,
   override_reason   text,                        -- spec:2087 — a manual statutory override, never silent
   -- Stamped (app.stamp_actor overwrites any supplied value with the session actor); null unless
-  -- override_reason is set. The employee the line is ABOUT is employee_id, never a *_by column (SAH-044).
+  -- override_reason is set. The employee the line is ABOUT is employee_id, never a *_by column (LEGACY-044).
   entered_by        uuid references app.principal(id),
   created_at        timestamptz not null default now(),
   constraint payroll_line_amount_check check (amount >= 0),
@@ -87,7 +87,7 @@ create table app.payroll_line (
   foreign key (tenant_id, rate_table_id)     references app.statutory_rate_table(tenant_id, id)
 );
 comment on table app.payroll_line is
-  'spec:2081 — one row per employee per component or scheme share, pinning the rate-table version it used (SAH-013).';
+  'spec:2081 — one row per employee per component or scheme share, pinning the rate-table version it used (LEGACY-013).';
 call app_meta.enable_tenant_rls('app.payroll_line');
 call app_meta.attach_audit('app.payroll_line', 'tenant_column', 'document_line_id');
 call app_meta.attach_stamp('app.payroll_line', 'entered_by');
@@ -95,8 +95,8 @@ call app_meta.attach_stamp('app.payroll_line', 'entered_by');
 create index payroll_line_employee_idx on app.payroll_line (company_id, employee_id);
 create index payroll_line_scheme_idx   on app.payroll_line (company_id, scheme_id);
 
--- ── 4. Period lock reaches the LINES (spec:2105, SAH-031) ────────────────────────────────────────────
--- SAH-031 is verbatim "Period locks … do not reach the line items". `assert_period_open` guards ledger_entry
+-- ── 4. Period lock reaches the LINES (spec:2105, LEGACY-031) ────────────────────────────────────────────
+-- LEGACY-031 is verbatim "Period locks … do not reach the line items". `assert_period_open` guards ledger_entry
 -- and `document_line_delete_draft_only` (2B, 0023) guards document_line, but app.payroll_line is a table those
 -- two have never heard of — and it carries every figure a payslip and a statutory schedule are generated from.
 -- The guard is the same shape as 2B's app.forbid_line_delete_unless_draft and raises the same token.
@@ -114,7 +114,7 @@ begin
     from app.document d join app.document_line l on l.document_id = d.id
    where l.id = coalesce(new.document_line_id, old.document_line_id);
   if s is not null and s <> 'draft' then
-    raise exception 'ERR_DOC_NOT_DRAFT: payroll line % belongs to a document that is %; a posted run is corrected by a supplementary run, never edited in place (spec:2081, SAH-041)',
+    raise exception 'ERR_DOC_NOT_DRAFT: payroll line % belongs to a document that is %; a posted run is corrected by a supplementary run, never edited in place (spec:2081, LEGACY-041)',
       coalesce(new.document_line_id, old.document_line_id), s
       using errcode = 'check_violation';
   end if;

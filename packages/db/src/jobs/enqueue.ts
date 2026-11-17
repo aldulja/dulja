@@ -56,10 +56,10 @@ export function queuePolicy(name: string): QueuePolicy {
 
 /**
  * What `createJobClient`'s `enqueue` throws when pg-boss inserts nothing and no queued job took the request
- * (ADR 0007 decision 5: never a silent non-insert — a job that never runs is exactly SAH-005). Two cases reach it:
+ * (ADR 0007 decision 5: never a silent non-insert — a job that never runs is exactly LEGACY-005). Two cases reach it:
  *
  * - a keyed job on a `standard` queue whose 24-hour `singletonSeconds` slot is already taken (by a job in any
- *   state but `cancelled` — pg-boss's `job_i4`), which is 0D's original meaning and SAH-005's pinned case;
+ *   state but `cancelled` — pg-boss's `job_i4`), which is 0D's original meaning and LEGACY-005's pinned case;
  * - a keyed job on a `stately` queue (`STATELY_JOBS`) whose insert was refused and whose queued job could not be
  *   locked either, `COLLAPSE_ATTEMPTS` times running — which only a worker claiming each queued job in the
  *   instant between the two statements could cause.
@@ -143,7 +143,7 @@ export function createJobClient(boss: PgBoss): JobClient {
         boss.send(name, job as unknown as object, {
           db,
           ...(singletonKey === undefined ? {} : { singletonKey }),
-          // The 24-hour throttle slot stays on a keyed STANDARD job only (0D's behaviour, SAH-005's pinned
+          // The 24-hour throttle slot stays on a keyed STANDARD job only (0D's behaviour, LEGACY-005's pinned
           // case). On a stately queue it is exactly the defect this client once had: the slot counts a job in
           // every state but cancelled, so a completed job refused every later request for the day.
           ...(singletonKey === undefined || stately ? {} : { singletonSeconds: 86_400 }),

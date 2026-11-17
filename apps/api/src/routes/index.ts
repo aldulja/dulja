@@ -154,7 +154,7 @@ export function buildRoutes(deps: {
     // 8B T10: payroll runs — calculate, recalculate, read, list. Submit/approve/post are 2B's transitions route.
     // 8D T5 (amendment A4): the payslip sub-path `POST …/{documentId}/payslips` composed onto the SAME module — its
     // `path` is unchanged, so PROBES gains nothing (hazard 31) — and the module's permissions gain the route's code,
-    // hr.filing.generate (§3.6.2; it closes SAH-047's unrouted catalogue code, round 19 A13 item 8).
+    // hr.filing.generate (§3.6.2; it closes LEGACY-047's unrouted catalogue code, round 19 A13 item 8).
     {
       ...payrollRunRouteModule,
       router: composePayrollRunRouter(deps.objectStore),

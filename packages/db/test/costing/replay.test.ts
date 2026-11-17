@@ -24,7 +24,7 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => `2026-${String(i + 1).padSta
  *  would resolve to `packages/db/packages/db/seed/…` (1a:5114 does the same). */
 const TYPES = fileURLToPath(new URL("../../seed/my/document-types", import.meta.url));
 
-describe("acceptance test 5 — back-dated costing (spec:2423; SAH-004, 005, 010)", () => {
+describe("acceptance test 5 — back-dated costing (spec:2423; LEGACY-004, 005, 010)", () => {
   let db: Db;
   let s: Seed;
   let receiptType: string;
@@ -278,7 +278,7 @@ describe("acceptance test 5 — back-dated costing (spec:2423; SAH-004, 005, 010
     expect(again).toEqual({ movementsReplayed: 0, adjustmentsPosted: [] });
   });
 
-  it("re-running after a completed run adds nothing, and no period gets two adjustments (SAH-054)", async () => {
+  it("re-running after a completed run adds nothing, and no period gets two adjustments (LEGACY-054)", async () => {
     const jobs = recordingJobs();
     await postInventoryDocument(db, s, {
       documentTypeId: receiptType,

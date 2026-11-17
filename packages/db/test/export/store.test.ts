@@ -26,7 +26,7 @@ describe("the export-job store (contracts §4.6.1, 7C Task 5)", () => {
 
   const write = <T>(fn: (tx: Sql) => Promise<T>) => withTenant(db.rw, s.tenant, s.human, fn);
 
-  it("exportObjectKeyFor is derived from ids alone (SAH-038)", () => {
+  it("exportObjectKeyFor is derived from ids alone (LEGACY-038)", () => {
     expect(exportObjectKeyFor("t-1", "j-1", 2)).toBe("t-1/exports/j-1/2.tar.gz");
   });
 

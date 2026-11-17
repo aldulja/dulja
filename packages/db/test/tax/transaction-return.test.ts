@@ -54,7 +54,7 @@ describe("migration 0054 — tax_transaction, tax_return, document.tax_inclusive
     expect(AUDIT_EXEMPT.has("tax_regime")).toBe(false);
   });
 
-  it("all four monetary columns are NOT NULL — a return can never carry tax without base (SAH-011)", async () => {
+  it("all four monetary columns are NOT NULL — a return can never carry tax without base (LEGACY-011)", async () => {
     const cols = await db.admin<
       { column_name: string; is_nullable: string; numeric_scale: number }[]
     >`
@@ -154,7 +154,7 @@ describe("migration 0054 — tax_transaction, tax_return, document.tax_inclusive
     const [drafted] = await db.admin<{ generated_by: string | null }[]>`
       select generated_by from app.tax_return where id = ${id}`;
     expect(drafted!.generated_by).toBeNull();
-    // The NULL → value transition: a supplied value is REPLACED with the session actor, never trusted (SAH-044).
+    // The NULL → value transition: a supplied value is REPLACED with the session actor, never trusted (LEGACY-044).
     await withTenant(
       db.rw,
       a.tenant,

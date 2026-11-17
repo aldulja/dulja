@@ -3,7 +3,7 @@ import { ListEnvelope, ListQuery, MoneySchema, TimestampSchema, UuidSchema } fro
 
 const CurrencyCodeSchema = z.string().regex(/^[A-Z]{3}$/);
 
-/** spec:1169 — one entity with one discriminator, replacing the legacy Account's twenty Is* flags (SAH-072).
+/** spec:1169 — one entity with one discriminator, replacing the legacy Account's twenty Is* flags (LEGACY-072).
  *  `student` and `dealer` are reserved names carried so a later module is data, not a migration. */
 export const PartyKindSchema = z.enum(["customer", "vendor", "employee", "student", "dealer"]);
 

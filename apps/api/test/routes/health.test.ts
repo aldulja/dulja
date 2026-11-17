@@ -75,7 +75,7 @@ describe("the api skeleton — spec:2314, 2055, 2063", () => {
     expect(((await res.json()) as Problem).code).toBe("ERR_AUTH_TOKEN_INVALID");
   });
 
-  it("a thrown driver error becomes ERR_INTERNAL and never echoes the driver text (SAH-083)", async () => {
+  it("a thrown driver error becomes ERR_INTERNAL and never echoes the driver text (LEGACY-083)", async () => {
     const app = createApp(deps());
     app.get("/boom", () => {
       throw Object.assign(new Error('relation "app.secret" does not exist'), { code: "42P01" });

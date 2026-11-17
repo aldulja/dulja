@@ -43,7 +43,7 @@ const AMOUNT_COLUMNS = ["debit", "credit", "base_debit", "base_credit"] as const
  * exact — "bit-identically" in the Phase 1 DoD means exactly this.
  *
  * Runs inside withTenant, so both sides are already one tenant's rows (contracts §4.2.2) — the
- * structural answer to SAH-001, where the aggregate was keyed without the tenant.
+ * structural answer to LEGACY-001, where the aggregate was keyed without the tenant.
  *
  * One statement, no DDL. An earlier draft materialised the rebuild in a `create temporary table … on
  * commit drop`, which AGENTS.md forbids from application code ("Never … issue DDL from application code")

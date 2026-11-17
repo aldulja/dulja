@@ -130,7 +130,7 @@ function toRow(raw: RawJob): ExportJobRow {
 }
 
 /** `<tenant_id>/exports/<export_job_id>/<attempt>.tar.gz` — server-generated from ids alone, so no client path
- *  can reach the store (SAH-038; the rule §4.5.8's `objectKeyFor` and 7A's `reportObjectKeyFor` follow). The
+ *  can reach the store (LEGACY-038; the rule §4.5.8's `objectKeyFor` and 7A's `reportObjectKeyFor` follow). The
  *  claim's `attempts` is in the key for the reason `reportObjectKeyFor` gives (second review, finding 2): a
  *  superseded worker writes its own object, never over the archive whose digest its successor recorded. */
 export function exportObjectKeyFor(tenantId: string, exportJobId: string, attempt: number): string {

@@ -42,7 +42,7 @@ export const DraftSettlementBody = z
     /** Required on the wire, optional in the service: the route never relies on the head-office default. */
     branchId: UuidSchema,
     currency: CurrencySchema,
-    /** The caller's rate, kept as given (SAH-014); the base currency takes only `1.00000000`. */
+    /** The caller's rate, kept as given (LEGACY-014); the base currency takes only `1.00000000`. */
     exchangeRate: RateSchema.refine((rate) => !/^0+\.0{8}$/.test(rate), {
       message: "rate must be greater than zero",
     }),

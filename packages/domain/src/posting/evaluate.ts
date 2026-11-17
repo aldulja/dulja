@@ -624,7 +624,7 @@ function dimensionsFor(
     if (source === "line.employee" && line?.payroll)
       out["EMPLOYEE"] = line.payroll.employeeDimensionValueId;
   }
-  // The header's BRANCH always wins over a value a client put in the line's own bag (SAH-042, SAH-050).
+  // The header's BRANCH always wins over a value a client put in the line's own bag (LEGACY-042, LEGACY-050).
   if (from.includes("document.branch")) out["BRANCH"] = snapshot.header.branchId;
   return out;
 }
@@ -1038,7 +1038,7 @@ function transferQuantities(line: LineSnapshot): {
 /**
  * The movement half of the posting plan — ADR 0035. Pure: every input is on the snapshot, and the only
  * outputs are `PlannedMovement`s with `value: null` — §4.7.2's `applyMovements` fills `value`, and 3B
- * replaces how. (The wording avoids the literal "plan" followed by an open bracket: SAH-067's scan
+ * replaces how. (The wording avoids the literal "plan" followed by an open bracket: LEGACY-067's scan
  * refuses that shape anywhere in shipped source, because it is how the legacy procedures pinned a query
  * plan, and a doc comment is not exempt from a whole-file grep.)
  *

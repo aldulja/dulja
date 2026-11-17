@@ -162,7 +162,7 @@ function delta(dulja: string, legacy: string, base: CurrencyCode): string {
 /**
  * Compares one POSTED run against the legacy figures the owner supplied. The Dulja side is `payslipRows` and NOT a
  * second query: the report must reconcile the figures the employee received on paper, and a second aggregation here
- * would be a third source of truth for one number (SAH-009). Pure comparison over `Money` once the bundles are read.
+ * would be a third source of truth for one number (LEGACY-009). Pure comparison over `Money` once the bundles are read.
  */
 export async function reconcileParallelRun(
   tx: Sql,
@@ -191,7 +191,7 @@ export async function reconcileParallelRun(
   for (const l of legacyByNumber.values()) {
     const b = byNumber.get(l.employeeNumber);
     if (b === undefined) {
-      // The legacy system paid someone Dulja did not. Reported, never silently dropped — SAH-011's shape.
+      // The legacy system paid someone Dulja did not. Reported, never silently dropped — LEGACY-011's shape.
       differences.push({
         employeeNumber: l.employeeNumber,
         kind: "missing_in_dulja",

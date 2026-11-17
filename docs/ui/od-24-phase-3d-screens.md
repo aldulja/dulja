@@ -171,7 +171,7 @@ the screen a plausible guess would get wrong.
 ## The owner request, ready to send
 
 > **OD-24 (spec:2408), inventory operations.** Before we build the transfer, stock-count and stock-enquiry
-> screens, please provide: **(a)** screenshots of the three Sahlisoft screens your staff use today for sending
+> screens, please provide: **(a)** screenshots of the three legacy screens your staff use today for sending
 > stock to another branch, for writing down a stock count, and for looking up what is in a warehouse;
 > **(b)** a **two-minute description**, from whoever actually does each job, of the order in which they type
 > and what they tab between — including what the person counting the shelves physically holds and does. Not a

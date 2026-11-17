@@ -8,13 +8,13 @@ export interface NullPoisonTarget {
   readonly table: string;
   readonly columns: readonly string[];
   readonly why: string;
-  readonly sah: readonly string[];
+  readonly legacyDefects: readonly string[];
   /** 9B review, finding 8 — further spellings of a column, tried in order after it; the row names the one read. */
   readonly spellings?: Readonly<Record<string, readonly string[]>>;
 }
 
 /**
- * §5.1 #4: "Expect NULL-poisoned balances and costs (SAH-007, 011). These will appear as blank or zero, not as
+ * §5.1 #4: "Expect NULL-poisoned balances and costs (LEGACY-007, 011). These will appear as blank or zero, not as
  * errors." (spec:2334) The list is every figure column a legacy report would render as a blank and a loader
  * would coerce to zero — which is the same defect arriving in the new system.
  */
@@ -22,52 +22,52 @@ export const NULL_POISON_TARGETS: readonly NullPoisonTarget[] = [
   {
     table: "ACCTOTALS",
     columns: ["DEBIT", "CREDIT", "ADMINDEBIT", "ADMINCREDIT"],
-    why: "NULL arithmetic irreversibly nulls balances (SAH-011): one NULL operand in the trigger's -old + new expression wipes the accumulated figure and nothing raises.",
-    sah: ["SAH-011"],
-    // 9B's trial-balance loader reads the totals as ACTDEBIT/ACTCREDIT and refuses a NULL one (SAH-007).
+    why: "NULL arithmetic irreversibly nulls balances (LEGACY-011): one NULL operand in the trigger's -old + new expression wipes the accumulated figure and nothing raises.",
+    legacyDefects: ["LEGACY-011"],
+    // 9B's trial-balance loader reads the totals as ACTDEBIT/ACTCREDIT and refuses a NULL one (LEGACY-007).
     spellings: { DEBIT: ["ACTDEBIT"], CREDIT: ["ACTCREDIT"] },
   },
   {
     table: "ACCOBJECTS",
     columns: ["DEBIT", "CREDIT", "OPENDEBIT", "OPENCREDIT"],
     why: "As ACCTOTALS.",
-    sah: ["SAH-011"],
+    legacyDefects: ["LEGACY-011"],
   },
   {
     table: "ACCCURTOTALS",
     columns: ["DEBIT", "CREDIT"],
-    why: "As ACCTOTALS, per currency (SAH-001).",
-    sah: ["SAH-001", "SAH-011"],
+    why: "As ACCTOTALS, per currency (LEGACY-001).",
+    legacyDefects: ["LEGACY-001", "LEGACY-011"],
   },
   {
     table: "MATCOSTS",
     columns: ["COST", "BUY", "BUYPRICE", "SALEPRICE"],
-    why: "Value-less production movements NULL-poison cost forever (SAH-007) and there is no rebuild path (SAH-004). A NULL here is why §5.1 #6 forbids importing cost at all.",
-    sah: ["SAH-004", "SAH-007"],
+    why: "Value-less production movements NULL-poison cost forever (LEGACY-007) and there is no rebuild path (LEGACY-004). A NULL here is why §5.1 #6 forbids importing cost at all.",
+    legacyDefects: ["LEGACY-004", "LEGACY-007"],
   },
   {
     table: "MATOBJECTS",
     columns: ["QNT"],
-    why: "A NULL quantity reads as zero stock and hides a position (SAH-050).",
-    sah: ["SAH-050"],
+    why: "A NULL quantity reads as zero stock and hides a position (LEGACY-050).",
+    legacyDefects: ["LEGACY-050"],
   },
   {
     table: "MATQUANTITY",
     columns: ["QNT"],
     why: "As MATOBJECTS, per batch.",
-    sah: ["SAH-049", "SAH-050"],
+    legacyDefects: ["LEGACY-049", "LEGACY-050"],
   },
   {
     table: "VOUITEMS",
     columns: ["DEBIT", "CREDIT", "LOCALDEBIT", "LOCALCREDIT"],
-    why: "A NULL on a line is what poisons every aggregate downstream; LocalDebit/LocalCredit additionally were never derived from value × rate (SAH-012).",
-    sah: ["SAH-011", "SAH-012"],
+    why: "A NULL on a line is what poisons every aggregate downstream; LocalDebit/LocalCredit additionally were never derived from value × rate (LEGACY-012).",
+    legacyDefects: ["LEGACY-011", "LEGACY-012"],
   },
   {
     table: "BILLITEMS",
     columns: ["QNT", "DEBIT", "CREDIT", "LOCALCOST", "ACTUALCOST"],
     why: "As VOUITEMS, on the inventory side; the three cost columns feed MatCosts.",
-    sah: ["SAH-007", "SAH-011"],
+    legacyDefects: ["LEGACY-007", "LEGACY-011"],
     // 9B's opening-stock loader reads the quantity as BTMQNT; a NULL count does not depend on its sign convention.
     spellings: { QNT: ["BTMQNT"] },
   },

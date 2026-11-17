@@ -7,7 +7,7 @@ import { loadCorpus } from "./support/corpus";
 
 const reader = () => createReader(new FixtureLegacyDriver(loadCorpus()));
 
-describe("reconcile('duplicate_aggregates') — §5.1 #5, SAH-049", () => {
+describe("reconcile('duplicate_aggregates') — §5.1 #5, LEGACY-049", () => {
   it("finds a natural key that appears more than once in a keyless aggregate table", async () => {
     const report = await reconcile(await reader(), "duplicate_aggregates");
     expect(report.kind).toBe("duplicate_aggregates");
@@ -18,7 +18,7 @@ describe("reconcile('duplicate_aggregates') — §5.1 #5, SAH-049", () => {
       occurrences: 2,
       tableRows: 3,
       status: "duplicate",
-      why: "MatObjects and MatQuantity have no key columns, and the non-atomic UPDATE-then-INSERT upsert duplicates under concurrency; every later posting then updates both rows (SAH-049).",
+      why: "MatObjects and MatQuantity have no key columns, and the non-atomic UPDATE-then-INSERT upsert duplicates under concurrency; every later posting then updates both rows (LEGACY-049).",
     });
   });
 

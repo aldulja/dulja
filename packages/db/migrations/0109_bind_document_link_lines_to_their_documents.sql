@@ -80,7 +80,7 @@ begin
     return new;                                               -- a header-only or amount-only link has no quantity to bound
   end if;
 
-  -- SAH-017's concurrency face, and it is NOT closed by the read below on its own. `withTenant` runs at READ
+  -- LEGACY-017's concurrency face, and it is NOT closed by the read below on its own. `withTenant` runs at READ
   -- COMMITTED (§4.2.2; 3a:68), so without this lock two transactions each linking 6 against a 10-unit order
   -- line both read v_linked = 0, both satisfy the test, and both commit — 12 linked against 10 ordered, with
   -- no bypass and no override event. This is verbatim the class 3A found in its own step-9 guard and fixed

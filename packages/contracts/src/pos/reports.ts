@@ -38,7 +38,7 @@ export const ZReportList = ListEnvelope(ZReportSchema);
  * `AuditLogQuery` (0b:4317): *"`@hono/zod-openapi` generates query parameters from a `ZodObject`, and a
  * `.refine` would wrap the schema in `ZodEffects`"* — so a refined query schema can fail parameter
  * generation and the OpenAPI diff check of Step 8. §4.18 makes 0B the authority on its own convention.
- * `.strict()` is likewise not used: 1B applies it to a report query, but `sah-036` sends undeclared
+ * `.strict()` is likewise not used: 1B applies it to a report query, but `legacy-036` sends undeclared
  * `where=` / `filter=` keys and expects them stripped (0b:4318), and this route is on that path.
  */
 export const ZReportQuery = ListQuery.extend({

@@ -48,7 +48,7 @@ const STRICT_POLICY = {
  * The transition matrix, R1 and R2 exercised where they live: a direct `app_rw` UPDATE. Everything the API
  * and the jobs do reduces to this statement, so a rule proven here is proven for every path (spec:2172).
  */
-describe("app.document_status_before / _after — contracts §4.5.1, spec:2172–2173 (SAH-032)", () => {
+describe("app.document_status_before / _after — contracts §4.5.1, spec:2172–2173 (LEGACY-032)", () => {
   let db: Db;
   let a: Seed;
   let approver: string;
@@ -183,7 +183,7 @@ describe("app.document_status_before / _after — contracts §4.5.1, spec:2172�
     );
   });
 
-  it("R2: approval and posting are refused to a principal without the policy's code (spec:2173, SAH-032)", async () => {
+  it("R2: approval and posting are refused to a principal without the policy's code (spec:2173, LEGACY-032)", async () => {
     const nobody = await person("nobody");
     await grantCodes(db, a, { principalId: nobody });
     const d = await draft(strictType, "PT");
@@ -193,7 +193,7 @@ describe("app.document_status_before / _after — contracts §4.5.1, spec:2172�
     );
   });
 
-  it("R2: a branch-restricted principal is refused at another branch and admitted at its own (SAH-042)", async () => {
+  it("R2: a branch-restricted principal is refused at another branch and admitted at its own (LEGACY-042)", async () => {
     const branchOnly = await person("branch-only");
     // Reach both branches without their posting code, so this still exercises R2.
     await grantCodes(db, a, { principalId: branchOnly });

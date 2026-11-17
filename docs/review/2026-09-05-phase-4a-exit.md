@@ -23,7 +23,7 @@ commits, and every suite below ran over them too.
 | Clause | Where it is proved | Status here |
 |---|---|---|
 | Allocation refuses an over-allocation both ways; `openBalance` returns after `unallocate` | Task 9, `packages/db/test/ar-ap/allocation.test.ts` (+ `apps/api/test/routes/accounting/allocations.test.ts`) | green |
-| Credit limits: refusal, second-principal override, non-overridable hold | Task 3, `packages/db/test/ar-ap/credit-control.test.ts` (16 cases, over `CREDIT_TEST`); Task 5, the credit-control case of `ar-ap/sales-invoice.test.ts` (on the real `SALES_INVOICE`); `tests/regression/sah-042.test.ts` 4A block | green, at the **OD-05 default** (pending, `docs/decisions/od-05-4a-credit-control.md`) |
+| Credit limits: refusal, second-principal override, non-overridable hold | Task 3, `packages/db/test/ar-ap/credit-control.test.ts` (16 cases, over `CREDIT_TEST`); Task 5, the credit-control case of `ar-ap/sales-invoice.test.ts` (on the real `SALES_INVOICE`); `tests/regression/legacy-042.test.ts` 4A block | green, at the **OD-05 default** (pending, `docs/decisions/od-05-4a-credit-control.md`) |
 | Payment terms: pinned on the document, due date derived | Task 1, `ar-ap/payment-term.test.ts`; Task 5, the pinned-term case of `ar-ap/sales-invoice.test.ts` | green |
 | `1250` nets to zero across a delivery and its invoice | Task 6, `ar-ap/invoice-conversion.test.ts` (residue case included) | green |
 | `2150` nets to zero across a receipt and its invoice | Task 7, `ar-ap/purchase-invoice.test.ts` (residue and USD cases included) | green |
@@ -44,7 +44,7 @@ Testcontainers.
 | `packages/db` vitest, `--fileParallelism --maxWorkers=3` | **106 files passed (106) · 917 tests passed (917)** |
 | `apps/api` vitest, `--maxWorkers=2` | **54 files passed (54) · 463 tests passed (463)** |
 | `apps/worker` `test` (vitest, then `bun test test/health.test.ts`) | **vitest 6 files passed · 23 tests passed; `bun test` 2 pass, 0 fail** |
-| `tests` vitest (serial, its own config) | **98 files passed, 3 failed, 1 skipped (102) · 462 tests passed, 3 failed, 5 skipped (470)**. The three reds are the three known ones below. The skips are pre-existing: `sah-024` is `it.skip` pending OD-27, and the rest are `restore-drill`'s capture/verify modes and `sah-087`'s build-gated cases |
+| `tests` vitest (serial, its own config) | **98 files passed, 3 failed, 1 skipped (102) · 462 tests passed, 3 failed, 5 skipped (470)**. The three reds are the three known ones below. The skips are pre-existing: `legacy-024` is `it.skip` pending OD-27, and the rest are `restore-drill`'s capture/verify modes and `legacy-087`'s build-gated cases |
 | `packages/domain` vitest | **23 files passed · 198 tests passed** |
 | `packages/contracts` vitest | **1 file passed · 17 tests passed** |
 | `bun run lint` (oxlint) | exit 0 |
@@ -65,17 +65,17 @@ URLs, so a green run would prove nothing), and `bun run --cwd apps/desktop test:
 | **1** Ledger invariant | 200 fast-check documents over the six types. Each is posted through the real `postDocument`, with `PAYMENT` through two principals and the credit notes through `creditNoteFrom`. Currency MYR or EUR at a rate in [0.5, 9.5] to 8 dp, a date anywhere in 2026, 1–5 product / service / charge lines, and a copied cost in [0, amount] on a sales product line. After each document: Σ base = 0 for the company, `checkLedgerBalance` is empty per period and per document, and no line breaks base = round(value × rate, 4). The last assertion is test 8's share, which is 4A's | `tests/invariants/ledger-balance.test.ts`, 4A describe (about 38 s for 200 runs) |
 | **10** Approval authority | `PAYMENT`'s approve/post pair, through the service, `app_rw` SQL and HTTP | Task 10: `ar-ap/settlement.test.ts`, `settlements.test.ts` |
 | **12** Tenant isolation | one new module (`payment-terms`) and one `PROBES` key; the eight sub-paths inherit their modules' keys | `tests/invariants/tenant-isolation.test.ts`; plus a two-tenant case in each DB suite for `payment_term` and `allocation` |
-| **13** Audit completeness | the two new tables are audited, and an un-allocation's reason is in the audit image | `ar-ap/payment-term.test.ts` ("every write is audited"); `ar-ap/allocation.test.ts` (reason from `audit_log.after`); `sah-041` 4A block (`audit_row` enabled); `lintSchema` |
+| **13** Audit completeness | the two new tables are audited, and an un-allocation's reason is in the audit image | `ar-ap/payment-term.test.ts` ("every write is audited"); `ar-ap/allocation.test.ts` (reason from `audit_log.after`); `legacy-041` 4A block (`audit_row` enabled); `lintSchema` |
 | **14** Permission query | one query against the complete accounting catalogue, `PURCHASE_RETURN` included, over two principals holding the SEEDED accountant and user grants | Task 11, `packages/db/test/seed/permission-phase4a.test.ts` |
 | **27** No SQL text across the API | the lint rules over 4A's files | `bun run lint:rules`, 0 violations |
 | **31** Segregation of duties | R1/R2 on `PAYMENT` | Task 10 (as test 10) |
 | **36** Role catalogue integrity | seven codes on three roles; R6's `payment.create`/`payment.approve` pair is live for the first time (the pair is split across `user` and `accountant`); R7 auditor holds none | Task 2, `permission-phase4a.test.ts`, `permission-catalogue.test.ts`, `roles-seed.test.ts`, `seed-roles.test.ts`, `tests/invariants/role-catalogue.test.ts`, `tests/lint/role-seed.test.ts` |
 
-`SAH-###` files touched by 4A:
+`LEGACY-###` files touched by 4A:
 
-- created: `sah-014`
-- appended with a 4A block: `sah-011`, `sah-012` (both at Task 14), `sah-017`, `sah-018`, `sah-019`, `sah-031`,
-  `sah-041`, `sah-042`
+- created: `legacy-014`
+- appended with a 4A block: `legacy-011`, `legacy-012` (both at Task 14), `legacy-017`, `legacy-018`, `legacy-019`, `legacy-031`,
+  `legacy-041`, `legacy-042`
 
 ## Deviations from the plan, by task
 
@@ -134,13 +134,13 @@ Each commit body has the full list. These are the ones a reader of the plan need
 - **T13:** `docs/ui/od-24-phase-4a-screens.md` is the gate record. No `.tsx` and no `ar-ap.spec.ts` exist. The
   plan's i18n path (`packages/i18n/src/locales/…`) and `features/` directory do not exist in the tree.
 - **T14:**
-  - **`sah-012`:** the source case pins six writers of an AR/AP header, not four: `reverseDocument` and 1A's
+  - **`legacy-012`:** the source case pins six writers of an AR/AP header, not four: `reverseDocument` and 1A's
     `POST …/documents` also write it. Each writer is pinned by its header column list, not by the bare word,
     which a comment would satisfy. The plan's guard case ran over an empty set on the thin regression
     database, so it now first posts a USD invoice, a partial credit note and a MYR receipt through the
     production services. It then asserts the note copied the invoice's rate and source, and that the receipt
     reads `unit`.
-  - **`sah-011`:** the plan's source check counted `coalesce(sum(` against `sum(`, and would have **failed on
+  - **`legacy-011`:** the plan's source check counted `coalesce(sum(` against `sum(`, and would have **failed on
     correct code**. The tree coalesces at the boundary in two other spellings: `coalesce((select sum(…)), 0)` in
     `allocation.ts`, and the full join's missing side coalesced column by column in `sales-by-item.ts`. The
     check now names each spelling and counts over comment-stripped source. A behavioural case was added: a
@@ -163,7 +163,7 @@ These fixes were **found by 4A's tasks** and are defects in earlier slices:
 - **d63ff51 (1A/2B/3C):** a full reversal after a partial credit note or a purchase return double-credited. It
   is now refused until the partial document is voided.
 - **6d8e840 (2B/3A):** the documents module did not declare the override codes its overrides route gates
-  (sah-047).
+  (legacy-047).
 - **29a2e07 (0D):** the `role-seed` lint was defeated by a comment inside `roles.ts`, which hid an injected
   `payment.create` on `accountant`.
 - **104f963, in part (1A/3C):** `reverseDocument` did not copy `warehouse_id`/`to_warehouse_id`, so no
@@ -248,11 +248,11 @@ the figure its record predicts.
 | Case | Failure | Why, and whose |
 |---|---|---|
 | `invariants/test-07-one-costing-answer.test.ts`, "a BACK-DATED purchase recosts forward only, and all three tie-outs hold again afterwards" | `expected '167.0589' to be '167.0570'`: off by 0.0019 | **Phase 3 (3B), owner/ADR.** An AVCO issue is costed at the running average rounded to 4 dp × qty, while the valuation sums per-layer rounded values. 3B's plan calls this its "fourth blocker"; the `cost_layer.value` proposal (ADR 0039) was never written. 4A adds nothing to either figure |
-| `regression/sah-004.test.ts`, "cost is a function of the movements, so reversing the second purchase restores the first's cost" | `expected '15.0000' to be '10.0000'` | **Phase 3 (3B), owner/ADR.** Reversing a receipt under AVCO issues at the running average, while the ledger credits `1300` at the receipt's amount. spec:231's failure scenario argues that the reversal should consume the reversed receipt's own layer; contract §4.7.1's proportional slice gives 15, which is the legacy failure. It wants an ADR |
-| `regression/sah-047.test.ts`, "every catalogue code is the gate of at least one registered route" | `accounting.bank.reconcile` is catalogued and gates no mounted route | **4B, transient.** 4B Task 2 (7d3faf9) catalogues the code, and 4B Task 8 mounts `bankStatementRouteModule`, per 4B's plan. Red from 4B T2 until 4B T8. The assertion stops at the first missing code, so the full set was listed separately against `ROUTES`: the ungated set is exactly `{accounting.bank.reconcile}`, and each of 4A's seven codes gates a route |
+| `regression/legacy-004.test.ts`, "cost is a function of the movements, so reversing the second purchase restores the first's cost" | `expected '15.0000' to be '10.0000'` | **Phase 3 (3B), owner/ADR.** Reversing a receipt under AVCO issues at the running average, while the ledger credits `1300` at the receipt's amount. spec:231's failure scenario argues that the reversal should consume the reversed receipt's own layer; contract §4.7.1's proportional slice gives 15, which is the legacy failure. It wants an ADR |
+| `regression/legacy-047.test.ts`, "every catalogue code is the gate of at least one registered route" | `accounting.bank.reconcile` is catalogued and gates no mounted route | **4B, transient.** 4B Task 2 (7d3faf9) catalogues the code, and 4B Task 8 mounts `bankStatementRouteModule`, per 4B's plan. Red from 4B T2 until 4B T8. The assertion stops at the first missing code, so the full set was listed separately against `ROUTES`: the ungated set is exactly `{accounting.bank.reconcile}`, and each of 4A's seven codes gates a route |
 
 **No 4A test is red, and no 4A test was weakened, skipped or deleted to reach this.** The new Task 14 cases
-(the privileges case; `sah-011` ×3; `sah-012` ×3; the fuzz and the series-gap case) are all green in the full
+(the privileges case; `legacy-011` ×3; `legacy-012` ×3; the fuzz and the series-gap case) are all green in the full
 runs above.
 
 The **CI clause** ("every row above green in CI") is unmet, as the verdict says. It is not red; it is not run.
@@ -264,4 +264,4 @@ The **CI clause** ("every row above green in CI") is unmet, as the verdict says.
   `4900`/`5910` on an `FX_REVALUATION`, and needs no second calculation.
 - **A full reversal pair is never an open item** (§4.8.1, round 7). A partial credit note is one, negative,
   until allocated.
-- **sah-047 turns green** only when 4B Task 8 mounts `bankStatementRouteModule`.
+- **legacy-047 turns green** only when 4B Task 8 mounts `bankStatementRouteModule`.

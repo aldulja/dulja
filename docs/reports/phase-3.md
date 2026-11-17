@@ -58,8 +58,8 @@ test in this tree could have caught, because the suites that would exercise it n
 | 9 | **`inventory.sales_by_item` counted a reversed delivery as delivered.** The reversal is itself a `DELIVERY_ORDER` with a positive movement, so `m.quantity < 0` kept the original and dropped the reversal. | Both sides of a reversal pair excluded (`status <> 'reversed'`, `reverses_document_id is null`). 4A's revenue extension inherits the corrected denominator. |
 | 10 | **0109 was taken without amending the register**, which AGENTS.md and §3.4.1 make a precondition. | The register row for 0109–0112 is landed, and says the first number was taken late. |
 
-Hygiene, also fixed: the `no-sql-concat` rule now exports `isCommentLine` and `sah-036` imports it, so the
-two cannot drift; `sah-010`'s `document_line` exemption no longer applies to a line that also names a costing
+Hygiene, also fixed: the `no-sql-concat` rule now exports `isCommentLine` and `legacy-036` imports it, so the
+two cannot drift; `legacy-010`'s `document_line` exemption no longer applies to a line that also names a costing
 table; the link route declares the 400 it can answer; the config test's R2 fixture is declared once, and
 **the rule that made that suite red — the object store is required outside development — now has its own
 case**, so loosening it is red rather than silently green.
@@ -85,10 +85,10 @@ break; each was fixed at the layer that was wrong.
 
 | Case | Cause | Fixed by |
 |---|---|---|
-| `sah-067` | **The check was right and Phase 3's code was wrong.** Its scan refuses `/PLAN\s*\(/i` in shipped source — how the legacy procedures pinned a query plan. `planMovements`' docstring read "the movement half of the plan (ADR 0035)". | Rewording the docstring. The check is untouched. |
-| `sah-010` | Demanded all four columns of §4.3.5's key on any ordering naming one, and caught two plain `app.document_line` reads ordered by `line_no` — that table's own natural order, not a costing dimension. | Excluding `document_line`; a movement, layer or consumption read still needs all four. |
-| `sah-036` | Grepped raw text for `.unsafe(` and matched a **comment** in `parties.ts` saying `.unsafe` is deliberately not used there. | Stripping comment lines, which is what `no-sql-concat` itself does. |
-| `sah-082` | Flagged `203.0.113.9` — RFC 5737 TEST-NET-3, the documentation range — in a **test**. The case's own title is "no shipped source". | Excluding the test tree. Shipped source still has nothing exempted. Introduced by the Phase 2 review pass. |
+| `legacy-067` | **The check was right and Phase 3's code was wrong.** Its scan refuses `/PLAN\s*\(/i` in shipped source — how the legacy procedures pinned a query plan. `planMovements`' docstring read "the movement half of the plan (ADR 0035)". | Rewording the docstring. The check is untouched. |
+| `legacy-010` | Demanded all four columns of §4.3.5's key on any ordering naming one, and caught two plain `app.document_line` reads ordered by `line_no` — that table's own natural order, not a costing dimension. | Excluding `document_line`; a movement, layer or consumption read still needs all four. |
+| `legacy-036` | Grepped raw text for `.unsafe(` and matched a **comment** in `parties.ts` saying `.unsafe` is deliberately not used there. | Stripping comment lines, which is what `no-sql-concat` itself does. |
+| `legacy-082` | Flagged `203.0.113.9` — RFC 5737 TEST-NET-3, the documentation range — in a **test**. The case's own title is "no shipped source". | Excluding the test tree. Shipped source still has nothing exempted. Introduced by the Phase 2 review pass. |
 | `apps/api/test/config-and-auth.test.ts` | **A real break, red since 2C Task 2.** Making the R2 object store required outside development meant `readConfig` threw `R2_ACCOUNT_ID is required…` before reaching `createAuthAdmin`, so three cases' assertions about `SUPABASE_URL` tested nothing for two phases. | Supplying the four R2 names, restoring each case's actual subject. |
 
 After these, **zero assertion failures remain anywhere in the `tests` workspace**. All 148 remaining
@@ -106,7 +106,7 @@ and in the company's total."*
 
 | Clause | Slice | Proved by | State |
 |---|---|---|---|
-| "Back-dated purchase recosts only forward, in bounded time, with a visible adjustment entry" | 3B | `packages/db/test/costing/replay.test.ts` (8), `cost-adjustment.test.ts` (5), `invalidate.ts`'s bounded restart; the last case of `tests/invariants/test-07-one-costing-answer.test.ts` — *"a BACK-DATED purchase recosts forward only, and all three tie-outs hold again afterwards"*; `tests/regression/sah-004`, `sah-054`, `sah-060`, `sah-062`; ADR 0038 | **written, unrun** |
+| "Back-dated purchase recosts only forward, in bounded time, with a visible adjustment entry" | 3B | `packages/db/test/costing/replay.test.ts` (8), `cost-adjustment.test.ts` (5), `invalidate.ts`'s bounded restart; the last case of `tests/invariants/test-07-one-costing-answer.test.ts` — *"a BACK-DATED purchase recosts forward only, and all three tie-outs hold again afterwards"*; `tests/regression/legacy-004`, `legacy-054`, `legacy-060`, `legacy-062`; ADR 0038 | **written, unrun** |
 | "FEFO picking returns the earliest-expiring lot" | 3A | `packages/db/test/inventory/fefo.test.ts` (11), `fulfilment.test.ts` (6), `delivery-order.test.ts` (6); ADR 0036 | **written, unrun** |
 | "a landed-cost allocation changes unit cost and every downstream margin" | 3C | `packages/db/test/purchasing/landed-cost.test.ts` (16), `packages/db/test/landed-cost-allocation.test.ts` (11); test 7's case *"the landed cost is IN the tie-out — layer B's unit cost is 7.0000, not 5.0000"*; ADR 0041 | **written, unrun** |
 | "a stock count posts only the variance" | 3D | `packages/db/test/inventory/stock-count.test.ts` (10), migration 0040's `counted_quantity`/`expected_quantity`, `packages/db/src/inventory/count.ts`; test 7's case *"the stock count posted ONE movement and did not disturb either tie-out"*; ADR 0042 | **written, unrun** |
@@ -238,16 +238,16 @@ owning task.
    textbook failure mode a golden fixture exists to catch, and it sat red through three commits.
    **Owner: 3D Task 3.** The fix is `GOLDEN_WRITE=1` over the three cases and a reviewed diff, which is the
    procedure the file's own header describes.
-2. **`tests/regression/sah-010.test.ts` is red on 3C's landed-cost reader.** The scanner takes every
+2. **`tests/regression/legacy-010.test.ts` is red on 3C's landed-cost reader.** The scanner takes every
    `order by` line in `packages/db/src/costing` that names any part of §4.3.5's chronological key and
    demands all four columns. `packages/db/src/costing/landed-cost.ts:173` and `:288` read
    `from app.document_line where document_id = … order by line_no` — a line read, not a chronological
    costing ordering — and are caught by the `line_no` in the filter. Red since 3C Task 8.
-   **Owner: 3B (which owns SAH-010) or 3C**; the honest fix is to narrow the scanner's filter so it matches
+   **Owner: 3B (which owns LEGACY-010) or 3C**; the honest fix is to narrow the scanner's filter so it matches
    only orderings over the movement/layer tables, not to loosen the four-column assertion.
-3. **`tests/regression/sah-082.test.ts` is red on a Phase 2 edit.**
+3. **`tests/regression/legacy-082.test.ts` is red on a Phase 2 edit.**
    `apps/edge/test/rate-limit.test.ts:46` carries the literal `203.0.113.9` twice, added by the Phase 2
-   review-pass commit `2e4691a` (the IPv6 /64 rate-limit finding). SAH-082's scanner walks
+   review-pass commit `2e4691a` (the IPv6 /64 rate-limit finding). LEGACY-082's scanner walks
    `apps/`, `packages/` and `scripts/` including test files and allows only `0.0.0.0` and `127.0.0.1`.
    **Red since Phase 2 and unnoticed through the whole of Phase 3.** The address is TEST-NET-3 documentation
    space and is harmless in substance; the scanner is right that it is a hard-coded literal.
@@ -317,7 +317,7 @@ Item by item. Every row is present in the tree; every row's *behaviour* is in th
 
 - **Serials — OD-07, default "not built" (spec:1032, 1310).** No `app.serial_unit` table, no DDL, no
   source reference. The reservation is executable: `packages/db/test/inventory/serial-unit.test.ts` asserts
-  the table does **not** exist and that none of the three conditional regression files (`sah-052`, `056`,
+  the table does **not** exist and that none of the three conditional regression files (`legacy-052`, `056`,
   `057`) has been created. If OD-07 comes back *yes*, that file's expectations flip, the DDL is **appended
   to `0029_create_warehouse_lot_variant.sql`** (no number of its own, per §2.4's 3A row), and 6A gains its
   two-terminal serial race as acceptance test 17.
@@ -337,8 +337,8 @@ stated default and recorded rather than decided.
 | Gate | Question | Default built | What changes if the answer differs |
 |---|---|---|---|
 | **OD-05** | every ⚠️ row of §3.0.3/§3.0.4 | spec text as written. 3A cites it per task (multi-unit items, batch/lot with expiry, multi-branch stock, price lists per customer type); 3C owns Landed cost and Purchase in foreign currency; 3D owns Multi-branch stock | `docs/decisions/od-05-3d-multi-branch-stock.md` is the decision record and names the revert set per alternative answer. 3C's half is recorded in its slice exit |
-| **OD-06** | v1 costing method | `company.costing_method` default `'avco'` (migration 0035), FIFO built, tested and never defaulted | Flipping to FIFO is one literal in 0035 plus one assertion in `costing/method.test.ts`. **Removing FIFO** is the only branch that deletes: `sah-055.test.ts`, the `'fifo'` CHECK label, and `costIssue`'s FIFO branch with its four cases. ADR 0037 is the proposal |
-| **OD-07** | serial numbers in scope? | **not built** | `serial-unit.test.ts` flips; DDL appends to 0029; `sah-052/056/057` are created by 3A; 6A gains test 17 |
+| **OD-06** | v1 costing method | `company.costing_method` default `'avco'` (migration 0035), FIFO built, tested and never defaulted | Flipping to FIFO is one literal in 0035 plus one assertion in `costing/method.test.ts`. **Removing FIFO** is the only branch that deletes: `legacy-055.test.ts`, the `'fifo'` CHECK label, and `costIssue`'s FIFO branch with its four cases. ADR 0037 is the proposal |
+| **OD-07** | serial numbers in scope? | **not built** | `serial-unit.test.ts` flips; DDL appends to 0029; `legacy-052/056/057` are created by 3A; 6A gains test 17 |
 | **OD-08** | BOM / consignment / commissions / project costing | **not built, names reserved** | `reserved-names.test.ts` is the reservation and lists each table's intended shape; §4.6.1 amends first |
 | **OD-24** | screenshots + a two-minute operator walkthrough before any screen | **no screen built, in any phase** | `docs/ui/od-24-phase-3a-screens.md`, `od-24-phase-3c-screens.md` and `od-24-phase-3d-screens.md` each record the gate, the shipped endpoints the screens would consume, and the exact file list that changes when the material arrives. The 3D one is untracked on this tree |
 
@@ -456,7 +456,7 @@ slice's commit rather than smoothed over.
 9. **Migration 0031's filename in the 3D plan was an orphan.** 3A renamed the file and its own header
    flagged that the rename would orphan exactly the grep 3D would write. 3D T0's gate script is written
    against the real name with a comment saying why.
-10. **`SAH-082` and `apps/api/test/config-and-auth.test.ts`** — red since Phase 2 and found only by this
+10. **`LEGACY-082` and `apps/api/test/config-and-auth.test.ts`** — red since Phase 2 and found only by this
     exit run. See "Defects found by running what could run" above. **Not fixed here.**
 
 ## Deviations from the four plans, recorded

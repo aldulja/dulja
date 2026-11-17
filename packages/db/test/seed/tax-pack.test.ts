@@ -537,7 +537,7 @@ describe("OD-15 — every shipped regime is either synthetic or backed by an acc
 
   it("no Malaysian tax figure is hard-coded in the tax engine or the tax services", () => {
     // The mechanical half of hazard 1 for this slice's own source. A rate lives in `app.tax_code`, seeded
-    // from a reviewed file; a decimal literal that looks like a rate in either directory is SAH-020.
+    // from a reviewed file; a decimal literal that looks like a rate in either directory is LEGACY-020.
     const suspects = sourceFiles(["packages/domain/src/tax", "packages/db/src/tax"]).flatMap((f) =>
       f.lines.flatMap((line, i) =>
         /(^|[^\w.])0\.[0-9]*[1-9][0-9]*\b/.test(line) && !/^\s*(?:\/\/|\/\*|\*)/.test(line)

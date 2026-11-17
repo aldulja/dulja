@@ -4,7 +4,7 @@
 
 ## Context
 spec:2061 requires every user-facing string to go through i18next with an ICU message, both catalogues
-complete before merge, "no empty `msgstr`, no source-language fallbacks in the other language (SAH-085)".
+complete before merge, "no empty `msgstr`, no source-language fallbacks in the other language (LEGACY-085)".
 The legacy system shipped 13,778 entries with 122 empty translations and 61 untranslated Arabic strings
 reaching English users. The format has to make those two states mechanically detectable.
 

@@ -330,7 +330,7 @@ alter table app.company add constraint company_fx_rounding_account_fk
 grant select, insert, update on app.company, app.role, app.role_permission, app.role_assignment,
   app.role_assignment_branch, app.fiscal_period, app.account to app_rw;
 
--- ── 6. Document types are data; posting rules are versioned policy (RC-3, SAH-013) ────────────────────
+-- ── 6. Document types are data; posting rules are versioned policy (RC-3, LEGACY-013) ────────────────────
 create table app.document_type (
   id uuid primary key default uuidv7(), tenant_id uuid not null references app.tenant(id), company_id uuid not null,
   code text not null, name_en text not null, name_ar text, created_at timestamptz not null default now(),

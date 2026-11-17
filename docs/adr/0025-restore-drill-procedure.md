@@ -4,7 +4,7 @@
 
 ## Context
 
-spec:2233 asks for "RPO/RTO stated as numbers, tested quarterly by an actual restore drill (SAH-081)"
+spec:2233 asks for "RPO/RTO stated as numbers, tested quarterly by an actual restore drill (LEGACY-081)"
 and spec:2234 for restore "verified automatically, not assumed". Acceptance test 24 (spec:2442) fixes
 what verification means: the trial balance from the restored ledger equals the one the live system
 reported at that timestamp, and the audit chain verifies to that point. The Phase 1 definition of done
@@ -51,7 +51,7 @@ log. A stale click path in a runbook is worse than none.
 - `checkAccountBalanceProjection` is now load-bearing for two acceptance tests, 2 and 24. A change to
   its comparison key changes what a restore is allowed to be.
 - The drill writes to no database. Its only output is the capture file; the projection check it runs is a
-  single read statement — SAH-081's second half was a restore procedure that overwrote the live system.
+  single read statement — LEGACY-081's second half was a restore procedure that overwrote the live system.
 
 ## Proposal referred to the owner, not decided here
 

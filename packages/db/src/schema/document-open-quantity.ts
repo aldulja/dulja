@@ -8,7 +8,7 @@ import { app } from "./tenant";
  * of every order in the database (ADR 0040 decision 5).
  *
  * `open_quantity` is `ordered − Σ linked`, recomputed on every read. It is never a column on
- * `document_line` and never will be (SAH-017, SAH-018).
+ * `document_line` and never will be (LEGACY-017, LEGACY-018).
  */
 export const documentOpenQuantity = app
   .view("document_open_quantity", {

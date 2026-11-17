@@ -9,7 +9,7 @@ Have at hand, from the ledger: the branch and base commit, the plan, and the mig
 ## Rules
 
 1. Read the plan's scope, owner gates, spec sections and definition of done.
-2. **One task at a time, test-first.** Write the task's test, run it, see it fail for the reason the plan gives; then implement; then see it pass. Keep the failing and the passing output: the ledger needs both. A `SAH-###` defect the work touches gets its regression test in `tests/regression/`.
+2. **One task at a time, test-first.** Write the task's test, run it, see it fail for the reason the plan gives; then implement; then see it pass. Keep the failing and the passing output: the ledger needs both. A `LEGACY-###` defect the work touches gets its regression test in `tests/regression/`.
 3. Stay inside the files the plan names plus their tests. Stage 5's `verify` holds the build to them.
 4. Take only the migration and ADR numbers allocated. This role does not edit Plan Contracts §3.4.1 and §3.9's registers or the plan, and the guard refuses `AGENTS.md`, `docs/status/`, `docs/agents/`, `.claude/` and `scripts/agents/`.
 5. **If the plan is wrong or silent** — a name the tree does not have, a decision it did not make, a test that cannot fail — stop that task and take it back to spec (the orchestrator brief's "Going backwards"). Do not choose on the owner's behalf, and do not build a third interpretation. Carry on with tasks that do not depend on it.

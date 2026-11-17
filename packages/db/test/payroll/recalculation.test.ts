@@ -228,7 +228,7 @@ describe("manual statutory override (spec:2087)", () => {
         from app.payroll_line pl join app.document_line dl on dl.id = pl.document_line_id
        where dl.document_id = ${r.documentId} and pl.employee_id = ${f.employeeAId} and pl.share = 'employee'`;
     expect(line!.amount).toBe("77.0000");
-    expect(line!.entered_by).toBe(s.human); // stamped from the session, never from a payload (SAH-044)
+    expect(line!.entered_by).toBe(s.human); // stamped from the session, never from a payload (LEGACY-044)
 
     const [untouched] = await db.admin<{ amount: string; override_reason: string | null }[]>`
       select pl.amount::text as amount, pl.override_reason

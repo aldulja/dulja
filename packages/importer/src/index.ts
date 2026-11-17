@@ -118,7 +118,7 @@ export {
 } from "./load/opening-balance";
 // 9B Task 6 — opening stock at a cost recomputed by 3B's engine (9B plan N8, §5.1 #6).
 export { OPENING_STOCK_LINES_PER_DOCUMENT, openingStockLoader } from "./load/opening-stock";
-// 9B Task 15 — ⚠️ OD-27, Part VII #7 (SAH-022): MatOpens.Job asked of the customer's data before opening stock loads.
+// 9B Task 15 — ⚠️ OD-27, Part VII #7 (LEGACY-022): MatOpens.Job asked of the customer's data before opening stock loads.
 export {
   assertNoJobPartition,
   JOB_PARTITIONED_TABLES,

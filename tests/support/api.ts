@@ -71,11 +71,11 @@ export interface FullContext {
  * `describe` body); each `it` awaits the memoised app itself.
  */
 export function fullRegression(
-  sah: string,
+  legacyDefect: string,
   heading: string,
   cases: Record<string, (ctx: FullContext) => Promise<void>>,
 ): void {
-  describe(`${sah} ${heading} — 0B`, () => {
+  describe(`${legacyDefect} ${heading} — 0B`, () => {
     for (const [name, fn] of Object.entries(cases)) {
       it(name, async () => {
         const { api, a, b } = await sharedApi();

@@ -13,14 +13,14 @@ as an ADR proposal (spec:95) before any code is written.
 `NEVER_READ` (`USERS.PASSWORD`, `USERS.PIN`, `packages/importer/src/snapshot.ts`) keeps both out of every snapshot, and
 every user is invited fresh through `POST /v1/admin/users` and enrols MFA (`docs/runbooks/cut-over.md` step 6).
 
-**Why a "yes" changes nothing in 9B.** SAH-028 records the passwords as cleartext; Part VII #4 admits a client-side
+**Why a "yes" changes nothing in 9B.** LEGACY-028 records the passwords as cleartext; Part VII #4 admits a client-side
 hash and answers itself. Dulja's identity is Supabase with MFA, so there is no password column in Dulja to rehash
 _into_: a migrated credential would have to become a Supabase user's password, which the invite flow sets. A "yes"
 only decides whether the archived legacy database is worth retaining for a forensic reason.
 
 **What keeps it true** (each a test that fails the day a loader reads a credential):
 
-- `tests/regression/sah-028.test.ts`, block "— 9B, the import path": no registered loader's source table is `USERS`;
+- `tests/regression/legacy-028.test.ts`, block "— 9B, the import path": no registered loader's source table is `USERS`;
   no declared source column matches `PASSWORD`, `PASSWD` or `PIN`; no file under `packages/importer/src` names
   `USERPASSWORD`, `USRPASSWORD`, `USRPIN` or `USERPIN`, and no file under `packages/importer/src/load` names a password
   or a PIN at all; the invite body has exactly `email` and `displayName`.

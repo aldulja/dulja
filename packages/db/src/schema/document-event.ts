@@ -30,7 +30,7 @@ export const documentEvent = app.table(
   (t) => [
     unique("document_event_tenant_id_id_key").on(t.tenantId, t.id),
     index("document_event_document_idx").on(t.documentId, t.occurredAt),
-    // 7B, migration 0077 (SAH-070) — report-filter indexes the 7B EXPLAIN gate found unserved.
+    // 7B, migration 0077 (LEGACY-070) — report-filter indexes the 7B EXPLAIN gate found unserved.
     index("document_event_company_time_idx").on(t.companyId, t.occurredAt),
   ],
 );

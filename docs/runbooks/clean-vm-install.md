@@ -175,7 +175,7 @@ Two things it must not cite CI for:
   build shipping no bridge at all would fail there.
 - **the shipped-metadata guard runs in no CI job on either workflow.** (Still true: the `tests` workspace
   runs in `ci.yml`'s ubuntu `database` matrix, where `dist-installer/` is absent, not in `checks`.)
-  `tests/regression/sah-087.test.ts`'s "— 0E" block — row 0.13's evidence that no build-machine absolute
+  `tests/regression/legacy-087.test.ts`'s "— 0E" block — row 0.13's evidence that no build-machine absolute
   path reaches `latest.yml` or the installed `resources/app-update.yml` — is reachable only through
   the `tests` workspace, which runs in `ci.yml`'s ubuntu `database` matrix, and there `dist-installer/` does not exist,
   so both of its cases skip. `release.yml` produces both files and runs no `bun run test`. Running

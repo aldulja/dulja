@@ -298,7 +298,7 @@ describe("STOCK_COUNT — posts ONLY the variance (spec:1052, 2026; test 31)", (
     // first said such a sheet posts with an empty ledger; that contradicts step 6, and the frozen contract
     // wins until the owner amends it (docs/reports/phase-4.md records the open item). The count is still
     // evidence: the sheet is issued, numbered, and voided with its reason, so the series gap is explained
-    // (SAH-051).
+    // (LEGACY-051).
     //
     // The figures are read off the sheet rather than written as 10s, because the two cases above posted into
     // this warehouse (SKU-C1 is at 8, SKU-C2 at 13) and a hard-coded 10 would be a real variance on both.

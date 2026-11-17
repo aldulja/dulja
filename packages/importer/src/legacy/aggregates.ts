@@ -19,7 +19,7 @@ export interface AggregateRule {
   readonly confidence: AggregateConfidence;
   /** Printed on every row of the report. */
   readonly derivation: string;
-  readonly sah: readonly string[];
+  readonly legacyDefects: readonly string[];
   /** 9B review, finding 8 — further spellings of `storedKey` + `storedColumn`, tried in order after them; the report
    *  reads the first the source has (`firstSpelling`). Only spellings a 9A or 9B plan writes, never an invented one. */
   readonly storedSpellings?: readonly AggregateSpelling[];
@@ -36,7 +36,7 @@ const MATTOTALS_ROUTED = [
 
 /**
  * §5.1 #1: "Do not trust stored aggregates. AccTotals, AccObjects, AccCurTotals, MatTotals, MatObjects,
- * MatQuantity, MatCosts, MatStatus are all known to drift (SAH-001 → 006, 049, 050). Recompute everything from
+ * MatQuantity, MatCosts, MatStatus are all known to drift (LEGACY-001 → 006, 049, 050). Recompute everything from
  * VouItems/BillItems and reconcile; where the recomputed figure differs from the stored one, report the
  * difference to the customer rather than silently picking one." (spec:2331)
  *
@@ -59,7 +59,7 @@ export const AGGREGATE_RULES: readonly AggregateRule[] = [
     sourceKey: ["ACCOUNT"],
     confidence: "hypothesis",
     derivation: "sum(VOUITEMS.DEBIT) grouped by ACCOUNT, compared with ACCTOTALS.DEBIT",
-    sah: ["SAH-001", "SAH-002", "SAH-011"],
+    legacyDefects: ["LEGACY-001", "LEGACY-002", "LEGACY-011"],
     storedSpellings: [{ key: ["ACTACC"], column: "ACTDEBIT" }],
   },
   {
@@ -72,7 +72,7 @@ export const AGGREGATE_RULES: readonly AggregateRule[] = [
     sourceKey: ["ACCOUNT"],
     confidence: "hypothesis",
     derivation: "sum(VOUITEMS.CREDIT) grouped by ACCOUNT, compared with ACCTOTALS.CREDIT",
-    sah: ["SAH-001", "SAH-002", "SAH-011"],
+    legacyDefects: ["LEGACY-001", "LEGACY-002", "LEGACY-011"],
     storedSpellings: [{ key: ["ACTACC"], column: "ACTCREDIT" }],
   },
   {
@@ -86,7 +86,7 @@ export const AGGREGATE_RULES: readonly AggregateRule[] = [
     confidence: "not_derivable",
     derivation:
       "which document types route a line into ADMINDEBIT is encoded in the Muniments flags and the 318 triggers; spec:71 records the plug-in DLLs as 0% examined. The owner or a live trigger read must supply the rule.",
-    sah: ["SAH-002"],
+    legacyDefects: ["LEGACY-002"],
   },
   {
     id: "ACCTOTALS.ADMINCREDIT",
@@ -98,7 +98,7 @@ export const AGGREGATE_RULES: readonly AggregateRule[] = [
     sourceKey: [],
     confidence: "not_derivable",
     derivation: "as ACCTOTALS.ADMINDEBIT, on the credit side.",
-    sah: ["SAH-002"],
+    legacyDefects: ["LEGACY-002"],
   },
   {
     id: "ACCOBJECTS.DEBIT",
@@ -111,7 +111,7 @@ export const AGGREGATE_RULES: readonly AggregateRule[] = [
     confidence: "hypothesis",
     derivation:
       "sum(VOUITEMS.DEBIT) grouped by (SITE, ACCOUNT), compared with ACCOBJECTS.DEBIT — the trigger the dossier names is OnVouItemsAIUD_Objects.",
-    sah: ["SAH-001", "SAH-049", "SAH-050"],
+    legacyDefects: ["LEGACY-001", "LEGACY-049", "LEGACY-050"],
   },
   {
     id: "ACCOBJECTS.CREDIT",
@@ -123,7 +123,7 @@ export const AGGREGATE_RULES: readonly AggregateRule[] = [
     sourceKey: ["SITE", "ACCOUNT"],
     confidence: "hypothesis",
     derivation: "sum(VOUITEMS.CREDIT) grouped by (SITE, ACCOUNT), compared with ACCOBJECTS.CREDIT.",
-    sah: ["SAH-001", "SAH-049", "SAH-050"],
+    legacyDefects: ["LEGACY-001", "LEGACY-049", "LEGACY-050"],
   },
   {
     id: "ACCOBJECTS.OPENDEBIT",
@@ -136,7 +136,7 @@ export const AGGREGATE_RULES: readonly AggregateRule[] = [
     confidence: "not_derivable",
     derivation:
       "opening balances are carried forward by a year-end procedure, not accumulated from VouItems; there is no movement history to rebuild them from. The owner supplies the opening position, and 9B posts it as an OPENING_BALANCE document.",
-    sah: ["SAH-022"],
+    legacyDefects: ["LEGACY-022"],
   },
   {
     id: "ACCOBJECTS.OPENCREDIT",
@@ -148,7 +148,7 @@ export const AGGREGATE_RULES: readonly AggregateRule[] = [
     sourceKey: [],
     confidence: "not_derivable",
     derivation: "as ACCOBJECTS.OPENDEBIT, on the credit side.",
-    sah: ["SAH-022"],
+    legacyDefects: ["LEGACY-022"],
   },
   {
     id: "ACCCURTOTALS.DEBIT",
@@ -160,8 +160,8 @@ export const AGGREGATE_RULES: readonly AggregateRule[] = [
     sourceKey: ["ACCOUNT", "CUR"],
     confidence: "hypothesis",
     derivation:
-      "sum(VOUITEMS.DEBIT) grouped by (ACCOUNT, CUR), compared with ACCCURTOTALS.DEBIT. SAH-001 is exactly this table updated without the Site key, so drift here is expected, not surprising.",
-    sah: ["SAH-001", "SAH-012", "SAH-014"],
+      "sum(VOUITEMS.DEBIT) grouped by (ACCOUNT, CUR), compared with ACCCURTOTALS.DEBIT. LEGACY-001 is exactly this table updated without the Site key, so drift here is expected, not surprising.",
+    legacyDefects: ["LEGACY-001", "LEGACY-012", "LEGACY-014"],
   },
   {
     id: "ACCCURTOTALS.CREDIT",
@@ -174,7 +174,7 @@ export const AGGREGATE_RULES: readonly AggregateRule[] = [
     confidence: "hypothesis",
     derivation:
       "sum(VOUITEMS.CREDIT) grouped by (ACCOUNT, CUR), compared with ACCCURTOTALS.CREDIT.",
-    sah: ["SAH-001", "SAH-012", "SAH-014"],
+    legacyDefects: ["LEGACY-001", "LEGACY-012", "LEGACY-014"],
   },
   {
     id: "MATTOTALS.DEBIT",
@@ -186,7 +186,7 @@ export const AGGREGATE_RULES: readonly AggregateRule[] = [
     sourceKey: ["MATERIAL"],
     confidence: "hypothesis",
     derivation: "sum(BILLITEMS.DEBIT) grouped by MATERIAL, compared with MATTOTALS.DEBIT.",
-    sah: ["SAH-004", "SAH-006", "SAH-016"],
+    legacyDefects: ["LEGACY-004", "LEGACY-006", "LEGACY-016"],
   },
   {
     id: "MATTOTALS.CREDIT",
@@ -198,7 +198,7 @@ export const AGGREGATE_RULES: readonly AggregateRule[] = [
     sourceKey: ["MATERIAL"],
     confidence: "hypothesis",
     derivation: "sum(BILLITEMS.CREDIT) grouped by MATERIAL, compared with MATTOTALS.CREDIT.",
-    sah: ["SAH-004", "SAH-006", "SAH-016"],
+    legacyDefects: ["LEGACY-004", "LEGACY-006", "LEGACY-016"],
   },
   ...MATTOTALS_ROUTED.map((column): AggregateRule => ({
     id: ["MATTOTALS", column].join("."),
@@ -215,7 +215,7 @@ export const AGGREGATE_RULES: readonly AggregateRule[] = [
       "is a Muniments flag combination this project has not read; spec:71 records the plug-in DLLs as 0% examined.",
       "The owner or a live trigger read must supply the rule.",
     ].join(" "),
-    sah: ["SAH-004", "SAH-018"],
+    legacyDefects: ["LEGACY-004", "LEGACY-018"],
   })),
   {
     id: "MATOBJECTS.QNT",
@@ -227,8 +227,8 @@ export const AGGREGATE_RULES: readonly AggregateRule[] = [
     sourceKey: ["MATERIAL", "WAREHOUSE"],
     confidence: "hypothesis",
     derivation:
-      "sum(BILLITEMS.QNT) grouped by (MATERIAL, WAREHOUSE), compared with MATOBJECTS.QNT. MatObjects has no key columns at all (SAH-049), so a duplicate key here is a finding in its own right — see the duplicate_aggregates report.",
-    sah: ["SAH-049", "SAH-050"],
+      "sum(BILLITEMS.QNT) grouped by (MATERIAL, WAREHOUSE), compared with MATOBJECTS.QNT. MatObjects has no key columns at all (LEGACY-049), so a duplicate key here is a finding in its own right — see the duplicate_aggregates report.",
+    legacyDefects: ["LEGACY-049", "LEGACY-050"],
   },
   {
     id: "MATQUANTITY.QNT",
@@ -241,7 +241,7 @@ export const AGGREGATE_RULES: readonly AggregateRule[] = [
     confidence: "hypothesis",
     derivation:
       "sum(BILLITEMS.QNT) grouped by (MATERIAL, WAREHOUSE, BATCH), compared with MATQUANTITY.QNT.",
-    sah: ["SAH-049", "SAH-050"],
+    legacyDefects: ["LEGACY-049", "LEGACY-050"],
   },
   {
     id: "MATCOSTS.COST",
@@ -253,8 +253,8 @@ export const AGGREGATE_RULES: readonly AggregateRule[] = [
     sourceKey: [],
     confidence: "not_derivable",
     derivation:
-      "§5.1 #6: do not import cost figures. MatCosts has no rebuild path and multiple corruption routes (SAH-004, 007, 008, 009). Cost is recomputed from movement history by the 3B engine at load time and the resulting opening valuation is reconciled with the customer — it is never compared with this column.",
-    sah: ["SAH-004", "SAH-007", "SAH-008", "SAH-009"],
+      "§5.1 #6: do not import cost figures. MatCosts has no rebuild path and multiple corruption routes (LEGACY-004, 007, 008, 009). Cost is recomputed from movement history by the 3B engine at load time and the resulting opening valuation is reconciled with the customer — it is never compared with this column.",
+    legacyDefects: ["LEGACY-004", "LEGACY-007", "LEGACY-008", "LEGACY-009"],
   },
   {
     id: "MATCOSTS.BUY",
@@ -266,7 +266,7 @@ export const AGGREGATE_RULES: readonly AggregateRule[] = [
     sourceKey: [],
     confidence: "not_derivable",
     derivation: "as MATCOSTS.COST (§5.1 #6).",
-    sah: ["SAH-004", "SAH-008"],
+    legacyDefects: ["LEGACY-004", "LEGACY-008"],
   },
   {
     id: "MATSTATUS.LASTPRICE",
@@ -278,7 +278,7 @@ export const AGGREGATE_RULES: readonly AggregateRule[] = [
     sourceKey: [],
     confidence: "not_derivable",
     derivation:
-      "MatStatus is an INSERT-only min/max ratchet (SAH-016): it records the extreme prices ever seen and is not a function of current rows, so there is nothing to recompute it from.",
-    sah: ["SAH-016"],
+      "MatStatus is an INSERT-only min/max ratchet (LEGACY-016): it records the extreme prices ever seen and is not a function of current rows, so there is nothing to recompute it from.",
+    legacyDefects: ["LEGACY-016"],
   },
 ];

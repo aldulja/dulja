@@ -11,7 +11,7 @@ export interface JobPartitionFinding {
 }
 
 /**
- * Part VII #7 names `MatOpens.Job` specifically, and SAH-022 is the defect it decides. No other table is added here
+ * Part VII #7 names `MatOpens.Job` specifically, and LEGACY-022 is the defect it decides. No other table is added here
  * without an amendment: the question is about opening stock, and widening it to every `Job` column in the 460-table
  * map would turn a decidable question into noise. `MOPJOB` is the dossier's per-table prefix (`MatOpens`, prefix
  * `MOP`), a `hypothesis` like every 9B column; 9A's probe reads the unprefixed `JOB`, and OD-17's live catalogue
@@ -27,7 +27,7 @@ const BATCH = 500;
 const SAMPLE = 5;
 
 /**
- * Part VII #7: "Does `MatOpens.Job` ever differ from 0 in production? SAH-022 is a hard failure if so, and inert if
+ * Part VII #7: "Does `MatOpens.Job` ever differ from 0 in production? LEGACY-022 is a hard failure if so, and inert if
  * not." Asked of the customer's own data at load time, so the answer is evidence rather than an assumption — and asked
  * in 9B, because 9B is the slice that would silently merge job-partitioned opening positions into one if the answer
  * were yes and nobody looked.
@@ -61,7 +61,7 @@ export async function assertNoJobPartition(
           [table, "is in the source but", [table, column].join("."), "could not be read"].join(" "),
           ["(", cause instanceof Error ? cause.message : String(cause), ");"].join(""),
           "Part VII #7 cannot be answered for this source, so opening stock is not loaded —",
-          "confirm the column against the live catalogue (OD-17) before loading (SAH-022, OD-27)",
+          "confirm the column against the live catalogue (OD-17) before loading (LEGACY-022, OD-27)",
         ].join(" "),
       );
     }

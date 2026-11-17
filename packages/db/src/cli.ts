@@ -81,7 +81,7 @@ try {
     }
     console.log("schema lint: 0 violations");
   } else if (cmd === "seed") {
-    // SAH-039: an offline CLI run as app_migrator, never an endpoint on a running system (spec:2188). `url` is
+    // LEGACY-039: an offline CLI run as app_migrator, never an endpoint on a running system (spec:2188). `url` is
     // DATABASE_URL_MIGRATOR, checked above; app_rw could write neither the roles nor the chart.
     // Exit codes (frozen, ADR 0012): 0 success · 1 seed failure · 2 configuration error · 3 pack-shape violation.
     let config: SeedConfig;

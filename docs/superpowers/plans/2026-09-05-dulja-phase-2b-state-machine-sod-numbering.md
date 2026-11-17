@@ -4,11 +4,11 @@
 
 **Goal:** Make the document lifecycle a data-layer control — a legal-transition matrix, maker ≠ checker (R1) and approval authority (R2) enforced by triggers on `app.document`, every transition recorded in an immutable `app.document_event`, overrides admitted only through a second principal, draft deletion the one DELETE the application role holds, and gaplessness of every issued number provable by one SQL function.
 
-**Architecture.** The state machine lives in **two triggers on `app.document`**, not in TypeScript. `app.document_status_before()` is a BEFORE UPDATE OF status trigger that resolves the posting policy effective for the document's `effective_date`, applies the transition matrix of contracts §4.5.1, enforces R1 by reading `app.document_event` and R2 by calling `app.actor_has(code, company_id, branch_id)`; `app.document_status_after()` is the AFTER UPDATE OF status trigger that writes the `transition` event itself, so **no handler ever inserts `document_event`** (spec:1786) and a direct `app_rw` UPDATE cannot skip either control. The TypeScript seam above it — `transitionDocument`, `recordOverride` in `packages/db/src/posting/lifecycle.ts` — only sets the two transaction settings the AFTER trigger reads (`app.event_reason`, `app.event_attributed_to`) and issues the UPDATE; the API middleware `requireDocumentPermission(stage)` is a pre-flight for a better error message and never the control (spec:2173, SAH-032). Overrides are a second door on the same table: a BEFORE INSERT guard admits an `override` row only when `app.principal_has(attributed_to, override_code, company, branch)` holds for a principal that is neither the document's creator nor the principal it is attributed to (R8, spec:2179). Numbering integrity is closed from the other end: `app.series_gaps()` lists every number in `[1, next_number)` that is neither an issued document nor a recorded void, `document_delete_draft_only` refuses the deletion of anything but a draft, and the two together are what makes "issued numbers are unique and gapless-provable" a runnable assertion rather than a promise.
+**Architecture.** The state machine lives in **two triggers on `app.document`**, not in TypeScript. `app.document_status_before()` is a BEFORE UPDATE OF status trigger that resolves the posting policy effective for the document's `effective_date`, applies the transition matrix of contracts §4.5.1, enforces R1 by reading `app.document_event` and R2 by calling `app.actor_has(code, company_id, branch_id)`; `app.document_status_after()` is the AFTER UPDATE OF status trigger that writes the `transition` event itself, so **no handler ever inserts `document_event`** (spec:1786) and a direct `app_rw` UPDATE cannot skip either control. The TypeScript seam above it — `transitionDocument`, `recordOverride` in `packages/db/src/posting/lifecycle.ts` — only sets the two transaction settings the AFTER trigger reads (`app.event_reason`, `app.event_attributed_to`) and issues the UPDATE; the API middleware `requireDocumentPermission(stage)` is a pre-flight for a better error message and never the control (spec:2173, LEGACY-032). Overrides are a second door on the same table: a BEFORE INSERT guard admits an `override` row only when `app.principal_has(attributed_to, override_code, company, branch)` holds for a principal that is neither the document's creator nor the principal it is attributed to (R8, spec:2179). Numbering integrity is closed from the other end: `app.series_gaps()` lists every number in `[1, next_number)` that is neither an issued document nor a recorded void, `document_delete_draft_only` refuses the deletion of anything but a draft, and the two together are what makes "issued numbers are unique and gapless-provable" a runnable assertion rather than a promise.
 
 **Tech Stack:** PostgreSQL 18 (PL/pgSQL triggers, RLS with FORCE, advisory locks), TypeScript on Bun, `postgres.js` tagged templates, Drizzle ORM mirrors for reads, Hono + `@hono/zod-openapi`, Zod, Vitest + Testcontainers (Node 24).
 
-**Spec:** `docs/spec/rebuild-spec.md` v1.2 — §0.2 (spec:97–106), §3.3 (spec:1188, 1190, 1201), §3.8 numbering (spec:1717–1745), `document` status/void (spec:1747–1780), `document_event` forward declaration (spec:1782–1787), linter lists (spec:1370), §3.9 Deletion (spec:2049) and Error codes (spec:2051), §3.10.1 recalculation (spec:2081), §4.2.1 branch scoping (spec:2166), §4.2.2 R1/R2/R3/R8 (spec:2172–2179), §4.7 (spec:2222–2224), §4.11 (spec:2254 keyboard parity — no screen ships here), Part V Phase 2 (spec:2288), Part VI tests 10, 16, 31 (spec:2428, 2434, 2449), Part I SAH-023, 032, 040, 041, 042, 051, 072.
+**Spec:** `docs/spec/rebuild-spec.md` v1.2 — §0.2 (spec:97–106), §3.3 (spec:1188, 1190, 1201), §3.8 numbering (spec:1717–1745), `document` status/void (spec:1747–1780), `document_event` forward declaration (spec:1782–1787), linter lists (spec:1370), §3.9 Deletion (spec:2049) and Error codes (spec:2051), §3.10.1 recalculation (spec:2081), §4.2.1 branch scoping (spec:2166), §4.2.2 R1/R2/R3/R8 (spec:2172–2179), §4.7 (spec:2222–2224), §4.11 (spec:2254 keyboard parity — no screen ships here), Part V Phase 2 (spec:2288), Part VI tests 10, 16, 31 (spec:2428, 2434, 2449), Part I LEGACY-023, 032, 040, 041, 042, 051, 072.
 
 ## Assumptions and contracts (from docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md)
 
@@ -18,7 +18,7 @@
 - **Interfaces consumed:** §4.1 (the whole Plan 0A surface), §4.2.2 (`withTenant`, `TenantContext`, `systemContext`, `createDb`), §4.2.3 (`AppEnv`, `RequestContext`, `Logger`), §4.2.4 (`Problem`, `ERRORS`, `ErrCode`, `AppError`, `fromDatabaseError`, `PostingError`, `PostingErrorCode`), §4.2.5 (`PERMISSIONS`, `PERMISSION`, `PermissionCode`, `requirePermission` with the `{ company: "path:companyId", branch: "document" }` scope, `ROLES`), §4.2.7 (`RouteModule`, `buildRoutes`, `IdempotencyHeader`, `IsolationProbe`, `PROBES`), §4.2.8 (`UuidSchema`, `DateSchema`, `TimestampSchema`, `ListEnvelope`, `ProblemSchema` — **no `ListQuery` and no cursor codec**: the one list this slice adds is a document's own bounded timeline, Task 8 route decision 3), §4.2.9 (`idempotency`), §4.2.12 (`startApi`, `StartedApi`, `ApiRequest`, `TEST_ISSUER`), §4.3.1 (`loadSnapshot`, `resolvePolicy`, `issueDocument`, `postDocument`, `reverseDocument`, `voidDocument`, `DocumentStatus`), §4.3.2 (the fixed algorithm — steps 7, 8 and 13 now run through this slice's triggers), §4.3.4 (`document_line`, the `document` header additions), §4.3.6 (numbering at issue), §4.3.7 (the document-type seed envelope), §4.4.1 (the policy schema as 2A widened it — `approval.required`, `.approve`, `.post`, `.create`; `numbering.series`; `reversal.producesType`), §4.4.2 (`PostingPolicy`, whose `["approval"]` member types `stageCode`), §4.16.3 (`ProjectionCheck`, `registerProjectionCheck`, `ProjectionMismatch`), §4.17 (`seedTenantV2`, `seedAccount`, `seedDocumentType`, `seedParty`), §4.17.1 (`sharedDb`, `thinRegression`, `postJournal`).
 - **Interfaces produced:** §4.5.1 verbatim (the legal-transition matrix, as `app.document_status_before()`), §4.5.2 verbatim (`app.document_event`, its triggers, the two session settings), §4.5.3 verbatim (`app.principal_has`, `app.assert_override_authorised`, `document_event_override_guard`), §4.5.4's routes (the widened transitions body, **the widened `TransitionResultSchema` — a superset of 1A's six members, adding `from`, `to`, `eventId`** — and the handler, plus `POST …/reverse`, `POST …/overrides`, `DELETE …/{documentId}`, `GET …/{documentId}/events`) — **`DocumentStage`, `requireDocumentPermission` and `DOCUMENT_STAGE_CODES` are consumed, not produced: 2A's amendment A4 moved their authorship to 2A, and this slice adds only the `stageCode` export (assumption 4)**, §4.5.5 verbatim (`app.series_gaps`), §4.3.1 verbatim for `transitionDocument`, `TransitionResult`, `recordOverride`, `OverrideCode`, §3.5.4's second row (the DELETE grant on `document` and `document_line`), §3.6.2's `accounting.document.reverse`.
 - **Owner decisions:** **none.** The 2B card's "Owner gates" cell reads *none*, and this slice ships no screen, so **OD-24 does not gate any task here** — every screen in Phase 2 is 2C's. No task in this plan waits on an owner.
-- **Part VI tests owned / re-run:** **owned 10, 16, 31**; **re-run** 1 (the ledger invariant, now through the trigger path), 12 (four new routes get `PROBES` entries), 13 (`document` status writes are audited; `document_event` is immutable to `app_rw`), 36 (`accounting.document.reverse` joins the catalogue, handler and role seed). **§3.0.4 rows owned:** spec:1041 (document types + policies; numbering; approval state machine in `document_event` — 2A contributed the engine) and the "segregation of duties" clause of spec:1065. **Regression files created:** none. **Regression files appended:** `tests/regression/sah-023.test.ts`, `sah-032.test.ts`, `sah-040.test.ts`, `sah-041.test.ts`, `sah-042.test.ts`, `sah-051.test.ts`, `sah-072.test.ts` — all seven created by 0B (§3.7.3), so every block this slice adds is `describe("SAH-NNN … — 2B", …)` appended below the existing blocks, and no earlier block is edited.
+- **Part VI tests owned / re-run:** **owned 10, 16, 31**; **re-run** 1 (the ledger invariant, now through the trigger path), 12 (four new routes get `PROBES` entries), 13 (`document` status writes are audited; `document_event` is immutable to `app_rw`), 36 (`accounting.document.reverse` joins the catalogue, handler and role seed). **§3.0.4 rows owned:** spec:1041 (document types + policies; numbering; approval state machine in `document_event` — 2A contributed the engine) and the "segregation of duties" clause of spec:1065. **Regression files created:** none. **Regression files appended:** `tests/regression/legacy-023.test.ts`, `legacy-032.test.ts`, `legacy-040.test.ts`, `legacy-041.test.ts`, `legacy-042.test.ts`, `legacy-051.test.ts`, `legacy-072.test.ts` — all seven created by 0B (§3.7.3), so every block this slice adds is `describe("LEGACY-NNN … — 2B", …)` appended below the existing blocks, and no earlier block is edited.
 - **Shared namespaces this slice writes into:** **document-type codes (§4.14):** **none seeded into a pack, five registered as test-only.** Tasks 4, 9 and 10 configure `GAP_TEST` (series `GAP`), `NG_NG`/`NG_RC`/`NG_HT` (series `NG`/`RC`/`HT`) and `SOD_TEST` (series `SD`) through `seedDocumentType` inside a Testcontainers database; none is ever a seed-pack file and none reaches `packages/db/seed/`, exactly as 2C's `CONSIGNMENT_RETURN` row is marked "test only". All five are registered in §4.14 already — the round-2 amendment pass landed them, and Task 12 Step 1 verifies each is present before the slice merges — because hazard 32 makes an unregistered document-type code a review-blocking finding. Their policies exist for one reason each: `issueDocument` writes `policy.numbering.series` onto the header (§4.3.6), so an assertion about a series is only non-vacuous against a type whose *policy* names it, and `SOD_TEST` is the only shape in which `approval.approve` and `approval.post` differ, which is what makes "above their own authority" testable. **Account codes (§4.15):** **none seeded and none consumed beyond 1A's** — every document this slice moves through the state machine debits `1000` Cash and credits `4000` Sales through the ids `seedTenant` returns as `a.cash`/`a.sales` (plan0A:1593–1595), never by looking a code up. **Contracts §5 item 33 — "an account code a policy names must resolve for the seeded company" — therefore does not bite here:** every policy this slice configures (Task 2's `STRICT`, Task 4's `GAP_TEST`, Task 9's `NG_*`, Task 10's `SOD_TEST`) addresses its accounts as `{ from: "line.account" }`, so no account code appears in any policy at all and there is nothing to resolve. The slice seeds no account and adds no code to §4.15. **Report codes (§4.16.1) and `DatasetId` members (§4.16.2):** **none** — Phase 2 ships no report; `document_event`'s reader is 7B's `accounting.document_event_log`. **`fixtures.ts` helpers (§4.17):** **`grantCodes`** and no others (a contract addition, declared below). **Shared test helpers (§4.17.1):** none added; `postJournal` is *modified* in Task 2, not replaced. **`ERR_*` (§4.2.4):** this slice adds exactly `ERR_SOD_NO_SUBMISSION`, `ERR_SOD_MAKER_IS_CHECKER`, `ERR_OVERRIDE_NOT_AUTHORISED` (Task 3 Step 5) and `ERR_DOC_NOT_DRAFT` (**Task 4 Step 9**) to `ERRORS` in `packages/contracts/src/errors.ts`. Each row lands in the same commit as the migration that raises its token as a string literal — the first three in `0021_*.sql`/`0022_*.sql`, the fourth in `0023_*.sql` — so `scripts/lint/rules/error-codes.ts`, which scans `packages/db/migrations/**` as well as source, is green at every commit of this slice. `ERR_DOC_STATUS_ILLEGAL`, `ERR_POLICY_NOT_FOUND`, `ERR_POLICY_INVALID`, `ERR_RBAC_FORBIDDEN` and `ERR_NOT_FOUND` already exist (0B, 1A) and are re-used, never re-spelled.
 - **Never re-decide:** D1–D27 (spec:114–142); every name in the contracts document is frozen — a needed change goes to that document first.
 - **Contracts version:** 2026-09-07.
@@ -26,20 +26,20 @@
 ### Five assumptions this plan makes explicit, because a reviewer must be able to check them
 
 1. **`→ issued` carries no R2 check.** Contracts §4.5.1 attaches an authority condition to `approved`, `posted` and `void` only; `draft → issued` and `submitted → issued` are conditioned on `approval.required = false` and nothing else, and `approved → issued` is unconditional ("authority was checked at `approved`"). This plan implements exactly that. It is also what keeps Plan 0A's `packages/db/test/documents.test.ts` green: its one direct `update app.document set number = 1, status = 'issued'` runs as `a.human`, who holds no permission and whose seed policy has no `approval` block at all — the matrix admits it (`required` absent → false) and no gate is evaluated, so the assertion still fails on the unique constraint as 0A wrote it. **Plan 0A's tests are not edited by this slice.**
-2. **R2 on `posted` genuinely raises the bar for existing tests, and Task 2 pays that cost once.** `app.actor_has(policy.approval.post, …)` now runs inside the transaction for every `issued → posted` update, and the DB-tier and `tests/`-tier posting suites of 1A, 1B **and 2A** act as a `s.human` whom `seedTenant` deliberately grants nothing (§4.1). Task 2 therefore adds the `grantCodes` fixture helper and applies it **once per seed object** — the unit is the seed, not the file — at **ten seed objects across five files**: `packages/db/test/posting/post.test.ts` (two seeds), `packages/db/test/posting/reverse.test.ts` (1A's outer seed pair **plus** 2A's nested `describe`'s own seed **plus** the local `b` its producesType case creates), `packages/db/test/posting/branch-required.test.ts` (2A T12), `tests/regression/sah-013.test.ts` (2A T14, two `sharedDb()` seeds) and `tests/invariants/support/post-journal.ts` (one memoised grant inside `postJournal`, the single choke point for the whole `tests/` tier) — **2 + 4 + 1 + 2 + 1 = 10**. Task 2 Step 7 prints the two `grep` commands that re-derive the list against the merged tree, so a worker never trusts this sentence over the repository. `packages/db/test/posting/issue.test.ts` and `packages/db/test/documents.test.ts` need no change — see assumption 1. 2A's *API*-tier suites already grant, because 2A's own `requireDocumentPermission` gates on the same code.
+2. **R2 on `posted` genuinely raises the bar for existing tests, and Task 2 pays that cost once.** `app.actor_has(policy.approval.post, …)` now runs inside the transaction for every `issued → posted` update, and the DB-tier and `tests/`-tier posting suites of 1A, 1B **and 2A** act as a `s.human` whom `seedTenant` deliberately grants nothing (§4.1). Task 2 therefore adds the `grantCodes` fixture helper and applies it **once per seed object** — the unit is the seed, not the file — at **ten seed objects across five files**: `packages/db/test/posting/post.test.ts` (two seeds), `packages/db/test/posting/reverse.test.ts` (1A's outer seed pair **plus** 2A's nested `describe`'s own seed **plus** the local `b` its producesType case creates), `packages/db/test/posting/branch-required.test.ts` (2A T12), `tests/regression/legacy-013.test.ts` (2A T14, two `sharedDb()` seeds) and `tests/invariants/support/post-journal.ts` (one memoised grant inside `postJournal`, the single choke point for the whole `tests/` tier) — **2 + 4 + 1 + 2 + 1 = 10**. Task 2 Step 7 prints the two `grep` commands that re-derive the list against the merged tree, so a worker never trusts this sentence over the repository. `packages/db/test/posting/issue.test.ts` and `packages/db/test/documents.test.ts` need no change — see assumption 1. 2A's *API*-tier suites already grant, because 2A's own `requireDocumentPermission` gates on the same code.
 3. **`JOURNAL`'s effective policy declares no `approval.create`.** Contracts §4.4.1 says in prose that JOURNAL's `approval.create` is `accounting.journal.create`, but the frozen seed file of §4.3.7 and the frozen `JOURNAL_POLICY_V1` fixture of §4.17 both omit the member, and hazard 9 forbids editing either. §4.5.4's map is therefore implemented verbatim — `create`/`submit` resolve `approval.create ?? approval.post` — and for JOURNAL that resolves to `accounting.journal.post`. The one 1A route assertion this changes — `apps/api/test/routes/accounting/documents.test.ts`'s `drafter` principal, who held only `accounting.journal.create` — **is updated by 2A, not by this slice**: 2A Task 9 Step 1 widens the grant in this plan's own wording and rewrites the case beside it as "may create AND post", so Task 7 Step 2 verifies both and edits neither. That rewritten case still passes here: JOURNAL's `approval.required` is false, so block 2b's R1 never evaluates, `postDocument` reaches `posted` through the legal `draft → issued → posted` pair, and block 2c's gate is the very code 2A granted. The inconsistency is reported upward as a question for the contracts document, not resolved here (hazard 7).
 4. **2A already shipped the middleware, and Tasks 6 and 7 begin with a diff.** Contracts §4.5.4 marks `requireDocumentPermission(stage)` "(2B)", but **2A's amendment A4 moved its authorship to 2A** — "created by **2A**, not 2B, and ship with **all six** `DocumentStage` members mapped … 2B then *uses* the middleware for its `submitted`/`approved` transitions and edits the file only to add its own `RouteModule` permissions, never the stage map" — and 2A is merged before this plan starts. A4 is honoured, not re-litigated (hazard 7). So: `apps/api/src/middleware/require-document-permission.ts`, `DOCUMENT_STAGE_CODES`, the replacement of 1A's two static gates and the widened `CreateDocumentBody` **exist when Task 6 begins**, and what remains genuinely 2B's is (a) the `stageCode` export, which 2A's Produces block does not list, (b) the dedicated middleware test file, which 2A did not create (it tested through `documents.test.ts`), and (c) everything in Task 7 that touches `TransitionBody`, which 2A did not touch — 1A's three-value enum is still there. Each of the two tasks opens with a reconciliation note naming exactly which of its steps become verifications. **Task 6 prints a two-edit diff against 2A's merged file and no full-file listing**, precisely so no reader can mistake a later description for the merged authority: 2A's `resolvePolicy` resolution, its `branchId = null` create branch, its error codes and its `POLICY_RESOLVED_CODES` export all stand, and **any difference between 2A's file and this plan is resolved in 2A's favour and reported, never overwritten.** 2A's amendment **A7** points the other way and is also honoured: `POST …/documents/{documentId}/reverse` and the `accounting.document.reverse` code are this slice's, and Tasks 5 and 8 land them in one pull request.
-5. **A policy that declares no `approval.post` fails closed.** `posting-policy.schema.json` makes `approval.post` required, so any policy that lacks it is not schema-valid; the BEFORE trigger raises `ERR_POLICY_INVALID` rather than skipping the check, because a silent skip is the SAH-032 failure this slice exists to close. The only policies in the repository that lack the block are Plan 0A's placeholder fixture and Plan 0A's `'{"version":2}'::jsonb` row, and neither is ever transitioned past `issued` by any test.
+5. **A policy that declares no `approval.post` fails closed.** `posting-policy.schema.json` makes `approval.post` required, so any policy that lacks it is not schema-valid; the BEFORE trigger raises `ERR_POLICY_INVALID` rather than skipping the check, because a silent skip is the LEGACY-032 failure this slice exists to close. The only policies in the repository that lack the block are Plan 0A's placeholder fixture and Plan 0A's `'{"version":2}'::jsonb` row, and neither is ever transitioned past `issued` by any test.
 
 ## Global Constraints
 
-- **Never**, verbatim (spec:97–104): write to a ledger or movement table outside the posting service; represent money as a float, anywhere, including in TypeScript; build SQL by string concatenation (SAH-036/037/069); issue DDL from application code (SAH-053); disable an invariant, constraint or trigger "temporarily" (SAH-027, 041, 053); gate an audit write on any flag (SAH-030); hard-code a package version into a source file — the lockfile owns versions.
+- **Never**, verbatim (spec:97–104): write to a ledger or movement table outside the posting service; represent money as a float, anywhere, including in TypeScript; build SQL by string concatenation (LEGACY-036/037/069); issue DDL from application code (LEGACY-053); disable an invariant, constraint or trigger "temporarily" (LEGACY-027, 041, 053); gate an audit write on any flag (LEGACY-030); hard-code a package version into a source file — the lockfile owns versions.
 - **Always** (spec:106): every new table carries `tenant_id`, an RLS policy, `created_at`, a migration and a test that a second tenant cannot see it; every new endpoint carries a Zod schema, an OpenAPI entry, idempotency on unsafe methods and a tenant-isolation test; every UI screen is verified in both text directions before merge (this slice ships no screen).
 - **Binding form for a new table** (§3.3): `tenant_id`; RLS enabled **and forced**; a policy named exactly `tenant_isolation`; `id uuid primary key default uuidv7()`; `created_at timestamptz not null default now()`; an `audit_row` trigger unless in `AUDIT_EXEMPT`; `stamp_<col>` for every `*_by` column **and for `document_event.actor_id`** (spec:1370); composite `(tenant_id, <parent>_id)` FKs to every tenant-scoped parent; a migration with a hand-written down; a two-tenant test.
 - **Money is `numeric(19,4)`, rates `numeric(19,8)`, quantities `numeric(19,6)`** (§4.1). No `number` appears in any signature naming an amount (the `no-number-money` lint, §3.7.5). This slice writes no amount.
 - **Every SQL statement is a `postgres.js` tagged template on a `tx` obtained from `withTenant`, or Drizzle.** `sql.unsafe` has exactly three homes and none of them is in this slice (§3.3, hazard 21).
 - **`document_event` is written only by triggers and the override door** (hazard 24). No handler in this slice inserts a `transition` row; `recordOverride` inserts the `override` row and nothing else does.
-- **One migration per PR** (spec:2057); each file runs whole in one transaction; SQL keywords lowercase; section banners `-- ── N. title ───`; every statement carries a comment naming the SAH- or spec reference it serves.
+- **One migration per PR** (spec:2057); each file runs whole in one transaction; SQL keywords lowercase; section banners `-- ── N. title ───`; every statement carries a comment naming the LEGACY- or spec reference it serves.
 - **Commits** are conventional with the scope, subject form `<type>(<scope>): <summary> [2B T<n>]`, and every message ends with the trailer `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>` (§3.8).
 - **Node 24 runs Vitest; Bun runs everything else** (D5). Tests connect as `app_rw` / `app_migrator` through `startDb()`, never as superuser for behaviour under test.
 - **No package version is hard-coded**; nothing new is installed by this slice.
@@ -116,7 +116,7 @@ tests/
 │                                               existing /v1/companies/:companyId/documents module        T7, T8
 ├─ invariants/numbering-gapless.test.ts         acceptance test 16                                        T9
 ├─ invariants/segregation-of-duties.test.ts     acceptance tests 10 and 31                                T10
-└─ regression/sah-023 · 032 · 040 · 041 · 042 · 051 · 072.test.ts (appended)                              T11
+└─ regression/legacy-023 · 032 · 040 · 041 · 042 · 051 · 072.test.ts (appended)                              T11
 
 docs/adr/
 ├─ 0029-document-state-machine-in-triggers.md   proposal (security + data model — spec:95)                T2
@@ -127,7 +127,7 @@ docs/adr/
 
 ### Task 1: Migration `0021_create_document_event.sql`: `app.document_event`, `app.principal_has`, the override door
 
-`app.document_event` is the table spec:1782–1787 forward-declares and contracts §4.5.2 fixes: append-only, audit-exempt, `actor_id` stamped from the session and never from a payload (SAH-044), `attributed_to` a data column for the cashier or supervisor a POS event belongs to. The same file ships the **override door** — `app.principal_has`, the parameterised twin of `app.actor_has`, and the BEFORE INSERT guard that admits an `override` row only for a *second* principal who holds the override code at the document's branch (R8, spec:2179; SAH-027, SAH-048). Table and guards ship together because §3.5.1's new-table recipe is one unit: a table whose only write door is a trigger is not created until that trigger exists.
+`app.document_event` is the table spec:1782–1787 forward-declares and contracts §4.5.2 fixes: append-only, audit-exempt, `actor_id` stamped from the session and never from a payload (LEGACY-044), `attributed_to` a data column for the cashier or supervisor a POS event belongs to. The same file ships the **override door** — `app.principal_has`, the parameterised twin of `app.actor_has`, and the BEFORE INSERT guard that admits an `override` row only for a *second* principal who holds the override code at the document's branch (R8, spec:2179; LEGACY-027, LEGACY-048). Table and guards ship together because §3.5.1's new-table recipe is one unit: a table whose only write door is a trigger is not created until that trigger exists.
 
 **Files:**
 - Create: `packages/db/migrations/0021_create_document_event.sql`, `packages/db/migrations/0021.down.sql`, `packages/db/src/schema/document-event.ts`, `packages/db/test/document-event.test.ts`
@@ -210,7 +210,7 @@ describe("app.document_event — contracts §4.5.2/§4.5.3, spec:1782–1787, R8
     expect(idx.map((i) => i.indexname)).toContain("document_event_document_idx");
   });
 
-  it("stamps actor_id from the session and refuses a payload actor (spec:1370, SAH-044)", async () => {
+  it("stamps actor_id from the session and refuses a payload actor (spec:1370, LEGACY-044)", async () => {
     const doc = await draftDocument(db, a);
     const other = await secondPrincipal(a, "impostor");
     const [row] = await withTenant(db.rw, a.tenant, a.human, (tx) => tx<{ actor_id: string }[]>`
@@ -325,7 +325,7 @@ Expected: FAIL — `relation "app.document_event" does not exist` on the first `
 -- The append-only record of every status change and every override on a document.
 -- spec:1782–1787 forward-declares it; contracts §4.5.2 fixes the columns; C11 is resolved with event_kind.
 -- Handlers never write this table: the AFTER UPDATE OF status trigger of migration 0022 writes 'transition'
--- rows and the override door below is the only other way in (spec:1786, SAH-044).
+-- rows and the override door below is the only other way in (spec:1786, LEGACY-044).
 
 -- ── 1. the table ──────────────────────────────────────────────────────────────
 create table app.document_event (
@@ -337,7 +337,7 @@ create table app.document_event (
   from_status    app.document_status not null,
   to_status      app.document_status not null,                  -- override: from_status = to_status = the status at the time
   override_code  text references app.permission(code),          -- overrides only; plain FK: permission is a global catalogue
-  actor_id       uuid not null default app.current_actor() references app.principal(id),   -- stamped; never from a payload (SAH-044)
+  actor_id       uuid not null default app.current_actor() references app.principal(id),   -- stamped; never from a payload (LEGACY-044)
   attributed_to  uuid references app.principal(id),             -- the supervisor or cashier the event belongs to — DATA (spec:1785)
   occurred_at    timestamptz not null default now(),            -- the business time; created_at is the row time
   reason         text,
@@ -365,7 +365,7 @@ revoke update, delete on app.document_event from app_rw;
 -- Identical body to app.actor_has (plan0A:985–1004) with p_principal in place of app.current_actor().
 -- app.actor_has itself is untouched. A NULL branch asks for company-wide authority and is granted only by an
 -- assignment with no branch rows, so a branch-restricted principal never gains anything by omitting the
--- branch (SAH-042, SAH-050 — never fail open).
+-- branch (LEGACY-042, LEGACY-050 — never fail open).
 create function app.principal_has(p_principal uuid, p_code text, p_company_id uuid, p_branch_id uuid default null)
 returns boolean language sql stable as $$
   select exists (
@@ -387,7 +387,7 @@ returns boolean language sql stable as $$
                      and b.branch_id = p_branch_id))))
 $$;
 
--- ── 3. the override door (R8, spec:2179; SAH-027, SAH-048) ────────────────────────────────────────────────
+-- ── 3. the override door (R8, spec:2179; LEGACY-027, LEGACY-048) ────────────────────────────────────────────────
 -- An override is an explicit permission exercised per document by a SECOND principal and recorded here,
 -- never a session flag. POS: actor_id is the terminal and attributed_to the supervisor whose PIN authorised
 -- it; back office: actor_id is the second principal and attributed_to is null.
@@ -490,12 +490,12 @@ git commit -m "$(cat <<'EOF'
 feat(db): app.document_event, app.principal_has and the override door [2B T1]
 
 The append-only lifecycle record spec:1782-1787 forward-declares. actor_id is
-stamped from the session and a payload actor is overwritten (SAH-044);
+stamped from the session and a payload actor is overwritten (LEGACY-044);
 attributed_to stays data, so the cashier a POS event belongs to is never
 confused with the principal that acted. The override door is R8 in the data
 layer: an override row is admitted only when a SECOND principal holds the code
 at the document's branch, so "one client-settable variable disables every
-write-time control" (SAH-027) has no analogue here.
+write-time control" (LEGACY-027) has no analogue here.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 EOF
@@ -512,7 +512,7 @@ This is also the task that pays the cost of R2 arriving: from here on, `issued �
 
 **Files:**
 - Create: `docs/adr/0029-document-state-machine-in-triggers.md`, `packages/db/migrations/0022_create_document_status_triggers.sql`, `packages/db/migrations/0022.down.sql`, `packages/db/test/document-status.test.ts`
-- Modify: `packages/db/test/fixtures.ts` (add `grantCodes` — additive; no existing helper or constant is touched), `packages/db/test/posting/post.test.ts`, `packages/db/test/posting/reverse.test.ts`, `packages/db/test/posting/branch-required.test.ts` (2A), `tests/regression/sah-013.test.ts` (2A), `tests/invariants/support/post-journal.ts`
+- Modify: `packages/db/test/fixtures.ts` (add `grantCodes` — additive; no existing helper or constant is touched), `packages/db/test/posting/post.test.ts`, `packages/db/test/posting/reverse.test.ts`, `packages/db/test/posting/branch-required.test.ts` (2A), `tests/regression/legacy-013.test.ts` (2A), `tests/invariants/support/post-journal.ts`
 
 **Interfaces:**
 - Consumes: `app.actor_has(p_code text, p_company_id uuid, p_branch_id uuid default null)`, `app.current_actor()` (Plan 0A); `app.document_event` and its two triggers (Task 1); `app.posting_policy (document_type_id, version, effective_from, definition)` (plan0A migration 0001); the policy shape of contracts §4.4.1 — `approval.required`, `approval.approve`, `approval.post`; `seedTenantV2`, `seedAccount`, `seedBranch` (0D, §4.17 — the one way a test creates a second `BRANCH` `dimension_value`), `draftDocument`, `uuidv7`, `withTenant`, `startDb` from `@dulja/db/test`; `postDocument`, `issueDocument` from `@dulja/db` (1A).
@@ -540,17 +540,17 @@ spec:2172 states the mechanism in one sentence: "an AFTER UPDATE OF status trigg
 `document_event` row itself** … handlers never write `document_event`, so a direct `app_rw` update cannot skip
 it", and "a BEFORE UPDATE OF status trigger enforces the legal transitions … and, for a type whose effective
 policy declares `approval.required`, **fails closed**". spec:2173 adds that the handler's own check "is a
-pre-flight for a better error message, not the control (SAH-032)". Acceptance tests 10 and 31 (spec:2428,
+pre-flight for a better error message, not the control (LEGACY-032)". Acceptance tests 10 and 31 (spec:2428,
 2449) require the rules to hold "through any path — API, job, or direct SQL as `app_rw`".
 
-SAH-032 is the legacy system letting a user raise a document's approval level above their own; SAH-027 is one
+LEGACY-032 is the legacy system letting a user raise a document's approval level above their own; LEGACY-027 is one
 client-settable variable disabling every write-time control. Both are the same shape of failure: the control
 lived above the data.
 
 Three placements were considered.
 
 1. **In the API handler.** Rejected outright: it fails the "direct SQL as `app_rw`" clause of tests 10 and 31,
-   and it is exactly SAH-032.
+   and it is exactly LEGACY-032.
 2. **In the posting service (`packages/db/src/posting/`).** Rejected: the sync-apply job, the importer and the
    payroll engine all reach `app.document` through `withTenant`, and a future writer that forgets the helper is
    one line away from a silent bypass. The `posting-only-tables` lint protects ledger and movement tables, not
@@ -611,7 +611,7 @@ import { grantCodes, seedBranch, seedTenantV2, startDb, uuidv7, withTenant, type
  * The transition matrix, R1 and R2 exercised where they live: a direct `app_rw` UPDATE. Everything the API
  * and the jobs do reduces to this statement, so a rule proven here is proven for every path (spec:2172).
  */
-describe("app.document_status_before / _after — contracts §4.5.1, spec:2172–2173 (SAH-032)", () => {
+describe("app.document_status_before / _after — contracts §4.5.1, spec:2172–2173 (LEGACY-032)", () => {
   let db: Db;
   let a: Seed;
   let approver: string;
@@ -739,7 +739,7 @@ describe("app.document_status_before / _after — contracts §4.5.1, spec:2172�
       /ERR_SOD_MAKER_IS_CHECKER: principal .* submitted document .* and cannot post it/);
   });
 
-  it("R2: approval and posting are refused to a principal without the policy's code (spec:2173, SAH-032)", async () => {
+  it("R2: approval and posting are refused to a principal without the policy's code (spec:2173, LEGACY-032)", async () => {
     const nobody = await person("nobody");
     const d = await draft(strictType, "ST");
     await move(d, "submitted", a.human, "for review");
@@ -747,7 +747,7 @@ describe("app.document_status_before / _after — contracts §4.5.1, spec:2172�
       /ERR_RBAC_FORBIDDEN: principal .* does not hold accounting\.journal\.post/);
   });
 
-  it("R2: a branch-restricted principal is refused at another branch and admitted at its own (SAH-042)", async () => {
+  it("R2: a branch-restricted principal is refused at another branch and admitted at its own (LEGACY-042)", async () => {
     const branchOnly = await person("branch-only");
     await grantCodes(db, a, { principalId: branchOnly, codes: ["accounting.journal.post"], branchIds: [a.hq] });
     const d = await draft(strictType, "ST");
@@ -866,7 +866,7 @@ Expected: FAIL — `import { grantCodes … } from "./index"` does not resolve (
 ```sql
 -- 0022_create_document_status_triggers.sql ────────────────────────────────────
 -- The document state machine, in the data layer. spec:2172-2173; contracts §4.5.1; ADR 0029.
--- SAH-032: a user could raise a document's approval level above their own because the check lived in the UI.
+-- LEGACY-032: a user could raise a document's approval level above their own because the check lived in the UI.
 -- Here it lives in a BEFORE UPDATE OF status trigger, so the API, a pg-boss job and psql as app_rw are all
 -- governed identically (acceptance tests 10 and 31).
 
@@ -961,7 +961,7 @@ begin
     end if;
   end if;
 
-  -- ── 2c. R2 authority at transition time (spec:2173). NULL branch never fails open (SAH-042, SAH-050). ───
+  -- ── 2c. R2 authority at transition time (spec:2173). NULL branch never fails open (LEGACY-042, LEGACY-050). ───
   if new.status = 'approved' then
     v_gate := coalesce(v_approve, v_post);          -- for approval.required = false types approve is null
   elsif new.status in ('posted', 'void') then
@@ -1031,7 +1031,7 @@ Append to the end of the file. **Nothing above it changes** — `Seed`, `seedTen
  * (contracts §4.17.1) for the five admin codes and this helper for anything narrower.
  *
  * `branchIds` adds `role_assignment_branch` rows, which restrict the assignment to those BRANCH dimension
- * values: with rows present, `app.actor_has(code, company, null)` is FALSE (spec:2166, SAH-042).
+ * values: with rows present, `app.actor_has(code, company, null)` is FALSE (spec:2166, LEGACY-042).
  *
  * `opts` is optional and every member of it is optional, so `grantCodes(db, s)` is legal and **grants
  * nothing**: it creates a role with zero `role_permission` rows and assigns it, which is the documented
@@ -1117,10 +1117,10 @@ and extend the existing import to `import { draftDocument, grantCodes, seedTenan
     await grantCodes(db, a, { codes: ["accounting.journal.post"] });
 ```
 
-`tests/regression/sah-013.test.ts` (2A T14) — two blocks, each with its own `sharedDb()` seed (`"SAH013-2A"` and `"SAH013-2Ab"`); add the grant immediately after each `seedTenantV2` call, before the `withTenant` that posts:
+`tests/regression/legacy-013.test.ts` (2A T14) — two blocks, each with its own `sharedDb()` seed (`"LEGACY013-2A"` and `"LEGACY013-2Ab"`); add the grant immediately after each `seedTenantV2` call, before the `withTenant` that posts:
 
 ```ts
-    await grantCodes(db, s, { codes: ["accounting.journal.post"], roleCode: "sah013-post" });
+    await grantCodes(db, s, { codes: ["accounting.journal.post"], roleCode: "legacy013-post" });
 ```
 
 (`roleCode` is passed because `sharedDb()` shares one database across the whole thin-regression tier and a generated role code per call would otherwise accumulate; a fixed code is fine because each block seeds its own tenant. **This file is in the `tests` workspace and imports from `@dulja/db/test`, not `../index`** — add `grantCodes` to that import.)
@@ -1150,7 +1150,7 @@ Run: `bun run --cwd packages/db db:migrate && bun run --cwd packages/db test`
 Expected: **PASS** — `document-status.test.ts` (12 tests) plus every 0A, 1A, 1B and 2A `packages/db` suite. Four failures worth naming in advance: an `ERR_DOC_STATUS_ILLEGAL: draft → approved` out of the R1 `ERR_SOD_NO_SUBMISSION` case means that case was written against `draft` rather than `draftAt(…, "submitted")` — R1 lives in block 2b and the matrix of block 2a has already refused the pair, so the SoD error is genuinely unreachable from a draft and the *test* is what moves, never the trigger; an `ERR_RBAC_FORBIDDEN` out of `posting/post.test.ts`, `posting/reverse.test.ts` or `posting/branch-required.test.ts` means Step 7 missed one of that file's seed objects — the nested `describe` in `reverse.test.ts` has its own `a`, and its producesType case has a local `b`; an `ERR_DOC_STATUS_ILLEGAL: issued → posted` out of `posting/issue.test.ts` means the matrix's `old.status = 'issued'` branch was written `new.status = 'posted'` only and dropped `'void'`; a failure in 0A's `documents.test.ts` on `/unique/` means the matrix wrongly evaluates a gate on `→ issued` (assumption 1 — that path must reach the unique constraint untouched).
 
 Run: `bun run --cwd tests test`
-Expected: PASS — 1B's four invariant suites go through `postJournal`, which now grants once per `Seed`, and 2A's `sah-013` block grants its own two seeds.
+Expected: PASS — 1B's four invariant suites go through `postJournal`, which now grants once per `Seed`, and 2A's `legacy-013` block grants its own two seeds.
 
 - [ ] **Step 9: Commit**
 
@@ -1159,7 +1159,7 @@ git add docs/adr/0029-document-state-machine-in-triggers.md \
         packages/db/migrations/0022_create_document_status_triggers.sql packages/db/migrations/0022.down.sql \
         packages/db/test/document-status.test.ts packages/db/test/fixtures.ts \
         packages/db/test/posting/post.test.ts packages/db/test/posting/reverse.test.ts \
-        packages/db/test/posting/branch-required.test.ts tests/regression/sah-013.test.ts \
+        packages/db/test/posting/branch-required.test.ts tests/regression/legacy-013.test.ts \
         tests/invariants/support/post-journal.ts
 git commit -m "$(cat <<'EOF'
 feat(db): the document state machine as two triggers on app.document [2B T2]
@@ -1168,7 +1168,7 @@ The legal-transition matrix, R1 (maker <> checker) and R2 (authority resolved
 from the policy effective for the document's effective_date) all run in a BEFORE
 UPDATE OF status trigger, and the AFTER trigger writes the document_event row
 itself. So the API, a pg-boss job and psql as app_rw are governed identically —
-which is what acceptance tests 10 and 31 demand and what SAH-032 lacked.
+which is what acceptance tests 10 and 31 demand and what LEGACY-032 lacked.
 
 R2 makes posting an authorised act, so every existing call site that posted as
 an ungranted principal now grants through the new grantCodes fixture helper —
@@ -1446,7 +1446,7 @@ export type OverrideCode =
  * The override door (contracts §4.5.3, R8 spec:2179). This is the ONE place in the codebase that inserts a
  * `document_event` row directly; `document_event_override_guard` is what makes that safe — it refuses the row
  * unless `attributed_to ?? actor_id` holds `code` at the document's branch and is neither the document's
- * `created_by` nor its `attributed_to` (SAH-027, SAH-048).
+ * `created_by` nor its `attributed_to` (LEGACY-027, LEGACY-048).
  *
  * Back office: `attributedTo` is omitted and the acting principal is the second principal. POS (6C): the
  * terminal acts and `attributedTo` is the supervisor whose PIN authorised it (spec:1324, hazard 19).
@@ -1603,11 +1603,11 @@ The file name extends the card's expected `0023_grant_document_draft_delete.sql`
 
 The Phase 2 definition of done (spec:2288) reads "issued numbers are unique and **gapless-provable**", and
 spec:2222 spells out the mechanism: "assigned at *issue*, per (series, period), unique-constrained,
-gapless-provable, with voided numbers explicitly recorded (SAH-051)". Uniqueness is already a constraint
+gapless-provable, with voided numbers explicitly recorded (LEGACY-051)". Uniqueness is already a constraint
 (`unique (company_id, series, fiscal_period_id, number)`, plan0A). *Provable* is not: nothing in the schema
 answers "is there a number this series issued that no document and no void explains?"
 
-SAH-051 is the legacy numbering: a race on first use, no uniqueness constraint, and no way to demonstrate
+LEGACY-051 is the legacy numbering: a race on first use, no uniqueness constraint, and no way to demonstrate
 gaplessness. spec:2224 adds the other half — "No deletion of posted documents at any privilege level" — because
 a system that can delete an issued document can make any gap disappear.
 
@@ -1676,7 +1676,7 @@ import { withTenant as prodWithTenant } from "@dulja/db";
 import { postDocument, transitionDocument, voidDocument } from "../src/posting";
 import { grantCodes, seedDocumentType, seedTenantV2, startDb, uuidv7, withTenant, type Db, type Seed } from "./index";
 
-describe("draft-only deletion and app.series_gaps — spec:2049, 2222, 2224 (SAH-041, SAH-051)", () => {
+describe("draft-only deletion and app.series_gaps — spec:2049, 2222, 2224 (LEGACY-041, LEGACY-051)", () => {
   let db: Db;
   let a: Seed;
   let gapType: string;                     // a type whose policy numbers into series "GAP"
@@ -1893,7 +1893,7 @@ Expected: FAIL — the first case reports only the three Plan 0A rows, and every
 -- 0023_grant_document_draft_delete_and_add_series_gaps.sql ────────────────────
 -- Two halves of one guarantee (ADR 0030).
 --   (a) spec:2049 admits genuine deletion for drafts, and both cases "write an audit row first";
---       spec:2224 forbids deleting a posted document at any privilege level (SAH-041).
+--       spec:2224 forbids deleting a posted document at any privilege level (LEGACY-041).
 --   (b) spec:2222 wants numbering gapless-PROVABLE, and spec:2288 makes that the Phase 2 definition of done.
 -- The DELETE grant below is the ONE extension of the pinned app_rw DELETE list in the whole of v1
 -- (contracts §3.5.4); every other table is archived with archived_at.
@@ -1932,7 +1932,7 @@ create trigger document_line_delete_draft_only before delete on app.document_lin
 
 -- ── 2. the grant (contracts §3.5.4 row two — the only one this system ever adds) ──────────────────────────
 -- app.audit_row() is already attached to both tables and fires AFTER DELETE with the before-image, which is
--- spec:2049's "both write an audit row first". No flag can suppress it (SAH-030).
+-- spec:2049's "both write an audit row first". No flag can suppress it (LEGACY-030).
 grant delete on app.document, app.document_line to app_rw;
 
 -- ── 3. the gapless proof (contracts §4.5.5; spec:2222, 2288) ──────────────────────────────────────────────
@@ -2000,7 +2000,7 @@ export const SERIES_GAP_CHECK: ProjectionCheck = {
             number: g.number,
           },
           side: "missing_in_projection",
-          detail: `number ${g.number} of series ${c.series} is neither an issued document nor a recorded void (spec:2222, SAH-051)`,
+          detail: `number ${g.number} of series ${c.series} is neither an issued document nor a recorded void (spec:2222, LEGACY-051)`,
         });
       }
     }
@@ -2111,7 +2111,7 @@ app.series_gaps turns "gapless-provable" (spec:2222, 2288) into a query, and
 SERIES_GAP_CHECK puts it in the nightly integrity run beside account_balance —
 which is why 1B's pinned projections.checked array gains a second member. The
 guards are what keep the answer honest: a deletable issued document could empty
-the result by removing the evidence (SAH-041, SAH-051).
+the result by removing the evidence (LEGACY-041, LEGACY-051).
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 EOF
@@ -3385,7 +3385,7 @@ EOF
 
 ### Task 9: Acceptance test 16, and the Phase 2 definition-of-done clause
 
-spec:2434 gives test 16 four clauses — "Concurrent creation of the first document of a new type succeeds for both. Issued numbers are unique per (series, period). Deletion of an issued document is impossible. Voided numbers are recorded." — and spec:2288 adds the sentence this slice owns: **"issued numbers are unique and gapless-provable"**. This file is the gate for all five. Every clause is exercised on a *new* series so the counter row does not exist when the race starts, which is precisely SAH-051's failure ("`for update with lock` locks nothing when no row matches, so two transactions creating the first document of a new muniment both read NULL and both insert").
+spec:2434 gives test 16 four clauses — "Concurrent creation of the first document of a new type succeeds for both. Issued numbers are unique per (series, period). Deletion of an issued document is impossible. Voided numbers are recorded." — and spec:2288 adds the sentence this slice owns: **"issued numbers are unique and gapless-provable"**. This file is the gate for all five. Every clause is exercised on a *new* series so the counter row does not exist when the race starts, which is precisely LEGACY-051's failure ("`for update with lock` locks nothing when no row matches, so two transactions creating the first document of a new muniment both read NULL and both insert").
 
 The "deletion is impossible" clause is proved on **three paths**, because spec:2224 says "at any privilege level": the HTTP `DELETE` route of Task 8, a transaction under the tenant's **system principal** — the identical context every pg-boss handler receives from `runJob` (§4.2.6), built with the production `systemContext`, which is the one principal for whom `app.actor_has` returns true unconditionally (spec:2179) — and a bare `delete` as `app_rw`.
 
@@ -3411,7 +3411,7 @@ import { startApi, type StartedApi } from "../../apps/api/test/support/app";
 
 /**
  * Acceptance test 16 (spec:2434) and the Phase 2 DoD clause "issued numbers are unique and gapless-provable"
- * (spec:2288). SAH-051 is the defect: a race on the first document of a new series, no uniqueness constraint,
+ * (spec:2288). LEGACY-051 is the defect: a race on the first document of a new series, no uniqueness constraint,
  * numbers assigned at insert rather than at issue, and no way to demonstrate the sequence is unbroken.
  *
  * The mechanism is spread across three slices and this file is where the sentence becomes a gate:
@@ -3479,7 +3479,7 @@ describe("acceptance test 16 — numbering is unique, gapless-provable and undel
     const raceType = await seedDocumentType(api.db, a, { code: "NG_RC", policy: policyFor("RC"), effectiveFrom: "2026-01-01" });
     const left = await draft(raceType, "RC", ngPeriod, "2029-01-10");
     const right = await draft(raceType, "RC", ngPeriod, "2029-01-10");
-    expect(await counter("RC", ngPeriod)).toEqual([]);           // the counter row does not exist yet — SAH-051
+    expect(await counter("RC", ngPeriod)).toEqual([]);           // the counter row does not exist yet — LEGACY-051
 
     // Two real connections, max: 1 each — the interleaving spec:2266 asks for, not two promises on one pool.
     const one = postgres(api.db.url("app_rw"), { max: 1, prepare: false });
@@ -3515,7 +3515,7 @@ describe("acceptance test 16 — numbering is unique, gapless-provable and undel
     const first = await draft(ngType, "NG", ngPeriod, "2029-01-12");
     await withTenant(api.db.rw, ctx(a), (tx) => transitionDocument(tx, ctx(a), { documentId: first, to: "issued" }));
     const impostor = await draft(ngType, "NG", ngPeriod, "2029-01-12");
-    // app_rw, writing the number by hand — the SAH-051 "a client supplying its own number" path.
+    // app_rw, writing the number by hand — the LEGACY-051 "a client supplying its own number" path.
     await expect(testWithTenant(api.db.rw, a.tenant, a.human, (tx) =>
       tx`update app.document set number = 1 where id = ${impostor}`),
     ).rejects.toThrow(/duplicate key value|document_company_id_series_fiscal_period_id_number_key/);
@@ -3608,7 +3608,7 @@ Run: `bun run --cwd tests test -- invariants/numbering-gapless.test.ts`
 **Expected: PASS, seven cases** — and that is the correct outcome, because an acceptance test is a *gate*, not a driver of production code: Tasks 1–8 built the mechanism and this file is what makes the Phase 2 sentence checkable in CI. Three specific failures are possible and each has a different response:
 
 1. `function app.series_gaps(uuid, unknown, uuid) does not exist` — migration 0023 is not applied in this container. `startApi()` migrates on boot (§4.2.12); if it does not, the `tests` workspace is pointing at a stale database.
-2. Clause 1 reports `[1n, 1n]` or a unique-violation — `issueDocument` is taking the advisory lock **after** reading the counter, or is not taking it at all. That is SAH-051 exactly, and it is 1A's `contracts §4.3.6` SQL, not this slice's; fix it there and re-run 1A's `posting/issue.test.ts` too.
+2. Clause 1 reports `[1n, 1n]` or a unique-violation — `issueDocument` is taking the advisory lock **after** reading the counter, or is not taking it at all. That is LEGACY-051 exactly, and it is 1A's `contracts §4.3.6` SQL, not this slice's; fix it there and re-run 1A's `posting/issue.test.ts` too.
 3. Clause 3 (b) succeeds — the delete went through under the system principal. That means `document_delete_draft_only` was created as a `BEFORE DELETE … WHEN (…)` trigger or with a `security definer` function; Task 4's form is an unconditional row-level BEFORE DELETE, which no principal escapes.
 
 - [ ] **Step 3: Prove the assertions can fail — the falsifiability pass**
@@ -3650,7 +3650,7 @@ git commit -m "$(cat <<'EOF'
 test(invariants): acceptance test 16 and the gapless-numbering DoD clause [2B T9]
 
 All four clauses of spec:2434 on a series whose counter row does not exist when
-the race starts, which is SAH-051 exactly. "Deletion of an issued document is
+the race starts, which is LEGACY-051 exactly. "Deletion of an issued document is
 impossible" is proved on three paths — the HTTP route, a transaction under the
 tenant's system principal (the context runJob hands every handler, and the one
 principal for which actor_has always returns true), and bare app_rw SQL. The
@@ -3667,7 +3667,7 @@ EOF
 
 ### Task 10: Acceptance tests 10 and 31: R1 and R2 through the API, a job, and `app_rw` SQL
 
-Test 10 (spec:2428) is one sentence — "a user cannot set a document's approval state above their own authority **through any endpoint or side effect**" — and test 31 (spec:2449) adds "through any path — API, job, or direct SQL as `app_rw`". The two are the same claim at two altitudes, and both are SAH-032: the legacy trigger checked only the *old* approval level, never that the new one was within the actor's own authority, and a second door promoted a document when a boolean was flipped without checking the actor at all.
+Test 10 (spec:2428) is one sentence — "a user cannot set a document's approval state above their own authority **through any endpoint or side effect**" — and test 31 (spec:2449) adds "through any path — API, job, or direct SQL as `app_rw`". The two are the same claim at two altitudes, and both are LEGACY-032: the legacy trigger checked only the *old* approval level, never that the new one was within the actor's own authority, and a second door promoted a document when a boolean was flipped without checking the actor at all.
 
 This file is the gate for the **mechanism**. Test 31's sentence names five document types that do not exist yet and two clauses that belong to other slices; the ownership split is stated in the file itself and re-checked here:
 
@@ -3697,7 +3697,7 @@ import { grantCodes, seedDocumentType, seedTenantV2, uuidv7, withTenant as testW
 import { startApi, type StartedApi } from "../../apps/api/test/support/app";
 
 /**
- * Acceptance tests 10 (spec:2428) and 31 (spec:2449). SAH-032: the legacy trigger checked only the OLD
+ * Acceptance tests 10 (spec:2428) and 31 (spec:2449). LEGACY-032: the legacy trigger checked only the OLD
  * approval level — `old."AdtSign" > "UserSign"` — and never that the new one was within the actor's own
  * authority, then stamped an approval date to make the forgery look genuine. A second door promoted a
  * document when a boolean was flipped, with no check of the actor at all.
@@ -3898,7 +3898,7 @@ describe("acceptance tests 10 and 31 — approval authority and segregation of d
     for (const to of ["approved", "posted", "void", "reversed"]) {
       await expect(bySql(doc, to, checker, "trying"), `draft → ${to}`).rejects.toThrow(/ERR_DOC_STATUS_ILLEGAL/);
     }
-    // and no event was written for any of them, so nothing "looks like" an approval afterwards (SAH-032)
+    // and no event was written for any of them, so nothing "looks like" an approval afterwards (LEGACY-032)
     const events = await withTenant(api.db.rw, ctx(a, checker), (tx) =>
       tx<{ n: number }[]>`select count(*)::int as n from app.document_event where document_id = ${doc}`);
     expect(events[0]!.n).toBe(0);
@@ -3983,7 +3983,7 @@ tenant's system principal (the context runJob hands every handler) and a bare
 app_rw UPDATE. The pair of assertions in the R2 case is the point of ADR 0029:
 the API returns 403 with a remedy, and removing the middleware entirely would
 still leave the trigger's 409 — the control is in the data layer, which is what
-SAH-032 lacked.
+LEGACY-032 lacked.
 
 The type is the configured SOD_TEST (contracts 4.14 amendment, test-only) whose
 approve and post codes differ, so "above their own authority" is testable: a
@@ -3999,15 +3999,15 @@ EOF
 
 ### Task 11: The seven regression appends
 
-spec:2059 requires one `tests/regression/sah-NNN.test.ts` per defect touched. All seven files this slice touches were **created by 0B** (§3.7.3's twenty-one thin files for Plan 0A-proven defects, plus `sah-023`), so every block below is an **append**: one new `describe("SAH-NNN <Part I heading> — 2B", …)` placed after the existing blocks, and **no earlier block is edited**. Suffixed file names are forbidden.
+spec:2059 requires one `tests/regression/legacy-NNN.test.ts` per defect touched. All seven files this slice touches were **created by 0B** (§3.7.3's twenty-one thin files for Plan 0A-proven defects, plus `legacy-023`), so every block below is an **append**: one new `describe("LEGACY-NNN <Part I heading> — 2B", …)` placed after the existing blocks, and **no earlier block is edited**. Suffixed file names are forbidden.
 
 **Two mechanics, stated once and applied to all seven.**
 
-- Each block opens with `const { db } = await sharedDb();` and seeds its own tenant with `seedTenantV2(db, "SAH0NN-2B")`. `sharedDb()` is 0B's, in `tests/support/regression.ts`, and returns `{ db, rw, a, b }` (contracts §4.17.1). Its own `a`/`b` are bare `seedTenant` seeds whose JOURNAL policy is Plan 0A's placeholder with **no `approval` block**, so a block that transitions past `issued` must seed its own V2 tenant — which is also what keeps the blocks independent of each other's rows.
+- Each block opens with `const { db } = await sharedDb();` and seeds its own tenant with `seedTenantV2(db, "LEGACY0NN-2B")`. `sharedDb()` is 0B's, in `tests/support/regression.ts`, and returns `{ db, rw, a, b }` (contracts §4.17.1). Its own `a`/`b` are bare `seedTenant` seeds whose JOURNAL policy is Plan 0A's placeholder with **no `approval` block**, so a block that transitions past `issued` must seed its own V2 tenant — which is also what keeps the blocks independent of each other's rows.
 - **A discrepancy to expect, not to resolve here (hazard 7).** 1A's regression blocks import `sharedDb` from `../invariants/probes` and use the result as a bare `Db` (`db.rw`, `db.admin`), while 0B — the owner per §4.17.1 — declares it in `tests/support/regression.ts` returning `{ db, rw, a, b }`. Write the blocks below against **0B's** shape; if the merged file exports 1A's, the change is one line per block (`const db = await sharedDb();`) and no assertion moves. The mismatch is reported upward as a question for the contracts document.
 
 **Files:**
-- Modify (append one `describe` block to each): `tests/regression/sah-023.test.ts`, `sah-032.test.ts`, `sah-040.test.ts`, `sah-041.test.ts`, `sah-042.test.ts`, `sah-051.test.ts`, `sah-072.test.ts`
+- Modify (append one `describe` block to each): `tests/regression/legacy-023.test.ts`, `legacy-032.test.ts`, `legacy-040.test.ts`, `legacy-041.test.ts`, `legacy-042.test.ts`, `legacy-051.test.ts`, `legacy-072.test.ts`
 - Create: none.
 
 **Interfaces:**
@@ -4028,11 +4028,11 @@ import { sharedDb } from "../support/regression";
 A helper each block repeats in full rather than sharing, because a shared helper in `tests/regression/` would be a file every slice edits (§3.7.3's whole point):
 
 ```ts
-// tests/regression/sah-023.test.ts — append
-describe("SAH-023 Audit sequence numbers are renumbered retroactively and collide across document classes — 2B", () => {
+// tests/regression/legacy-023.test.ts — append
+describe("LEGACY-023 Audit sequence numbers are renumbered retroactively and collide across document classes — 2B", () => {
   it("document_event has no per-class counter to renumber: identity is a time-ordered uuidv7 and nothing else", async () => {
     const { db } = await sharedDb();
-    const s = await seedTenantV2(db, "SAH023-2B");
+    const s = await seedTenantV2(db, "LEGACY023-2B");
     // The legacy defect was two procedures (procVouAuditID, procBilAuditID) both restarting at 1 and both
     // feeding one column, so inserting a back-dated voucher shifted every later document's audit number.
     // Here there IS no number: the lifecycle record is keyed by uuidv7 and ordered by it.
@@ -4054,11 +4054,11 @@ describe("SAH-023 Audit sequence numbers are renumbered retroactively and collid
 ```
 
 ```ts
-// tests/regression/sah-032.test.ts — append
-describe("SAH-032 A user can raise a document's approval level above their own — 2B", () => {
+// tests/regression/legacy-032.test.ts — append
+describe("LEGACY-032 A user can raise a document's approval level above their own — 2B", () => {
   it("the authority check is in the data layer, so there is no second door to find", async () => {
     const { db } = await sharedDb();
-    const s = await seedTenantV2(db, "SAH032-2B");
+    const s = await seedTenantV2(db, "LEGACY032-2B");
     const doc = await uuidv7(db.admin);
     await testWithTenant(db.rw, s.tenant, s.human, async (tx) => {
       await tx`insert into app.document (id, tenant_id, company_id, document_type_id, series, effective_date, currency, branch_id)
@@ -4068,7 +4068,7 @@ describe("SAH-032 A user can raise a document's approval level above their own �
       await tx`insert into app.document_line (tenant_id, company_id, document_id, line_no, account_id, credit)
                values (${s.tenant}, ${s.company}, ${doc}, 2, ${s.sales}, 3.0000)`;
     });
-    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "sah032" };
+    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "legacy032" };
     // s.human holds nothing: seedTenant grants no permission (contracts §4.1). The legacy check looked only
     // at the OLD level, so a user at sign 1 could write sign 9. Here the NEW state is authorised.
     await withTenant(db.rw, ctx, (tx) => transitionDocument(tx, ctx, { documentId: doc, to: "issued" }));
@@ -4076,7 +4076,7 @@ describe("SAH-032 A user can raise a document's approval level above their own �
       .rejects.toThrow(/ERR_RBAC_FORBIDDEN: principal .* does not hold accounting\.journal\.post/);
     // and the "side door" shape — flipping a column to promote the document — does not exist: status is the
     // only path to posted, and it is the column the trigger watches.
-    await grantCodes(db, s, { codes: ["accounting.journal.post"], roleCode: "sah032-post" });
+    await grantCodes(db, s, { codes: ["accounting.journal.post"], roleCode: "legacy032-post" });
     await withTenant(db.rw, ctx, (tx) => postDocument(tx, ctx, { documentId: doc }));
     const [row] = await withTenant(db.rw, ctx, (tx) =>
       tx<{ status: string; posted_by: string }[]>`select status::text as status, posted_by from app.document where id = ${doc}`);
@@ -4086,11 +4086,11 @@ describe("SAH-032 A user can raise a document's approval level above their own �
 ```
 
 ```ts
-// tests/regression/sah-040.test.ts — append
-describe("SAH-040 Deletions are logged less reliably than inserts, and can erase the document header — 2B", () => {
+// tests/regression/legacy-040.test.ts — append
+describe("LEGACY-040 Deletions are logged less reliably than inserts, and can erase the document header — 2B", () => {
   it("deleting a draft audits the header and every line, with the before-image, and no flag suppresses it", async () => {
     const { db } = await sharedDb();
-    const s = await seedTenantV2(db, "SAH040-2B");
+    const s = await seedTenantV2(db, "LEGACY040-2B");
     const doc = await uuidv7(db.admin);
     await testWithTenant(db.rw, s.tenant, s.human, async (tx) => {
       await tx`insert into app.document (id, tenant_id, company_id, document_type_id, series, effective_date, currency, branch_id)
@@ -4100,7 +4100,7 @@ describe("SAH-040 Deletions are logged less reliably than inserts, and can erase
       await tx`insert into app.document_line (tenant_id, company_id, document_id, line_no, account_id, credit)
                values (${s.tenant}, ${s.company}, ${doc}, 2, ${s.sales}, 2.0000)`;
     });
-    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "sah040" };
+    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "legacy040" };
     await withTenant(db.rw, ctx, (tx) => tx`delete from app.document where id = ${doc}`);
     // The legacy put the tombstone inside a `Silent` gate, so a delete could leave a header pointing at a
     // vanished transaction — and the archive module deleted with no logging call at all.
@@ -4122,12 +4122,12 @@ describe("SAH-040 Deletions are logged less reliably than inserts, and can erase
 ```
 
 ```ts
-// tests/regression/sah-041.test.ts — append
-describe("SAH-041 Documents are hard-deleted and the anti-tampering controls are shipped disabled — 2B", () => {
+// tests/regression/legacy-041.test.ts — append
+describe("LEGACY-041 Documents are hard-deleted and the anti-tampering controls are shipped disabled — 2B", () => {
   it("a posted document cannot be hard-deleted, and both guard triggers are ENABLED, not inactive", async () => {
     const { db } = await sharedDb();
-    const s = await seedTenantV2(db, "SAH041-2B");
-    await grantCodes(db, s, { codes: ["accounting.journal.post"], roleCode: "sah041-post" });
+    const s = await seedTenantV2(db, "LEGACY041-2B");
+    await grantCodes(db, s, { codes: ["accounting.journal.post"], roleCode: "legacy041-post" });
     const doc = await uuidv7(db.admin);
     await testWithTenant(db.rw, s.tenant, s.human, async (tx) => {
       await tx`insert into app.document (id, tenant_id, company_id, document_type_id, series, effective_date, currency, branch_id)
@@ -4137,7 +4137,7 @@ describe("SAH-041 Documents are hard-deleted and the anti-tampering controls are
       await tx`insert into app.document_line (tenant_id, company_id, document_id, line_no, account_id, credit)
                values (${s.tenant}, ${s.company}, ${doc}, 2, ${s.sales}, 5.0000)`;
     });
-    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "sah041" };
+    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "legacy041" };
     await withTenant(db.rw, ctx, (tx) => postDocument(tx, ctx, { documentId: doc }));
     await expect(withTenant(db.rw, ctx, (tx) => tx`delete from app.document where id = ${doc}`))
       .rejects.toThrow(/ERR_DOC_NOT_DRAFT/);
@@ -4154,11 +4154,11 @@ describe("SAH-041 Documents are hard-deleted and the anti-tampering controls are
 ```
 
 ```ts
-// tests/regression/sah-042.test.ts — append
-describe("SAH-042 Ownership and paid-record checks fail open when the user row is missing — 2B", () => {
+// tests/regression/legacy-042.test.ts — append
+describe("LEGACY-042 Ownership and paid-record checks fail open when the user row is missing — 2B", () => {
   it("app.principal_has never fails open: an unknown, unassigned, expired or wrong-branch principal is false", async () => {
     const { db } = await sharedDb();
-    const s = await seedTenantV2(db, "SAH042-2B");
+    const s = await seedTenantV2(db, "LEGACY042-2B");
     const ghost = await uuidv7(db.admin);                     // a principal that does not exist at all
     const expired = await uuidv7(db.admin);
     const roleId = await uuidv7(db.admin);
@@ -4166,13 +4166,13 @@ describe("SAH-042 Ownership and paid-record checks fail open when the user row i
       await tx`insert into app.principal (id, kind, auth_subject, display_name)
                values (${expired}, 'human', ${`expired:${s.tenant}`}, 'expired')`;
       await tx`insert into app.membership (tenant_id, principal_id) values (${s.tenant}, ${expired})`;
-      await tx`insert into app.role (id, tenant_id, code, name_en) values (${roleId}, ${s.tenant}, 'sah042', 'Lapsed')`;
+      await tx`insert into app.role (id, tenant_id, code, name_en) values (${roleId}, ${s.tenant}, 'legacy042', 'Lapsed')`;
       await tx`insert into app.role_permission (tenant_id, role_id, permission_code)
                values (${s.tenant}, ${roleId}, 'accounting.journal.post')`;
       await tx`insert into app.role_assignment (tenant_id, principal_id, role_id, company_id, expires_at)
                values (${s.tenant}, ${expired}, ${roleId}, ${s.company}, now() - interval '1 day')`;
     });
-    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "sah042" };
+    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "legacy042" };
     const [r] = await withTenant(db.rw, ctx, (tx) => tx<
       { ghost: boolean; expired_row: boolean; unassigned: boolean; null_branch_ghost: boolean }[]
     >`select app.principal_has(${ghost},   'accounting.journal.post', ${s.company}, ${s.hq}) as ghost,
@@ -4187,12 +4187,12 @@ describe("SAH-042 Ownership and paid-record checks fail open when the user row i
 ```
 
 ```ts
-// tests/regression/sah-051.test.ts — append
-describe("SAH-051 Document numbering races on first use, has no uniqueness constraint, and cannot be gapless — 2B", () => {
+// tests/regression/legacy-051.test.ts — append
+describe("LEGACY-051 Document numbering races on first use, has no uniqueness constraint, and cannot be gapless — 2B", () => {
   it("a void is a recorded number, a client cannot supply one, and series_gaps proves the sequence", async () => {
     const { db } = await sharedDb();
-    const s = await seedTenantV2(db, "SAH051-2B");
-    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "sah051" };
+    const s = await seedTenantV2(db, "LEGACY051-2B");
+    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "legacy051" };
     const make = async (): Promise<string> => {
       const id = await uuidv7(db.admin);
       await testWithTenant(db.rw, s.tenant, s.human, async (tx) => {
@@ -4209,10 +4209,10 @@ describe("SAH-051 Document numbering races on first use, has no uniqueness const
     const second = await make();
     await withTenant(db.rw, ctx, (tx) => transitionDocument(tx, ctx, { documentId: first, to: "issued" }));
     await withTenant(db.rw, ctx, (tx) => transitionDocument(tx, ctx, { documentId: second, to: "issued" }));
-    await grantCodes(db, s, { codes: ["accounting.journal.post"], roleCode: "sah051-post" });
+    await grantCodes(db, s, { codes: ["accounting.journal.post"], roleCode: "legacy051-post" });
     await withTenant(db.rw, ctx, (tx) => voidDocument(tx, ctx, { documentId: second, reason: "misprint" }));
     // The legacy left an unrecoverable gap with no record of what occupied it. Here the record exists — that
-    // is the `voided` assertion below, and it is what SAH-051 lacked — and the series is still whole, which
+    // is the `voided` assertion below, and it is what LEGACY-051 lacked — and the series is still whole, which
     // is the assertion immediately after. The second does not prove the first: `voidDocument` updates only
     // `status` and leaves `document.number` in place, so number 2 is still excluded by series_gaps' document
     // predicate. The void row's own effect on series_gaps is isolated in the `VOIDONLY` case of
@@ -4233,11 +4233,11 @@ describe("SAH-051 Document numbering races on first use, has no uniqueness const
 ```
 
 ```ts
-// tests/regression/sah-072.test.ts — append
-describe("SAH-072 Zero CHECK constraints across 460 tables, and 544 boolean columns encoding mutually exclusive states — 2B", () => {
+// tests/regression/legacy-072.test.ts — append
+describe("LEGACY-072 Zero CHECK constraints across 460 tables, and 544 boolean columns encoding mutually exclusive states — 2B", () => {
   it("document_event carries one discriminator and a CHECK that makes every incoherent row impossible", async () => {
     const { db } = await sharedDb();
-    const s = await seedTenantV2(db, "SAH072-2B");
+    const s = await seedTenantV2(db, "LEGACY072-2B");
     // No boolean column at all: `event_kind` is the one discriminator, with a CHECK tying override_code and
     // the status pair to it (contracts §4.5.2) — not `is_override` + `is_transition` + `is_deleted`.
     const bools = await db.admin<{ column_name: string }[]>`
@@ -4270,24 +4270,24 @@ describe("SAH-072 Zero CHECK constraints across 460 tables, and 544 boolean colu
 - [ ] **Step 2: Run the regression tier**
 
 Run: `bun run --cwd tests test -- regression/`
-**This is a gate run, not a TDD red step:** each block re-states, on the defect's own terms, a rule Tasks 1–8 already built and already proved, so a green first run is the intended outcome and there is deliberately no failing-first step before it. Expected: **PASS**, with each of the seven files reporting its earlier blocks plus one new `— 2B` block. Two failures worth naming in advance: if `sah-040` reports `{ table_name: "document_line", n: 0 }`, `app_meta.attach_audit` is not attached to `document_line` (1A migration 0011) and the cascade is going unaudited — that is a 1A defect this block has just found, and it is worth more than the block; if `sah-023`'s `numeric` assertion fails naming a column, somebody added a counter to `document_event`, which is the exact defect SAH-023 describes.
+**This is a gate run, not a TDD red step:** each block re-states, on the defect's own terms, a rule Tasks 1–8 already built and already proved, so a green first run is the intended outcome and there is deliberately no failing-first step before it. Expected: **PASS**, with each of the seven files reporting its earlier blocks plus one new `— 2B` block. Two failures worth naming in advance: if `legacy-040` reports `{ table_name: "document_line", n: 0 }`, `app_meta.attach_audit` is not attached to `document_line` (1A migration 0011) and the cascade is going unaudited — that is a 1A defect this block has just found, and it is worth more than the block; if `legacy-023`'s `numeric` assertion fails naming a column, somebody added a counter to `document_event`, which is the exact defect LEGACY-023 describes.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add tests/regression/sah-023.test.ts tests/regression/sah-032.test.ts tests/regression/sah-040.test.ts \
-        tests/regression/sah-041.test.ts tests/regression/sah-042.test.ts tests/regression/sah-051.test.ts \
-        tests/regression/sah-072.test.ts
+git add tests/regression/legacy-023.test.ts tests/regression/legacy-032.test.ts tests/regression/legacy-040.test.ts \
+        tests/regression/legacy-041.test.ts tests/regression/legacy-042.test.ts tests/regression/legacy-051.test.ts \
+        tests/regression/legacy-072.test.ts
 git commit -m "$(cat <<'EOF'
 test(regression): the seven Part I defects this slice closes [2B T11]
 
 One appended describe block per file, none of the existing blocks edited
-(contracts 3.7.3). SAH-023 has no counter left to renumber; SAH-032's authority
-check is in the trigger, so there is no second door; SAH-040 audits a delete
-header and every cascaded line with its before-image; SAH-041's guards are
-asserted ENABLED, which the legacy's were not; SAH-042's principal_has answers
-false for a ghost, an expired assignment and an omitted branch alike; SAH-051's
-void is a record and series_gaps is empty; SAH-072's document_event has one
+(contracts 3.7.3). LEGACY-023 has no counter left to renumber; LEGACY-032's authority
+check is in the trigger, so there is no second door; LEGACY-040 audits a delete
+header and every cascaded line with its before-image; LEGACY-041's guards are
+asserted ENABLED, which the legacy's were not; LEGACY-042's principal_has answers
+false for a ghost, an expired assignment and an omitted branch alike; LEGACY-051's
+void is a record and series_gaps is empty; LEGACY-072's document_event has one
 discriminator, no booleans, and a CHECK that refuses every incoherent row.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
@@ -4404,7 +4404,7 @@ bun run --cwd apps/worker test       # 1B's integrity handler, now reporting doc
 bun run --cwd tests test             # the invariants, the regression tier, the golden fixtures
 ```
 
-Expected: **PASS** throughout. The suites this slice changed that belong to earlier slices, and why: `packages/db/test/posting/post.test.ts`, `posting/reverse.test.ts` (four seed objects, because 2A appended a nested `describe` and an in-test seed), `posting/branch-required.test.ts` (2A) and `tests/regression/sah-013.test.ts` (2A, two seeds) each gained a `grantCodes` call (Task 2 Step 7) because R2 made posting an authorised act; `tests/invariants/support/post-journal.ts` gained one memoised grant, which is the single choke point for the whole `tests/` tier; `tests/invariants/audit-chain.test.ts` gained `"document_series"` in its pinned `projections.checked` array (Task 4 Step 7) — **it is the only file that pins that array**, and `apps/worker/test/handlers/integrity-check.test.ts` is deliberately *not* edited: 1B's handler test asserts on the report's `ok`, `summary` and recorded incident and never reads the field, which is why Task 4 Step 10 runs it and expects it to pass unchanged (the "two pinned assertions" of contracts §4.16.3 is an overstatement, reported as question 4 of Step 1); `packages/db/test/privileges.test.ts` gained two rows in the pinned DELETE list (Task 4 Step 8); `apps/api/test/routes/accounting/documents.test.ts` gained the `drafter` grant and the widened transitions cases (Task 7 Step 2). **`packages/db/test/documents.test.ts` and `packages/db/test/posting/issue.test.ts` are not edited by this slice** — assumption 1 explains why the matrix admits their `→ issued` writes untouched, and an edit to either is a signal that the matrix evaluates a gate it should not.
+Expected: **PASS** throughout. The suites this slice changed that belong to earlier slices, and why: `packages/db/test/posting/post.test.ts`, `posting/reverse.test.ts` (four seed objects, because 2A appended a nested `describe` and an in-test seed), `posting/branch-required.test.ts` (2A) and `tests/regression/legacy-013.test.ts` (2A, two seeds) each gained a `grantCodes` call (Task 2 Step 7) because R2 made posting an authorised act; `tests/invariants/support/post-journal.ts` gained one memoised grant, which is the single choke point for the whole `tests/` tier; `tests/invariants/audit-chain.test.ts` gained `"document_series"` in its pinned `projections.checked` array (Task 4 Step 7) — **it is the only file that pins that array**, and `apps/worker/test/handlers/integrity-check.test.ts` is deliberately *not* edited: 1B's handler test asserts on the report's `ok`, `summary` and recorded incident and never reads the field, which is why Task 4 Step 10 runs it and expects it to pass unchanged (the "two pinned assertions" of contracts §4.16.3 is an overstatement, reported as question 4 of Step 1); `packages/db/test/privileges.test.ts` gained two rows in the pinned DELETE list (Task 4 Step 8); `apps/api/test/routes/accounting/documents.test.ts` gained the `drafter` grant and the widened transitions cases (Task 7 Step 2). **`packages/db/test/documents.test.ts` and `packages/db/test/posting/issue.test.ts` are not edited by this slice** — assumption 1 explains why the matrix admits their `→ issued` writes untouched, and an edit to either is a signal that the matrix evaluates a gate it should not.
 
 - [ ] **Step 5: The coverage roll-up**
 
@@ -4416,7 +4416,7 @@ Tick each row against the run above; a row that cannot be ticked is a merge bloc
 | Acceptance test 16 — numbering | `tests/invariants/numbering-gapless.test.ts` (T9) | §6.1 owned |
 | Acceptance test 31 — segregation of duties (mechanism) | `tests/invariants/segregation-of-duties.test.ts` (T10), with the R4/leave clauses named as 8A's and 8D's | §6.1 owned |
 | Test 12 re-run — four new routes | the cross-tenant case of `document-lifecycle.test.ts` (T8) and the harness's unchanged `PROBES` key | §6.1 re-run |
-| Test 13 re-run — `document` status writes audited, `document_event` immutable to `app_rw` | `document-event.test.ts` (T1), `sah-040` (T11) | §6.1 re-run |
+| Test 13 re-run — `document` status writes audited, `document_event` immutable to `app_rw` | `document-event.test.ts` (T1), `legacy-040` (T11) | §6.1 re-run |
 | Test 36 re-run — `accounting.document.reverse` in catalogue, handler and role seed | `permission-catalogue.test.ts` (T5), `bun run lint` (T8) | §6.1 re-run |
 | Test 1 re-run — the ledger invariant through the trigger path | 1A's fuzz suite, green under R2 after T2 Step 7 | §6.1 re-run |
 | §3.0.4 spec:1041 — numbering; the approval state machine in `document_event` | T1–T4, T9, T10 (2A contributed the policy engine) | §6.2 **owned** |
@@ -4452,7 +4452,7 @@ Run against the spec, the contracts document and the writing-plans skill with fr
 | §3.8 `document` status/void (spec:1747–1780) | 2, 3, 8 | `voidDocument` writes the status and `document_number_void` in one transaction |
 | §3.8 `document_event` forward declaration (spec:1782–1787) | 1 | contracts §4.5.2 verbatim, `event_kind` resolving C11 |
 | §3.8 audit-exempt / immutable lists (spec:1370) | 1 | `document_event` is already in both sets (plan0A:2705–2711); Task 1 edits no linter set and asserts that |
-| §3.9 Deletion (spec:2049) | 4, 8, 11 | drafts only, "and both write an audit row first" proved by the `sah-040` block on the header **and** the cascaded lines |
+| §3.9 Deletion (spec:2049) | 4, 8, 11 | drafts only, "and both write an audit row first" proved by the `legacy-040` block on the header **and** the cascaded lines |
 | §3.9 Error codes (spec:2051) | 3, 4 | four rows, each landing in the same commit as the migration that raises its token — three in Task 3 Step 5 (0021/0022), `ERR_DOC_NOT_DRAFT` in Task 4 Step 9 (0023) — so `error-codes` is green at **every** commit |
 | §3.10.1 recalculation rule (spec:2081) | 2, 7 | the backward edge needs a reason; R3's `compensation_changed` is the 8B caller of the same edge |
 | §4.2.1 branch scoping (spec:2166) | 1, 2 | a NULL branch never fails open — asserted for `actor_has` (T2) and `principal_has` (T1, T11) |
@@ -4469,7 +4469,7 @@ Run against the spec, the contracts document and the writing-plans skill with fr
 | Part VI 1, 12, 13, 36 | 2, 8, 1, 5 | re-runs |
 | §3.0.4 spec:1041 | 1–4, 9, 10 | **owned** |
 | §3.0.4 spec:1065 SoD clause | 2, 10 | contributed (0B owns the row) |
-| SAH-023, 032, 040, 041, 042, 051, 072 | 11 | appended; none created (all seven are 0B's, §3.7.3) |
+| LEGACY-023, 032, 040, 041, 042, 051, 072 | 11 | appended; none created (all seven are 0B's, §3.7.3) |
 
 ### 2. Every name this slice invented, and why the contracts document lacked it
 
@@ -4516,7 +4516,7 @@ An auditor read this plan against the contracts document, Plan 0A and the spec. 
 - **Task 12 Step 4 claimed an edit to a worker test that Task 4 correctly does not make (applied).** Its roll-up said `tests/invariants/audit-chain.test.ts` **and** `apps/worker/test/handlers/integrity-check.test.ts` gained `"document_series"` in a pinned `projections.checked` array. Task 4 Step 7 says the opposite and is right — verified against plan 1B, where the only `expect(report.projections.checked).toEqual(["account_balance"])` is at 1b:1325 inside `audit-chain.test.ts`, and the worker handler test asserts on `ok`, `summary` and the recorded incident alone. Step 4's sentence now names one file and says why the other is untouched, the §4.16.3 row of Step 1's amendment table is annotated, and the overstatement in contracts §4.16.3 ("1B's two assertions") is filed as **question 4** rather than papered over by inventing an assertion in 1B's test.
 - **Task 3 was labelled as adding four `ERRORS` rows and adds three (applied).** Its Step 5 always added three and always deferred `ERR_DOC_NOT_DRAFT` to Task 4 Step 9, so that `scripts/lint/rules/error-codes.ts` never sees a catalogue row without a raiser; only the heading, the Files line, the Produces block and the File Structure row said four. All four now say three, and each names Task 4 Step 9 as the fourth row's home.
 - **Task 2's branch case hand-rolled a `dimension_value` INSERT (applied).** Contracts §4.17 registers `seedBranch` (0D, merged since Phase 0) as the one way a test creates a second `BRANCH` value, and §4.17's preamble makes that register binding. The case now calls it.
-- **The "a voided number stays explained" assertions were vacuous (applied).** `voidDocument` updates only `status` and leaves `document.number` on the row (1a:3657), and `app.series_gaps` excludes a number when *either* a document *or* a void row carries it — so a voided number is already excluded as a document, and the assertion would read empty with an empty `document_number_void`. The three comments that claimed otherwise (Task 4 Step 2, Task 9 clause 4, Task 11's `sah-051`) now say which assertion carries which fact, and Task 4 gained a case that isolates the void predicate: a series with no document at all, a counter advanced past 1 and 2, and only number 1 recorded as voided, so `series_gaps` must return exactly `["2"]`. Drop the void predicate from the function and that case goes red; nothing else in the slice would.
+- **The "a voided number stays explained" assertions were vacuous (applied).** `voidDocument` updates only `status` and leaves `document.number` on the row (1a:3657), and `app.series_gaps` excludes a number when *either* a document *or* a void row carries it — so a voided number is already excluded as a document, and the assertion would read empty with an empty `document_number_void`. The three comments that claimed otherwise (Task 4 Step 2, Task 9 clause 4, Task 11's `legacy-051`) now say which assertion carries which fact, and Task 4 gained a case that isolates the void predicate: a series with no document at all, a counter advanced past 1 and 2, and only number 1 recorded as voided, so `series_gaps` must return exactly `["2"]`. Drop the void predicate from the function and that case goes red; nothing else in the slice would.
 - **Two departures from the plan's own TDD ordering (applied in part).** Task 6 Step 4 commits one knowingly-red case and Task 7 Step 5 turns it green; that is deliberate, is explained where it happens, and is left alone — splitting the case into Task 7's file would separate the assertion from the export it exists to justify. Tasks 9, 10 and 11 write a test and expect it to pass: all three are gates over a mechanism Tasks 1–8 built, and all three now say **"gate run, not a TDD red step"** in the step itself rather than only in prose.
 
 ---

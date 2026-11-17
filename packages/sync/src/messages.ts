@@ -111,7 +111,7 @@ export interface NewCustomer {
 
 export interface Ticket {
   cashRounding?: { lineNo: number; adjustment: MoneyJson } | null;
-  /** uuidv7 minted at the till = `document.client_ref` (spec:1302, SAH-051). */
+  /** uuidv7 minted at the till = `document.client_ref` (spec:1302, LEGACY-051). */
   clientRef: string;
   shiftId: string;
   cashierPrincipalId: string;

@@ -143,7 +143,7 @@ function refuseUnbounded(l: SettledLine): never {
  * carries none, so nothing would stop it being credited twice. A charge line — named, or implied by an empty
  * `lines` — is refused naming the line; it is credited whole by reversing the invoice.
  *
- * The settled document must be POSTED, its pinned policy (§4.3.2 step 13 — never re-read, SAH-013) must move
+ * The settled document must be POSTED, its pinned policy (§4.3.2 step 13 — never re-read, LEGACY-013) must move
  * no stock, and the target must be the type that policy's `reversal.producesType` names. The first refuses a
  * credit against nothing posted; the second refuses a partial negated DELIVERY_ORDER, which would be a
  * fourth writer of `document_line.cost` (a stock return is `reverseDocument` on the delivery, 4A's registered
@@ -160,7 +160,7 @@ function refuseUnbounded(l: SettledLine): never {
  * It writes `document`, `document_line` and (through 3C) `document_link` rows and UPDATEs no line — every
  * figure is written at INSERT onto the draft it creates, and `priceFromSource` is false — which is also what
  * 0113's `document_line_frozen_after_draft` admits: a line is written only while its document is a draft.
- * Over-crediting is refused by 3C's own trigger (`ERR_DOC_LINK_OVER_FULFILLED`, SAH-018: a projection, not a
+ * Over-crediting is refused by 3C's own trigger (`ERR_DOC_LINK_OVER_FULFILLED`, LEGACY-018: a projection, not a
  * counter).
  *
  * Raises ERR_NOT_FOUND (a settled document or target type not of `companyId`), ERR_DOC_STATUS_ILLEGAL (a
@@ -258,7 +258,7 @@ export async function creditNoteFrom(
     );
   }
 
-  // SAH-017's concurrency face, taken BEFORE the read — Task 6's rule and 3C's key and order, so the 0037
+  // LEGACY-017's concurrency face, taken BEFORE the read — Task 6's rule and 3C's key and order, so the 0037
   // trigger's later lock on the same key is re-entrant and no two creditors can deadlock.
   const lockable = await tx<{ id: string }[]>`
     select id from app.document_line
@@ -404,7 +404,7 @@ export async function creditNoteFrom(
   // Every refusal above is behind us, so the reason is set only for a note that will exist.
   await setEventContext(tx, { reason: input.reason });
 
-  // The header mirrors the invoice — party, currency, the invoice's OWN rate and its provenance (SAH-012),
+  // The header mirrors the invoice — party, currency, the invoice's OWN rate and its provenance (LEGACY-012),
   // branch, warehouse, the pinned payment term and the attribution — and names it: `requires:
   // ["reverses_document"]` makes that reference mandatory at post (§4.3.2 step 4).
   const [note] = await tx<{ id: string }[]>`

@@ -44,7 +44,7 @@ export interface StockOnHandReportRow {
  * one module (TS2308). The two reads are not a duplication: 3A's `listStockOnHand` is a master-data list
  * endpoint over every key, this is the report code of §4.16.1 with the in-transit corridor rule and the
  * warehouse kind on each row. Both read this projection and neither re-derives it, which is the property
- * SAH-009 names. Retiring either is a §4.16.3 amendment and 7B's call.
+ * LEGACY-009 names. Retiring either is a §4.16.3 amendment and 7B's call.
  *
  * Keyset pagination on (item.code, warehouse.code, lot.code) — three text columns, all three in the
  * ORDER BY, so the page boundary is total.

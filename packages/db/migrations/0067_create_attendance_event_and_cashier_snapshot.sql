@@ -13,7 +13,7 @@ create table app.attendance_event (
   kind              text not null,
   occurred_at       timestamptz not null,                            -- business time: the till clock or the corrected time
   terminal_id       uuid,                                            -- the till that recorded it, when it came from one
-  recorded_by       uuid not null default app.current_actor() references app.principal(id),  -- ACTOR: stamped, never a payload value (SAH-044)
+  recorded_by       uuid not null default app.current_actor() references app.principal(id),  -- ACTOR: stamped, never a payload value (LEGACY-044)
   note              text,
   corrects_event_id uuid,
   created_at        timestamptz not null default now(),

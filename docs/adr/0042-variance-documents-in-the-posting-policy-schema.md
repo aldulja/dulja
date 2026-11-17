@@ -12,7 +12,7 @@
   the variance), spec:1053 (a two-step transfer, variance on receipt), spec:2289 (the Phase 3 definition of
   done); contracts §4.4.1 (`posting-policy.schema.json`), §4.4.2 (`PlannedLedgerLine`, `PlannedMovement`,
   amendments A5 and A9), §4.3.4 (`counted_quantity` / `expected_quantity`), §4.7.1 (`CostingEngine`),
-  §4.7.3 (`inventory_movement`); Part I SAH-018
+  §4.7.3 (`inventory_movement`); Part I LEGACY-018
 
 ## Context
 
@@ -52,7 +52,7 @@ Five resolution rules inside `evaluatePolicy`, over references the schema alread
   what §4.4.2's warning about 3D demands. The one sign test that remains is `orientLeg`, and it decides a
   movement's `effect`, never a ledger `side`.
 - The variance is never stored: `document_line.quantity` is the one number and every consumer derives from
-  it. That is SAH-018's fix stated in the schema rather than in a trigger.
+  it. That is LEGACY-018's fix stated in the schema rather than in a trigger.
 - 3B's `costingEngine` needs two pins to make rule 2 total: a receipt with no value is costed at
   `average(openLayers)`, and `allowNegative` suppresses the uncovered-quantity refusal. Both are Task 0.
 - Rule 3's counted-line exemption is the one place this ADR touches a rule 3A wrote. It narrows nothing: an

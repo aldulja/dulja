@@ -70,7 +70,7 @@ function assertFixedScale(field: string, value: string): void {
 /**
  * Insert or replace one (company, employee, year) opening, returning its id. A second load for the same key UPDATES
  * the figures and the source (a corrected cut-over); `loaded_by` keeps the FIRST loader — it is a write-once stamp
- * (SAH-044) and `app.audit_log` carries every later correction with its own actor.
+ * (LEGACY-044) and `app.audit_log` carries every later correction with its own actor.
  *
  * Refused (`ERR_VALIDATION_FAILED`): a blank source, a figure that is not fixed-scale, a gross or net in a currency
  * other than the company's base currency (the table stores base amounts, as the projection does). Refused

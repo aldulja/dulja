@@ -45,7 +45,7 @@ describe("POS Electron posture", () => {
     expect(CONTENT_SECURITY_POLICY).toContain("frame-ancestors 'none'");
     expect(isAppUrl("https://evil.example/x")).toBe(false);
   });
-  it("mentions no ESC/POS, drawer port, serial, HID or USB code, and prints only through webContents.print — D18, SAH-086", () => {
+  it("mentions no ESC/POS, drawer port, serial, HID or USB code, and prints only through webContents.print — D18, LEGACY-086", () => {
     for (const file of ["src/main-pos.ts", "src/preload-pos.ts", "src/bridge-types.ts"]) {
       const text = read(file).toLowerCase();
       for (const banned of ["esc/pos", "escpos", "drawer_port", "serialport", "node-hid"])

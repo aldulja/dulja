@@ -48,7 +48,7 @@ export function availableProfileVersions(code: string, dir: string = PROFILE_DIR
 /**
  * Read and validate a profile. `version` omitted means the highest available. At boot the registry
  * loads every available version explicitly, so each transmission is interpreted against the file
- * that produced it (SAH-013): its poll and cancel resolve the version the row is pinned to.
+ * that produced it (LEGACY-013): its poll and cancel resolve the version the row is pinned to.
  *
  * It throws; it never returns a silent `{}`. A missing directory or file, a file that is not JSON,
  * or one whose `code`/`version` disagree with its name is `ProfileNotFoundError`; a file that fails

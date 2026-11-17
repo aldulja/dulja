@@ -31,7 +31,7 @@ A payslip run is the single-document print at a different cardinality: one reque
    a report run resolves its code: the highest live version for the company. A tenant's clone of `hr.payslip` is the
    payslip it prints, with no release.
 3. **One `app.attachment` row per employee on the PAYROLL document**, its `sha256` computed by the server from the
-   stored bytes and its object key derived from the ids alone (SAH-038). Because the owner is the run, 2C's download
+   stored bytes and its object key derived from the ids alone (LEGACY-038). Because the owner is the run, 2C's download
    gate reads the payslip under the run's module code (`hr` → `hr.payroll.read`).
 4. **Every generation writes new rows and never touches an earlier one**, so the hash of what an employee was given
    is never overwritten (spec:2049 — HR records are archived, never deleted). The route is a normal idempotent write

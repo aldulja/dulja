@@ -504,7 +504,7 @@ reportsRoutes.openapi(salesByItemRoute, async (c) => {
     // says the clerk "May not: … see costs" (spec:2159 says the same of the warehouse). So cost is a FIELD
     // read, the pattern spec:2158 uses for the staff directory's sensitive fields: `cost` and `margin` —
     // revenue − margin IS the cost — are emitted only to a caller who also holds `inventory.cost.read` at
-    // the scope the report covers. A NULL branch asks company-wide authority (§4.2.1, SAH-042), so a
+    // the scope the report covers. A NULL branch asks company-wide authority (§4.2.1, LEGACY-042), so a
     // branch-restricted cost reader sees the figures when the request narrows to that branch, never wider.
     const [sight] = await tx<{ ok: boolean }[]>`
       select app.actor_has(${INVENTORY_PERMISSION.costRead}, ${companyId}::uuid,

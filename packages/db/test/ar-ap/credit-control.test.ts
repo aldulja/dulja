@@ -214,7 +214,7 @@ describe("credit control — migration 0045, contracts §4.8.1, spec:1026, spec:
     );
   });
 
-  it("a party with a limit and NO receivable control account is REFUSED, never silently allowed (SAH-042)", async () => {
+  it("a party with a limit and NO receivable control account is REFUSED, never silently allowed (LEGACY-042)", async () => {
     // `app.party.receivable_account_id` is nullable (§4.5.7) and `l.account_id = <null>` matches no ledger
     // row, so a naive predicate would report a 0.0000 exposure and let every over-limit sale through — "an
     // absent row makes a check pass". This is the ONE case that discriminates the fail-closed branch: it is

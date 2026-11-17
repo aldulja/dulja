@@ -30,7 +30,7 @@ export const CreateSavedViewBody = z
     parameters: ReportParametersSchema.default({}),
     shared: z.boolean().default(false),
     // `ownerPrincipalId` is deliberately ABSENT, and `strict` refuses it: the column defaults to
-    // app.current_actor(), so a payload can never file a bookmark under another principal (§3.3, SAH-044).
+    // app.current_actor(), so a payload can never file a bookmark under another principal (§3.3, LEGACY-044).
   })
   .strict();
 

@@ -291,7 +291,7 @@ function firstMoneyTotal(definition: ReportDefinition): string {
 }
 
 /** The quantity twin of `firstMoneyTotal`. `Quantity` is 6 dp and `Money` 4, so a quantity tie-out never
- *  passes through `Money` (SAH-066). */
+ *  passes through `Money` (LEGACY-066). */
 function firstQuantityTotal(definition: ReportDefinition): string {
   const quantities = new Set(
     definition.columns.filter((c) => c.format === "quantity").map((c) => c.field),

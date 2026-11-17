@@ -322,7 +322,7 @@ describe("/v1/companies/{companyId}/parties — spec:1169, contracts §4.5.7", (
     const patch = (body: Record<string, unknown>) =>
       api.request({ method: "PATCH", path: `${base()}/${id}`, as: a.human, body });
 
-    // A limit in any currency but the company's base is refused, never relabelled (SAH-014).
+    // A limit in any currency but the company's base is refused, never relabelled (LEGACY-014).
     const foreignCurrency = await patch({ creditLimit: { amount: "10.0000", currency: "USD" } });
     expect(foreignCurrency.status).toBe(400);
     expect((await problemOf(foreignCurrency)).errors?.map((e) => e.path)).toEqual([

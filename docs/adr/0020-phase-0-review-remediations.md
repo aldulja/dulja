@@ -198,7 +198,7 @@ this branch also changed: the reclaim used to overwrite `request_hash` rather th
 - **One savepoint around the whole handler** instead of one per call. Rejected: each call must stay as atomic as
   the separate transaction it replaces, and a failed statement must not poison the outer transaction — the unique
   violation a handler raises has to leave it able to write the response row
-  (`tests/regression/sah-083.test.ts`).
+  (`tests/regression/legacy-083.test.ts`).
 - **Folding the reservation in as well**, one transaction for everything. Rejected for the reason above: it trades
   a millisecond `ERR_IDEMPOTENCY_IN_FLIGHT` for a queue behind the first request.
 - **Letting `withTenant` retry the outer transaction**, as it retries any other. Refused by name

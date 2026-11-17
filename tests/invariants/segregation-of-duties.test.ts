@@ -60,7 +60,7 @@ const ctx = (s: Seed, actorId: string): TenantContext => ({
 });
 
 /**
- * Acceptance tests 10 (spec:2428) and 31 (spec:2449). SAH-032: the legacy trigger checked only the OLD
+ * Acceptance tests 10 (spec:2428) and 31 (spec:2449). LEGACY-032: the legacy trigger checked only the OLD
  * approval level and never that the new one was within the actor's own authority, then stamped an approval
  * date to make the forgery look genuine. A second door promoted a document when a boolean was flipped, with
  * no check of the actor at all.
@@ -286,7 +286,7 @@ describe("acceptance tests 10 and 31 — approval authority and segregation of d
         /ERR_DOC_STATUS_ILLEGAL/,
       );
     }
-    // and no event was written for any of them, so nothing "looks like" an approval afterwards (SAH-032)
+    // and no event was written for any of them, so nothing "looks like" an approval afterwards (LEGACY-032)
     const events = await withTenant(
       api.db.rw,
       ctx(a, checker),

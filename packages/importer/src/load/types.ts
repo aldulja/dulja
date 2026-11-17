@@ -47,7 +47,7 @@ export interface SourceColumn {
    *  `import_batch.source_hash` as PRESENCE only (NULL or a fixed marker), never as a digest of the value: a sha256 of
    *  a national id or a date of birth is brute-forced from the few unknowns around it, and `import_batch` is behind
    *  tenant RLS alone, so a digest would be a side channel past the gate (acceptance test 32). The in-run duplicate
-   *  check (SAH-049) still compares the full row in memory. */
+   *  check (LEGACY-049) still compares the full row in memory. */
   readonly sensitive?: boolean;
 }
 

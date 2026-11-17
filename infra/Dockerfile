@@ -61,7 +61,7 @@ COPY tsconfig.base.json ./
 # Source is enumerated, not copied wholesale. `COPY packages` put packages/db/migrations,
 # packages/db/provision/roles.sql and packages/db/seed/my into a serving image, and
 # apps/edge/src/container-env.ts withholds DATABASE_URL_MIGRATOR from that container precisely so a serving
-# process cannot run DDL (§3.11, SAH-053): shipping the DDL and the role map there hands whoever reaches the
+# process cannot run DDL (§3.11, LEGACY-053): shipping the DDL and the role map there hands whoever reaches the
 # filesystem what the withheld credential was protecting. It also carried packages/ui, which neither entrypoint
 # imports. What is left is the transitive import graph of the two entrypoints — @dulja/db, @dulja/domain,
 # @dulja/contracts, @dulja/sync, since Phase 7A @dulja/i18n (the worker's report formatters, 0E's numeral and

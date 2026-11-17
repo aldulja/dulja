@@ -67,7 +67,7 @@ describe("the report_run store — contracts §4.11.2, ADR 0067", () => {
       }),
     );
 
-  it("derives the object key from ids alone (SAH-038)", () => {
+  it("derives the object key from ids alone (LEGACY-038)", () => {
     expect(
       reportObjectKeyFor(
         "01927f3a-0000-7000-8000-000000000001",

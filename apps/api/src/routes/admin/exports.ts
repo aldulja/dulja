@@ -44,7 +44,7 @@ const exportGate = requirePermission(PERMISSION["admin.data.export"], {
 
 const JobParams = z.object({ companyId: UuidSchema, exportJobId: UuidSchema });
 
-/** `object_key` never reaches the wire (SAH-038); the content route is the only path to the bytes. */
+/** `object_key` never reaches the wire (LEGACY-038); the content route is the only path to the bytes. */
 function toDto(job: ExportJobRow): ExportJobDto {
   return {
     id: job.id,

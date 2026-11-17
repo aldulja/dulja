@@ -1,7 +1,7 @@
 -- ── 0106 · a pinned posting_policy never changes ───────────────────────────────────────────────────────
 -- Review remediation (Phase 2 review pass, PR #5); §3.4.1 tail number. Depends on 0001 and 0011.
 --
--- document.posting_policy_id and ledger_entry.posting_policy_id are the pin spec:1753 relies on (SAH-013):
+-- document.posting_policy_id and ledger_entry.posting_policy_id are the pin spec:1753 relies on (LEGACY-013):
 -- reverseDocument reads the pinned row's definition months later. The API is append-only (ADR 0027), but
 -- app_rw holds UPDATE on app.posting_policy and the seed pack's loader upserts `do update` (contracts
 -- §3.4.8 — a staging placeholder must not survive the real definition), so a re-run of the seed after an
@@ -17,7 +17,7 @@ begin
   end if;
   if exists (select 1 from app.document where posting_policy_id = old.id)
      or exists (select 1 from app.ledger_entry where posting_policy_id = old.id) then
-    raise exception 'ERR_TABLE_IMMUTABLE: posting_policy % is pinned by a posted document and cannot change; add a new version (SAH-013, ADR 0027)', old.id
+    raise exception 'ERR_TABLE_IMMUTABLE: posting_policy % is pinned by a posted document and cannot change; add a new version (LEGACY-013, ADR 0027)', old.id
       using errcode = 'check_violation';
   end if;
   return new;

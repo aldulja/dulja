@@ -4,11 +4,11 @@
 
 **Goal:** Ship the **till half** of the Phase 6 definition of done — *"A till sells 8 hours offline and reconciles with **zero duplicates and zero lost tickets**"* — as `apps/pos`, packaged as `pos.exe` from `apps/desktop`'s second electron-builder target. Six pieces. (1) **The local SQLite model of §4.10.6** — exactly spec:1328–1335's tables plus `outbox.kind` and `catalogue_branch_pos_policy`, behind `better-sqlite3` in the Electron main process, reached from the renderer only through the typed `contextBridge` API `window.dulja.pos`. (2) **A `SyncStore` over SQLite** that satisfies 6A's contract to the letter — eight per-stream cursors, `applyChanges` advancing **every** stream to the page's highest revision, and an outbox row acked only when the server names its ref. (3) **Selling offline** — scan or search, quantity and unit, line and ticket discount within the branch limit, price override within the branch limit, price list per shop, promotions with date windows, customer-specific pricing, multi-tender with change and POS rounding, returns against an original ticket and blind returns where policy allows, customer lookup and quick-create, account sales inside the credit limit, and a read-only price-check mode. (4) **A ticket and its outbox row in one SQLite transaction** (spec:1303, 1337), so a sale can never be committed locally and lost in transit. (5) **PIN login and authority evaluated at the till** from the down-synced `catalogue_cashier` snapshot and `catalogue_branch_pos_policy` row, with `verifyPin` imported from 6C and never re-implemented, and clock-in/out written to the outbox as `Ticket.attendance`. (6) **An honest offline indicator** carrying the last catalogue revision and the time it arrived, receipt printing through `webContents.print()`, and `pos.exe` auto-updating from the R2 feed. Acceptance test **19** — *500 tickets sold with the network down; reconnect; zero duplicates, zero lost tickets; re-sending the same batch twice changes nothing* — is this slice's own.
 
-**Architecture:** Five seams, and none of them is a second model. (1) **The till has a cache, not a schema.** spec:1358 names the legacy system's *"own 69-table schema that mirrored the core"* as its biggest structural error in this area; the local database therefore holds read-only catalogue mirrors stamped with the revision they arrived at, the tickets the till itself created, and nothing else. Every row that is not a ticket, a shift, a till event or an outbox entry is a mirror whose only writer is `applyChanges`. (2) **The Electron main process owns the database; `apps/pos`'s main bundle owns the SQL.** spec:2389 says *"`desktop` imports only build outputs"*, so the POS handlers are a **build output of `apps/pos`** (`apps/pos/dist-main/pos-main.cjs`) that `apps/desktop/src/main-pos.ts` `require`s by path and hands `{ ipcMain, channels, dbPath, transport }`. `apps/desktop` therefore imports no workspace package for the POS, and `apps/pos` — an app-tier workspace — imports `@dulja/sync`, `@dulja/domain`, `@dulja/contracts`, `@dulja/ui`, `@dulja/i18n` and one `@dulja/db` subpath, all of which the dependency rule permits. (3) **The wire contract is 6A's and is not restated.** Every message this slice writes to the outbox is a `@dulja/sync` type; every signature header comes from `packages/sync/src/signing.ts` (Task 0 moves `canonicalSyncRequest` there so the two ends share **one** canonical string — SAH-046 is exactly the defect two spellings produce); `pullAll` and `drainOutbox` are 6A's functions run against this slice's store and transport. (4) **Money never becomes a number and never becomes a float, at the till either.** Every monetary column in SQLite is `TEXT` holding a fixed-4-dp decimal string, every quantity `TEXT` at 6 dp, every revision `TEXT` holding a decimal integer — SQLite's `INTEGER` is 64-bit but the JavaScript driver hands it back as a `number`, and a revision past 2⁵³ read as a double would re-deliver one row for ever, which is the failure acceptance test 20 exists to catch. `@dulja/domain`'s `Money` and `Quantity` do every calculation. (5) **The till computes prices and tax; the server recomputes and refuses a disagreement.** 6A's `applyBatch` step (g) recomputes tax from the stored line and rejects a mismatch, so the till's figures must be right rather than merely plausible — which is why pricing and tax at the till go through 5A's own `TaxEngine.compute` and 3A's own price-list rows, never through a second formula.
+**Architecture:** Five seams, and none of them is a second model. (1) **The till has a cache, not a schema.** spec:1358 names the legacy system's *"own 69-table schema that mirrored the core"* as its biggest structural error in this area; the local database therefore holds read-only catalogue mirrors stamped with the revision they arrived at, the tickets the till itself created, and nothing else. Every row that is not a ticket, a shift, a till event or an outbox entry is a mirror whose only writer is `applyChanges`. (2) **The Electron main process owns the database; `apps/pos`'s main bundle owns the SQL.** spec:2389 says *"`desktop` imports only build outputs"*, so the POS handlers are a **build output of `apps/pos`** (`apps/pos/dist-main/pos-main.cjs`) that `apps/desktop/src/main-pos.ts` `require`s by path and hands `{ ipcMain, channels, dbPath, transport }`. `apps/desktop` therefore imports no workspace package for the POS, and `apps/pos` — an app-tier workspace — imports `@dulja/sync`, `@dulja/domain`, `@dulja/contracts`, `@dulja/ui`, `@dulja/i18n` and one `@dulja/db` subpath, all of which the dependency rule permits. (3) **The wire contract is 6A's and is not restated.** Every message this slice writes to the outbox is a `@dulja/sync` type; every signature header comes from `packages/sync/src/signing.ts` (Task 0 moves `canonicalSyncRequest` there so the two ends share **one** canonical string — LEGACY-046 is exactly the defect two spellings produce); `pullAll` and `drainOutbox` are 6A's functions run against this slice's store and transport. (4) **Money never becomes a number and never becomes a float, at the till either.** Every monetary column in SQLite is `TEXT` holding a fixed-4-dp decimal string, every quantity `TEXT` at 6 dp, every revision `TEXT` holding a decimal integer — SQLite's `INTEGER` is 64-bit but the JavaScript driver hands it back as a `number`, and a revision past 2⁵³ read as a double would re-deliver one row for ever, which is the failure acceptance test 20 exists to catch. `@dulja/domain`'s `Money` and `Quantity` do every calculation. (5) **The till computes prices and tax; the server recomputes and refuses a disagreement.** 6A's `applyBatch` step (g) recomputes tax from the stored line and rejects a mismatch, so the till's figures must be right rather than merely plausible — which is why pricing and tax at the till go through 5A's own `TaxEngine.compute` and 3A's own price-list rows, never through a second formula.
 
 **Tech Stack:** Bun 1.4 (install, scripts, the Vite build) · Node 24 LTS (runs Vitest) · TypeScript strict · Electron (from 0E, with `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`) · `better-sqlite3` in the Electron main process, rebuilt against Electron's Node ABI by `@electron/rebuild` (0E's ADR 0017) · React 19 + Vite + TanStack Router (the same stack as `apps/backoffice`) · `@dulja/ui` primitives and `@dulja/i18n` catalogues · `@dulja/sync` for every message and the request signer · `@dulja/domain` for `Money`, `Quantity`, `round`, `RoundingMode` · `@dulja/db/staff/pin` for `verifyPin` (6C's one PIN function) · `node:crypto` `generateKeyPairSync('ed25519')` and `sign` for the terminal device key, stored through 0E's `safeStorage` seam · electron-builder + electron-updater against the R2 feed · Vitest + Playwright (`_electron`) · oxlint + oxfmt + Turborepo. No package version appears in any source file — the lockfile owns versions (spec:104).
 
-**Spec:** `docs/spec/rebuild-spec.md` v1.2 — §0.2 the never/always lists (spec:97–108), §0.3 **D18** *POS hardware out of scope for v1* (spec:133), §3.6 *Explicitly do NOT carry over* (spec:1244–1248, and especially spec:1239 *"Offline POS with parcel-based sync"* as the one thing kept in spirit), **§3.7.1–§3.7.2** (spec:1256–1284 — two applications one codebase, the Electron decision table and the security posture verbatim), **§3.7.3** up-sync and the Stock paragraph (spec:1301–1308), **§3.7.5** the local SQLite schema and the cashier-identity paragraph (spec:1320–1337), **§3.7.6** the POS scope table (spec:1339–1360), §3.9 Identifiers (*"The POS generates a `uuidv7` at the till for each ticket … carried as `document.client_ref`"*, spec:2037), Time, Money, Quantities, Naming, Localisation (spec:2039–2061), §4.2 PIN hashing (spec:2132), §4.2.1 the `cashier` row (spec:2161), §4.10 frontend and UX standards — RTL/LTR parity, keyboard-first entry, offline-tolerant POS (spec:2249–2256), §4.11 the two code-signing secret names (spec:2273), §5.2 `apps/pos` and `apps/desktop`'s *"two build targets: backoffice.exe and pos.exe"* (spec:2360–2361) and the dependency rule (spec:2389), Part V the Phase 6 row (spec:2292) and the sequencing note (spec:2299), Part VI tests **19** (spec:2437), **20** (spec:2438), **23** (spec:2441), Part VII **#10** (spec:2481 — historical POS data, OD-16, *not this slice*) and **#11** (spec:2482 — the UI is not covered by the document, which is OD-24), Part I **SAH-028** (spec:471), **SAH-051** (spec:647), **SAH-086** (spec:923).
+**Spec:** `docs/spec/rebuild-spec.md` v1.2 — §0.2 the never/always lists (spec:97–108), §0.3 **D18** *POS hardware out of scope for v1* (spec:133), §3.6 *Explicitly do NOT carry over* (spec:1244–1248, and especially spec:1239 *"Offline POS with parcel-based sync"* as the one thing kept in spirit), **§3.7.1–§3.7.2** (spec:1256–1284 — two applications one codebase, the Electron decision table and the security posture verbatim), **§3.7.3** up-sync and the Stock paragraph (spec:1301–1308), **§3.7.5** the local SQLite schema and the cashier-identity paragraph (spec:1320–1337), **§3.7.6** the POS scope table (spec:1339–1360), §3.9 Identifiers (*"The POS generates a `uuidv7` at the till for each ticket … carried as `document.client_ref`"*, spec:2037), Time, Money, Quantities, Naming, Localisation (spec:2039–2061), §4.2 PIN hashing (spec:2132), §4.2.1 the `cashier` row (spec:2161), §4.10 frontend and UX standards — RTL/LTR parity, keyboard-first entry, offline-tolerant POS (spec:2249–2256), §4.11 the two code-signing secret names (spec:2273), §5.2 `apps/pos` and `apps/desktop`'s *"two build targets: backoffice.exe and pos.exe"* (spec:2360–2361) and the dependency rule (spec:2389), Part V the Phase 6 row (spec:2292) and the sequencing note (spec:2299), Part VI tests **19** (spec:2437), **20** (spec:2438), **23** (spec:2441), Part VII **#10** (spec:2481 — historical POS data, OD-16, *not this slice*) and **#11** (spec:2482 — the UI is not covered by the document, which is OD-24), Part I **LEGACY-028** (spec:471), **LEGACY-051** (spec:647), **LEGACY-086** (spec:923).
 
 ## Assumptions and contracts (from docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md)
 
@@ -19,8 +19,8 @@
 - **Migration numbers:** **0063** — one file, one PR, with a hand-written down: `0063_seed_permission_phase6b.sql` (**T4**) — the three codes §3.6.2 assigns this slice. §2.7's card says *"0063 (reserved; client-side slice, no server migration expected)"*, and **Task 0 amendment A1 corrects it**: §3.6.2 makes 6B the introducing slice for `pos.price.check`, `pos.shift.own` and `pos.attendance.clock`, and §3.6.3's `permission-catalogue.test.ts` asserts the set in `app.permission` **equals** the set exported by `permissions.ts` in both directions — so a `PermissionDef` row with no migration insert fails that test the day it lands. "Reserved" is what the number was reserved *for*. **ADR numbers:** 0057–0059, each written **as a proposal and asked before implementing** where it touches security or the data model (spec:95): **0057** *The till's local SQLite model is a cache, not a schema* (T1); **0058** *The POS main process is a build output of `apps/pos`, loaded by path* (T9); **0059** *POS cash rounding is absorbed into the ticket, because the ledger has no rounding account* (T7).
 - **Interfaces consumed:** §4.1 (the Plan 0A surface), §4.2.1 (`Money`, `Quantity`, `currency`, `round`, `RoundingMode`, `rational`, the scales), §4.2.2 (`withTenant`, `TenantContext`, `createDb` — in this slice's **tests** only; the till has no Postgres), §4.2.4 (`Problem`, `ERRORS`, `ErrCode`, and this slice's four allocated rows), §4.2.5 (`PERMISSION`, `PERMISSIONS`, `PermissionDef`, `ROLES`), §4.2.8 (`MoneySchema`, `QuantitySchema`, `UuidSchema`, `TimestampSchema`), §4.2.12 (`startApi`, `StartedApi`, `ApiRequest`), §4.6.3 (`app.pos_cashier` — the `snapshot` shape the till mirrors), §4.6.4 (`app.branch_pos_policy` — every limit column by name), §4.6.5 (`app.shift`, and the tender-line contract the till's `TicketTender` becomes), §4.9.1 (5A's `TaxEngine`, `TaxCodeDef`, `TaxLineInput`, `TaxLineResult`), **§4.10 in full** and §4.10.6 as this slice's own definition of done, §4.11 (consulted: the report engine is 7A's and this slice ships no `ReportDefinition`), §4.14 (`POS_TICKET`, consumed — 6A seeds it), §4.15 (consumed, none seeded: `1110`, `1120`, `2200` are 6A's and `1100`, `1200`, `1300`, `4000`, `5000` are 0C's), §4.16.1 (consulted: no `ReportCode` — `pos.z_report` and `pos.sales_by_cashier` are **6D's**), §4.16.2 (consulted: **no** `DatasetId` member), §4.17 (consumed: `seedTerminal`, `seedCashier`, `seedBranchPosPolicy`, `seedEmployee`, `seedItem`, `seedPriceList`, `seedParty`, `seedTaxCode`, `grantCodes` — **this slice adds no `fixtures.ts` helper**), §4.17.1 (`posFixture`, `buildTicket`, `signSyncRequest`, `syncRequest`, `MemorySyncStore`, `staffFixture`, `sharedApi`, `grantAdmin`, `problemOf`, `sourceFiles`, `bootLocalStack`; **this slice adds one file, `tests/invariants/support/till.ts`**), §5 (all thirty-five hazards), §6.1 rows 19, 20, 23, §6.2 row **1062**.
 - **Interfaces produced:** **§4.10.6 in full** — the local SQLite schema, `better-sqlite3` in the Electron main process and the typed `contextBridge` API `window.dulja.pos.{sell, tender, closeShift, pull, drain, clock, priceCheck}`; §4.10.5's `SyncStore` implemented over SQLite as `SqliteSyncStore`; §3.6.2's three `pos` codes and §3.6.4's **`cashier` and `branch_manager`** grants for them; §4.2.4's four allocated rows; the `pos.exe` target. Everything else is listed under **Contract additions** in the Self-Review and lands through **Task 0**.
-- **Owner decisions:** **OD-03** loyalty points in POS v1 (*Decide* — spec:22, 1032, 1348, 2397) → **Task 14**, isolated, default §2.12's — **not built**; dropped whole if the answer is no, renumbering nothing. **OD-18** the Windows code-signing certificate, OV or EV (spec:92, 2323, 2401) → **Task 13**, isolated; default — **unsigned build, SmartScreen warning expected**; Task 10 ships the installer and the auto-update feed without it. **OD-24** screenshots and a two-minute operator description before any screen (spec:79, 108, 2254, 2408) → **Task 11**, isolated, and **the POS is the most keyboard-critical UI in the product**; default — *the screen task is blocked, not the slice*: Tasks 1–10 and 12 ship every service, the whole SQLite model, both sync loops and acceptance test 19 with **no renderer**, and Task 11 adds the screens when the owner's material arrives. **OD-29** restaurant features in POS (excluded unless confirmed — spec:1341) → **recorded, no task**: no floor plan, no table, no kitchen modifier, no meal course appears anywhere in this slice, and §2.7's card says "no task, recorded". **D18 is a settled decision, not an owner gate** (spec:133 — *"POS hardware: out of scope for v1; Windows printer drivers via Electron in v1"*), so §3.7.3's conditional file **`tests/regression/sah-086.test.ts` is never created by this slice and nothing appends to it** — which is exactly what §3.7.3's named-creator rule provides for.
-- **Part VI tests owned / re-run:** **owns 19** (offline POS — Task 12). **Re-runs:** **20** (catalogue resume, the till half — Task 2, `pullAll` against `SqliteSyncStore` instead of `MemorySyncStore`), **23** (RTL/LTR parity, the POS screens — Task 11, and therefore blocked with it under OD-24), **11** (auth bypass — Task 3's assertion that the till never sends `X-Tenant-Id`/`X-Actor-Id` and that a stale device signature is refused), **37** (POS authority — Task 4's till half: the same over-limit ticket the server refuses is refused at the till first, and the refusal messages agree), **36** (the permission catalogue over this slice's three codes — Task 4). **§3.0.4 rows owned:** **spec:1062** — *"POS selling, pricing, tenders, returns, customers, shifts, PIN, offline, price check"*. §6.2 names 6A, **6C** and 6D as contributors and 6B as owner, so the row closes when this slice is green. **Regression files created / appended:** **creates none.** **`sah-086` is not created** (D18, above). **Appends** a `— 6B` block to `tests/regression/sah-051.test.ts` (created by 0B) — *uuidv7 at the till*: the ticket id is minted offline, is the `document.client_ref`, and no sequential integer and no shared counter exists anywhere in `apps/pos`. **And makes one in-place correction, in Task 0, to `tests/regression/sah-046.test.ts` (created by 6A):** amendment A2 moves the single `canonicalSyncRequest` declaration into `packages/sync/src/signing.ts`, and two of 6A's assertions name its old address, so they are **replaced inside 6A's own `— 6A` block** rather than contradicted by a second one. §3.7.3's rule is that a later slice does not *edit an earlier block to say something different*; here the invariant is identical (one declaration, one file) and only the path in it moved, and a `— 6B` block asserting the opposite of a live `— 6A` block would itself be the two-spellings defect SAH-046 is about. **This is the only earlier-block edit in the slice, it is stated in A2, and Task 0 Step 5 carries both replacement lines in full.**
+- **Owner decisions:** **OD-03** loyalty points in POS v1 (*Decide* — spec:22, 1032, 1348, 2397) → **Task 14**, isolated, default §2.12's — **not built**; dropped whole if the answer is no, renumbering nothing. **OD-18** the Windows code-signing certificate, OV or EV (spec:92, 2323, 2401) → **Task 13**, isolated; default — **unsigned build, SmartScreen warning expected**; Task 10 ships the installer and the auto-update feed without it. **OD-24** screenshots and a two-minute operator description before any screen (spec:79, 108, 2254, 2408) → **Task 11**, isolated, and **the POS is the most keyboard-critical UI in the product**; default — *the screen task is blocked, not the slice*: Tasks 1–10 and 12 ship every service, the whole SQLite model, both sync loops and acceptance test 19 with **no renderer**, and Task 11 adds the screens when the owner's material arrives. **OD-29** restaurant features in POS (excluded unless confirmed — spec:1341) → **recorded, no task**: no floor plan, no table, no kitchen modifier, no meal course appears anywhere in this slice, and §2.7's card says "no task, recorded". **D18 is a settled decision, not an owner gate** (spec:133 — *"POS hardware: out of scope for v1; Windows printer drivers via Electron in v1"*), so §3.7.3's conditional file **`tests/regression/legacy-086.test.ts` is never created by this slice and nothing appends to it** — which is exactly what §3.7.3's named-creator rule provides for.
+- **Part VI tests owned / re-run:** **owns 19** (offline POS — Task 12). **Re-runs:** **20** (catalogue resume, the till half — Task 2, `pullAll` against `SqliteSyncStore` instead of `MemorySyncStore`), **23** (RTL/LTR parity, the POS screens — Task 11, and therefore blocked with it under OD-24), **11** (auth bypass — Task 3's assertion that the till never sends `X-Tenant-Id`/`X-Actor-Id` and that a stale device signature is refused), **37** (POS authority — Task 4's till half: the same over-limit ticket the server refuses is refused at the till first, and the refusal messages agree), **36** (the permission catalogue over this slice's three codes — Task 4). **§3.0.4 rows owned:** **spec:1062** — *"POS selling, pricing, tenders, returns, customers, shifts, PIN, offline, price check"*. §6.2 names 6A, **6C** and 6D as contributors and 6B as owner, so the row closes when this slice is green. **Regression files created / appended:** **creates none.** **`legacy-086` is not created** (D18, above). **Appends** a `— 6B` block to `tests/regression/legacy-051.test.ts` (created by 0B) — *uuidv7 at the till*: the ticket id is minted offline, is the `document.client_ref`, and no sequential integer and no shared counter exists anywhere in `apps/pos`. **And makes one in-place correction, in Task 0, to `tests/regression/legacy-046.test.ts` (created by 6A):** amendment A2 moves the single `canonicalSyncRequest` declaration into `packages/sync/src/signing.ts`, and two of 6A's assertions name its old address, so they are **replaced inside 6A's own `— 6A` block** rather than contradicted by a second one. §3.7.3's rule is that a later slice does not *edit an earlier block to say something different*; here the invariant is identical (one declaration, one file) and only the path in it moved, and a `— 6B` block asserting the opposite of a live `— 6A` block would itself be the two-spellings defect LEGACY-046 is about. **This is the only earlier-block edit in the slice, it is stated in A2, and Task 0 Step 5 carries both replacement lines in full.**
 - **Shared namespaces this slice writes into:** **Document-type codes (§4.14) — none.** `POS_TICKET` is 6A's and is consumed; the till writes its `code` into no seed file. **Account codes (§4.15) — none seeded.** Consumed and asserted-not-reseeded, each with its seeding slice: `1110` Cash in till, `1120` Card clearing, `2200` Store-credit liability (**6A**), `1100` Bank, `1200` Trade receivables, `1300` Inventory control, `4000` Sales, `5000` COGS, `5920` FX rounding (**0C**), `2300` Output tax payable (**5A**). The till resolves **no** account by code — it never posts; `applyBatch` and the `POS_TICKET` policy do. **Report codes (§4.16.1) — none**, and `ReportCodeSchema` is not widened: hazard 4 gives Phase 6 exactly `pos.z_report` and `pos.sales_by_cashier`, both **6D's**. **`DatasetId` members (§4.16.2) — none.** **`fixtures.ts` helpers (§4.17) — none**: every row this slice's tests need already has a helper, and hazard 9 forbids inventing one beside the register. **Shared test helpers (§4.17.1) — one new file, registered by Task 0:** `tests/invariants/support/till.ts` with `TillFixture`, `tillFixture`, `HttpTillTransport`, `openTill` and `sellOffline`.
 - **Nine facts every task in this plan depends on, stated once because getting one wrong is a silent failure.** (1) **`Seed` has no `branch` member** — it is `{ tenant; system; human; company; period; closedPeriod; lockedPeriod; cash; sales; docType; policy; branchType; hq }` (§4.1), so every `branchId:` here is `<seed>.hq` unless a second value came from 0D's `seedBranch`. (2) **`seedTenant` grants `s.human` nothing** (§4.1, pinned), so every test that reaches a gated route calls `grantAdmin()` or `grantCodes` first. (3) **`applyChanges` advances EVERY member of `CATALOGUE_STREAMS`** to the page's highest revision, not only the streams the page carried (§4.10.5 as amended by 6A's Task 0 amendment 23c) — *"This is the sentence 6B's SQLite store is measured against"*. `cashier` and `branch_pos_policy` are quiet streams on a fresh company, and a store that advanced only the touched ones would hold `0n` on them for ever, making `pullAll`'s minimum-across-streams `0n` on every till: every pull would re-fetch the whole catalogue, nothing would throw, and no resume would exist. (4) **A revision is a `bigint` end to end.** `better-sqlite3` returns an SQLite `INTEGER` as a JavaScript `number` unless `defaultSafeIntegers(true)` is set; this plan stores every revision as **`TEXT`** holding a decimal integer and converts with `BigInt(...)` at the boundary, which needs no driver mode and cannot be undone by a later `defaultSafeIntegers(false)`. (5) **`no-number-money` scans `apps/**`** (§3.7.5), so a property, parameter or variable in `apps/pos` whose name matches `/amount|price|cost|debit|credit|total|balance|rate|tax|net|gross/i` may not be typed `number` — `Money`, `Quantity`, `Decimal` or `string` only. Every SQLite money column is `TEXT` for the same reason. (6) **`document.shift_id` exists from 6A's migration 0061 with no FK until 6D's 0070**, so a ticket may carry the till's shift id from the first sale (6A:5066, 5362) — the till never waits for 6D. (7) **`Quantity` has `add`, `subtract`, `negate`, `multiply`, `convert`, `compare`, `isZero`, `isNegative`, `toDecimal`, `toString`, `toJSON` and nothing else** (§4.2.1, 0D's frozen member list) — only `Money` has `abs`. A return line's magnitude is spelled `q.isNegative() ? q.negate() : q`. (8) **A return is not a second document type**: it is a `POS_TICKET` whose line `quantity`, `amount`, `taxAmount`, `totalInclTax` and tender `amount` are all negative, and `cost` stays positive (§4.4.2 A9's 6A entry, 6A's `returnSnapshot`). (9) **`tests/` is outside every lint root** (§3.7.5 — `ROOTS` are `apps`, `packages`, `scripts`), which is why `tests/invariants/pos-offline.test.ts` may import `apps/pos/src/**` directly with one `tsconfig.json` `include` entry and **no** `package.json` dependency, exactly as §4.17.1's existing seam does in the other direction.
 - **Never re-decide:** D1–D27 (spec:114–142); every name in the contracts document is frozen — a needed change goes to that document first (that is what Task 0 is).
@@ -30,22 +30,22 @@
 
 Copied verbatim from the spec and the contracts document; every task's requirements implicitly include this section.
 
-1. **Never**, at any phase, for any reason (spec:97–104): write to a ledger or movement table outside the posting service; represent money as a float, anywhere, including in TypeScript; build SQL by string concatenation (SAH-036/037/069); issue DDL from application code (SAH-053); disable an invariant, constraint or trigger "temporarily" (SAH-027, 041, 053); gate an audit write on any flag (SAH-030); hard-code a package version into a source file — the lockfile owns versions.
+1. **Never**, at any phase, for any reason (spec:97–104): write to a ledger or movement table outside the posting service; represent money as a float, anywhere, including in TypeScript; build SQL by string concatenation (LEGACY-036/037/069); issue DDL from application code (LEGACY-053); disable an invariant, constraint or trigger "temporarily" (LEGACY-027, 041, 053); gate an audit write on any flag (LEGACY-030); hard-code a package version into a source file — the lockfile owns versions.
 2. **Always**, for every new table (spec:106): `tenant_id`, an RLS policy named `tenant_isolation`, `created_at`, a migration, and a test that a second tenant cannot see it. **This slice creates no PostgreSQL table** — migration 0063 inserts three rows into the global `app.permission` and creates nothing — so the new-table recipe of §3.5.1 has nothing to bind. **The local SQLite tables are not "new tables" in that sense**: they live in one file on one shop PC, hold no other tenant's rows and are unreachable by any query the recipe protects; §3.5.3 gains no row and `lint-schema.ts` is **untouched by this slice**. For every UI screen: verified in both text directions before merge (Task 11).
 3. **The till writes no ledger, movement, layer, projection or tax-transaction row, in Postgres or anywhere else** (hazard 22). `apps/pos` contains no PostgreSQL client at all: it holds no `postgres` dependency, no `@dulja/db` barrel import, and exactly one `@dulja/db` subpath import — `@dulja/db/staff/pin`, for `verifyPin`. Everything the till knows about the ledger it learns from a `BatchResult`.
-4. **The terminal acts, the cashier is attributed** (hazard 19, spec:1324, SAH-044). The till sends `Ticket.cashierPrincipalId` as **attribution data**; the acting principal is the terminal, resolved by the server from the signed call. **No message this slice composes carries an actor id**, and the till never sends `X-Tenant-Id` or `X-Actor-Id` — Task 3 asserts both by scanning its own request builder.
+4. **The terminal acts, the cashier is attributed** (hazard 19, spec:1324, LEGACY-044). The till sends `Ticket.cashierPrincipalId` as **attribution data**; the acting principal is the terminal, resolved by the server from the signed call. **No message this slice composes carries an actor id**, and the till never sends `X-Tenant-Id` or `X-Actor-Id` — Task 3 asserts both by scanning its own request builder.
 5. **The till's stock figure is advisory and says so** (spec:1307–1308). `catalogue_item` carries no quantity at all; a low-stock warning is drawn from the mirror's `stock_hint` column, which is populated only when the catalogue page carries one and is displayed with its arrival time beside it. **A sale is never blocked on it** — spec:1308: *"it does not block a sale on a number it cannot trust"*. Authoritative stock is the back office's, and `allowNegative: false` in the `POS_TICKET` policy is what refuses an over-sale, at apply, with `ERR_STOCK_INSUFFICIENT` and a needs-attention row.
 6. **Money and quantity discipline at the till** (spec:2041–2043, §3.7.5's *"Nothing in the local database is authoritative except the tickets the till itself created"*). Every monetary value is a `Money` in memory and a fixed-4-dp `TEXT` in SQLite; every quantity a `Quantity` and a fixed-6-dp `TEXT`; every revision a decimal `TEXT`; every unit conversion an exact `Rational`. `Money.multiply` and `Money.divide` always take an explicit `RoundingMode`. **No `number` holds a monetary value, a quantity or a revision anywhere in `apps/pos`**, and the `no-number-money` lint proves it.
 7. **The Electron security posture is 0E's and is restated, not re-decided** (spec:1284): `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true` for the renderer, the strict CSP of `CONTENT_SECURITY_POLICY`, renderer navigation locked to `APP_ORIGIN` through `isAppUrl`, and **every** privileged operation — SQLite, printing, sync, the device key — behind the typed `contextBridge`. The renderer holds no `require`, no `ipcRenderer` and no file path.
 8. **`desktop` imports only build outputs** (spec:2389). `apps/desktop` gains `main-pos.ts`, `preload-pos.ts`, `bridge-types.ts` additions and `electron-builder.pos.yml`, and **imports nothing from `apps/pos`** — it `require`s `apps/pos/dist-main/pos-main.cjs` by path at run time and passes it the channel map as data. `apps/pos` imports `@dulja/sync`, `@dulja/domain`, `@dulja/contracts`, `@dulja/ui`, `@dulja/i18n` and `@dulja/db/staff/pin`, and imports no other app. ADR 0058 records the shape.
-9. **One migration per PR** (spec:2057); the file runs whole in one transaction; every statement carries a comment naming the SAH-/spec reference it serves; SQL keywords lowercase; section banners `-- ── N. title ───`; a hand-written `0063.down.sql` that deletes exactly the three codes.
+9. **One migration per PR** (spec:2057); the file runs whole in one transaction; every statement carries a comment naming the LEGACY-/spec reference it serves; SQL keywords lowercase; section banners `-- ── N. title ───`; a hand-written `0063.down.sql` that deletes exactly the three codes.
 10. **No enum label is added** (§3.4.4, hazard 11) and no PostgreSQL vocabulary changes. Every closed vocabulary this slice introduces is a SQLite `CHECK` in the local file, or a TypeScript union.
 11. **Error codes** are `ERR_<DOMAIN>_<REASON>` enumerated in `packages/contracts/src/errors.ts`, and a code no code raises fails the build (spec:2051). **This slice adds exactly four rows** (§4.2.4, allocated by Task 0 amendment A6, each in the PR that raises it): `ERR_TILL_PIN_INVALID` (401), `ERR_TILL_LIMIT_EXCEEDED` (422), `ERR_TILL_CATALOGUE_STALE` (409), `ERR_TILL_STORE_CORRUPT` (500). Everything else it raises is already shipped: `ERR_VALIDATION_FAILED`, `ERR_NOT_FOUND`, `ERR_RBAC_FORBIDDEN`, `ERR_SYNC_CURSOR_INVALID`, `ERR_SYNC_MESSAGE_UNSUPPORTED`, `ERR_TERMINAL_SIGNATURE_INVALID`, `ERR_TERMINAL_REVOKED`, `ERR_TERMINAL_ENROLMENT_INVALID`, `ERR_POS_LIMIT_EXCEEDED`, `ERR_TAX_REGIME_MISMATCH`, `ERR_MONEY_CURRENCY_MISMATCH`. **This list is closed:** a token in any test of this slice that is not on it is either a typo or an unregistered code, and both fail the `error-codes` lint.
 12. **The permission vocabulary and module list are closed** (§3.6.1, hazard 26). This slice seeds exactly the three codes §3.6.2 assigns it — `pos.price.check`, `pos.shift.own`, `pos.attendance.clock` — and invents none. Every one is **referenced from `apps/pos`**, which is what §3.6.3's `permission-catalogue` lint requires of a code evaluated only at the till.
 13. **No plan invents a literal in a shared namespace** (hazard 32). **Task 0 amends a register before any task writes a literal into it**, and this slice writes into exactly two: §4.2.4 (four `ERR_TILL_*` rows) and §4.17.1 (one file).
 14. **No real Malaysian statutory rate, threshold or figure appears anywhere** (hazard 1), and **no LHDN or MyInvois endpoint, field, schema version or deadline appears either** (hazard 2). Every tax figure in this plan comes from 5A's clearly-synthetic `SYNTH-MY-v1` regime, read from `app.tax_code` through `taxFixture` or down-synced into `catalogue_tax_code`; this slice states none of its own. **The POS rounding increment is a `branch_pos_policy` column with a default of `0.05`, which is 6C's DDL** (§4.6.4) and is a configuration default, not a statutory rule; no task restates it as a fact about any jurisdiction.
 15. **The Firebird version is unknown and no legacy assumption appears here** (hazard 3). This slice reads no legacy database. **Whether historical POS data migrates is OD-16 and is 9B's** (Part VII #10); the till starts clean at cut-over with only the catalogue, and nothing in `apps/pos` reads `mpos`, `legacy_ref` or an import batch.
-16. **POS hardware is out of scope for v1** (D18, spec:133, 1359; SAH-086). No ESC/POS command, no cash-drawer port, no scanner driver, no scale integration and no device-profile file appears in this slice. A barcode reaches the sell screen as **keyboard input** — every USB scanner in the shops is a keyboard-wedge device — and a receipt prints through `webContents.print()` to any Windows printer driver.
+16. **POS hardware is out of scope for v1** (D18, spec:133, 1359; LEGACY-086). No ESC/POS command, no cash-drawer port, no scanner driver, no scale integration and no device-profile file appears in this slice. A barcode reaches the sell screen as **keyboard input** — every USB scanner in the shops is a keyboard-wedge device — and a receipt prints through `webContents.print()` to any Windows printer driver.
 17. **Restaurant features are excluded unless confirmed** (OD-29, spec:1341). No floor plan, no table, no kitchen modifier, no course, no seat.
 18. **Every renderer string comes from `packages/i18n`** (spec:2061), and 0E's `no-hardcoded-string` lint plus `checkCatalogues()` prove it. Both text directions are verified before merge (spec:2251, acceptance test 23), and keyboard parity is the target: **no mouse is required to complete a sale** (spec:2254).
 19. **Commits** are conventional with the scope = workspace, subject `<type>(<scope>): <summary> [6B T<n>]`, and every commit message ends with the trailer `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>` (§3.8). `bun run lint`, `bun run lint:rules`, `bun run format:check`, `bun run typecheck` and `bun run test` at the repository root stay green after every task. **This slice does not rewrite `AGENTS.md`'s "Current phase" section** — §3.8 names 6D as Phase 6's closing slice.
@@ -60,7 +60,7 @@ The Phase 6 row, verbatim (spec:2292) — **Definition of done:** *"A till sells
 |---|---|
 | **sells 8 hours offline** | **Task 5** (pricing, promotions and tax from the mirrors alone), **Task 6** (`sell` writes ticket, lines and outbox row in one SQLite transaction with no network call on the path), **Task 7** (tenders, change and rounding), **Task 8** (returns against a locally-mirrored original, and blind returns), **Task 4** (PIN login and authority from the snapshot). **Task 12's `pos-offline.test.ts`, its own Step 2** is the measurement: 500 tickets are sold with the transport throwing `ECONNREFUSED` on every call, and all 500 are in `ticket` and `outbox` with `acked_at is null`. (Every "Step N" in this column below is a **case inside `tests/invariants/pos-offline.test.ts`**, whose eight `it`s are named `Step 1`…`Step 8`; Task 12's own numbered steps are the ones that *write* those files.) |
 | **zero lost tickets** | **Task 6 Step 4, `sell`** — the ticket, its lines, its outbox row and the attendance stamps are one `db.transaction(...)`; a crash between them is impossible. **Task 2 Step 4, `SqliteSyncStore.markAcked`** — a row is acked **only** when its ref appears in one of `BatchResult`'s three arrays with a status other than `rejected`; a ref the server did not mention stays pending for ever (spec:1337). **`pos-offline.test.ts` Step 4** proves it: after reconnect and `drainOutbox`, `select count(*) from outbox where acked_at is null` is 0 and `select count(*) from app.document where client_ref = any($1)` is 500. |
-| **zero duplicates** | **Task 6 Step 2, `tillUuidv7`** — the client ref is a `uuidv7` minted at the till, is the primary key of the local `ticket` table, and is `document.client_ref` (spec:1302, SAH-051). **`pos-offline.test.ts` Step 5** — the first batch's payload is re-pushed straight through the transport with a fresh `batchId`; every ticket answers `duplicate`, `select count(*) from app.document` is unchanged, and so is `select count(*) from app.ledger_entry`. |
+| **zero duplicates** | **Task 6 Step 2, `tillUuidv7`** — the client ref is a `uuidv7` minted at the till, is the primary key of the local `ticket` table, and is `document.client_ref` (spec:1302, LEGACY-051). **`pos-offline.test.ts` Step 5** — the first batch's payload is re-pushed straight through the transport with a fresh `batchId`; every ticket answers `duplicate`, `select count(*) from app.document` is unchanged, and so is `select count(*) from app.ledger_entry`. |
 | **reconciles** | **`pos-offline.test.ts` Step 6** — after the drain, `Σ` of the till's local `ticket.total` equals `Σ` of the server's `document_line` item amounts plus tax for those 500 documents, to the cent, computed with `Money` on both sides. The comparison is what makes "reconciles" a number rather than a feeling. |
 
 **What is deliberately *not* in this slice's DoD share:** the Z-report and the till cash lifecycle (**6D**), the server-side authority re-verification (**6C**, which this slice mirrors at the till but does not own), and `applyBatch` itself (**6A**). This slice also ships **no shift or till-event apply path**: it *sends* `ShiftOpenClose` and receives `ERR_SYNC_MESSAGE_UNSUPPORTED` until 6D lands, and Task 12 asserts that refusal explicitly rather than hiding it.
@@ -184,8 +184,8 @@ tests/
 ├─ invariants/pos-canonical-signature.test.ts              NEW  the one-string proof (A2)             T0
 ├─ invariants/phase-6b-pinned.test.ts                      NEW  the pinned equalities                 T12
 ├─ invariants/support/pos.ts                               EDIT one import line (A2)                  T0
-├─ regression/sah-046.test.ts                              EDIT 6A's two moved assertions (A2)        T0
-├─ regression/sah-051.test.ts                              EDIT append a — 6B block                   T12
+├─ regression/legacy-046.test.ts                              EDIT 6A's two moved assertions (A2)        T0
+├─ regression/legacy-051.test.ts                              EDIT append a — 6B block                   T12
 └─ e2e/pos-rtl-parity.spec.ts                              NEW  ⚠️ OD-24 — test 23's POS half         T11
 ```
 
@@ -193,7 +193,7 @@ tests/
 
 ### Task 0: Contracts amendments and the 6A / 6C / 0E repository gate
 
-**No application code.** This task does two things and stops. First it lists the **ten** amendments the architect makes to `docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md` in one PR, so no later task writes a literal into a register that does not yet hold it (hazard 32). Second it ships the one piece of code that cannot wait — `packages/sync/src/signing.ts`, because two spellings of the canonical signature string is SAH-046 itself — and a gate script that checks the **repository**, not the document.
+**No application code.** This task does two things and stops. First it lists the **ten** amendments the architect makes to `docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md` in one PR, so no later task writes a literal into a register that does not yet hold it (hazard 32). Second it ships the one piece of code that cannot wait — `packages/sync/src/signing.ts`, because two spellings of the canonical signature string is LEGACY-046 itself — and a gate script that checks the **repository**, not the document.
 
 **Task 1 does not start until `bash scripts/check/contracts-6b-amendments.sh` exits 0.**
 
@@ -204,7 +204,7 @@ tests/
 - `packages/sync/src/signing.ts`, `packages/sync/test/signing.test.ts` — NEW
 - `packages/sync/src/index.ts`, `apps/api/src/middleware/terminal-auth.ts`, `scripts/lint/rules/dependency-rule.ts` — MODIFY
 - `tests/invariants/support/pos.ts` — MODIFY (one import line: the canonical string comes from `@dulja/sync`, which is what A2's text promises — Step 4)
-- `tests/regression/sah-046.test.ts` — MODIFY (6A's file; **two expectations replaced in place** inside its own `— 6A` `it`, because A2 moves the one declaration A2's assertions point at — Step 5)
+- `tests/regression/legacy-046.test.ts` — MODIFY (6A's file; **two expectations replaced in place** inside its own `— 6A` `it`, because A2 moves the one declaration A2's assertions point at — Step 5)
 - `tests/package.json` — MODIFY (`@dulja/sync` as a workspace devDependency, if 6A did not already add it — Step 4)
 - `tests/invariants/pos-canonical-signature.test.ts` — NEW
 
@@ -235,8 +235,8 @@ tests/
 | # | § | Amendment | Blocks |
 |---|---|---|---|
 | **A1** | 2.7 (6B card), 3.4.1, 3.6.2, 3.6.3 | **Migration 0063 is required, not optional.** The card's *"0063 (reserved; client-side slice, no server migration expected)"* is corrected to *"**0063** — `0063_seed_permission_phase6b.sql`, the three codes §3.6.2 assigns 6B"*. §3.6.2 makes 6B the introducing slice for `pos.price.check`, `pos.shift.own` and `pos.attendance.clock`; §3.6.3 requires each introducing slice to ship `NNNN_seed_permission_phase<slice id>.sql` and asserts, in `packages/db/test/permission-catalogue.test.ts`, that the `(code, module, mutating)` set in `app.permission` **equals** the set exported by `permissions.ts` **in both directions**. A `PermissionDef` row with no insert fails it; an insert with no row fails it too. The number was reserved for exactly this. | **T4** |
-| **A2** | 4.10.3, 3.7.5, 4.17.1 | **`canonicalSyncRequest` moves to `packages/sync/src/signing.ts` and 6A's `apps/api/src/middleware/terminal-auth.ts` imports it from `@dulja/sync`.** 6A declared it in `apps/api` and had `tests/invariants/support/pos.ts` reach across a named `dependency-rule` allowance to get it, writing *"the ONE canonical signature string (SAH-046). A copy in the test tier is the second spelling that defect is about."* — and then 6B arrives, which may not import `apps/api` **at all** (spec:2389) and must produce a byte-identical string in the Electron main process. There are exactly two ways out and only one is admissible: a second spelling in `apps/pos`, which is the defect; or one module in the package §5.2 created *"shared by api/ and pos/"* (spec:2370), which is this. **This is a plan-side correction to 6A** (§4.18's mechanism): 6A's middleware keeps its behaviour and its own five `terminal-auth.test.ts` cases, and its local `canonicalSyncRequest` becomes a re-export. `signSyncHeaders` and `sha256Hex` join it; the three header-name constants join it so the till, the middleware and the test tier stop repeating three string literals. §4.17.1's `signSyncRequest` row keeps its name and its file and now imports the canonical string from `@dulja/sync` rather than composing it — **that is a one-line edit to `tests/invariants/support/pos.ts`, and it is in this task's Files list** — and the `dependency-rule` allowance 6A added for `tests/invariants/support/pos.ts` → `apps/api/src/middleware/terminal-auth` **is removed in this PR**, because after that edit nothing reaches across the seam §3.1 closes. ⚠️ **Two assertions inside 6A's `tests/regression/sah-046.test.ts` (6A:6298–6306) are falsified by this move and are corrected in the same PR — Step 5 spells both out.** They assert that the one `export function canonicalSyncRequest` lives in the middleware and that no file outside `terminal-auth` composes the canonical string; a re-export matches neither, and `signing.ts` is now the file that legitimately composes it. The invariant is unchanged (one declaration, one file); only its address moved, so the two lines are **replaced in place inside 6A's own block** rather than contradicted by a second `— 6B` block. | **T0, T3** |
-| **A3** | 3.1, 4.1 | **`packages/db/package.json` gains one `exports` subpath: `"./staff/pin": "./src/staff/pin.ts"`.** 6C states that *"6B imports it in the Electron main process"* and re-exports `./staff` from the main barrel — but the barrel exports `createDb`, which imports `postgres` at module scope, so a barrel import would put a PostgreSQL driver in `pos.exe`. §3.1's existing precedent is exact: `@dulja/db/test` and `@dulja/db/seed` are subpaths **precisely** so a heavy or privileged module is reachable without the barrel, and `sah-039` asserts the barrel never re-exports the seed at any depth. This is the same shape with the same reason. **The main barrel's `export … from "./staff"` is unchanged** — the server still reaches `hashPin` through it; the subpath is additive and adds no export to the barrel. | **T4** |
+| **A2** | 4.10.3, 3.7.5, 4.17.1 | **`canonicalSyncRequest` moves to `packages/sync/src/signing.ts` and 6A's `apps/api/src/middleware/terminal-auth.ts` imports it from `@dulja/sync`.** 6A declared it in `apps/api` and had `tests/invariants/support/pos.ts` reach across a named `dependency-rule` allowance to get it, writing *"the ONE canonical signature string (LEGACY-046). A copy in the test tier is the second spelling that defect is about."* — and then 6B arrives, which may not import `apps/api` **at all** (spec:2389) and must produce a byte-identical string in the Electron main process. There are exactly two ways out and only one is admissible: a second spelling in `apps/pos`, which is the defect; or one module in the package §5.2 created *"shared by api/ and pos/"* (spec:2370), which is this. **This is a plan-side correction to 6A** (§4.18's mechanism): 6A's middleware keeps its behaviour and its own five `terminal-auth.test.ts` cases, and its local `canonicalSyncRequest` becomes a re-export. `signSyncHeaders` and `sha256Hex` join it; the three header-name constants join it so the till, the middleware and the test tier stop repeating three string literals. §4.17.1's `signSyncRequest` row keeps its name and its file and now imports the canonical string from `@dulja/sync` rather than composing it — **that is a one-line edit to `tests/invariants/support/pos.ts`, and it is in this task's Files list** — and the `dependency-rule` allowance 6A added for `tests/invariants/support/pos.ts` → `apps/api/src/middleware/terminal-auth` **is removed in this PR**, because after that edit nothing reaches across the seam §3.1 closes. ⚠️ **Two assertions inside 6A's `tests/regression/legacy-046.test.ts` (6A:6298–6306) are falsified by this move and are corrected in the same PR — Step 5 spells both out.** They assert that the one `export function canonicalSyncRequest` lives in the middleware and that no file outside `terminal-auth` composes the canonical string; a re-export matches neither, and `signing.ts` is now the file that legitimately composes it. The invariant is unchanged (one declaration, one file); only its address moved, so the two lines are **replaced in place inside 6A's own block** rather than contradicted by a second `— 6B` block. | **T0, T3** |
+| **A3** | 3.1, 4.1 | **`packages/db/package.json` gains one `exports` subpath: `"./staff/pin": "./src/staff/pin.ts"`.** 6C states that *"6B imports it in the Electron main process"* and re-exports `./staff` from the main barrel — but the barrel exports `createDb`, which imports `postgres` at module scope, so a barrel import would put a PostgreSQL driver in `pos.exe`. §3.1's existing precedent is exact: `@dulja/db/test` and `@dulja/db/seed` are subpaths **precisely** so a heavy or privileged module is reachable without the barrel, and `legacy-039` asserts the barrel never re-exports the seed at any depth. This is the same shape with the same reason. **The main barrel's `export … from "./staff"` is unchanged** — the server still reaches `hashPin` through it; the subpath is additive and adds no export to the barrel. | **T4** |
 | **A4** | 4.10.6 | **The `contextBridge` surface is named: `DuljaPosBridge` and `POS_CHANNELS` in `apps/desktop/src/bridge-types.ts`, `registerPosHandlers` in `apps/pos/src/main/register.ts`.** §4.10.6 fixes the seven method names `window.dulja.pos.{sell, tender, closeShift, pull, drain, clock, priceCheck}` but names no interface, no channel constant and no registration function — and 0E's Task 11 namespace note already says *"6B adds `pos` to the same `DuljaBridge` interface additively and changes nothing here"*. Register: `DuljaPosBridge` with the seven methods plus `login`, `openShift`, `status`, `search`, `enrol` and `receipt` (thirteen — the seven are the ones §4.10.6 names, not the whole surface, and a till cannot sell without a login and a shift); `POS_CHANNELS` as the `Readonly<Record<keyof DuljaPosBridge, string>>` of `dulja:pos:<method>` strings; and `registerPosHandlers(deps: { ipcMain: Pick<Electron.IpcMain, "handle">; channels: Readonly<Record<string, string>>; db: PosDatabase; transport: SyncTransport | null; print: (payload: ReceiptPayload) => Promise<void> })`, exported from a **build output** of `apps/pos` (`dist-main/pos-main.cjs`) which `apps/desktop` `require`s by path — the channel map arrives as **data**, so neither workspace imports the other and spec:2389 holds in both directions. ADR 0058 records it. | **T9** |
 | **A5** | 2.7 (6B card), 3.11 | **`apps/desktop` gains a second electron-builder configuration, `electron-builder.pos.yml`, and the two build targets of spec:2361 become real.** 0E's `electron-builder.yml` is `appId: my.dulja.backoffice` with `extraResources: ../backoffice/dist → renderer` and a single `publish` feed; a second product cannot share it. Register: `apps/desktop/electron-builder.pos.yml` (`appId: my.dulja.pos`, `productName: Dulja POS`, `extraMetadata.main: dist/main-pos.js`, `extraResources` from `../pos/dist` → `renderer` and `../pos/dist-main` → `pos-main`, the same `asarUnpack` of `better-sqlite3`, `publish.url: ${env.DULJA_POS_UPDATE_FEED}`) and the environment name **`DULJA_POS_UPDATE_FEED`** beside 0E's `DULJA_UPDATE_FEED` in §3.11, holder *desktop*, set by 0C (the R2 `UPDATE_FEED` binding serves `updates/pos/` as well as `updates/backoffice/`). **`WINDOWS_CODE_SIGN_CERT` and `WINDOWS_CODE_SIGN_PASSWORD` gain no sibling** — §3.11 already says *"0E's `backoffice.exe` job and 6B's `pos.exe` job reference these two names and no others"*. | **T10, T13** |
 | **A6** | 4.2.4 | **Four `ERRORS` rows are allocated to 6B, all `ERR_TILL_*`:** `ERR_TILL_PIN_INVALID` (401 — *"the PIN does not match the cashier's stored hash on this till"*), `ERR_TILL_LIMIT_EXCEEDED` (422 — *"the ticket exceeds a branch POS limit and carries no supervisor override"*), `ERR_TILL_CATALOGUE_STALE` (409 — *"the till has never completed a catalogue pull and cannot price a ticket"*), `ERR_TILL_STORE_CORRUPT` (500 — *"the local database failed its integrity check"*). **A new `TILL` domain rather than reusing `POS`**: `ERR_POS_LIMIT_EXCEEDED` is **6C's** and is raised by the **server** at apply against `app.branch_pos_policy`, and the till's own pre-flight refusal must be distinguishable from it in a log — the whole point of the till check is that it fires *first*, and a shared code would make "the server refused" and "the till refused" indistinguishable in the needs-attention queue. The four are added in the PRs that raise them — **`ERR_TILL_CATALOGUE_STALE` and `ERR_TILL_STORE_CORRUPT` in T2** (the PR that writes `apps/pos/src/main/errors.ts`, whose `Extract<ErrCode, …>` does not compile until both rows exist in the registry), **`ERR_TILL_PIN_INVALID` and `ERR_TILL_LIMIT_EXCEEDED` in T4**. | **T2, T4** |
@@ -258,7 +258,7 @@ import {
   SYNC_SIGNATURE_HEADER, SYNC_TERMINAL_ID_HEADER, SYNC_TIMESTAMP_HEADER,
 } from "../src/index";
 
-describe("the canonical sync request string (§4.10.3, SAH-046 — ONE spelling)", () => {
+describe("the canonical sync request string (§4.10.3, LEGACY-046 — ONE spelling)", () => {
   it("is method, path, timestamp and the body hash, newline-separated, in that order", () => {
     expect(canonicalSyncRequest({ method: "POST", path: "/v1/sync/tickets", timestamp: "2026-01-15T00:00:00.000Z", body: "abc" }))
       .toBe("POST\n/v1/sync/tickets\n2026-01-15T00:00:00.000Z\nabc");
@@ -318,7 +318,7 @@ Run `bun run --cwd packages/sync test -- signing`. **Expected failure:** `The re
  * The ONE canonical signature string of §4.10.3, and the only place in the repository it exists.
  *
  * It lives in `packages/sync` and not in `apps/api` because both ends must produce it byte for byte and
- * `apps/pos` may not import `apps/api` (spec:2389). SAH-046 is precisely the defect two spellings of one
+ * `apps/pos` may not import `apps/api` (spec:2389). LEGACY-046 is precisely the defect two spellings of one
  * concept produce — *"two independent flags with the same name"* — so a second copy in the till, or in the
  * test tier, is the defect and not a convenience. §5.2 created this package *"shared by api/ and pos/"*
  * (spec:2370) for exactly this.
@@ -389,7 +389,7 @@ In `apps/api/src/middleware/terminal-auth.ts`, delete the local `canonicalSyncRe
 
 ```ts
 // apps/api/src/middleware/terminal-auth.ts — the two helpers become re-exports (6B T0, amendment A2).
-// The canonical string is `@dulja/sync`'s (SAH-046: one spelling, and the till compiles against the same
+// The canonical string is `@dulja/sync`'s (LEGACY-046: one spelling, and the till compiles against the same
 // module). The name stays exported from here because 6A's own tests and `tests/invariants/support/pos.ts`
 // import it from this path; deleting the export would be a rename, which §3.1 forbids.
 export { canonicalSyncRequest, sha256Hex as sha256hex } from "@dulja/sync";
@@ -435,7 +435,7 @@ import { describe, expect, it } from "vitest";
 import { canonicalSyncRequest, sha256Hex, signSyncHeaders, SYNC_SIGNATURE_HEADER } from "@dulja/sync";
 import { sourceFiles } from "../support/source";
 
-describe("SAH-046 — there is exactly one canonical sync signature string", () => {
+describe("LEGACY-046 — there is exactly one canonical sync signature string", () => {
   // ⚠️ There is deliberately NO `expect(fromApi).toBe(fromSync)` case, and no import of
   // `apps/api/src/middleware/terminal-auth` in this file. After A2 that middleware's
   // `canonicalSyncRequest` IS `@dulja/sync`'s, by `export { … } from "@dulja/sync"`, so the identity is a
@@ -443,7 +443,7 @@ describe("SAH-046 — there is exactly one canonical sync signature string", () 
   // would reopen the seam §3.1 closes: the test tier reaches `apps/api` only through `createApp()` and
   // `./routes`, never a middleware module, which is exactly why Step 4 deletes 6A's named allowance rather
   // than renaming its reason. The substantive claim is proved mechanically by the third case below and by
-  // `tests/regression/sah-046.test.ts`'s `defines` assertion, which pins the ONE `export function`.
+  // `tests/regression/legacy-046.test.ts`'s `defines` assertion, which pins the ONE `export function`.
 
   it("the one exported function agrees with itself on every shape the two ends actually send", () => {
     const cases = [
@@ -471,7 +471,7 @@ describe("SAH-046 — there is exactly one canonical sync signature string", () 
 
   it("no source file outside packages/sync/src/signing.ts composes the string itself", () => {
     // The mechanical half. A file that writes `${method}\n${path}` is a second spelling even if it happens to
-    // agree today, and "happens to agree today" is what SAH-046 is.
+    // agree today, and "happens to agree today" is what LEGACY-046 is.
     // `SourceFile.path` is already repo-relative (0B: `relative(REPO_ROOT, full)`), so offenders are reported
     // as they stand — slicing `REPO_ROOT.length` off it would print an empty string and name no file.
     const offenders = sourceFiles(["apps", "packages"])
@@ -488,17 +488,17 @@ describe("SAH-046 — there is exactly one canonical sync signature string", () 
 });
 ```
 
-- [ ] **Step 5: Correct the two assertions in 6A's `sah-046` that A2 invalidates**
+- [ ] **Step 5: Correct the two assertions in 6A's `legacy-046` that A2 invalidates**
 
-**This step is not optional and it is not cosmetic: without it Task 0 cannot be completed.** Global Constraint 19 requires `bun run test` green at the repository root after every task, and 6A's `tests/regression/sah-046.test.ts` (6A T15, 6A:6298–6306) contains two assertions that A2 falsifies by construction:
+**This step is not optional and it is not cosmetic: without it Task 0 cannot be completed.** Global Constraint 19 requires `bun run test` green at the repository root after every task, and 6A's `tests/regression/legacy-046.test.ts` (6A T15, 6A:6298–6306) contains two assertions that A2 falsifies by construction:
 
 1. `expect(defines(/export function canonicalSyncRequest\b/).map((s) => s.fileName)).toEqual([expect.stringContaining("apps/api/src/middleware/terminal-auth.ts")])` — a **re-export is not an `export function`**, so after Step 4 the only match in the tree is `packages/sync/src/signing.ts` and the expectation names the wrong file.
 2. `const handRolled = files.filter((s) => !s.fileName.includes("terminal-auth") && /\$\{[^}]*method[^}]*\}\\n\$\{/.test(s.getFullText()))`, asserted empty — and `signing.ts`'s body is `` `${r.method}\n${r.path}\n${r.timestamp}\n${r.body}` ``, whose filename does not contain `terminal-auth`. The list is now non-empty.
 
-**This is a plan-side correction to a file 6A owns (§4.18's mechanism), and §3.7.3's no-editing-an-earlier-block rule is respected in the only way it can be:** the two lines are *replaced in place inside 6A's own `— 6A` `it`*, because the claim they make is 6A's claim and it is still true — the location of the one spelling moved, and a second `— 6B` block asserting the opposite of a `— 6A` block would be two spellings of the invariant, which is the defect SAH-046 names. Nothing else in the file is touched; its two other `it`s and its fixtures are untouched.
+**This is a plan-side correction to a file 6A owns (§4.18's mechanism), and §3.7.3's no-editing-an-earlier-block rule is respected in the only way it can be:** the two lines are *replaced in place inside 6A's own `— 6A` `it`*, because the claim they make is 6A's claim and it is still true — the location of the one spelling moved, and a second `— 6B` block asserting the opposite of a `— 6A` block would be two spellings of the invariant, which is the defect LEGACY-046 names. Nothing else in the file is touched; its two other `it`s and its fixtures are untouched.
 
 ```ts
-// tests/regression/sah-046.test.ts — inside the existing `— 6A` `it("one canonical name per concept …")`.
+// tests/regression/legacy-046.test.ts — inside the existing `— 6A` `it("one canonical name per concept …")`.
 // The two expectations below REPLACE the two 6A wrote; `defines`, `files` and the TERMINAL_TOKEN_HEADER
 // expectation between them stay exactly as they are, and so do 6A's `s.fileName` / `s.getFullText()`
 // accessors — this is 6A's file and its spelling is not this slice's to change.
@@ -521,13 +521,13 @@ describe("SAH-046 — there is exactly one canonical sync signature string", () 
       expect(handRolled.map((s) => s.fileName)).toEqual([]);
 ```
 
-⚠️ **`packages/sync/src/signing.ts` is the exclusion string in *both* places — 6A's `sah-046` and this slice's own `pos-canonical-signature.test.ts` — and it is spelled identically in both.** Two scans with two different exclusion lists would be the very drift these tests exist to prevent.
+⚠️ **`packages/sync/src/signing.ts` is the exclusion string in *both* places — 6A's `legacy-046` and this slice's own `pos-canonical-signature.test.ts` — and it is spelled identically in both.** Two scans with two different exclusion lists would be the very drift these tests exist to prevent.
 
 - [ ] **Step 6: Run everything Steps 2–5 touch**
 
-Run `bun run --cwd packages/sync test`, `bun run --cwd apps/api test -- routes/sync`, `bun run --cwd apps/api test -- terminal-auth`, `bun run --cwd tests test -- pos-canonical-signature`, `bun run --cwd tests test -- sah-046`, `bun run lint:rules`, `bun run typecheck`. **Expected:** all green; 6A's `terminal-auth.test.ts` five cases and its catalogue and tickets route suites are untouched, which is the point of keeping the exported name, and `sah-046`'s three `it`s pass with the two corrected expectations.
+Run `bun run --cwd packages/sync test`, `bun run --cwd apps/api test -- routes/sync`, `bun run --cwd apps/api test -- terminal-auth`, `bun run --cwd tests test -- pos-canonical-signature`, `bun run --cwd tests test -- legacy-046`, `bun run lint:rules`, `bun run typecheck`. **Expected:** all green; 6A's `terminal-auth.test.ts` five cases and its catalogue and tickets route suites are untouched, which is the point of keeping the exported name, and `legacy-046`'s three `it`s pass with the two corrected expectations.
 
-⚠️ **One caveat on `sah-046` that belongs to 6A and not to this slice.** As 6A wrote that file it calls `s.fileName` and `s.getFullText()` on the results of 0B's `sourceFiles`, which returns `{ path, text, lines }` (0B:5727) and has neither member — so if the file is red *before* Task 0 begins, that is a pre-existing 6A defect and **is not this step's to fix**: replace only the two expectations named above, keep 6A's accessor spelling so the correction stays a one-concept change, and raise the accessor mismatch with the 6A owner. Task 0's gate prints `need_repo "0B sourceFiles"`, so the real shape is one `grep` away before you start.
+⚠️ **One caveat on `legacy-046` that belongs to 6A and not to this slice.** As 6A wrote that file it calls `s.fileName` and `s.getFullText()` on the results of 0B's `sourceFiles`, which returns `{ path, text, lines }` (0B:5727) and has neither member — so if the file is red *before* Task 0 begins, that is a pre-existing 6A defect and **is not this step's to fix**: replace only the two expectations named above, keep 6A's accessor spelling so the correction stays a one-concept change, and raise the accessor mismatch with the 6A owner. Task 0's gate prints `need_repo "0B sourceFiles"`, so the real shape is one `grep` away before you start.
 
 - [ ] **Step 7: Write the gate script**
 
@@ -662,20 +662,20 @@ Expected before the architect's PR: fourteen `MISSING (contracts)` lines and exi
 git add scripts/check/contracts-6b-amendments.sh packages/sync/src/signing.ts packages/sync/src/index.ts \
         packages/sync/test/signing.test.ts apps/api/src/middleware/terminal-auth.ts apps/api/package.json \
         scripts/lint/rules/dependency-rule.ts tests/invariants/pos-canonical-signature.test.ts \
-        tests/invariants/support/pos.ts tests/regression/sah-046.test.ts tests/package.json bun.lock
+        tests/invariants/support/pos.ts tests/regression/legacy-046.test.ts tests/package.json bun.lock
 git commit -m "$(cat <<'EOF'
 chore(sync): move canonicalSyncRequest into @dulja/sync and add the 6B gate [6B T0]
 
 Ten register amendments (A1-A10) and forty repo names this slice imports from 0A, 0B, 0D, 0E,
 5A, 6A and 6C. The canonical signature string now has exactly one home: apps/pos may not import
-apps/api (spec:2389) and a second spelling of one concept is SAH-046 itself.
+apps/api (spec:2389) and a second spelling of one concept is LEGACY-046 itself.
 
 apps/api/src/middleware/terminal-auth.ts re-exports the name so 6A's own tests and call sites are
 untouched, tests/invariants/support/pos.ts imports the string instead of composing it, and 6A's
 dependency-rule allowance for that seam is deleted because nothing crosses it any more. Two
-assertions in 6A's tests/regression/sah-046.test.ts point at the declaration's old address and are
+assertions in 6A's tests/regression/legacy-046.test.ts point at the declaration's old address and are
 corrected in place inside 6A's own block: the invariant is unchanged (one declaration, one file)
-and a second block asserting the opposite would be the very defect SAH-046 names.
+and a second block asserting the opposite would be the very defect LEGACY-046 names.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 EOF
@@ -935,7 +935,7 @@ describe("the till's local model (§4.10.6, spec:1328-1335)", () => {
     expect((thrown as StoreCorruptError).code).toBe("ERR_TILL_STORE_CORRUPT");
   });
 
-  it("the schema file mentions no ESC/POS, drawer port or scanner — D18, SAH-086", () => {
+  it("the schema file mentions no ESC/POS, drawer port or scanner — D18, LEGACY-086", () => {
     const sql = readFileSync(new URL("../src/main/schema.sql", import.meta.url), "utf8");
     for (const banned of ["esc/pos", "escpos", "drawer_port", "scanner", "scale", "0x4E", "opos"]) {
       expect(sql.toLowerCase()).not.toContain(banned.toLowerCase());
@@ -1744,7 +1744,7 @@ function bool(row: Record<string, unknown>, key: string): number {
  *
  * There is one statement per stream and no dynamic table name: `MIRROR_TABLE[stream]` selects a **literal**
  * SQL string below, never interpolates one — spec:100's "never build SQL by string concatenation" binds the
- * till as much as the server (SAH-036/037/069), and acceptance test 27 is the mechanical check.
+ * till as much as the server (LEGACY-036/037/069), and acceptance test 27 is the mechanical check.
  */
 export function upsertMirror(db: PosDatabase, stream: Stream, m: MirrorRow): void {
   const rev = revisionToText(m.revision);
@@ -2146,7 +2146,7 @@ describe("HttpSyncTransport — the till's whole network surface", () => {
     expect(seen!.headers.get(SYNC_TERMINAL_ID_HEADER)).toBe("term-1");
   });
 
-  it("sends NO tenant or actor header, ever — identity is the signature (SAH-044, test 11)", async () => {
+  it("sends NO tenant or actor header, ever — identity is the signature (LEGACY-044, test 11)", async () => {
     let seen: Request | null = null;
     const t = new HttpSyncTransport({
       baseUrl: "https://api.example", device, newIdempotencyKey: () => "idem-1",
@@ -2695,7 +2695,7 @@ git commit -m "$(cat <<'EOF'
 feat(pos): the device key, the signed transport and the two sync loops [6B T3]
 
 Identity is the signature: no X-Tenant-Id, no X-Actor-Id, no bearer token ever leaves the till
-(SAH-044, test 11). pullNow propagates so an interrupted transfer resumes from the cursor
+(LEGACY-044, test 11). pullNow propagates so an interrupted transfer resumes from the cursor
 (test 20); drainNow does not, because an offline drain is the normal state of a till mid-shift
 and must never interrupt a sale. A 202 acks nothing (§4.10.4).
 
@@ -2832,7 +2832,7 @@ describe("PIN login and offline authority (spec:1324, §4.6.3)", () => {
   });
 
   it("never stores or logs the PIN, and never compares it as a string", async () => {
-    // SAH-028's whole point. The stored value is an Argon2id PHC string and the comparison is verifyPin's.
+    // LEGACY-028's whole point. The stored value is an Argon2id PHC string and the comparison is verifyPin's.
     await mirrorCashier({ principalId: "p-1", pin: "4821", codes: [] });
     const hash = db.raw.prepare<[], { pin_hash: string }>("select pin_hash from catalogue_cashier").get()!.pin_hash;
     expect(hash).toMatch(/^\$argon2id\$/);
@@ -2900,7 +2900,7 @@ Run `bun run --cwd apps/pos test -- authority`. **Expected failure:** `Failed to
   },
 ```
 
-**Why a subpath rather than the barrel.** `packages/db/src/index.ts` exports `createDb`, which imports `postgres` at module scope; a barrel import from `apps/pos` would put a PostgreSQL driver in `pos.exe`. `@dulja/db/test` and `@dulja/db/seed` are subpaths for exactly this reason (§3.1: the seed's Supabase admin client must not reach every module that imports `withTenant`), and `sah-039` pins the rule. This is additive: the barrel gains nothing, loses nothing, and the server keeps reaching `hashPin` through it.
+**Why a subpath rather than the barrel.** `packages/db/src/index.ts` exports `createDb`, which imports `postgres` at module scope; a barrel import from `apps/pos` would put a PostgreSQL driver in `pos.exe`. `@dulja/db/test` and `@dulja/db/seed` are subpaths for exactly this reason (§3.1: the seed's Supabase admin client must not reach every module that imports `withTenant`), and `legacy-039` pins the rule. This is additive: the barrel gains nothing, loses nothing, and the server keeps reaching `hashPin` through it.
 
 Add the proof to Task 12's pinned file (see Task 12 Step 2) — a scan of `apps/pos/src/**` for `from "@dulja/db"` with no subpath.
 
@@ -2911,7 +2911,7 @@ Add the proof to Task 12's pinned file (see Task 12 Step 2) — a scan of `apps/
 -- The three permission codes §3.6.2 assigns slice 6B. They are evaluated ONLY at the till, from the
 -- down-synced `pos_cashier.snapshot` (§4.6.3), which is why §3.6.3 makes `apps/pos` one of the roots the
 -- `permission-catalogue` lint scans: a code with no reference anywhere fails the build (spec:2051's inverse
--- of SAH-084), and these three have their only references in the till.
+-- of LEGACY-084), and these three have their only references in the till.
 --
 -- `app.permission` is GLOBAL (no RLS, read-only to app_rw — plan0A:1254), so it is migration data and not
 -- seed-pack data (§3.4.8, hazard 10). Per-tenant rows -- the role grants -- are `packages/db/seed/roles.ts`.
@@ -2948,7 +2948,7 @@ on conflict (code) do update set
 --         cannot write them". A `delete from app.role_permission` here would silently affect ZERO rows.
 --      3. Nor can this file discover the tenants to set a context FOR: `app.tenant` is itself forced with
 --         `using (id = app.current_tenant())` (plan0A:980-981), so the migrator enumerating it sees nothing.
---    Disabling or dropping the policy "temporarily" is forbidden outright (Global Constraint 1; SAH-027,
+--    Disabling or dropping the policy "temporarily" is forbidden outright (Global Constraint 1; LEGACY-027,
 --    041, 053), so the down file does the one thing it legitimately can and the ROLLBACK CARRIES A
 --    PRECONDITION instead: it is exercised on a freshly migrated database with no seeded tenant -- exactly
 --    where §3.4.6's generalised reversibility test exercises every down file -- and on a database where
@@ -3212,7 +3212,7 @@ export const TILL_CODES = [
  * It is the till's copy of 6C's `OVERRIDE_LIFTS` because that module imports `postgres` and the till carries
  * no PostgreSQL driver (Global Constraint 3). **Task 12's pinned test asserts the two maps are equal**, so a
  * change to one that is not made to the other fails the build rather than letting a till authorise something
- * the server will refuse — which is the SAH-027 shape 6C's nightly comparison exists to catch.
+ * the server will refuse — which is the LEGACY-027 shape 6C's nightly comparison exists to catch.
  *
  * `price_override` appears here and **not** in 6C's server-side map on purpose: 6C's Task 9 decision (c)
  * records that `max_price_override_pct` is enforced **at the till only**, because checking it server-side
@@ -3238,7 +3238,7 @@ interface CashierRow { id: string; employee_id: string; branch_id: string; pin_h
  * PIN login (spec:1324): the PIN is a **till credential and never a login** — no route accepts one and the
  * server never compares one. The stored value is the Argon2id PHC string 6C's `hashPin` produced, down-synced
  * in `catalogue_cashier`, and `verifyPin` is 6C's function imported through `@dulja/db/staff/pin` (A3) so
- * there is exactly one Argon2id call site in the product (SAH-025, 026, 028).
+ * there is exactly one Argon2id call site in the product (LEGACY-025, 026, 028).
  *
  * **Every failure answers `ERR_TILL_PIN_INVALID`** — unknown cashier, wrong PIN, revoked credential alike.
  * Distinguishing them would let anyone standing at a till enumerate the branch's cashier list.
@@ -3352,7 +3352,7 @@ references are in apps/pos, granted to cashier AND branch_manager (spec:2160-216
 named in TILL_CODES in this same commit, so permission-catalogue is green here and at every later
 boundary rather than red across a PR chain. PIN login reads the down-synced snapshot and calls
 6C's verifyPin through the new @dulja/db/staff/pin subpath, so the product has exactly one
-Argon2id call site (SAH-025, 026, 028).
+Argon2id call site (LEGACY-025, 026, 028).
 
 Lands 6C amendment A10's one server-side principal_has line, inside 6C's own attendance loop and
 against each event's OWN principal: a shift handover puts the outgoing cashier's clock_out on the
@@ -4508,7 +4508,7 @@ const MODE: RoundingMode = "HALF_AWAY_FROM_ZERO";   // 6C's `MODE`; the two limi
  * `document.client_ref`"*, and spec:1302 makes it the deduplication key. `crypto.randomUUID()` is a **v4**
  * and would lose the time ordering `document.client_ref`'s index and 6A's cursor both rely on; 0A's
  * `uuidv7(sql)` is a database round trip and there is no database here. The layout is RFC 9562 §5.7:
- * 48-bit big-endian milliseconds, version 7, variant 0b10, the rest random. `tests/regression/sah-051.test.ts`
+ * 48-bit big-endian milliseconds, version 7, variant 0b10, the rest random. `tests/regression/legacy-051.test.ts`
  * gains a `— 6B` block in Task 12 asserting this is the only id source in `apps/pos`.
  */
 export function tillUuidv7(at: Date = new Date()): string {
@@ -5807,7 +5807,7 @@ export interface ReceiptPayload {
  *
  * `documentNumber` is `null` until the server has acknowledged the ticket and the till has learned the number
  * from a `TicketResult`. A receipt printed before that carries the client ref, which is what the shop quotes
- * on the phone — and printing a *guessed* number would be SAH-051 in a new place.
+ * on the phone — and printing a *guessed* number would be LEGACY-051 in a new place.
  *
  * `catalogueRevision` and `catalogueAt` are on the receipt because spec:1356 asks the indicator to be honest
  * and a printed receipt outlives the screen: a customer disputing a price and a manager reading the receipt
@@ -7634,7 +7634,7 @@ describe("pos.exe's Electron posture is 0E's, restated and not re-decided (spec:
     expect(main).toContain("app.requestSingleInstanceLock()");
   });
 
-  it("mentions no ESC/POS, drawer port, scanner or scale anywhere — D18, SAH-086", () => {
+  it("mentions no ESC/POS, drawer port, scanner or scale anywhere — D18, LEGACY-086", () => {
     for (const f of ["src/main-pos.ts", "src/preload-pos.ts", "src/bridge-types.ts"]) {
       const text = read(f).toLowerCase();
       for (const banned of ["esc/pos", "escpos", "drawer_port", "opos", "serialport", "node-hid", "usb"]) {
@@ -8723,7 +8723,7 @@ interface ReceiptPayload {
  * consumed as a decision and nothing more (D18: ordinary Windows printer drivers).
  *
  * `documentNumber` is `null` until the ticket has been acknowledged, so the receipt prints the **client ref**
- * and says it has not been sent. Printing a guessed number would be SAH-051 in a new place.
+ * and says it has not been sent. Printing a guessed number would be LEGACY-051 in a new place.
  */
 export function Receipt({ payload, locale }: { payload: ReceiptPayload; locale: Locale }) {
   const { t } = useTranslation();
@@ -8844,13 +8844,13 @@ EOF
 
 ### Task 12: ACCEPTANCE TEST 19 — 500 tickets offline, reconnect, zero duplicates, zero lost tickets, and re-sending changes nothing
 
-**Part VI test 19, verbatim (spec:2437):** *"**Offline POS.** 500 tickets sold with the network down; reconnect; zero duplicates, zero lost tickets. Re-sending the same batch twice changes nothing."* — SAH-051. §6.1 names **6B** as its owner and 6A as the server half, and this task is where the whole slice becomes a number.
+**Part VI test 19, verbatim (spec:2437):** *"**Offline POS.** 500 tickets sold with the network down; reconnect; zero duplicates, zero lost tickets. Re-sending the same batch twice changes nothing."* — LEGACY-051. §6.1 names **6B** as its owner and 6A as the server half, and this task is where the whole slice becomes a number.
 
 **Four other tests are re-run here** and each one is a clause of a test somebody else owns: **20**'s till half (`pullAll` against `SqliteSyncStore` rather than `MemorySyncStore`), **11**'s sync-header clause (the till sends no `X-Tenant-Id` and no `X-Actor-Id`, ever), **37**'s till half (the same over-limit ticket the server refuses is refused at the till first, **with the same words**), and **36**'s catalogue clause over this slice's three codes.
 
 **Files:**
 - Create: `tests/invariants/support/till.ts` (§4.17.1, registered by A7), `tests/invariants/pos-offline.test.ts`, `tests/invariants/phase-6b-pinned.test.ts`
-- Modify: `tests/package.json` (one dependency), `tests/tsconfig.json` (one `include`), `tests/regression/sah-051.test.ts` (a `— 6B` block)
+- Modify: `tests/package.json` (one dependency), `tests/tsconfig.json` (one `include`), `tests/regression/legacy-051.test.ts` (a `— 6B` block)
 
 **Interfaces**
 
@@ -9146,7 +9146,7 @@ beforeAll(async () => {
 }, 180_000);
 afterAll(() => { f?.close(); });
 
-describe("ACCEPTANCE TEST 19 — offline POS (spec:2437, SAH-051)", () => {
+describe("ACCEPTANCE TEST 19 — offline POS (spec:2437, LEGACY-051)", () => {
   it("Step 1: the catalogue pulled and EVERY stream's cursor advanced", async () => {
     const cursors = await Promise.all(CATALOGUE_STREAMS.map((s) => f.store.getCursor(s)));
     // §4.10.5 / 6A amendment 23c: every stream, not only the ones the page carried. `cashier` and
@@ -9442,15 +9442,15 @@ describe("6B's pinned equalities", () => {
 });
 ```
 
-- [ ] **Step 5: Append the `— 6B` block to `sah-051`**
+- [ ] **Step 5: Append the `— 6B` block to `legacy-051`**
 
 ```ts
-// tests/regression/sah-051.test.ts — appended. The file is 0B's; this block is 6B's (§3.7.3).
-describe("SAH-051 — no sequential public identifier, and no shared counter — 6B", () => {
+// tests/regression/legacy-051.test.ts — appended. The file is 0B's; this block is 6B's (§3.7.3).
+describe("LEGACY-051 — no sequential public identifier, and no shared counter — 6B", () => {
   it("the till mints its own uuidv7 and there is exactly ONE id source in apps/pos", () => {
     // spec:2037: "The POS generates a uuidv7 at the till for each ticket … carried as document.client_ref."
     // The whole of "zero duplicates" rests on this: a server-assigned id would need a network call at the
-    // moment of sale, and a shared counter is SAH-051 itself.
+    // moment of sale, and a shared counter is LEGACY-051 itself.
     // `SourceFile.path` is already repo-relative (0B: `relative(REPO_ROOT, full)`), so it is compared as it
     // stands. Slicing `REPO_ROOT.length` off it would make both expectations compare `[""]` to a real path.
     // The test matches the IMPORT and not a bare mention of the name: `ticket.ts`'s own docstring explains
@@ -9463,7 +9463,7 @@ describe("SAH-051 — no sequential public identifier, and no shared counter —
       .map((s) => s.path);
     // `randomUUID` is permitted in exactly two places, both local bookkeeping and neither a public
     // identifier: `store.ts`'s outbox ROW id and `authority.ts`'s `clockEvent` attendance ROW id. The list is
-    // exhaustive on purpose — a third file appearing here is the shared counter SAH-051 is about.
+    // exhaustive on purpose — a third file appearing here is the shared counter LEGACY-051 is about.
     expect(minters.sort()).toEqual(["apps/pos/src/main/authority.ts", "apps/pos/src/main/store.ts"]);
     expect(sourceFiles(["apps/pos/src/main"]).filter((s) => /export function tillUuidv7/.test(s.text))
       .map((s) => s.path)).toEqual(["apps/pos/src/main/ticket.ts"]);
@@ -9486,15 +9486,15 @@ describe("SAH-051 — no sequential public identifier, and no shared counter —
 ```bash
 bun run --cwd tests test -- pos-offline
 bun run --cwd tests test -- phase-6b-pinned
-bun run --cwd tests test -- sah-051
+bun run --cwd tests test -- legacy-051
 bun run typecheck && bun run lint && bun run lint:rules
 ```
 
-**Expected:** 8 passed in `pos-offline` (acceptance test 19 green, and its Step 4 and Step 5 are the DoD's *"zero lost tickets"* and *"zero duplicates"*), **7 passed** in `phase-6b-pinned` (the six of Step 4 plus the §3.6.4 grants case), and `sah-051` green with both blocks. **This is the point at which §6.2's row spec:1062 closes — in every clause except *customer-specific pricing*, which is blocked on amendment A10(b) and marked by T5's one `it.skip` (Known gaps #1)** — POS selling, pricing, tenders, returns, customers, shifts, PIN, offline and price check are all exercised by a test in this slice.
+**Expected:** 8 passed in `pos-offline` (acceptance test 19 green, and its Step 4 and Step 5 are the DoD's *"zero lost tickets"* and *"zero duplicates"*), **7 passed** in `phase-6b-pinned` (the six of Step 4 plus the §3.6.4 grants case), and `legacy-051` green with both blocks. **This is the point at which §6.2's row spec:1062 closes — in every clause except *customer-specific pricing*, which is blocked on amendment A10(b) and marked by T5's one `it.skip` (Known gaps #1)** — POS selling, pricing, tenders, returns, customers, shifts, PIN, offline and price check are all exercised by a test in this slice.
 
 ```bash
 git add tests/invariants/support/till.ts tests/invariants/pos-offline.test.ts \
-        tests/invariants/phase-6b-pinned.test.ts tests/regression/sah-051.test.ts \
+        tests/invariants/phase-6b-pinned.test.ts tests/regression/legacy-051.test.ts \
         tests/package.json tests/tsconfig.json bun.lock
 git commit -m "$(cat <<'EOF'
 test(pos): ACCEPTANCE TEST 19 — 500 tickets offline, zero duplicates, zero lost [6B T12]
@@ -9873,7 +9873,7 @@ EOF
 | 13 | **`pos-bridge.spec.ts` greps `register.ts` for `handle("<method>"`,** which is the literal the file contains; `channels[method]` is looked up inside `handle` and grepping for it would find one occurrence and pass for every method. | T9 Step 2 |
 | 14 | **CI compiles `apps/desktop`'s POS entry before packaging it.** `dist:pos` packages `dist/main-pos.js`, which only `build:pos` produces; without the step the installer starts a window that closes immediately. | T10 Step 3 |
 | 15 | **The rounding sign has one convention per boundary and the tests assert the right one at each.** `applyCashRounding` returns the **discount-column** sign (negative when rounding up); `tender` and `buildReceipt` return the **receipt-facing** sign (positive), and the `.negate()` at that one boundary is the whole conversion. | T7 Steps 2, 5 |
-| 16 | **A2 breaks two assertions in 6A's `sah-046` and T0 repairs them in the same PR.** A re-export does not match `/export function canonicalSyncRequest\b/`, and `signing.ts`'s body matches 6A's `handRolled` scan while its filename does not contain `terminal-auth`. Both are replaced in place inside 6A's own `— 6A` `it` (the invariant is unchanged; only the path in it moved), `sah-046` joins T0's run list, and `tests/invariants/support/pos.ts` and `tests/package.json` join T0's Files — the import switch A2's own text promises, without which the deleted `dependency-rule` allowance would still be needed. | T0 Steps 4, 5, 6; A2; File Structure |
+| 16 | **A2 breaks two assertions in 6A's `legacy-046` and T0 repairs them in the same PR.** A re-export does not match `/export function canonicalSyncRequest\b/`, and `signing.ts`'s body matches 6A's `handRolled` scan while its filename does not contain `terminal-auth`. Both are replaced in place inside 6A's own `— 6A` `it` (the invariant is unchanged; only the path in it moved), `legacy-046` joins T0's run list, and `tests/invariants/support/pos.ts` and `tests/package.json` join T0's Files — the import switch A2's own text promises, without which the deleted `dependency-rule` allowance would still be needed. | T0 Steps 4, 5, 6; A2; File Structure |
 | 17 | **`pragma table_info().type` echoes the DECLARED spelling, and `schema.sql` is lowercase.** Both the T1 and T12 assertions compare `c.type.toUpperCase() !== "TEXT"`; comparing against `"TEXT"` directly would report every money, quantity and revision column as an offender on the first run, and "fixing" it by upper-casing the DDL would break Global Constraint 9. | T1 Step 3; T12 Step 4 |
 | 18 | **`SourceFile.path` is already repo-relative** (0B: `relative(REPO_ROOT, full)`), so no assertion slices `REPO_ROOT.length` off it. Two of the five sites were `toEqual` comparisons against real paths and would have compared `[""]`; the other three would have named no file in their failure message. | T0 Step 4; T12 Steps 4, 5 |
 | 19 | **An untendered ticket is not drainable.** `sell` writes the outbox row with `tenders: []` inside the sale's transaction (spec:1303) and `tender` fills it in; the 15-second drain loop would otherwise push every sale where the cashier took longer than one tick to collect payment, and 6A's `POS_TICKET` policy refuses an empty-tender ticket into `app.needs_attention`. `pendingOutbox` holds back a `ticket` row whose local ticket is still `'open'` — and only that. | T2 Step 4; T2 Step 1's new case |
@@ -9899,7 +9899,7 @@ EOF
 | `SyncStore` over SQLite; every stream advanced to the page's highest revision | §4.10.5, 6A A23c | **T2** |
 | Outbox acked only on acknowledgement; never on silence | spec:1337 | **T2** |
 | Terminal identity, Ed25519 signing, enrolment, both loops | §4.10.3, spec:1303 | **T3** |
-| PIN login from the down-synced snapshot; `verifyPin` imported, never re-implemented | spec:1324, SAH-028 | **T4** |
+| PIN login from the down-synced snapshot; `verifyPin` imported, never re-implemented | spec:1324, LEGACY-028 | **T4** |
 | The three `pos` codes seeded, granted and referenced from `apps/pos` | §3.6.2, §3.6.3 | **T4, T5, T6** |
 | 6C's amendment A10 — the one server-side `principal_has` line | 6C A10 | **T4** |
 | Clock-in/out as attendance, riding on a ticket | spec:2089 | **T4, T6** |
@@ -9922,7 +9922,7 @@ EOF
 | Both text directions; keyboard parity; no mouse required | spec:2251, 2254 | **T11** |
 | **Acceptance test 19** | spec:2437 | **T12** |
 | Test 20's till half; test 11's sync-header clause; test 37's till half; test 36's catalogue clause | §6.1 | **T12** |
-| `sah-051` appended | §3.7.3 | **T12** |
+| `legacy-051` appended | §3.7.3 | **T12** |
 | ⚠️ OD-18 | §2.12 | **T13** |
 | ⚠️ OD-03 | §2.12 | **T14** |
 | ⚠️ OD-24 | §2.12 | **T11** |
@@ -9936,7 +9936,7 @@ EOF
 4. **Reports ship in-phase** — this slice ships **none** and says so: `pos.z_report` and `pos.sales_by_cashier` are **6D's**, `ReportCodeSchema` is not widened, and `shiftTotals` carries an explicit ⚠️ that it is not a Z-report. ✅
 5. **Owner-account tasks** — T10 Step 4 (the R2 feed) and T13 (the certificate) both follow the *"owner provides X; verify with `<exact command>`; until provided `<local equivalent>`"* pattern. ✅
 6. **Owner decisions are isolated tasks** — OD-24 → T11, OD-18 → T13, OD-03 → T14, one each; OD-29 recorded with no task, as the card requires. ✅
-7. **D1–D27 not re-opened** — D18 (POS hardware out of scope) is treated as settled, which is why `sah-086` is **not created**. ✅
+7. **D1–D27 not re-opened** — D18 (POS hardware out of scope) is treated as settled, which is why `legacy-086` is **not created**. ✅
 8. **Plan 0A helpers by exact name, never renamed** — `startApi`, `sharedApi`, `sourceFiles`, `REPO_ROOT`, `withTenant`, `Db`, `Seed` are consumed as they are; `fixtures.ts` is **not touched at all**. ✅
 9. **`fixtures.ts` additive only** — this slice adds **no** helper to it (§4.17), and its one test-tier file is registered by A7 and described as a thin layer over 6C's, which is over 6A's. ✅
 10. **No per-tenant row in a migration** — 0063 inserts into `app.permission`, which is global; the `cashier` grants are `packages/db/seed/roles.ts`. ✅
@@ -10054,7 +10054,7 @@ bun run --cwd tests test -- pos-offline                # 8 passed = acceptance t
 
 ```bash
 bun run lint && bun run lint:rules && bun run format:check && bun run typecheck && bun run test
-bun run --cwd tests test -- pos-offline phase-6b-pinned pos-canonical-signature sah-051
+bun run --cwd tests test -- pos-offline phase-6b-pinned pos-canonical-signature legacy-051
 bun run --cwd apps/pos test
 bun run --cwd apps/desktop test -- pos-posture pos-bridge pos-updater
 bun run --cwd packages/db test -- permission-catalogue sync/apply
@@ -10065,4 +10065,4 @@ Every one green, plus the three ADR proposals (**0057**, **0058**, **0059**) ask
 
 **What comes next, and what it needs from here.** **6D** is the only slice that depends on this one. It needs: `app.shift` and `app.till_event` (its own migration 0070) plus the shift and till-event apply paths inside 6A's `applyBatch`, at which point **every `shift` and `till_event` outbox row this slice has been accumulating drains on the next call** — 6D's first task should assert exactly that, because it is the cheapest possible proof that "refuse, never drop" worked. It also consumes `pos.shift.own` from this slice's catalogue rows (its Task 0 gate checks them by literal) and `POS_PERMISSION.shiftOwn`, which **6D** adds to 6A's map, not this slice. Nothing in 7A–7C, 8A–8D or 9A–9B depends on `apps/pos`; **7C** re-expresses 6D's two POS report codes under the same codes and touches nothing here.
 
-**Do not, in any later slice:** add a second canonical signature string (T0's whole point, SAH-046); give a `catalogue_*` mirror a second writer (ADR 0057 rule 1); make the cashier the acting principal (hazard 19, SAH-044); ack an outbox row the server did not name (spec:1337); store a revision, an amount or a quantity as anything but `TEXT` in the local file (A8b); or let `apps/pos` import `apps/api`, `apps/desktop` or the `@dulja/db` barrel (spec:2389, Global Constraint 3). Each of those has a test in this slice that fails loudly, and each of them is a defect the legacy system actually shipped.
+**Do not, in any later slice:** add a second canonical signature string (T0's whole point, LEGACY-046); give a `catalogue_*` mirror a second writer (ADR 0057 rule 1); make the cashier the acting principal (hazard 19, LEGACY-044); ack an outbox row the server did not name (spec:1337); store a revision, an amount or a quantity as anything but `TEXT` in the local file (A8b); or let `apps/pos` import `apps/api`, `apps/desktop` or the `@dulja/db` barrel (spec:2389, Global Constraint 3). Each of those has a test in this slice that fails loudly, and each of them is a defect the legacy system actually shipped.

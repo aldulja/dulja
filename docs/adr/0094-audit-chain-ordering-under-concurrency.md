@@ -29,7 +29,7 @@ at once": `brokenLinks: 2` before, `0` after).
    `app.audit_chain()` takes the tenant lock, then `new.seq := nextval(…)`, then reads its predecessor and hashes —
    one critical section. A later writer in the tenant gets the lock only after the holder ends, so within a tenant
    seq order = lock order = link order. A supplied `seq` is overwritten, so no inserter can choose a position
-   (SAH-023's review block proves it).
+   (LEGACY-023's review block proves it).
 2. **`seq` stays the chain order; no `chain_no` column.** Every reader — both verifiers, test 13, the audit
    routes and report, the export — already orders by `seq`; a second per-tenant counter would leave them all
    one refactor from walking the wrong order. Numbers stay globally unique across tenants (one sequence), so

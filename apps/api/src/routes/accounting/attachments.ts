@@ -258,7 +258,7 @@ export function createAttachmentRoutes(store: ObjectStore): OpenAPIHono<AppEnv> 
       }
 
       // The name is data. It reaches Content-Disposition and nothing else; the object key is derived
-      // from the row's uuid (SAH-038), so a traversal payload here addresses nothing.
+      // from the row's uuid (LEGACY-038), so a traversal payload here addresses nothing.
       const fileName = (file.name || "attachment").split(/[/\\]/).pop()!.slice(0, 255);
       const bytes = new Uint8Array(await file.arrayBuffer());
 

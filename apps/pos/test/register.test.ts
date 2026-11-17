@@ -193,7 +193,7 @@ describe("POS main IPC authority", () => {
     expect(payload).not.toContain("4821");
     expect(payload).not.toContain("pin");
   });
-  it("counts wrong supervisor approvals and sign-ins against one lockout per employee number (SAH-028)", async () => {
+  it("counts wrong supervisor approvals and sign-ins against one lockout per employee number (LEGACY-028)", async () => {
     const shiftId = await start();
     const sale = {
       shiftId,

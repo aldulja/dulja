@@ -6,7 +6,7 @@ import { app } from "./tenant";
  * expiry a v1 row: FEFO picking and the near-expiry alert both read `expires_on`. Every
  * `app.item` insert creates one companion row here with `code = 'NONE'` by the
  * `item_sentinel_lot` trigger, which is what lets `inventory_movement.lot_id` and
- * `stock_on_hand.lot_id` both be NOT NULL (ADR 0034, SAH-050).
+ * `stock_on_hand.lot_id` both be NOT NULL (ADR 0034, LEGACY-050).
  *
  * This mirror is the diff source for the next slice that alters the table (ADR-0002, contracts §3.4.9).
  */
@@ -33,7 +33,7 @@ export const lot = app.table(
     // reason `warehouse_parent_idx` gives: a Drizzle predicate needs the `sql` tag `no-bare-db` refuses.
     index("lot_expiry_idx").on(table.companyId, table.expiresOn),
     index("lot_item_idx").on(table.itemId),
-    // 7B, migration 0077 (SAH-070) — NOT partial, unlike lot_expiry_idx: a report filter cannot state
+    // 7B, migration 0077 (LEGACY-070) — NOT partial, unlike lot_expiry_idx: a report filter cannot state
     // `archived_at is null`, so inventory.expiry_list could never use the partial one.
     index("lot_company_expires_idx").on(table.companyId, table.expiresOn),
     // 9B, migration 0101 — partial (`where legacy_ref is not null`) in the migration only.

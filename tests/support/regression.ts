@@ -39,13 +39,13 @@ export interface ThinContext {
 }
 
 export function thinRegression(
-  sah: string,
+  legacyDefect: string,
   heading: string,
   cites: string,
   body: (context: ThinContext) => Promise<void>,
 ): void {
   sliceRegression(
-    sah,
+    legacyDefect,
     heading,
     "0B",
     `holds through the production API layer (first proven by ${cites})`,
@@ -61,13 +61,13 @@ export function thinRegression(
  * destructured parameter shadow it, which `no-shadow` refuses.
  */
 export function sliceRegression(
-  sah: string,
+  legacyDefect: string,
   heading: string,
   slice: string,
   title: string,
   body: (context: ThinContext) => Promise<void>,
 ): void {
-  describe(`${sah} ${heading} — ${slice}`, () => {
+  describe(`${legacyDefect} ${heading} — ${slice}`, () => {
     it(title, async () => {
       const context = await sharedDb();
       await body({ ...context, withTenant, expect });

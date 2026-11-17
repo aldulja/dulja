@@ -8,7 +8,7 @@
 ## Context
 
 Spec §3.2.2 chooses pg-boss because "a job is enqueued in the same transaction as the posting — the guarantee
-SAH-005 lacked". Three facts had to be verified against the installed version rather than assumed: the option that
+LEGACY-005 lacked". Three facts had to be verified against the installed version rather than assumed: the option that
 makes pg-boss run its INSERT on our transaction, the options that stop it migrating and point it at a schema, and
 whether a queue must be declared before a job is sent. Contracts §4.2.6 fixes the wrapper's shape around them.
 
@@ -51,13 +51,13 @@ sample option. `stopBoss` therefore awaits `boss.stop({ graceful: false })` dire
 1. Migration `0004_create_pgboss_schema.sql` creates schema `pgboss`, grants `usage` (never `create`) to `app_rw`,
    and sets default privileges so every table pg-boss later creates as `app_migrator` is DML-accessible to `app_rw`.
 2. pg-boss's own DDL runs **once per environment** in the deploy step `bun run --cwd apps/worker jobs:install`,
-   connected as `app_migrator` on `DATABASE_URL_MIGRATOR`. Application code never issues DDL (spec §0.2, SAH-053).
+   connected as `app_migrator` on `DATABASE_URL_MIGRATOR`. Application code never issues DDL (spec §0.2, LEGACY-053).
 3. At runtime pg-boss is constructed with `{ schema: "pgboss", migrate: false }` on `DATABASE_URL` (`app_rw`).
 4. `packages/db/src/jobs/enqueue.ts` is the **only** application file that calls `sql.unsafe` outside the migration
    runner (§0.2 "never build SQL by string concatenation" — this forwards pg-boss's own parameterised statement text
    with bound values and interpolates nothing). It is one of exactly three sanctioned homes for `unsafe`.
 5. `enqueue` **throws** when pg-boss returns `null` (a `singletonKey` collision). A silently un-inserted job is
-   exactly the SAH-005 failure mode — a job that never runs — so the wrapper fails loudly instead. **Amended
+   exactly the LEGACY-005 failure mode — a job that never runs — so the wrapper fails loudly instead. **Amended
    2026-09-28:** for the two `stately` jobs a refused insert is a collapse into a job that has not started,
    which `enqueue` resolves with that job's id; it still throws (`JobNotInsertedError`) for every other
    non-insert.
@@ -121,11 +121,11 @@ which `job_i3` also admits beside a queued job.
 3. When `stately` refuses the insert, `enqueue` **locks the key's `created` row `FOR SHARE` on the caller's
    transaction** and resolves with its id. The lock is what makes the collapse safe: without it a worker
    could claim the queued job before the caller commits, read state without the caller's writes, and
-   nothing would come back for them — the SAH-005 failure again, one step removed. pg-boss claims with
+   nothing would come back for them — the LEGACY-005 failure again, one step removed. pg-boss claims with
    `FOR UPDATE OF j SKIP LOCKED`, so the locked job is skipped, never waited on, and concurrent posting
    transactions share the lock. Finding no `created` row (a worker claimed it in between) frees the slot, so
    the insert is retried, three times at most, and then `JobNotInsertedError` is thrown.
-4. Every other keyed job keeps the 24-hour slot and the throw — 0D's behaviour, pinned by SAH-005's
+4. Every other keyed job keeps the 24-hour slot and the throw — 0D's behaviour, pinned by LEGACY-005's
    `accounting.period.month_end` case. No production caller sends one.
 
 **Cost, recorded.** While a key's job is active, the claim of that key's queued job fails until the

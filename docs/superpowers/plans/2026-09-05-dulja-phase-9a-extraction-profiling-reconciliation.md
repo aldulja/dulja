@@ -2,13 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build `packages/importer` far enough to *read* the live Sahlisoft Firebird database and *report* on it — row counts and date ranges per table, which of the seventeen legacy modules are actually in use, six reconciliation reports that recompute every drifting aggregate from `VouItems`/`BillItems` and quantify the difference, the catalogue of report-template blobs, the answers to Part VII's open questions, and an anonymised snapshot — so that the owner can decide the cut-over treatment and 9B can load against numbers somebody has already explained. **This slice loads nothing and writes no schema.**
+**Goal:** Build `packages/importer` far enough to *read* the live legacy Firebird database and *report* on it — row counts and date ranges per table, which of the seventeen legacy modules are actually in use, six reconciliation reports that recompute every drifting aggregate from `VouItems`/`BillItems` and quantify the difference, the catalogue of report-template blobs, the answers to Part VII's open questions, and an anonymised snapshot — so that the owner can decide the cut-over treatment and 9B can load against numbers somebody has already explained. **This slice loads nothing and writes no schema.**
 
 **Architecture:** One package, three layers, and a port at the bottom. `LegacyDriver` (`packages/importer/src/legacy/types.ts`) is the only thing that knows a database exists; it takes a **structured `SelectSpec`**, never SQL text, and has exactly two implementations — `OdbcLegacyDriver` (the live Firebird connection, ADR 0081) and `FixtureLegacyDriver` (an in-memory corpus, the local equivalent every task is developed against). `LegacyReader` (`packages/importer/src/reader.ts`) is the §4.13.1 surface 9B consumes: `tables`, `count`, `dateRange`, `read`. Above it sit pure functions — `profile`, six `reconcile` kinds, the template catalogue, the open-question probe, the snapshot — each of which takes a `LegacyReader` and returns a plain object, so every one of them is unit-tested against the fixture corpus with no database at all. SQL text is rendered in exactly one file (`packages/importer/src/drivers/sql.ts`) from catalogue-validated identifiers with every value bound as a parameter. Nothing in this slice touches PostgreSQL, opens `withTenant`, creates a table or writes a migration.
 
 **Tech Stack:** Bun 1.4 · TypeScript strict · `odbc` (the live Firebird connection; the DSN is the owner's, ADR 0081) · `decimal.js` (exact recomputation of legacy aggregates — no `number` ever holds a monetary value) · **no `@dulja/contracts` import** — this package raises a plain `Error` carrying `ERR_IMPORT_SOURCE_UNREADABLE` and may not import `AppError` (§4.13.1, §3.1) · Vitest (under Node 24) with no Testcontainers in this package · Node's `node:crypto` for artefact hashes and snapshot pseudonyms.
 
-**Spec:** `docs/spec/rebuild-spec.md` v1.2 — §5.1 Migration hazards in full (spec:2329–2344), §0.1 Provenance (spec:61–81), §0.2 Operating brief (spec:97–110), §0.4 Glossary in full (spec:144–180), §3.9 Naming/identifiers/money/deletion/error-codes (spec:2037–2063), §4.11 Engineering practice incl. "load tests against realistic data volumes — take the real row counts from the customer's live database before sizing" (spec:2267), Part V Phase 9 row (spec:2295) and sequencing (spec:2301), Part VI (this slice owns no test), Part VII #1, #2, #4, #5, #6, #7, #8, #9, #10, #13 (spec:2461–2477), Part I §A and §C — SAH-001…024, 049…052, 066, 073, 074, 077, 078 — read as data-quality expectations. Companion dossier: `docs/spec/sahlisoft-accounting-analysis.md` (the 460-table inventory in its Appendix A is the source of this slice's module map).
+**Spec:** `docs/spec/rebuild-spec.md` v1.2 — §5.1 Migration hazards in full (spec:2329–2344), §0.1 Provenance (spec:61–81), §0.2 Operating brief (spec:97–110), §0.4 Glossary in full (spec:144–180), §3.9 Naming/identifiers/money/deletion/error-codes (spec:2037–2063), §4.11 Engineering practice incl. "load tests against realistic data volumes — take the real row counts from the customer's live database before sizing" (spec:2267), Part V Phase 9 row (spec:2295) and sequencing (spec:2301), Part VI (this slice owns no test), Part VII #1, #2, #4, #5, #6, #7, #8, #9, #10, #13 (spec:2461–2477), Part I §A and §C — LEGACY-001…024, 049…052, 066, 073, 074, 077, 078 — read as data-quality expectations. Companion dossier: `docs/spec/legacy-system-analysis.md` (the 460-table inventory in its Appendix A is the source of this slice's module map).
 
 ## Assumptions and contracts (from docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md)
 
@@ -19,8 +19,8 @@
 - **Interfaces consumed:** §3.1 package tiers and the `packages/<pkg>/src/cli.ts` rule; §3.2 identifiers/money/naming/error-codes/logging; §3.3 the never/always lists and the three homes of `sql.unsafe`; §3.7.1 test layout; §3.7.3 regression-file ownership **and its first corollary** (9A always appends, create-if-absent); §3.7.5 the five 0B lint rules; §4.2.4's **allocated code space and its `error-codes` build check** — read as the registry that already reserves `ERR_IMPORT_SOURCE_UNREADABLE` for this slice, **not** as an envelope this package constructs: no `Problem` is built and no `AppError` is thrown anywhere in `packages/importer`.
 - **Interfaces produced:** **§4.13.1 verbatim** — `LegacyReader`, `ProfileReport`, `ReconciliationReport`, `profile(reader)`, `reconcile(reader, kind)` — and **`LegacyPredicate`**, which the §4 preamble names as one of the five types "owned outright by the slice that implements the enclosing function" and assigns to 9A ("9B *consumes* it through `LegacyReader.read` and never redefines it"). Everything else this package exports is internal to Phase 9 and listed under *Names this slice adds* below.
 - **The card's "typed row readers" bullet resolves to `read<T>` plus a per-report local row shape, and this plan says so rather than inventing per-table interfaces.** The 9A card's first *Delivers* bullet reads "`LegacyReader` over Firebird (version-dependent, ADR 0081), **typed row readers for the tables named in §5.1 and §0.4**". §4.13.1 itself defines no such types: the frozen surface is the generic `read<T>(table, opts): AsyncIterable<T[]>`, and every caller in this slice instantiates `T` as `LegacyRow` or `Record<string, string | boolean | null>` — the only shape an ODBC read can honestly produce, because assumption 6 casts every column to text and the column set of each legacy table is read from the customer's catalogue at run time, not known at compile time. Writing a `VouItemRow`/`BillItemRow`/`EmployeeRow` here would mean transcribing column lists this project has not confirmed against a live database, which is the class of invention hazard 3 forbids. **The reading is therefore: "typed row readers" = `read<T>` plus each report's own local row shape**, and contracts §4.18 Round 2 has already settled it in exactly those words ("Typed row readers resolves to `read<T>` plus each report's own local row shape; **no per-table row interface in 9A and none invented in 9B** until a live catalogue is read"), with the §4.13.1 closing note and the §2.10 card's *Delivers* bullet both rewritten to match. 9B inherits a settled answer, not an unmet bullet.
-- **Owner decisions:** **OD-17** (read access to the live Sahlisoft database; Firebird version — spec:2409, 2469) → **Task 3**, isolated; default per §2.12 is *none*, so the local equivalent is `FixtureLegacyDriver` over the committed corpus and every later task runs green without the owner. The card calls this "Task 1 … the scoping task" and hazard 3 repeats it; it is Task 3 here because Tasks 1 and 2 build the seam it plugs into and neither touches the owner's database. Task 3 is still **the first task that reads a live byte** — "scope first, migrate second" (§5.1 #10) is preserved, and dropping Task 3 leaves every other task green. **This is no longer a divergence: contracts §4.18 Round 2 has already ratified it.** The row "**The scoping report is 9A Task 3, not Task 1** — Tasks 1–2 build the driver port and the renderer and read no customer data; §5.1 #10 is unchanged" is in the table, and the §2.10 9A card's *Owner gates* cell now reads "the scoping report is the first task that reads the owner's data: 9A Task 3". The Execution handoff's item 5 is therefore a **verification**, not a request. (One stale contradiction remains in the contracts document and belongs to its architect, not to this plan: §2.12's OD-17 row still reads "9A → Task 1 (scoping)". An executor who hits it reads §2.10 and §4.18, which agree with each other and with this plan.) **OD-16** (must historical POS data migrate? Part VII #10 ⚠️ — spec:2474) → **Task 6**, isolated; default per §2.12 is *start clean*, so `mposStandard`/`mposSystem` are **not** profiled unless `--include-mpos` is passed. **OD-27** (Part VII #6 real DDL constraints, #7 `MatOpens.Job`, #8 templates in use, #9 customisations, #13 Salaries module live? — spec:2470–2473, 2477) → **Task 13**, isolated; default per §2.12 is *none*, so the task ships the probe that produces the answers and records "unanswered" until it is run against the live database. **OD-25** (suspense treatment; cut-over date — spec:2334) is **9B's** gate, not this slice's: Task 8 produces the *input* the owner needs to decide it and decides nothing. **OD-24** does not apply — this slice ships no screen. This plan decides none of them (§2.12).
-- **Part VI tests owned / re-run:** **none**, either way (card). **§3.0.4 rows owned:** **none** (card). **Regression files created / appended:** **`tests/regression/sah-077.test.ts` — appends, create-if-absent** (§3.7.3 first corollary: 9A has no fixed position in execution order, so it never "creates"; its task creates the file if 7A has not yet run, appends its own `describe` block either way, and asserts nothing about what other blocks exist). No other regression file is touched. **Import-validation tests for §5.1 items 1–5 and 12 live in `packages/importer/test/`, not `tests/regression/`** (card, explicit).
+- **Owner decisions:** **OD-17** (read access to the live legacy database; Firebird version — spec:2409, 2469) → **Task 3**, isolated; default per §2.12 is *none*, so the local equivalent is `FixtureLegacyDriver` over the committed corpus and every later task runs green without the owner. The card calls this "Task 1 … the scoping task" and hazard 3 repeats it; it is Task 3 here because Tasks 1 and 2 build the seam it plugs into and neither touches the owner's database. Task 3 is still **the first task that reads a live byte** — "scope first, migrate second" (§5.1 #10) is preserved, and dropping Task 3 leaves every other task green. **This is no longer a divergence: contracts §4.18 Round 2 has already ratified it.** The row "**The scoping report is 9A Task 3, not Task 1** — Tasks 1–2 build the driver port and the renderer and read no customer data; §5.1 #10 is unchanged" is in the table, and the §2.10 9A card's *Owner gates* cell now reads "the scoping report is the first task that reads the owner's data: 9A Task 3". The Execution handoff's item 5 is therefore a **verification**, not a request. (One stale contradiction remains in the contracts document and belongs to its architect, not to this plan: §2.12's OD-17 row still reads "9A → Task 1 (scoping)". An executor who hits it reads §2.10 and §4.18, which agree with each other and with this plan.) **OD-16** (must historical POS data migrate? Part VII #10 ⚠️ — spec:2474) → **Task 6**, isolated; default per §2.12 is *start clean*, so `mposStandard`/`mposSystem` are **not** profiled unless `--include-mpos` is passed. **OD-27** (Part VII #6 real DDL constraints, #7 `MatOpens.Job`, #8 templates in use, #9 customisations, #13 Salaries module live? — spec:2470–2473, 2477) → **Task 13**, isolated; default per §2.12 is *none*, so the task ships the probe that produces the answers and records "unanswered" until it is run against the live database. **OD-25** (suspense treatment; cut-over date — spec:2334) is **9B's** gate, not this slice's: Task 8 produces the *input* the owner needs to decide it and decides nothing. **OD-24** does not apply — this slice ships no screen. This plan decides none of them (§2.12).
+- **Part VI tests owned / re-run:** **none**, either way (card). **§3.0.4 rows owned:** **none** (card). **Regression files created / appended:** **`tests/regression/legacy-077.test.ts` — appends, create-if-absent** (§3.7.3 first corollary: 9A has no fixed position in execution order, so it never "creates"; its task creates the file if 7A has not yet run, appends its own `describe` block either way, and asserts nothing about what other blocks exist). No other regression file is touched. **Import-validation tests for §5.1 items 1–5 and 12 live in `packages/importer/test/`, not `tests/regression/`** (card, explicit).
 - **Shared namespaces this slice writes into:** document-type codes (§4.14) **none**. Account codes (§4.15) **none** — this slice seeds no pack, names no `account.code` in any policy, and resolves no account; the legacy account *codes* it reports are the customer's own strings and are never mapped here (9B maps them). Report codes (§4.16.1) **none** and `DatasetId` members (§4.16.2) **none** — the artefacts of this slice are files on disk, not `report_definition` rows; `packages/db/src/reports/datasets.ts` is not touched. `fixtures.ts` helpers (§4.17) **none** — §4.17 assigns 9A no helper and `packages/db/test/fixtures.ts` is not opened; shared test helpers (§4.17.1) **none added** — this package's fixture corpus loader lives at `packages/importer/test/support/corpus.ts` and is imported by no other workspace. The one shared literal space this slice writes into is the `ERR_*` space (§4.2.4): it adds **`ERR_IMPORT_SOURCE_UNREADABLE`** to `ERRORS`, a code that table already allocates to "Firebird reader (9A)" at status 500.
 - **Never re-decide:** D1–D27 (spec:114–142); every name in the contracts document is frozen — a needed change goes to that document first.
 - **Contracts version:** 2026-09-08 (§4.18 "extended 2026-09-08", Round 3). **Round 3 adds no 9A row** — it folds in 3A–9B's cross-slice amendments and nothing in it touches §4.13, §2.10's 9A card or hazard 3 — so every 9A statement in this header is read against Round 2, which is where this slice's rows landed (§4.18 rows for §2.9/§5.3, §3.11, §4.2.4 and the two §4.13.1 rows).
@@ -35,11 +35,11 @@ Every assumption is stated here so a reviewer can reject it in one place instead
 4. **`odbc` is a native module and its presence is not assumed at test time.** `packages/importer/src/drivers/odbc.ts` imports `odbc` **lazily**, inside `connectOdbc()`, so every test in this package — none of which connects — runs on a machine with no ODBC manager and no Firebird driver installed. The one test that would connect is skipped unless `LEGACY_ODBC_DSN` is set, the same shape §3.7.1 gives `tests/staging` under `STAGING_BASE_URL`.
 5. **Firebird returns identifiers upper-cased and space-padded.** `RDB$RELATION_NAME` and `RDB$FIELD_NAME` are `CHAR(31)`/`CHAR(63)` and come back padded; every catalogue read wraps them in `trim(...)` in SQL and the driver upper-cases nothing further. Every table and column name in this plan's constants is written **upper-case** for that reason (`ACCTOTALS`, not `AccTotals`), while prose keeps the product's own casing.
 6. **Legacy numerics never become JavaScript numbers.** spec:99 forbids a float holding money "anywhere, including in TypeScript", and an ODBC driver will happily hand back `NUMERIC(18,4)` as a `number`. The renderer therefore wraps every column the catalogue declares scaled-numeric or floating in `cast(<col> as varchar(40))`, and dates/timestamps in `cast(<col> as varchar(24))`, so values arrive as text and are parsed with `Decimal` when arithmetic is needed. `LegacyScalar` deliberately has **no `number` member**, and the driver raises `ERR_IMPORT_SOURCE_UNREADABLE` if a value of type `number` ever reaches it.
-7. **`MatUnits.Exchange` is a float in the source and is reported as one.** SAH-066 says unit conversions were stored as floats and never applied. This slice does not convert them; it records the column's declared type as `float` in the profile so 9B knows to convert explicitly to a `Rational` (§4.2.1) and so the reconciliation report can flag a float-sourced figure.
+7. **`MatUnits.Exchange` is a float in the source and is reported as one.** LEGACY-066 says unit conversions were stored as floats and never applied. This slice does not convert them; it records the column's declared type as `float` in the profile so 9B knows to convert explicitly to a `Rational` (§4.2.1) and so the reconciliation report can flag a float-sourced figure.
 8. **The recompute formulae are hypotheses until the live database confirms them.** The dossier gives the stored aggregates' *columns* (`AccTotals(Debit, Credit, AdminDebit, AdminCredit)`, `MatTotals(… InternalDebit/Credit, OrderDebit/Credit, TransferredDebit/Credit)`) but not which `Muniments` flags route a line into `Admin*`, `Internal*`, `Order*` or `Transferred*` — that logic lives in the 318 triggers and the fifteen unexamined DLLs (spec:71). This plan does **not** invent it. Every recompute is a row in `AGGREGATE_RULES` carrying its own `derivation` sentence and a `confidence` of `verified | hypothesis | not_derivable`, the report prints all three fields on every line, and the `not_derivable` rows are the explicit list the owner is asked to confirm. That is what "the difference on every recomputed figure is **explained**" (spec:2295) means operationally.
 9. **The 460-table inventory is committed as data.** `packages/importer/src/legacy/modules.ts` holds the seventeen modules and their tables from the dossier's Appendix A. It is the instrument for Part VII #1 ("which modules are actually used"), it drives `ProfileReport.modulesInUse`, and — when no live catalogue is reachable — it is the allow-list identifiers are validated against. It is **data, not truth**: `profile` prefers the live `RDB$RELATIONS` list whenever one is available and reports tables present in the database but absent from the map, and vice versa.
 10. **Never name a binding `db` or `sql` in `packages/importer/src/**`.** 0B's `no-bare-db` fires on `db.<anything>(` and on a template tagged `db` or `sql` **anywhere under `packages/*/src/`**, with no allow-list entry for this package. Connections are `conn`, statements are `text`, drivers are `driver`. This is a lint fact, not a style preference: `const db = await odbc.connect(dsn); db.query(...)` fails `bun run lint:rules`.
-11. **`packages/importer/src/reader.ts` is on `no-sql-concat`'s `UNSAFE_ALLOW` list already** (0B shipped it as one of the three homes of `sql.unsafe`, §3.3). This plan **does not use it**: the ODBC driver calls `odbc`'s own parameterised `query(text, params)` and never `postgres.js`'s `.unsafe(`, and `reader.ts` renders no SQL at all. The allow-list entry is a permission, not an obligation; 0B's `sah-036` assertion is a subset check and stays green.
+11. **`packages/importer/src/reader.ts` is on `no-sql-concat`'s `UNSAFE_ALLOW` list already** (0B shipped it as one of the three homes of `sql.unsafe`, §3.3). This plan **does not use it**: the ODBC driver calls `odbc`'s own parameterised `query(text, params)` and never `postgres.js`'s `.unsafe(`, and `reader.ts` renders no SQL at all. The allow-list entry is a permission, not an obligation; 0B's `legacy-036` assertion is a subset check and stays green.
 12. **The untagged-template half of `no-sql-concat` has no allow-list**, so the renderer may not write ``const text = `select ${cols} from ${table}` ``. `renderSelect` pushes tokens into a `string[]` and returns `parts.join(" ")`; identifiers reaching that array have already been validated and quoted, and values never reach it at all. ADR 0082 records the reasoning.
 13. **`Salaries` and `Standard` are separate legacy databases but usually one physical file per module set**, and `mpos*` is explicitly "a *deliberately separate* schema" (dossier §4.3). The CLI therefore takes `--dsn` for the main database and an optional `--mpos-dsn`; a `LegacyReader` is constructed per DSN and one is never asked to span two.
 14. **Artefacts are customer data and are never committed.** Every command writes under `artefacts/legacy/<runId>/`, which Task 1 adds to `.gitignore`. The only committed corpus is the small synthetic one under `packages/importer/test/corpus/`, whose row values are invented for this repository and contain no customer data.
@@ -66,10 +66,10 @@ Copied verbatim from spec §0.2 (spec:97–106). Every task's requirements impli
 **Never**, at any phase, for any reason:
 - write to a ledger or movement table outside the posting service;
 - represent money as a float, anywhere, including in TypeScript;
-- build SQL by string concatenation (SAH-036/037/069);
-- issue DDL from application code (SAH-053);
-- disable an invariant, constraint or trigger "temporarily" (SAH-027, 041, 053);
-- gate an audit write on any flag (SAH-030);
+- build SQL by string concatenation (LEGACY-036/037/069);
+- issue DDL from application code (LEGACY-053);
+- disable an invariant, constraint or trigger "temporarily" (LEGACY-027, 041, 053);
+- gate an audit write on any flag (LEGACY-030);
 - hard-code a package version into a source file — the lockfile owns versions.
 
 **Always**, for every new table: `tenant_id`, an RLS policy, `created_at`, a migration, and a test that a second tenant cannot see it. For every new endpoint: Zod schema, OpenAPI entry, idempotency on unsafe methods, and a tenant-isolation test. For every UI screen: verified in both text directions before merge.
@@ -126,10 +126,10 @@ packages/importer/
 │  │  ├─ probe.ts                        hasColumns — the catalogue question LegacyReader
 │  │  │                                  cannot ask                                                 T7
 │  │  ├─ aggregate-drift.ts              §5.1 #1 — recompute from VouItems/BillItems                 T7
-│  │  ├─ unbalanced-vouchers.ts          §5.1 #2 — detect and quantify (SAH-003)                     T8
-│  │  ├─ orphans.ts                      §5.1 #3 — Job 82%, CostCentre 81% (SAH-073)                 T9
-│  │  ├─ null-poison.ts                  §5.1 #4 — SAH-007, SAH-011                                 T10
-│  │  ├─ duplicate-aggregates.ts         §5.1 #5 — MatObjects/MatQuantity (SAH-049)                 T10
+│  │  ├─ unbalanced-vouchers.ts          §5.1 #2 — detect and quantify (LEGACY-003)                     T8
+│  │  ├─ orphans.ts                      §5.1 #3 — Job 82%, CostCentre 81% (LEGACY-073)                 T9
+│  │  ├─ null-poison.ts                  §5.1 #4 — LEGACY-007, LEGACY-011                                 T10
+│  │  ├─ duplicate-aggregates.ts         §5.1 #5 — MatObjects/MatQuantity (LEGACY-049)                 T10
 │  │  └─ employee-mapping.ts             §5.1 #12 — Employees vs Accounts.IsEmployee                T11
 │  └─ catalogue/
 │     ├─ templates.ts                    §5.1 #9 — System.Reports blobs → TemplateCatalogue         T12
@@ -169,7 +169,7 @@ MODIFIED (each an additive edit; no existing behaviour changes)
 packages/contracts/src/errors.ts         + ERR_IMPORT_SOURCE_UNREADABLE (§4.2.4 allocates it)        T4
 package.json                             + "legacy" script                                           T1
 .gitignore                               + artefacts/                                                T1
-tests/regression/sah-077.test.ts         append, create-if-absent (§3.7.3 first corollary)          T12
+tests/regression/legacy-077.test.ts         append, create-if-absent (§3.7.3 first corollary)          T12
 tests/package.json                       + "@dulja/importer": "workspace:*" (one key)               T12
 docs/adr/0083-…-anonymisation.md         + the correction-C4 amendment under Consequences           T14
 
@@ -565,7 +565,7 @@ export function moduleOf(table: string): LegacyModule | undefined {
 }
 ```
 
-**If the counts do not add up**, the assertion in Step 4 (`ALL_LEGACY_TABLES.size === 460`) fails and names the shortfall. Fix the *data* against `docs/spec/sahlisoft-accounting-analysis.md` Appendix A — never the assertion. The per-module totals the dossier gives are: Types 1, System 29, Standard 107, mposStandard 51, mposSystem 18, Hospitals 50, Academy 44, Services 38, Salaries 36, Archives 25, Payments 22, Special 11, FixedAssets 10, Orders 10, Additions 3, Appointments 3, tcbReports 2 = 460.
+**If the counts do not add up**, the assertion in Step 4 (`ALL_LEGACY_TABLES.size === 460`) fails and names the shortfall. Fix the *data* against `docs/spec/legacy-system-analysis.md` Appendix A — never the assertion. The per-module totals the dossier gives are: Types 1, System 29, Standard 107, mposStandard 51, mposSystem 18, Hospitals 50, Academy 44, Services 38, Salaries 36, Archives 25, Payments 22, Special 11, FixedAssets 10, Orders 10, Additions 3, Appointments 3, tcbReports 2 = 460.
 
 - [ ] **Step 9: Write the corpus and its loader**
 
@@ -930,7 +930,7 @@ import type { LegacyRow, LegacyScalar } from "./types";
 /**
  * SQL three-valued logic, reproduced exactly: any comparison whose operand is NULL is unknown, and unknown is
  * not true. Getting this wrong in the fixture driver would make a reconciliation test pass on rows the live
- * database excludes — which is the whole class of defect this slice exists to find (SAH-011).
+ * database excludes — which is the whole class of defect this slice exists to find (LEGACY-011).
  */
 export function evaluatePredicate(row: LegacyRow, predicate: LegacyPredicate): boolean {
   switch (predicate.op) {
@@ -1141,7 +1141,7 @@ Expected: PASS — the four `fixture-driver` cases and the eight `sql` cases.
 
 ## Context
 
-spec:100 forbids building SQL by string concatenation (SAH-036/037/069), and contracts §4.13.1 requires that
+spec:100 forbids building SQL by string concatenation (LEGACY-036/037/069), and contracts §4.13.1 requires that
 `LegacyReader.read`'s `where` be "a typed structure, never SQL text". But the legacy source is Firebird, where a
 table or column name cannot be a bound parameter: some identifier must reach the statement as text, and the
 tables the profiler walks are named at run time from the catalogue, not at compile time.
@@ -1203,7 +1203,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 > owner's data. Drop it, defer it, or swap the driver, and Tasks 1–2 and 4–14 stay green — they run against
 > `FixtureLegacyDriver`. It is written now; only its *execution* waits on the owner.
 >
-> **Owner provides (OD-17, spec:2409, 2469):** a read-only ODBC DSN for the live Sahlisoft database (and, if
+> **Owner provides (OD-17, spec:2409, 2469):** a read-only ODBC DSN for the live legacy database (and, if
 > OD-16 turns out to be *yes*, a second one for `mposSystem`/`mposStandard`), plus — if the engine-version
 > probe comes back empty — the Firebird version as a string.
 >
@@ -1415,7 +1415,7 @@ export class OdbcLegacyDriver implements LegacyDriver {
     return columns;
   }
 
-  /** The primary key's columns in position order; an empty array for the 42 tables that have none (SAH-074). */
+  /** The primary key's columns in position order; an empty array for the 42 tables that have none (LEGACY-074). */
   async keyColumns(table: string): Promise<string[]> {
     const cached = this.keys.get(table);
     if (cached) return cached;
@@ -1463,7 +1463,7 @@ function text(value: unknown): string | null {
 /**
  * Every value the renderer cast to varchar must arrive as a string. If a `number` reaches here the cast was
  * lost, and a monetary figure is one float-rounding away from being wrong — refuse rather than continue
- * (spec:99; SAH-012, where base amounts were never derived from value × rate and nobody noticed).
+ * (spec:99; LEGACY-012, where base amounts were never derived from value × rate and nobody noticed).
  */
 function coerce(row: Record<string, unknown>, table: string): LegacyRow {
   const out: Record<string, string | boolean | null> = {};
@@ -1497,7 +1497,7 @@ export async function connectOdbc(opts: OdbcOptions): Promise<OdbcLegacyDriver> 
 plan's Global Constraints — forbids building SQL by string concatenation with no exception for a `+` whose
 operands are both literals. The house rule is about the *shape* of the code, not about whether a given
 concatenation happens to be exploitable: a reviewer reading `` `select … from x` + ` where …` `` cannot tell at
-a glance that no caller value is in the chain, which is exactly the review failure SAH-036/037/069 record.
+a glance that no caller value is in the chain, which is exactly the review failure LEGACY-036/037/069 record.
 (0B's `no-sql-concat` would not fire here — its `CONCAT` regex is `/["'][^"']*\b(select|from|where)\b[^"']*["']\s*\+/i`
 and matches only single- or double-quoted strings, and its template branch requires an interpolation, 0B:5014.
 The rule is narrower than the rule it enforces; the constraint is the spec line, not the linter.) Task 13's
@@ -1537,7 +1537,7 @@ export interface ScopeReport {
 }
 
 /**
- * The column a table's date range is taken from, in preference order. Sahlisoft names its business date `DATE`
+ * The column a table's date range is taken from, in preference order. The legacy system names its business date `DATE`
  * on documents and vouchers and `ENTRYDATE`/`PAYDATE` on a handful of others; a table with none of these gets a
  * null range rather than a guess. Part VII #2 wants the range on `Journal`, `BillItems` and `VouItems`, which
  * inherit theirs from their headers — so a null here is an answer, not a gap.
@@ -2141,7 +2141,7 @@ export interface ArtefactIndex { readonly generatedAt: string; readonly source: 
 /**
  * RFC 4180, with a UTF-8 BOM. The BOM is not decoration: these files carry Arabic master-data names, and
  * Excel on Windows — which is what the owner will open them in — decodes a BOM-less UTF-8 CSV as the system
- * code page and renders every Arabic name as mojibake. SAH-085 is the same defect in the other direction.
+ * code page and renders every Arabic name as mojibake. LEGACY-085 is the same defect in the other direction.
  */
 export function toCsv(rows: readonly Record<string, unknown>[]): string {
   if (rows.length === 0) return "﻿";
@@ -2343,7 +2343,7 @@ and nothing here is per-tenant data in Dulja — it is customer data from a syst
 
 1. **Every artefact is written twice**: `<name>.json` (machine-readable, the shape a later task consumes) and
    `<name>.csv` (UTF-8 **with a BOM**, RFC 4180, so Excel on Windows renders Arabic master-data names instead
-   of mojibake — SAH-085 in reverse).
+   of mojibake — LEGACY-085 in reverse).
 2. **Every artefact is hashed with sha256 and listed in `index.json`**, which also carries `generatedAt` (UTC,
    to the second), the redacted `source` and the `engineVersion`. A report can never be read against the wrong
    source or the wrong engine, and 9B's cut-over runbook can cite a hash. `index.json` **lists itself** so the
@@ -2707,7 +2707,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
     readonly sourceTable: string | null; readonly sourceColumn: string | null; readonly sourceKey: readonly string[];
     readonly confidence: AggregateConfidence;
     readonly derivation: string;              // printed on every row of the report
-    readonly sah: readonly string[];
+    readonly legacyDefects: readonly string[];
   }
   export const AGGREGATE_RULES: readonly AggregateRule[];
   // packages/importer/src/reconcile/probe.ts
@@ -2754,7 +2754,7 @@ Add to `packages/importer/test/corpus/base/catalog.json`'s `tables` object:
 ```
 
 `packages/importer/test/corpus/base/ACCTOTALS.json` — account 10 is **wrong on purpose** (the corpus's
-`VOUITEMS` sum 350.0000, the aggregate says 300.0000: SAH-001/002 drift), account 11 is right:
+`VOUITEMS` sum 350.0000, the aggregate says 300.0000: LEGACY-001/002 drift), account 11 is right:
 
 ```json
 [
@@ -2925,7 +2925,7 @@ describe("AGGREGATE_RULES — every recomputed figure carries its own derivation
   it("labels each rule verified, hypothesis or not_derivable, and never silently guesses", () => {
     for (const rule of AGGREGATE_RULES) {
       expect(rule.derivation.length).toBeGreaterThan(20);
-      expect(rule.sah.length).toBeGreaterThan(0);
+      expect(rule.legacyDefects.length).toBeGreaterThan(0);
       if (rule.confidence === "not_derivable") expect(rule.sourceTable).toBeNull();
       else expect(rule.sourceTable).not.toBeNull();
     }
@@ -3032,12 +3032,12 @@ export interface AggregateRule {
   readonly sourceKey: readonly string[];
   readonly confidence: AggregateConfidence;
   readonly derivation: string;
-  readonly sah: readonly string[];
+  readonly legacyDefects: readonly string[];
 }
 
 /**
  * §5.1 #1: "Do not trust stored aggregates. AccTotals, AccObjects, AccCurTotals, MatTotals, MatObjects,
- * MatQuantity, MatCosts, MatStatus are all known to drift (SAH-001 → 006, 049, 050). Recompute everything from
+ * MatQuantity, MatCosts, MatStatus are all known to drift (LEGACY-001 → 006, 049, 050). Recompute everything from
  * VouItems/BillItems and reconcile; where the recomputed figure differs from the stored one, report the
  * difference to the customer rather than silently picking one." (spec:2331)
  *
@@ -3052,75 +3052,75 @@ export const AGGREGATE_RULES: readonly AggregateRule[] = [
   { id: "ACCTOTALS.DEBIT", storedTable: "ACCTOTALS", storedColumn: "DEBIT", storedKey: ["ACCOUNT"],
     sourceTable: "VOUITEMS", sourceColumn: "DEBIT", sourceKey: ["ACCOUNT"], confidence: "hypothesis",
     derivation: "sum(VOUITEMS.DEBIT) grouped by ACCOUNT, compared with ACCTOTALS.DEBIT",
-    sah: ["SAH-001", "SAH-002", "SAH-011"] },
+    legacyDefects: ["LEGACY-001", "LEGACY-002", "LEGACY-011"] },
   { id: "ACCTOTALS.CREDIT", storedTable: "ACCTOTALS", storedColumn: "CREDIT", storedKey: ["ACCOUNT"],
     sourceTable: "VOUITEMS", sourceColumn: "CREDIT", sourceKey: ["ACCOUNT"], confidence: "hypothesis",
     derivation: "sum(VOUITEMS.CREDIT) grouped by ACCOUNT, compared with ACCTOTALS.CREDIT",
-    sah: ["SAH-001", "SAH-002", "SAH-011"] },
+    legacyDefects: ["LEGACY-001", "LEGACY-002", "LEGACY-011"] },
   { id: "ACCTOTALS.ADMINDEBIT", storedTable: "ACCTOTALS", storedColumn: "ADMINDEBIT", storedKey: ["ACCOUNT"],
     sourceTable: null, sourceColumn: null, sourceKey: [], confidence: "not_derivable",
     derivation: "which document types route a line into ADMINDEBIT is encoded in the Muniments flags and the 318 triggers; spec:71 records the plug-in DLLs as 0% examined. The owner or a live trigger read must supply the rule.",
-    sah: ["SAH-002"] },
+    legacyDefects: ["LEGACY-002"] },
   { id: "ACCTOTALS.ADMINCREDIT", storedTable: "ACCTOTALS", storedColumn: "ADMINCREDIT", storedKey: ["ACCOUNT"],
     sourceTable: null, sourceColumn: null, sourceKey: [], confidence: "not_derivable",
-    derivation: "as ACCTOTALS.ADMINDEBIT, on the credit side.", sah: ["SAH-002"] },
+    derivation: "as ACCTOTALS.ADMINDEBIT, on the credit side.", legacyDefects: ["LEGACY-002"] },
   { id: "ACCOBJECTS.DEBIT", storedTable: "ACCOBJECTS", storedColumn: "DEBIT", storedKey: ["SITE", "ACCOUNT"],
     sourceTable: "VOUITEMS", sourceColumn: "DEBIT", sourceKey: ["SITE", "ACCOUNT"], confidence: "hypothesis",
     derivation: "sum(VOUITEMS.DEBIT) grouped by (SITE, ACCOUNT), compared with ACCOBJECTS.DEBIT — the trigger the dossier names is OnVouItemsAIUD_Objects.",
-    sah: ["SAH-001", "SAH-049", "SAH-050"] },
+    legacyDefects: ["LEGACY-001", "LEGACY-049", "LEGACY-050"] },
   { id: "ACCOBJECTS.CREDIT", storedTable: "ACCOBJECTS", storedColumn: "CREDIT", storedKey: ["SITE", "ACCOUNT"],
     sourceTable: "VOUITEMS", sourceColumn: "CREDIT", sourceKey: ["SITE", "ACCOUNT"], confidence: "hypothesis",
     derivation: "sum(VOUITEMS.CREDIT) grouped by (SITE, ACCOUNT), compared with ACCOBJECTS.CREDIT.",
-    sah: ["SAH-001", "SAH-049", "SAH-050"] },
+    legacyDefects: ["LEGACY-001", "LEGACY-049", "LEGACY-050"] },
   { id: "ACCOBJECTS.OPENDEBIT", storedTable: "ACCOBJECTS", storedColumn: "OPENDEBIT", storedKey: ["SITE", "ACCOUNT"],
     sourceTable: null, sourceColumn: null, sourceKey: [], confidence: "not_derivable",
     derivation: "opening balances are carried forward by a year-end procedure, not accumulated from VouItems; there is no movement history to rebuild them from. The owner supplies the opening position, and 9B posts it as an OPENING_BALANCE document.",
-    sah: ["SAH-022"] },
+    legacyDefects: ["LEGACY-022"] },
   { id: "ACCOBJECTS.OPENCREDIT", storedTable: "ACCOBJECTS", storedColumn: "OPENCREDIT", storedKey: ["SITE", "ACCOUNT"],
     sourceTable: null, sourceColumn: null, sourceKey: [], confidence: "not_derivable",
-    derivation: "as ACCOBJECTS.OPENDEBIT, on the credit side.", sah: ["SAH-022"] },
+    derivation: "as ACCOBJECTS.OPENDEBIT, on the credit side.", legacyDefects: ["LEGACY-022"] },
   { id: "ACCCURTOTALS.DEBIT", storedTable: "ACCCURTOTALS", storedColumn: "DEBIT", storedKey: ["ACCOUNT", "CUR"],
     sourceTable: "VOUITEMS", sourceColumn: "DEBIT", sourceKey: ["ACCOUNT", "CUR"], confidence: "hypothesis",
-    derivation: "sum(VOUITEMS.DEBIT) grouped by (ACCOUNT, CUR), compared with ACCCURTOTALS.DEBIT. SAH-001 is exactly this table updated without the Site key, so drift here is expected, not surprising.",
-    sah: ["SAH-001", "SAH-012", "SAH-014"] },
+    derivation: "sum(VOUITEMS.DEBIT) grouped by (ACCOUNT, CUR), compared with ACCCURTOTALS.DEBIT. LEGACY-001 is exactly this table updated without the Site key, so drift here is expected, not surprising.",
+    legacyDefects: ["LEGACY-001", "LEGACY-012", "LEGACY-014"] },
   { id: "ACCCURTOTALS.CREDIT", storedTable: "ACCCURTOTALS", storedColumn: "CREDIT", storedKey: ["ACCOUNT", "CUR"],
     sourceTable: "VOUITEMS", sourceColumn: "CREDIT", sourceKey: ["ACCOUNT", "CUR"], confidence: "hypothesis",
     derivation: "sum(VOUITEMS.CREDIT) grouped by (ACCOUNT, CUR), compared with ACCCURTOTALS.CREDIT.",
-    sah: ["SAH-001", "SAH-012", "SAH-014"] },
+    legacyDefects: ["LEGACY-001", "LEGACY-012", "LEGACY-014"] },
   { id: "MATTOTALS.DEBIT", storedTable: "MATTOTALS", storedColumn: "DEBIT", storedKey: ["MATERIAL"],
     sourceTable: "BILLITEMS", sourceColumn: "DEBIT", sourceKey: ["MATERIAL"], confidence: "hypothesis",
     derivation: "sum(BILLITEMS.DEBIT) grouped by MATERIAL, compared with MATTOTALS.DEBIT.",
-    sah: ["SAH-004", "SAH-006", "SAH-016"] },
+    legacyDefects: ["LEGACY-004", "LEGACY-006", "LEGACY-016"] },
   { id: "MATTOTALS.CREDIT", storedTable: "MATTOTALS", storedColumn: "CREDIT", storedKey: ["MATERIAL"],
     sourceTable: "BILLITEMS", sourceColumn: "CREDIT", sourceKey: ["MATERIAL"], confidence: "hypothesis",
     derivation: "sum(BILLITEMS.CREDIT) grouped by MATERIAL, compared with MATTOTALS.CREDIT.",
-    sah: ["SAH-004", "SAH-006", "SAH-016"] },
+    legacyDefects: ["LEGACY-004", "LEGACY-006", "LEGACY-016"] },
   ...(["INTERNALDEBIT", "INTERNALCREDIT", "ORDERDEBIT", "ORDERCREDIT", "TRANSFERREDDEBIT", "TRANSFERREDCREDIT"] as const)
     .map((column): AggregateRule => ({
       id: ["MATTOTALS", column].join("."), storedTable: "MATTOTALS", storedColumn: column, storedKey: ["MATERIAL"],
       sourceTable: null, sourceColumn: null, sourceKey: [], confidence: "not_derivable",
       derivation: `which document types route a BillItems line into MATTOTALS.${column} is a Muniments flag combination this project has not read; spec:71 records the plug-in DLLs as 0% examined. The owner or a live trigger read must supply the rule.`,
-      sah: ["SAH-004", "SAH-018"],
+      legacyDefects: ["LEGACY-004", "LEGACY-018"],
     })),
   { id: "MATOBJECTS.QNT", storedTable: "MATOBJECTS", storedColumn: "QNT", storedKey: ["MATERIAL", "WAREHOUSE"],
     sourceTable: "BILLITEMS", sourceColumn: "QNT", sourceKey: ["MATERIAL", "WAREHOUSE"], confidence: "hypothesis",
-    derivation: "sum(BILLITEMS.QNT) grouped by (MATERIAL, WAREHOUSE), compared with MATOBJECTS.QNT. MatObjects has no key columns at all (SAH-049), so a duplicate key here is a finding in its own right — see the duplicate_aggregates report.",
-    sah: ["SAH-049", "SAH-050"] },
+    derivation: "sum(BILLITEMS.QNT) grouped by (MATERIAL, WAREHOUSE), compared with MATOBJECTS.QNT. MatObjects has no key columns at all (LEGACY-049), so a duplicate key here is a finding in its own right — see the duplicate_aggregates report.",
+    legacyDefects: ["LEGACY-049", "LEGACY-050"] },
   { id: "MATQUANTITY.QNT", storedTable: "MATQUANTITY", storedColumn: "QNT", storedKey: ["MATERIAL", "WAREHOUSE", "BATCH"],
     sourceTable: "BILLITEMS", sourceColumn: "QNT", sourceKey: ["MATERIAL", "WAREHOUSE", "BATCH"], confidence: "hypothesis",
     derivation: "sum(BILLITEMS.QNT) grouped by (MATERIAL, WAREHOUSE, BATCH), compared with MATQUANTITY.QNT.",
-    sah: ["SAH-049", "SAH-050"] },
+    legacyDefects: ["LEGACY-049", "LEGACY-050"] },
   { id: "MATCOSTS.COST", storedTable: "MATCOSTS", storedColumn: "COST", storedKey: ["SITE", "MATERIAL"],
     sourceTable: null, sourceColumn: null, sourceKey: [], confidence: "not_derivable",
-    derivation: "§5.1 #6: do not import cost figures. MatCosts has no rebuild path and multiple corruption routes (SAH-004, 007, 008, 009). Cost is recomputed from movement history by the 3B engine at load time and the resulting opening valuation is reconciled with the customer — it is never compared with this column.",
-    sah: ["SAH-004", "SAH-007", "SAH-008", "SAH-009"] },
+    derivation: "§5.1 #6: do not import cost figures. MatCosts has no rebuild path and multiple corruption routes (LEGACY-004, 007, 008, 009). Cost is recomputed from movement history by the 3B engine at load time and the resulting opening valuation is reconciled with the customer — it is never compared with this column.",
+    legacyDefects: ["LEGACY-004", "LEGACY-007", "LEGACY-008", "LEGACY-009"] },
   { id: "MATCOSTS.BUY", storedTable: "MATCOSTS", storedColumn: "BUY", storedKey: ["SITE", "MATERIAL"],
     sourceTable: null, sourceColumn: null, sourceKey: [], confidence: "not_derivable",
-    derivation: "as MATCOSTS.COST (§5.1 #6).", sah: ["SAH-004", "SAH-008"] },
+    derivation: "as MATCOSTS.COST (§5.1 #6).", legacyDefects: ["LEGACY-004", "LEGACY-008"] },
   { id: "MATSTATUS.LASTPRICE", storedTable: "MATSTATUS", storedColumn: "LASTPRICE", storedKey: ["SITE", "MATERIAL", "MUNIMENT"],
     sourceTable: null, sourceColumn: null, sourceKey: [], confidence: "not_derivable",
-    derivation: "MatStatus is an INSERT-only min/max ratchet (SAH-016): it records the extreme prices ever seen and is not a function of current rows, so there is nothing to recompute it from.",
-    sah: ["SAH-016"] },
+    derivation: "MatStatus is an INSERT-only min/max ratchet (LEGACY-016): it records the extreme prices ever seen and is not a function of current rows, so there is nothing to recompute it from.",
+    legacyDefects: ["LEGACY-016"] },
 ];
 ```
 
@@ -3167,7 +3167,7 @@ const money = (value: unknown): Decimal => new Decimal(value === null || value =
 
 /**
  * §5.1 #1. For every rule: recompute the figure from the source, read the stored figure, and report the
- * difference. Nothing is repaired, nothing is chosen — SAH-079 is a system with 44 repair objects that silently
+ * difference. Nothing is repaired, nothing is chosen — LEGACY-079 is a system with 44 repair objects that silently
  * "fixed" numbers, and this report exists so the customer decides instead.
  */
 export async function aggregateDrift(reader: LegacyReader): Promise<ReconciliationReport> {
@@ -3253,7 +3253,7 @@ function base(rule: AggregateRule, k: string, extra: Record<string, unknown>): R
 ```
 
 **Note the one asymmetry, and that it is deliberate.** A key present in the stored table but absent from the
-source is reported as `drift` with `recomputed: "0.0000"` — the orphan aggregate row SAH-050 describes. A key
+source is reported as `drift` with `recomputed: "0.0000"` — the orphan aggregate row LEGACY-050 describes. A key
 present in the source but absent from the stored table is `missing_stored_row` — the decrement that never
 fired. They are different defects and the report keeps them apart.
 
@@ -3376,7 +3376,7 @@ import { createReader } from "../src/reader";
 import { reconcile } from "../src/reconcile";
 import { loadCorpus } from "./support/corpus";
 
-describe("reconcile('unbalanced_vouchers') — §5.1 #2, SAH-003 'nothing enforces debits = credits'", () => {
+describe("reconcile('unbalanced_vouchers') — §5.1 #2, LEGACY-003 'nothing enforces debits = credits'", () => {
   it("names each unbalanced voucher, signs the imbalance, and dates it from its header", async () => {
     const report = await reconcile(await createReader(new FixtureLegacyDriver(loadCorpus())), "unbalanced_vouchers");
     expect(report.kind).toBe("unbalanced_vouchers");
@@ -3424,7 +3424,7 @@ import { hasColumns } from "./probe";
 import type { ReconciliationReport } from "./index";
 
 export const SUSPENSE_QUESTION =
-  "Expect unbalanced vouchers. Nothing prevented them (SAH-003). Detect them, quantify them, and agree a " +
+  "Expect unbalanced vouchers. Nothing prevented them (LEGACY-003). Detect them, quantify them, and agree a " +
   "treatment (suspense account) with the customer *before* migrating. (spec:2332, §5.1 #2; the decision is " +
   "OD-25 and belongs to 9B's cut-over task — this report is its input.)";
 
@@ -3524,7 +3524,7 @@ Run: `bun run legacy reconcile --kind unbalanced_vouchers --fixture base --out a
 ```
 feat(importer): detect and quantify unbalanced vouchers [9A T8]
 
-§5.1 #2 / SAH-003. Signed imbalance per voucher with its date, its line count and the
+§5.1 #2 / LEGACY-003. Signed imbalance per voucher with its date, its line count and the
 accounts it touches; the summary carries the population totals, the largest single
 imbalance and the date range, because the owner decides on the total. The suspense
 treatment itself is OD-25 and belongs to 9B — this report states the question verbatim
@@ -3546,7 +3546,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 - Consumes: `LegacyReader` (T4), `hasColumns`, `READ_BATCH` (T7).
 - Produces:
   ```ts
-  export interface OrphanRule { readonly id: string; readonly childTable: string; readonly childColumns: readonly string[]; readonly parentTable: string; readonly parentColumns: readonly string[]; readonly ignoreValues: readonly string[]; readonly note: string; readonly sah: readonly string[] }
+  export interface OrphanRule { readonly id: string; readonly childTable: string; readonly childColumns: readonly string[]; readonly parentTable: string; readonly parentColumns: readonly string[]; readonly ignoreValues: readonly string[]; readonly note: string; readonly legacyDefects: readonly string[] }
   export const ORPHAN_RULES: readonly OrphanRule[];
   export async function orphans(reader: LegacyReader): Promise<ReconciliationReport>;
   ```
@@ -3571,7 +3571,7 @@ Add to `catalog.json`:
 [{ "ID": "1", "NAME": "Main contract" }]
 ```
 
-`VOUITEMS` row `(1,2,1)` already carries `JOB = "99"`, which no `JOBS` row resolves — SAH-073's 82%
+`VOUITEMS` row `(1,2,1)` already carries `JOB = "99"`, which no `JOBS` row resolves — LEGACY-073's 82%
 unconstrained `Job` reference, in one line.
 
 - [ ] **Step 2: Write the failing test**
@@ -3592,7 +3592,7 @@ describe("reconcile('orphans') — §5.1 #3, 'report orphans; do not silently nu
     expect(report.rows).toContainEqual({
       rule: "VOUITEMS.JOB", childTable: "VOUITEMS", value: "99", occurrences: 1,
       parentTable: "JOBS", status: "orphan",
-      note: "Job is 82% unconstrained across the shipped schema (SAH-073); the shipped fixes/fix-Jobs.sql exists because orphans occur.",
+      note: "Job is 82% unconstrained across the shipped schema (LEGACY-073); the shipped fixes/fix-Jobs.sql exists because orphans occur.",
     });
   });
 
@@ -3631,13 +3631,13 @@ export interface OrphanRule {
   /** Sentinels the legacy schema uses for "not set". A `0` Job is not an orphan; it is an absent reference. */
   readonly ignoreValues: readonly string[];
   readonly note: string;
-  readonly sah: readonly string[];
+  readonly legacyDefects: readonly string[];
 }
 
 const UNSET = ["", "0"] as const;
 
 /**
- * §5.1 #3: "Expect orphaned references. `Job` 82% and `CostCentre` 81% unconstrained (SAH-073); the shipped
+ * §5.1 #3: "Expect orphaned references. `Job` 82% and `CostCentre` 81% unconstrained (LEGACY-073); the shipped
  * `fixes/fix-Jobs.sql` and `fix-finals.sql` prove orphans occur. **Report orphans; do not silently null them.**"
  * (spec:2333) Every rule is a relationship the dossier names; a rule whose tables are not in this database is
  * reported `source_absent` rather than passing.
@@ -3645,31 +3645,31 @@ const UNSET = ["", "0"] as const;
 export const ORPHAN_RULES: readonly OrphanRule[] = [
   { id: "VOUITEMS.JOB", childTable: "VOUITEMS", childColumns: ["JOB"], parentTable: "JOBS", parentColumns: ["ID"],
     ignoreValues: [...UNSET],
-    note: "Job is 82% unconstrained across the shipped schema (SAH-073); the shipped fixes/fix-Jobs.sql exists because orphans occur.",
-    sah: ["SAH-073"] },
+    note: "Job is 82% unconstrained across the shipped schema (LEGACY-073); the shipped fixes/fix-Jobs.sql exists because orphans occur.",
+    legacyDefects: ["LEGACY-073"] },
   { id: "VOUITEMS.COSTCENTRE", childTable: "VOUITEMS", childColumns: ["COSTCENTRE"], parentTable: "COSTCENTRES", parentColumns: ["ID"],
-    ignoreValues: [...UNSET], note: "CostCentre is 81% unconstrained (SAH-073).", sah: ["SAH-073"] },
+    ignoreValues: [...UNSET], note: "CostCentre is 81% unconstrained (LEGACY-073).", legacyDefects: ["LEGACY-073"] },
   { id: "VOUITEMS.ACCOUNT", childTable: "VOUITEMS", childColumns: ["ACCOUNT"], parentTable: "ACCOUNTS", parentColumns: ["ID"],
     ignoreValues: [...UNSET],
-    note: "Accounts are deletable with postings against them (SAH-021), so a line can outlive its account.",
-    sah: ["SAH-021", "SAH-073"] },
+    note: "Accounts are deletable with postings against them (LEGACY-021), so a line can outlive its account.",
+    legacyDefects: ["LEGACY-021", "LEGACY-073"] },
   { id: "VOUITEMS.VOUCHER", childTable: "VOUITEMS", childColumns: ["SITE", "ID"], parentTable: "VOUCHERS", parentColumns: ["SITE", "ID"],
     ignoreValues: [], note: "A line whose header no longer exists is invisible to every report that starts from Vouchers.",
-    sah: ["SAH-073", "SAH-074"] },
+    legacyDefects: ["LEGACY-073", "LEGACY-074"] },
   { id: "BILLITEMS.MATERIAL", childTable: "BILLITEMS", childColumns: ["MATERIAL"], parentTable: "MATERIALS", parentColumns: ["ID"],
     ignoreValues: [...UNSET], note: "A movement whose item no longer exists cannot be recosted by the 3B engine.",
-    sah: ["SAH-073"] },
+    legacyDefects: ["LEGACY-073"] },
   { id: "BILLITEMS.WAREHOUSE", childTable: "BILLITEMS", childColumns: ["WAREHOUSE"], parentTable: "WAREHOUSES", parentColumns: ["ID"],
     ignoreValues: [...UNSET], note: "A movement with no warehouse cannot be placed in the opening stock position.",
-    sah: ["SAH-073"] },
+    legacyDefects: ["LEGACY-073"] },
   { id: "BILLITEMS.BATCH", childTable: "BILLITEMS", childColumns: ["BATCH"], parentTable: "BATCHES", parentColumns: ["ID"],
     ignoreValues: [...UNSET], note: "A lot reference with no lot loses the expiry position §5.1 asks 9B to import.",
-    sah: ["SAH-073"] },
+    legacyDefects: ["LEGACY-073"] },
   { id: "BILLITEMS.BILL", childTable: "BILLITEMS", childColumns: ["SITE", "ID"], parentTable: "BILLS", parentColumns: ["SITE", "ID"],
-    ignoreValues: [], note: "As VOUITEMS.VOUCHER, on the inventory side.", sah: ["SAH-073", "SAH-074"] },
+    ignoreValues: [], note: "As VOUITEMS.VOUCHER, on the inventory side.", legacyDefects: ["LEGACY-073", "LEGACY-074"] },
   { id: "JOURNAL.ACCOUNT", childTable: "JOURNAL", childColumns: ["ACCOUNT"], parentTable: "ACCOUNTS", parentColumns: ["ID"],
     ignoreValues: [...UNSET], note: "Journal is the document-level movement row; an orphan here is a balance with no account.",
-    sah: ["SAH-021", "SAH-073"] },
+    legacyDefects: ["LEGACY-021", "LEGACY-073"] },
 ];
 
 const key = (row: LegacyRow, columns: readonly string[]): string => columns.map((c) => String(row[c] ?? "")).join("|");
@@ -3737,7 +3737,7 @@ Expected: green.
 ```
 feat(importer): report orphaned legacy references [9A T9]
 
-§5.1 #3 / SAH-073. Nine declarative rules over the relationships the dossier names,
+§5.1 #3 / LEGACY-073. Nine declarative rules over the relationships the dossier names,
 each counting distinct dangling values and the rows that hold them. 0 and the empty
 string are "not set", not orphans. A rule whose tables are not in this database is
 `source_absent`, never a pass. Nothing is nulled and nothing is defaulted.
@@ -3758,10 +3758,10 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 - Consumes: `LegacyReader` (T4), `AGGREGATE_RULES` (T7), `hasColumns`, `READ_BATCH` (T7).
 - Produces:
   ```ts
-  export interface NullPoisonTarget { readonly table: string; readonly columns: readonly string[]; readonly why: string; readonly sah: readonly string[] }
+  export interface NullPoisonTarget { readonly table: string; readonly columns: readonly string[]; readonly why: string; readonly legacyDefects: readonly string[] }
   export const NULL_POISON_TARGETS: readonly NullPoisonTarget[];
   export async function nullPoison(reader: LegacyReader): Promise<ReconciliationReport>;
-  export interface DuplicateTarget { readonly table: string; readonly naturalKey: readonly string[]; readonly why: string; readonly sah: readonly string[] }
+  export interface DuplicateTarget { readonly table: string; readonly naturalKey: readonly string[]; readonly why: string; readonly legacyDefects: readonly string[] }
   export const DUPLICATE_TARGETS: readonly DuplicateTarget[];
   export async function duplicateAggregates(reader: LegacyReader): Promise<ReconciliationReport>;
   ```
@@ -3769,8 +3769,8 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 - [ ] **Step 1: Poison the corpus, deliberately**
 
 Change one row of `packages/importer/test/corpus/base/ACCTOTALS.json` so account `11`'s `CREDIT` is `null`
-rather than `"100.0000"` — the shape SAH-011 produces, which "will appear as blank or zero, not as an error".
-Add a second `MATOBJECTS` row with the same natural key as the first (SAH-049's duplicate), by adding to
+rather than `"100.0000"` — the shape LEGACY-011 produces, which "will appear as blank or zero, not as an error".
+Add a second `MATOBJECTS` row with the same natural key as the first (LEGACY-049's duplicate), by adding to
 `catalog.json`:
 
 ```json
@@ -3794,7 +3794,7 @@ and `packages/importer/test/corpus/base/MATOBJECTS.json`:
 ]
 ```
 
-`keyColumns: []` is the truth: "`MatObjects` and `MatQuantity` have **no key columns**" (SAH-049) — which is
+`keyColumns: []` is the truth: "`MatObjects` and `MatQuantity` have **no key columns**" (LEGACY-049) — which is
 precisely why the duplicate could be created.
 
 **One edit to Task 7's test follows from the `ACCTOTALS` change, and it is exactly one.** With account 11's
@@ -3829,7 +3829,7 @@ import { createReader } from "../src/reader";
 import { reconcile } from "../src/reconcile";
 import { loadCorpus } from "./support/corpus";
 
-describe("reconcile('null_poison') — §5.1 #4, SAH-007 and SAH-011", () => {
+describe("reconcile('null_poison') — §5.1 #4, LEGACY-007 and LEGACY-011", () => {
   it("counts NULLs in every figure column that a report would silently render as zero", async () => {
     const report = await reconcile(await createReader(new FixtureLegacyDriver(loadCorpus())), "null_poison");
     expect(report.rows).toContainEqual(expect.objectContaining({
@@ -3875,12 +3875,12 @@ import { createReader } from "../src/reader";
 import { reconcile } from "../src/reconcile";
 import { loadCorpus } from "./support/corpus";
 
-describe("reconcile('duplicate_aggregates') — §5.1 #5, SAH-049", () => {
+describe("reconcile('duplicate_aggregates') — §5.1 #5, LEGACY-049", () => {
   it("finds a natural key that appears more than once in a keyless aggregate table", async () => {
     const report = await reconcile(await createReader(new FixtureLegacyDriver(loadCorpus())), "duplicate_aggregates");
     expect(report.rows).toContainEqual({
       table: "MATOBJECTS", key: "5|1", naturalKey: "MATERIAL,WAREHOUSE", occurrences: 2, status: "duplicate",
-      why: "MatObjects and MatQuantity have no key columns, and the non-atomic UPDATE-then-INSERT upsert duplicates under concurrency; every later posting then updates both rows (SAH-049).",
+      why: "MatObjects and MatQuantity have no key columns, and the non-atomic UPDATE-then-INSERT upsert duplicates under concurrency; every later posting then updates both rows (LEGACY-049).",
     });
   });
 
@@ -3907,26 +3907,26 @@ import { READ_BATCH } from "./aggregate-drift";
 import { hasColumns } from "./probe";
 import type { ReconciliationReport } from "./index";
 
-export interface NullPoisonTarget { readonly table: string; readonly columns: readonly string[]; readonly why: string; readonly sah: readonly string[] }
+export interface NullPoisonTarget { readonly table: string; readonly columns: readonly string[]; readonly why: string; readonly legacyDefects: readonly string[] }
 
 /**
- * §5.1 #4: "Expect NULL-poisoned balances and costs (SAH-007, 011). These will appear as blank or zero, not as
+ * §5.1 #4: "Expect NULL-poisoned balances and costs (LEGACY-007, 011). These will appear as blank or zero, not as
  * errors." (spec:2334) The list is every figure column a legacy report would render as a blank and a loader
  * would coerce to zero — which is the same defect arriving in the new system.
  */
 export const NULL_POISON_TARGETS: readonly NullPoisonTarget[] = [
   { table: "ACCTOTALS", columns: ["DEBIT", "CREDIT", "ADMINDEBIT", "ADMINCREDIT"],
-    why: "NULL arithmetic irreversibly nulls balances (SAH-011): one NULL operand in the trigger's -old + new expression wipes the accumulated figure and nothing raises.", sah: ["SAH-011"] },
-  { table: "ACCOBJECTS", columns: ["DEBIT", "CREDIT", "OPENDEBIT", "OPENCREDIT"], why: "As ACCTOTALS.", sah: ["SAH-011"] },
-  { table: "ACCCURTOTALS", columns: ["DEBIT", "CREDIT"], why: "As ACCTOTALS, per currency (SAH-001).", sah: ["SAH-001", "SAH-011"] },
+    why: "NULL arithmetic irreversibly nulls balances (LEGACY-011): one NULL operand in the trigger's -old + new expression wipes the accumulated figure and nothing raises.", legacyDefects: ["LEGACY-011"] },
+  { table: "ACCOBJECTS", columns: ["DEBIT", "CREDIT", "OPENDEBIT", "OPENCREDIT"], why: "As ACCTOTALS.", legacyDefects: ["LEGACY-011"] },
+  { table: "ACCCURTOTALS", columns: ["DEBIT", "CREDIT"], why: "As ACCTOTALS, per currency (LEGACY-001).", legacyDefects: ["LEGACY-001", "LEGACY-011"] },
   { table: "MATCOSTS", columns: ["COST", "BUY", "BUYPRICE", "SALEPRICE"],
-    why: "Value-less production movements NULL-poison cost forever (SAH-007) and there is no rebuild path (SAH-004). A NULL here is why §5.1 #6 forbids importing cost at all.", sah: ["SAH-004", "SAH-007"] },
-  { table: "MATOBJECTS", columns: ["QNT"], why: "A NULL quantity reads as zero stock and hides a position (SAH-050).", sah: ["SAH-050"] },
-  { table: "MATQUANTITY", columns: ["QNT"], why: "As MATOBJECTS, per batch.", sah: ["SAH-049", "SAH-050"] },
+    why: "Value-less production movements NULL-poison cost forever (LEGACY-007) and there is no rebuild path (LEGACY-004). A NULL here is why §5.1 #6 forbids importing cost at all.", legacyDefects: ["LEGACY-004", "LEGACY-007"] },
+  { table: "MATOBJECTS", columns: ["QNT"], why: "A NULL quantity reads as zero stock and hides a position (LEGACY-050).", legacyDefects: ["LEGACY-050"] },
+  { table: "MATQUANTITY", columns: ["QNT"], why: "As MATOBJECTS, per batch.", legacyDefects: ["LEGACY-049", "LEGACY-050"] },
   { table: "VOUITEMS", columns: ["DEBIT", "CREDIT", "LOCALDEBIT", "LOCALCREDIT"],
-    why: "A NULL on a line is what poisons every aggregate downstream; LocalDebit/LocalCredit additionally were never derived from value × rate (SAH-012).", sah: ["SAH-011", "SAH-012"] },
+    why: "A NULL on a line is what poisons every aggregate downstream; LocalDebit/LocalCredit additionally were never derived from value × rate (LEGACY-012).", legacyDefects: ["LEGACY-011", "LEGACY-012"] },
   { table: "BILLITEMS", columns: ["QNT", "DEBIT", "CREDIT", "LOCALCOST", "ACTUALCOST"],
-    why: "As VOUITEMS, on the inventory side; the three cost columns feed MatCosts.", sah: ["SAH-007", "SAH-011"] },
+    why: "As VOUITEMS, on the inventory side; the three cost columns feed MatCosts.", legacyDefects: ["LEGACY-007", "LEGACY-011"] },
 ];
 
 export async function nullPoison(reader: LegacyReader): Promise<ReconciliationReport> {
@@ -3973,22 +3973,22 @@ import { READ_BATCH } from "./aggregate-drift";
 import { hasColumns } from "./probe";
 import type { ReconciliationReport } from "./index";
 
-export interface DuplicateTarget { readonly table: string; readonly naturalKey: readonly string[]; readonly why: string; readonly sah: readonly string[] }
+export interface DuplicateTarget { readonly table: string; readonly naturalKey: readonly string[]; readonly why: string; readonly legacyDefects: readonly string[] }
 
 const RACE =
   "MatObjects and MatQuantity have no key columns, and the non-atomic UPDATE-then-INSERT upsert duplicates " +
-  "under concurrency; every later posting then updates both rows (SAH-049).";
+  "under concurrency; every later posting then updates both rows (LEGACY-049).";
 
 /**
- * §5.1 #5: "Expect duplicate aggregate rows for MatObjects/MatQuantity (SAH-049)." (spec:2335) The natural key
+ * §5.1 #5: "Expect duplicate aggregate rows for MatObjects/MatQuantity (LEGACY-049)." (spec:2335) The natural key
  * is what the trigger's WHERE clause *meant*; the table has no unique index enforcing it, which is the defect.
  */
 export const DUPLICATE_TARGETS: readonly DuplicateTarget[] = [
-  { table: "MATOBJECTS", naturalKey: ["MATERIAL", "WAREHOUSE"], why: RACE, sah: ["SAH-049"] },
-  { table: "MATQUANTITY", naturalKey: ["MATERIAL", "WAREHOUSE", "BATCH"], why: RACE, sah: ["SAH-049"] },
-  { table: "ACCOBJECTS", naturalKey: ["SITE", "ACCOUNT"], why: "AccObjects does have key columns, so a duplicate here would mean the index is absent in this database — worth knowing before the load (SAH-049, Part VII #6).", sah: ["SAH-049"] },
-  { table: "ACCTOTALS", naturalKey: ["ACCOUNT"], why: "As ACCOBJECTS.", sah: ["SAH-049"] },
-  { table: "MATTOTALS", naturalKey: ["MATERIAL"], why: "As ACCOBJECTS, on the inventory side.", sah: ["SAH-049"] },
+  { table: "MATOBJECTS", naturalKey: ["MATERIAL", "WAREHOUSE"], why: RACE, legacyDefects: ["LEGACY-049"] },
+  { table: "MATQUANTITY", naturalKey: ["MATERIAL", "WAREHOUSE", "BATCH"], why: RACE, legacyDefects: ["LEGACY-049"] },
+  { table: "ACCOBJECTS", naturalKey: ["SITE", "ACCOUNT"], why: "AccObjects does have key columns, so a duplicate here would mean the index is absent in this database — worth knowing before the load (LEGACY-049, Part VII #6).", legacyDefects: ["LEGACY-049"] },
+  { table: "ACCTOTALS", naturalKey: ["ACCOUNT"], why: "As ACCOBJECTS.", legacyDefects: ["LEGACY-049"] },
+  { table: "MATTOTALS", naturalKey: ["MATERIAL"], why: "As ACCOBJECTS, on the inventory side.", legacyDefects: ["LEGACY-049"] },
 ];
 
 export async function duplicateAggregates(reader: LegacyReader): Promise<ReconciliationReport> {
@@ -4020,7 +4020,7 @@ export async function duplicateAggregates(reader: LegacyReader): Promise<Reconci
     kind: "duplicate_aggregates", rows,
     summary: {
       tables: String(DUPLICATE_TARGETS.length), duplicatedKeys: String(duplicatedKeys), excessRows: String(excessRows),
-      note: "Every duplicated key has been counted twice by every posting since it appeared (SAH-049), so the drift report's figure for that key is wrong on the stored side by exactly the excess. Read the two reports together.",
+      note: "Every duplicated key has been counted twice by every posting since it appeared (LEGACY-049), so the drift report's figure for that key is wrong on the stored side by exactly the excess. Read the two reports together.",
     },
   };
 }
@@ -4042,7 +4042,7 @@ feat(importer): detect NULL-poisoned figures and duplicate aggregate rows [9A T1
 
 §5.1 #4 and #5. NULL counts per figure column with the reason a NULL is there, because
 these "appear as blank or zero, not as errors"; and per-natural-key occurrence counts
-over the five aggregate tables, including the two SAH-049 names that have no key
+over the five aggregate tables, including the two LEGACY-049 names that have no key
 columns at all. The two reports are meant to be read together: a duplicated key makes
 the drift report's stored figure wrong by exactly the excess.
 
@@ -4478,12 +4478,12 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 
 ---
 
-### Task 12: The report-template catalogue — blobs out of `System.Reports` (§5.1 #9, SAH-077)
+### Task 12: The report-template catalogue — blobs out of `System.Reports` (§5.1 #9, LEGACY-077)
 
 **Files:**
 - Create: `packages/importer/src/catalogue/templates.ts`
 - Modify: `packages/importer/src/drivers/odbc.ts` (**correction C2** — blob values), `packages/importer/src/cli.ts` (the `templates` command), `packages/importer/src/index.ts` (one export), `packages/importer/test/corpus/base/catalog.json` + a new `REPORTS.json`, `tests/package.json` (one dependency)
-- Create **or append**: `tests/regression/sah-077.test.ts` (§3.7.3 first corollary)
+- Create **or append**: `tests/regression/legacy-077.test.ts` (§3.7.3 first corollary)
 - Test: `packages/importer/test/templates.test.ts`
 
 **Interfaces:**
@@ -4523,7 +4523,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
   ```
 
 **Why this report exists, and why it is early.** spec:2341, §5.1 #9: "**Report definitions live as blobs in the
-customer's database** (SAH-077). Extract and catalogue them early — it is the only way to know which of the 255
+customer's database** (LEGACY-077). Extract and catalogue them early — it is the only way to know which of the 255
 templates the customer actually uses." The dossier: "`.report` files are serialised Delphi objects
 (`TDluxReportContainer`) with embedded DFM strings. They cannot be version-controlled meaningfully, diffed,
 code-reviewed, or rendered outside the Dlux engine, and 255 of them exist — including near-duplicates
@@ -4659,7 +4659,7 @@ describe("templateStem — the near-duplicate rule, checked against the dossier'
   });
 });
 
-describe("catalogueTemplates — §5.1 #9 / SAH-077", () => {
+describe("catalogueTemplates — §5.1 #9 / LEGACY-077", () => {
   it("writes every blob out byte-for-byte and hashes what it wrote", async () => {
     const { dir, writer, driver } = run();
     const catalogue = await catalogueTemplates(driver, writer);
@@ -4815,7 +4815,7 @@ const NAME_CANDIDATES = ["NAME", "REPORTNAME", "CAPTION", "TITLE"] as const;
 const OWNER_CANDIDATES = ["USERNAME", "USER", "OWNER", "PROFILE", "USERID"] as const;
 
 /**
- * §5.1 #9 (spec:2341) / SAH-077. Takes the **driver**, not the `LegacyReader`: §4.13.1 froze `LegacyReader`
+ * §5.1 #9 (spec:2341) / LEGACY-077. Takes the **driver**, not the `LegacyReader`: §4.13.1 froze `LegacyReader`
  * without a catalogue accessor, and this is the one report that needs a column's *declared type* — which
  * column is the blob is discovered, never assumed, because no shipped file gives `System.Reports`' column
  * names. Extending `LegacyReader` to suit one report would change a surface 9B consumes; taking the driver
@@ -4930,7 +4930,7 @@ export { catalogueTemplates, classifyTemplate, templateStem, TEMPLATE_GROUP_RULE
   type TemplateCatalogue, type TemplateEntry, type TemplateGroup } from "./catalogue/templates";
 ```
 
-- [ ] **Step 6: Append to `tests/regression/sah-077.test.ts` (create if absent)**
+- [ ] **Step 6: Append to `tests/regression/legacy-077.test.ts` (create if absent)**
 
 Contracts §3.7.3's **first corollary**: 9A has no fixed position in execution order, so it never "creates" — it
 **appends, create-if-absent**, and its block asserts nothing about what other blocks exist. If the file is
@@ -4945,7 +4945,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-describe("SAH-077 The call graph is unresolvable, so dead code cannot be identified — 9A", () => {
+describe("LEGACY-077 The call graph is unresolvable, so dead code cannot be identified — 9A", () => {
   // A self-contained two-row corpus: packages/importer/test/support/corpus.ts is that package's own test
   // helper and is imported by no other workspace (plan header, §4.17.1 "none added").
   const corpus: LegacyCorpus = {
@@ -4967,7 +4967,7 @@ describe("SAH-077 The call graph is unresolvable, so dead code cannot be identif
   };
 
   it("makes the un-analysable blobs analysable: every definition comes out as a hashed file", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "sah-077-"));
+    const dir = mkdtempSync(join(tmpdir(), "legacy-077-"));
     const writer = new ReportWriter(dir, { source: "regression corpus", engineVersion: "Firebird 2.5" });
     const catalogue = await catalogueTemplates(new FixtureLegacyDriver(corpus), writer);
 
@@ -4984,7 +4984,7 @@ describe("SAH-077 The call graph is unresolvable, so dead code cannot be identif
   });
 
   it("states that presence is not usage, so nobody reads a consolidation candidate as dead code", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "sah-077-"));
+    const dir = mkdtempSync(join(tmpdir(), "legacy-077-"));
     const writer = new ReportWriter(dir, { source: "regression corpus", engineVersion: "Firebird 2.5" });
     const catalogue = await catalogueTemplates(new FixtureLegacyDriver(corpus), writer);
     expect(catalogue.note).toContain("not evidence it is used");
@@ -5005,8 +5005,8 @@ workspace is outside every lint root (§3.7.5), so no rule is affected; `depende
 
 - [ ] **Step 7: Run everything and commit**
 
-Run: `bun run --cwd packages/importer test && bun run --cwd tests test regression/sah-077`
-Expected: PASS in both. If `sah-077.test.ts` already carried a 7A block, it still passes — nothing above the
+Run: `bun run --cwd packages/importer test && bun run --cwd tests test regression/legacy-077`
+Expected: PASS in both. If `legacy-077.test.ts` already carried a 7A block, it still passes — nothing above the
 new `describe` was touched.
 
 Run: `bun run legacy templates --fixture base --out artefacts/legacy/dev`
@@ -5023,12 +5023,12 @@ Expected: green.
 ```
 feat(importer): extract and catalogue the legacy report-definition blobs [9A T12]
 
-§5.1 #9 / SAH-077 — the definitions live as MEMO blobs in the customer's database, so
+§5.1 #9 / LEGACY-077 — the definitions live as MEMO blobs in the customer's database, so
 this writes every one out byte-for-byte, hashes it, groups it by the dossier's §4.4
 rules, and marks the near-duplicate families §7.10 names. The name, owner and blob
 columns are discovered from the catalogue, never assumed. Correction C2 carries a blob
 across the driver seam as base64 instead of a lossy String(buffer). Appends the 9A
-block to tests/regression/sah-077.test.ts, create-if-absent (§3.7.3).
+block to tests/regression/legacy-077.test.ts, create-if-absent (§3.7.3).
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 ```
@@ -5098,7 +5098,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
     readonly answers: readonly OpenQuestionAnswer[];
   }
   export interface ConstraintClaim {
-    readonly sah: string;
+    readonly legacyDefect: string;
     readonly table: string;
     readonly columns: readonly string[];
     readonly claim: string;
@@ -5110,9 +5110,9 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
   ```
 
 **Why a probe and not a claim.** Part VII #6, verbatim (spec:2470): "**Actual DDL constraints.** Several
-findings (SAH-024, 049, 051, 066, 074) rest on the schema dump's key convention rather than real DDL. Confirm
+findings (LEGACY-024, 049, 051, 066, 074) rest on the schema dump's key convention rather than real DDL. Confirm
 against `RDB$RELATION_CONSTRAINTS` and `RDB$INDICES` before rating them." That sentence is an instruction to
-this task and to nothing else in the project: contracts §3.7.3 has 1A create `tests/regression/sah-024.test.ts`
+this task and to nothing else in the project: contracts §3.7.3 has 1A create `tests/regression/legacy-024.test.ts`
 **marked `it.skip` with the reason until OD-27 answers Part VII #6**, and this probe is what produces that
 answer. Each of the five defects becomes one row of `CONSTRAINT_CLAIMS` naming the table, the columns and what
 would confirm it — so the artefact reads as "here is the claim, here is what the engine actually declares",
@@ -5125,7 +5125,7 @@ In `packages/importer/src/legacy/types.ts`, after `LegacyColumn`:
 ```ts
 /**
  * A real constraint, as the engine declares it — not as the schema dump's naming convention implies. Part VII
- * #6 (spec:2470) exists because five Part I findings rest on the convention: SAH-024, 049, 051, 066 and 074.
+ * #6 (spec:2470) exists because five Part I findings rest on the convention: LEGACY-024, 049, 051, 066 and 074.
  */
 export interface LegacyConstraint {
   readonly table: string;
@@ -5341,7 +5341,7 @@ The ten row files:
   { "SITE": "1", "ID": "12", "CODE": "10", "PARENT": "0" }
 ]
 ```
-— `ACCOUNTS.json`. Three sibling codes `1`, `9`, `10` under one parent: exactly the shape SAH-024 describes,
+— `ACCOUNTS.json`. Three sibling codes `1`, `9`, `10` under one parent: exactly the shape LEGACY-024 describes,
 where `max()` on a string returns `'9'` and the next allocation collides. They are **not** zero-padded, which
 is the evidence that the external `IncCodeNumber` UDF does not pad here.
 
@@ -5351,7 +5351,7 @@ is the evidence that the external `IncCodeNumber` UDF does not pad here.
   { "SITE": "1", "ID": "2", "JOB": "7", "QUANTITY": "3.0000" }
 ]
 ```
-— `MATOPENS.json`. One row with `JOB <> 0`, so Part VII #7's answer in this corpus is "yes, and SAH-022 is a
+— `MATOPENS.json`. One row with `JOB <> 0`, so Part VII #7's answer in this corpus is "yes, and LEGACY-022 is a
 hard failure".
 
 ```json
@@ -5428,29 +5428,29 @@ describe("answerOpenQuestions — OD-27, and it decides nothing", () => {
     const six = (await report()).answers.find((a) => a.id === "VII-6");
     expect(six?.status).toBe("evidence_collected");
     expect(six?.evidence).toEqual([
-      { sah: "SAH-024", table: "ACCOUNTS", columns: "CODE", declared: "PRIMARY KEY(SITE,ID)",
+      { legacyDefect: "LEGACY-024", table: "ACCOUNTS", columns: "CODE", declared: "PRIMARY KEY(SITE,ID)",
         finding: "no UNIQUE on CODE; 1 sibling groups contain codes a lexicographic max() would mis-order; codes are not zero-padded",
         claim: "Account codes are allocated with max() on a string, without locking (spec:425)" },
-      { sah: "SAH-049", table: "MATOBJECTS", columns: "SITE,ID", declared: "none",
+      { legacyDefect: "LEGACY-049", table: "MATOBJECTS", columns: "SITE,ID", declared: "none",
         finding: "no PRIMARY KEY and no UNIQUE; 1 natural key occurs more than once",
         claim: "Aggregate tables have no unique key, so the upsert race creates duplicates (spec:630)" },
-      { sah: "SAH-051", table: "BILLS", columns: "NUMBER", declared: "table absent from this source",
+      { legacyDefect: "LEGACY-051", table: "BILLS", columns: "NUMBER", declared: "table absent from this source",
         finding: "cannot be checked here", claim: "Document numbering has no uniqueness constraint (spec:647)" },
-      { sah: "SAH-066", table: "MATUNITS", columns: "EXCHANGE", declared: "PRIMARY KEY(SITE,ID,UNIT)",
+      { legacyDefect: "LEGACY-066", table: "MATUNITS", columns: "EXCHANGE", declared: "PRIMARY KEY(SITE,ID,UNIT)",
         finding: "EXCHANGE is declared float", claim: "Unit conversion is defined in the schema and applied nowhere (spec:736)" },
       // "declare", not "declares": the sentence is built from a count that is usually greater than one, and
       // `sixDdlConstraints` uses the one word rather than pluralising a verb in two places.
-      { sah: "SAH-074", table: "*", columns: "", declared: "10 tables read",
+      { legacyDefect: "LEGACY-074", table: "*", columns: "", declared: "10 tables read",
         finding: "1 of 10 tables declare no PRIMARY KEY: MATOBJECTS",
         claim: "42 of 460 tables have no primary key (spec:831)" },
     ]);
   });
 
-  it("#7 quantifies MatOpens.Job rather than asserting SAH-022", async () => {
+  it("#7 quantifies MatOpens.Job rather than asserting LEGACY-022", async () => {
     const seven = (await report()).answers.find((a) => a.id === "VII-7");
     expect(seven?.evidence).toEqual([{ table: "MATOPENS", rows: "2", jobNonZero: "1", distinctJobs: "1" }]);
     expect(seven?.finding).toBe(
-      "MatOpens.Job differs from 0 on 1 of 2 rows, so SAH-022's singleton SELECT ... INTO is a hard failure on this data, not inert.",
+      "MatOpens.Job differs from 0 on 1 of 2 rows, so LEGACY-022's singleton SELECT ... INTO is a hard failure on this data, not inert.",
     );
   });
 
@@ -5486,7 +5486,7 @@ describe("answerOpenQuestions — OD-27, and it decides nothing", () => {
   });
 
   it("declares one claim per Part VII #6 defect and no more", () => {
-    expect(CONSTRAINT_CLAIMS.map((c) => c.sah)).toEqual(["SAH-024", "SAH-049", "SAH-051", "SAH-066", "SAH-074"]);
+    expect(CONSTRAINT_CLAIMS.map((c) => c.legacyDefect)).toEqual(["LEGACY-024", "LEGACY-049", "LEGACY-051", "LEGACY-066", "LEGACY-074"]);
   });
 });
 ```
@@ -5526,7 +5526,7 @@ export interface OpenQuestionReport {
 }
 
 export interface ConstraintClaim {
-  readonly sah: string;
+  readonly legacyDefect: string;
   readonly table: string;
   readonly columns: readonly string[];
   readonly claim: string;
@@ -5534,21 +5534,21 @@ export interface ConstraintClaim {
 }
 
 /**
- * Part VII #6, verbatim (spec:2470): "Several findings (SAH-024, 049, 051, 066, 074) rest on the schema dump's
+ * Part VII #6, verbatim (spec:2470): "Several findings (LEGACY-024, 049, 051, 066, 074) rest on the schema dump's
  * key convention rather than real DDL. Confirm against RDB$RELATION_CONSTRAINTS and RDB$INDICES before rating
  * them." One row per named defect, in the spec's own order. `confirmedBy` says what would confirm the claim,
  * so the artefact is falsifiable rather than rhetorical.
  */
 export const CONSTRAINT_CLAIMS: readonly ConstraintClaim[] = [
-  { sah: "SAH-024", table: "ACCOUNTS", columns: ["CODE"], confirmedBy: "code_shape",
+  { legacyDefect: "LEGACY-024", table: "ACCOUNTS", columns: ["CODE"], confirmedBy: "code_shape",
     claim: "Account codes are allocated with max() on a string, without locking (spec:425)" },
-  { sah: "SAH-049", table: "MATOBJECTS", columns: ["SITE", "ID"], confirmedBy: "absent_unique",
+  { legacyDefect: "LEGACY-049", table: "MATOBJECTS", columns: ["SITE", "ID"], confirmedBy: "absent_unique",
     claim: "Aggregate tables have no unique key, so the upsert race creates duplicates (spec:630)" },
-  { sah: "SAH-051", table: "BILLS", columns: ["NUMBER"], confirmedBy: "absent_unique",
+  { legacyDefect: "LEGACY-051", table: "BILLS", columns: ["NUMBER"], confirmedBy: "absent_unique",
     claim: "Document numbering has no uniqueness constraint (spec:647)" },
-  { sah: "SAH-066", table: "MATUNITS", columns: ["EXCHANGE"], confirmedBy: "declared_type",
+  { legacyDefect: "LEGACY-066", table: "MATUNITS", columns: ["EXCHANGE"], confirmedBy: "declared_type",
     claim: "Unit conversion is defined in the schema and applied nowhere (spec:736)" },
-  { sah: "SAH-074", table: "*", columns: [], confirmedBy: "absent_primary_key",
+  { legacyDefect: "LEGACY-074", table: "*", columns: [], confirmedBy: "absent_primary_key",
     claim: "42 of 460 tables have no primary key (spec:831)" },
 ];
 
@@ -5564,8 +5564,8 @@ export const CONSTRAINT_CLAIMS: readonly ConstraintClaim[] = [
 export const SALARIES_LIVENESS_TABLES: readonly string[] = ["EMPLOYEES", "PAYROLLS", "PAYITEMS", "LENDS", "TAXLAYERS"];
 
 const QUESTIONS: Readonly<Record<QuestionId, { line: number; text: string }>> = {
-  "VII-6": { line: 2470, text: "Actual DDL constraints. Several findings (SAH-024, 049, 051, 066, 074) rest on the schema dump's key convention rather than real DDL. Confirm against RDB$RELATION_CONSTRAINTS and RDB$INDICES before rating them." },
-  "VII-7": { line: 2471, text: "Does MatOpens.Job ever differ from 0 in production? SAH-022 is a hard failure if so, and inert if not." },
+  "VII-6": { line: 2470, text: "Actual DDL constraints. Several findings (LEGACY-024, 049, 051, 066, 074) rest on the schema dump's key convention rather than real DDL. Confirm against RDB$RELATION_CONSTRAINTS and RDB$INDICES before rating them." },
+  "VII-7": { line: 2471, text: "Does MatOpens.Job ever differ from 0 in production? LEGACY-022 is a hard failure if so, and inert if not." },
   "VII-8": { line: 2472, text: "Which of the 255 report templates are in use? They live as blobs in the customer database; extract and catalogue them." },
   "VII-9": { line: 2473, text: "Customisations. The Special, rah* and spr* modules are customer-specific. Catalogue them before assuming the stock feature set." },
   "VII-13": { line: 2477, text: "Is the legacy Salaries module in live use? Row counts on Employees, Payrolls, PayItems, Lends, TaxLayers. Determines whether Phase 9 imports only the employee master and current-year YTD (the default) or also historical payroll detail for viewing." },
@@ -5603,7 +5603,7 @@ async function sixDdlConstraints(
 ): Promise<OpenQuestionAnswer> {
   const evidence: Record<string, string>[] = [];
   for (const claim of CONSTRAINT_CLAIMS) {
-    const base = { sah: claim.sah, table: claim.table, columns: claim.columns.join(","), claim: claim.claim };
+    const base = { legacyDefect: claim.legacyDefect, table: claim.table, columns: claim.columns.join(","), claim: claim.claim };
 
     if (claim.confirmedBy === "absent_primary_key") {
       const tables = [...present].sort();
@@ -5676,7 +5676,7 @@ async function sixDdlConstraints(
         "more than once"].join(" ").replace(" ; ", "; ") });
   }
   return answer("VII-6", evidence,
-    "Each claim is reported against what the engine declares. Rating SAH-024, 049, 051, 066 and 074 — and un-skipping tests/regression/sah-024.test.ts, which 1A created marked it.skip pending this answer (contracts §3.7.3) — is the owner's and the architect's call, not this report's.");
+    "Each claim is reported against what the engine declares. Rating LEGACY-024, 049, 051, 066 and 074 — and un-skipping tests/regression/legacy-024.test.ts, which 1A created marked it.skip pending this answer (contracts §3.7.3) — is the owner's and the architect's call, not this report's.");
 }
 
 async function sevenMatOpensJob(reader: LegacyReader, present: ReadonlySet<string>): Promise<OpenQuestionAnswer> {
@@ -5698,9 +5698,9 @@ async function sevenMatOpensJob(reader: LegacyReader, present: ReadonlySet<strin
     [{ table: "MATOPENS", rows: String(rows), jobNonZero: String(nonZero), distinctJobs: String(jobs.size) }],
     nonZero > 0
       ? ["MatOpens.Job differs from 0 on", String(nonZero), "of", String(rows),
-         "rows, so SAH-022's singleton SELECT ... INTO is a hard failure on this data, not inert."].join(" ")
+         "rows, so LEGACY-022's singleton SELECT ... INTO is a hard failure on this data, not inert."].join(" ")
       : ["MatOpens.Job is 0 or null on all", String(rows),
-         "rows, so SAH-022 is inert on this data — which rates the defect and does not remove it from the new design."].join(" "));
+         "rows, so LEGACY-022 is inert on this data — which rates the defect and does not remove it from the new design."].join(" "));
 }
 
 async function eightTemplates(reader: LegacyReader, present: ReadonlySet<string>): Promise<OpenQuestionAnswer> {
@@ -5824,7 +5824,7 @@ Expected five lines, each ending `verdict: owner (OD-27)`, beginning:
 
 ```
 VII-6 evidence_collected — Each claim is reported against what the engine declares. … verdict: owner (OD-27)
-VII-7 evidence_collected — MatOpens.Job differs from 0 on 1 of 2 rows, so SAH-022's singleton SELECT ... INTO is a hard failure on this data, not inert. verdict: owner (OD-27)
+VII-7 evidence_collected — MatOpens.Job differs from 0 on 1 of 2 rows, so LEGACY-022's singleton SELECT ... INTO is a hard failure on this data, not inert. verdict: owner (OD-27)
 ```
 
 Run: `bun run lint && bun run lint:rules && bun run format:check && bun run typecheck && bun run test`
@@ -5835,7 +5835,7 @@ feat(importer): probe the five OD-27 open questions and report the evidence [9A 
 
 Part VII #6, #7, #8, #9 and #13. Adds constraints(table) to the driver port so #6 can
 be answered against RDB$RELATION_CONSTRAINTS as the spec instructs, with one falsifiable
-claim row per named defect (SAH-024, 049, 051, 066, 074). Every verdict field is null
+claim row per named defect (LEGACY-024, 049, 051, 066, 074). Every verdict field is null
 and every answer names OD-27 as the decider (hazard 7). Lends is reported as absent from
 the 460-table map rather than added to it.
 
@@ -6121,7 +6121,7 @@ export function planSnapshot(table: string, columns: readonly LegacyColumn[]): S
   return columns.map((column) => {
     if (NEVER_READ.has([table, column.name].join("."))) {
       return { table, column: column.name, action: "omit", kind: "credential",
-        why: "On the deny-list: spec §5.1 #7 and #11 forbid reading this column at all (SAH-028)." };
+        why: "On the deny-list: spec §5.1 #7 and #11 forbid reading this column at all (LEGACY-028)." };
     }
     if (column.kind === "blob") {
       return { table, column: column.name, action: "omit", kind: "free_text",
@@ -6384,7 +6384,7 @@ Expected: green across every workspace.
 - [ ] **Step 7: Write `docs/runbooks/legacy-extraction.md`**
 
 ```markdown
-# Runbook — extracting and profiling the legacy Sahlisoft database (Phase 9A)
+# Runbook — extracting and profiling the legacy database (Phase 9A)
 
 This runbook produces the evidence the owner needs to answer OD-16, OD-25 and OD-27, and the numbers that
 size the Phase 1 and 3 load tests (spec:2267). It **loads nothing into Dulja** — that is 9B.
@@ -6393,7 +6393,7 @@ size the Phase 1 and 3 load tests (spec:2267). It **loads nothing into Dulja** �
 
 | Item | Ledger | Why |
 |---|---|---|
-| A read-only ODBC DSN for the main Sahlisoft database | OD-17 | every command below |
+| A read-only ODBC DSN for the main legacy database | OD-17 | every command below |
 | The Firebird version, if the engine is older than 2.1 | OD-17 | `LegacyReader.firebirdVersion` is required and is never inferred (ADR 0081) |
 | A second DSN for the `mpos` database — **only if** historical POS data must migrate | OD-16 | `--mpos-dsn`; the default is to start clean |
 
@@ -6501,7 +6501,7 @@ hazards and the §6 matrices. What follows is what the review changed and what i
 | Owner gates OD-17, OD-16, OD-27 as isolated tasks | T3, T6, T13 — one each, each droppable | ✅ |
 | Part VI tests owned / re-run: none | none appear | ✅ |
 | §3.0.4 rows owned: none | none appear | ✅ |
-| Regression files: sah-077 appends, create-if-absent | T12 Step 6, with the corollary quoted | ✅ |
+| Regression files: legacy-077 appends, create-if-absent | T12 Step 6, with the corollary quoted | ✅ |
 | Import-validation tests for §5.1 #1–#5, #12 in `packages/importer/test`, not `tests/regression/` | T7–T11 all put them there | ✅ |
 
 **The two former divergences from frozen contracts text — both now ratified, and what remains of each.**
@@ -6593,7 +6593,7 @@ in a state the plan itself calls green while it is not, which is worse than a lo
   `CONCAT = /["'][^"']*\b(select|from|where)\b[^"']*["']\s*\+/i` (0B:5014), which matches only single- or
   double-quoted delimiters, and its template branch additionally requires `body.includes("${")`; neither fires
   on `+`-joined backtick literals with no interpolation. The binding constraint is **spec:100** itself —
-  "never build SQL by string concatenation (SAH-036/037/069)", copied verbatim into this plan's Global
+  "never build SQL by string concatenation (LEGACY-036/037/069)", copied verbatim into this plan's Global
   Constraints — which admits no exception for a `+` whose operands happen to be literal. The rule is narrower
   than the rule it enforces, and the house rule wins.
 - **The former C6 (the fixture-corpus path and the un-caught `openDriver` throw)** is fixed in **T3 Step 5**:
@@ -6632,7 +6632,7 @@ a correction. Every one made a step the plan marks "see them pass" unreachable.
 | T7 Step 2, `summary` | `rules: "16"`, `compared: "3"`, `drifting: "2"`, `missingStoredRows: "1"`, `sourceAbsent: "12"` — 23 rules exist, and 13 + 12 + 3 cannot come out of 16 | the traced values: 23 / 6 / 1 / 2 / 13 / 6, with the derivation written out beside them |
 | T7 Step 2, `missing_stored_row` | `ACCOBJECTS.DEBIT` at `1|11` expected `recomputed: "0.0000"` | `VOUITEMS` sums 0 + 250 on that key, so `"250.0000"`; the `.CREDIT` row (`"100.0000"`) is asserted too |
 | T10 Step 2, `poisonedColumns` | `"2"` | `"4"` — `ACCOBJECTS.OPENDEBIT` and `.OPENCREDIT` are null in T7's corpus row, on top of `ACCTOTALS.CREDIT` and `MATOBJECTS.QNT`; both are now asserted by name |
-| T13 Step 3, SAH-074 | expected "1 of 10 tables **declares** no PRIMARY KEY" against an implementation that builds "declare" | the expectation says "declare", matching the implementation, which uses one word for a count that is usually plural |
+| T13 Step 3, LEGACY-074 | expected "1 of 10 tables **declares** no PRIMARY KEY" against an implementation that builds "declare" | the expectation says "declare", matching the implementation, which uses one word for a count that is usually plural |
 | T6 *Verify* | `legacy scope --mpos-dsn …` alone, which exits 2 in `openDriver` before the `--mpos-dsn` branch is reached | both DSNs, with the reason stated |
 | C1's scope | named two files (`profile.test.ts`, `scope.test.ts`) | **five** — `fixture-driver.test.ts`, `reader.test.ts` and `mpos-scope.test.ts` also pin the exact base-corpus table list, and were masked only because T7–T9 used to run filtered suites. Upgrading those steps to whole-package runs is what exposed them. |
 
@@ -6717,7 +6717,7 @@ T6 Step 5 and exported in T6 Step 6, so an executor who drops T6 applies the fal
 Step 6's barrel note**: declare `export interface ProfileOptions { readonly includeMpos?: boolean }` at the
 top of `profile.ts`, accept the parameter and ignore it, and export it on T5's own `./profile` line. The
 registry member exists either way; only the filter goes. Dropping T13 leaves the five Part VII questions unanswered and
-leaves `tests/regression/sah-024.test.ts` (1A's, `it.skip`) skipped.
+leaves `tests/regression/legacy-024.test.ts` (1A's, `it.skip`) skipped.
 
 **Definition of done for the slice.**
 
@@ -6728,7 +6728,7 @@ leaves `tests/regression/sah-024.test.ts` (1A's, `it.skip`) skipped.
 - [ ] `packages/db/migrations/` is unchanged and 0100 is unused: `git diff --name-only main -- packages/db/migrations | wc -l` prints `0`.
 - [ ] `git status --porcelain artefacts/` prints nothing — `.gitignore` covers it and no customer data is staged.
 - [ ] ADRs 0081, 0082 and 0083 exist; 0083 carries T14's amendment.
-- [ ] `tests/regression/sah-077.test.ts` contains a `describe(... — 9A)` block and whatever else was already there.
+- [ ] `tests/regression/legacy-077.test.ts` contains a `describe(... — 9A)` block and whatever else was already there.
 - [ ] Corrections **C1** (T7 Step 1, with T11's three one-line follow-ups), **C2** (T12), **C4** and **C5** (T14) applied. There is no C3 or C6: both were folded into Task 3, where the code they corrected is first written.
 - [ ] ``grep -n '` +\|+ `' packages/importer/src/drivers/odbc.ts`` prints nothing — every SQL literal in the one file that holds statement text is unbroken (spec:100).
 - [ ] The barrel is §4.13.1's list exactly. `grep -c "^export" packages/importer/src/index.ts` prints **14** (T4's seven statements, T5's two, T7's two, and one each from T11, T12 and T13 — T6 widens T5's first line rather than adding one, and T14 adds none; a statement wrapped over two lines still counts once because its continuation is indented), `grep -n "ProfileOptions" packages/importer/src/index.ts` finds it, and `grep -nE "\"\./(snapshot|mpos|drivers/sql|cli)\"|catalogue/questions" packages/importer/src/index.ts` prints nothing — the snapshot planner, the mpos group, the questions group, the renderer and the CLI stay 9A-internal.

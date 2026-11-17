@@ -8,7 +8,7 @@
 --    from document_line, but a principal who cannot SEE the document — restricted to another branch, or an employee
 --    holding no role at all — also reads NULL, and payroll_line carried tenant RLS only, so both rewrote a posted run's
 --    line (the reviewer reproduced UPDATE 1 for each). app.payroll_run had no freeze: a posted run's pay_date, period,
---    kind and pinned_tables (SAH-013's record of what was applied) were writable.
+--    kind and pinned_tables (LEGACY-013's record of what was applied) were writable.
 --    The fix, in four parts:
 --    (a) RESTRICTIVE parent-visibility policies on payroll_line and payroll_run, the 0068/0119 shape: a row is READ
 --        under a readable document and WRITTEN only under a writable one (`app.actor_in_branch` at its branch).
@@ -21,7 +21,7 @@
 --        so a column a later slice adds is frozen with no edit here. Its INSERT needs a visible draft document.
 --        No service writes either table after draft: run.ts inserts both and updates payroll_run's pinned_tables
 --        and calculated_at only while recalculating a draft, and the posting path writes neither.
---    (d) R4 (spec:2175, SAH-045) reaches payroll_line: nobody UPDATEs their own line, and nobody INSERTs an
+--    (d) R4 (spec:2175, LEGACY-045) reaches payroll_line: nobody UPDATEs their own line, and nobody INSERTs an
 --        OVERRIDE on their own line (spec:2087's manual statutory override). A calculated INSERT is not refused —
 --        the preparer of a run may be one of its employees, and the figures come from compensation that R4
 --        already guards; the run is then submitted and approved by someone else (R1, R3). Whether that is enough
@@ -75,7 +75,7 @@ begin
       continue;                          -- the CASCADE from document_line: the parent is already gone
     end if;
     if s is distinct from 'draft' then
-      raise exception 'ERR_DOC_NOT_DRAFT: payroll line % belongs to a document that is %; a posted run is corrected by a supplementary run, never edited in place (spec:2081, SAH-041)',
+      raise exception 'ERR_DOC_NOT_DRAFT: payroll line % belongs to a document that is %; a posted run is corrected by a supplementary run, never edited in place (spec:2081, LEGACY-041)',
         v_line, coalesce(s::text, 'not visible to this principal')
         using errcode = 'check_violation';
     end if;
@@ -104,7 +104,7 @@ begin
     end if;
   end if;
   if s is distinct from 'draft' then
-    raise exception 'ERR_DOC_NOT_DRAFT: payroll run % belongs to a document that is %; its pay date, period, kind and pinned rate tables are frozen once it leaves draft (spec:2081, SAH-013, SAH-041)',
+    raise exception 'ERR_DOC_NOT_DRAFT: payroll run % belongs to a document that is %; its pay date, period, kind and pinned rate tables are frozen once it leaves draft (spec:2081, LEGACY-013, LEGACY-041)',
       new.document_id, coalesce(s::text, 'not visible to this principal')
       using errcode = 'check_violation';
   end if;
@@ -158,7 +158,7 @@ begin
     -- fires first; every other column is what the loader wrote and the verifier is signing.
     if (to_jsonb(new) - array['verified_at', 'verified_by']) is distinct from
        (to_jsonb(old) - array['verified_at', 'verified_by']) then
-      raise exception 'ERR_HR_SELF_VERIFY: rate table version % of scheme % is verified as loaded; the verifying statement may set only verified_at and verified_by (SAH-020, spec:2080)',
+      raise exception 'ERR_HR_SELF_VERIFY: rate table version % of scheme % is verified as loaded; the verifying statement may set only verified_at and verified_by (LEGACY-020, spec:2080)',
         old.version, old.scheme_id using errcode = 'check_violation';
     end if;
     select sc.company_id into v_company from app.statutory_scheme sc where sc.id = old.scheme_id;
@@ -177,7 +177,7 @@ begin
     -- effective_to is deliberately NOT in the list above and the message must not claim it is: a
     -- successor version has to be able to close its predecessor's open window, which is an UPDATE of
     -- effective_to on a verified row. Every other field is frozen, the verification itself included.
-    raise exception 'ERR_HR_SELF_VERIFY: rate table version % of scheme % is already verified; its definition, version, effective_from, source and verification are frozen (effective_to may still be closed by a successor). Load a NEW version rather than editing a signed one (SAH-041, spec:2080)',
+    raise exception 'ERR_HR_SELF_VERIFY: rate table version % of scheme % is already verified; its definition, version, effective_from, source and verification are frozen (effective_to may still be closed by a successor). Load a NEW version rather than editing a signed one (LEGACY-041, spec:2080)',
       old.version, old.scheme_id using errcode = 'check_violation';
   end if;
   return new;

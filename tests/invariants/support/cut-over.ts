@@ -150,7 +150,7 @@ function readCorpus(name: string): LegacyCorpus {
  * **Two forms, and the difference is which TENANT is loaded.** `loadFromCorpus(fixture, corpus)` loads INTO the
  * caller's fixture — the form every caller that then QUERIES the result must use. `loadFromCorpus(corpus)` seeds a
  * tenant of its own and returns only the skips: usable solely by a caller that reads nothing but the skip register
- * (`sah-073`, Task 15's `sah-022`). Neither form stops anything; the run's artefact directory is removed afterwards.
+ * (`legacy-073`, Task 15's `legacy-022`). Neither form stops anything; the run's artefact directory is removed afterwards.
  */
 export async function loadFromCorpus(
   fixture: CutOverFixture,

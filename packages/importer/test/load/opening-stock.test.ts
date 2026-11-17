@@ -293,7 +293,7 @@ describe("OPENING_STOCK — recomputed cost, posted through the posting service 
 });
 
 describe("what the opening refuses or reports", () => {
-  it("refuses a job-partitioned source before computing anything, and leaves no opening and no BILLITEMS key (Part VII #7, SAH-022)", async () => {
+  it("refuses a job-partitioned source before computing anything, and leaves no opening and no BILLITEMS key (Part VII #7, LEGACY-022)", async () => {
     // 9B T15 — ⚠️ OD-27. The committed sibling corpus is `cut-over` plus a MATOPENS whose MOPJOB holds 7 and 9.
     const own = await ownTenant("opening-stock-partitioned");
     useCorpus(loadCorpus("matopens-partitioned"));
@@ -364,11 +364,11 @@ describe("what the opening refuses or reports", () => {
           .map((k) => `${k.sourceKey}: ${k.reason}`)
           .toSorted(),
       ).toEqual([
-        "10/1/9001: the opening position for legacy material 10 in warehouse 1 batch 9001 references an item, warehouse or lot that did not import; the position is reported, never opened against a guessed parent (§5.1 #3, SAH-073)",
+        "10/1/9001: the opening position for legacy material 10 in warehouse 1 batch 9001 references an item, warehouse or lot that did not import; the position is reported, never opened against a guessed parent (§5.1 #3, LEGACY-073)",
         "10/1: legacy material 10 in warehouse 1 holds 2.000000 with no batch, but item WIDGET is batch-tracked; a batch-less receipt of it is refused (ADR 0034), so the position is reported, not opened",
         "11/1/9000: legacy batch 9000 is not a batch of material 11; the position is reported, never opened against another item's batch",
         "12/1: legacy material 12 in warehouse 1 is a service item; a service holds no stock, so its 1.000000 is reported, never opened against inventory control",
-        "999/1: the opening position for legacy material 999 in warehouse 1 references an item, warehouse or lot that did not import; the position is reported, never opened against a guessed parent (§5.1 #3, SAH-073)",
+        "999/1: the opening position for legacy material 999 in warehouse 1 references an item, warehouse or lot that did not import; the position is reported, never opened against a guessed parent (§5.1 #3, LEGACY-073)",
       ]);
       expect(report.perLoader["opening_stock"]).toEqual({ inserted: 1, skipped: 5, conflicts: 0 });
       const docs = await stockDocuments(own);

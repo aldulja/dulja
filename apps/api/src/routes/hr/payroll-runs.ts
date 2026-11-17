@@ -149,7 +149,7 @@ payrollRunRoutes.openapi(
     const { companyId, documentId } = c.req.valid("param");
     const body = c.req.valid("json");
     const detail = await c.var.withTenant(async (tx) => {
-      // `entered_by` is the session's actor, stamped by the database; the body carries no actor (SAH-044).
+      // `entered_by` is the session's actor, stamped by the database; the body carries no actor (LEGACY-044).
       await setStatutoryOverride(
         tx,
         c.var.ctx,

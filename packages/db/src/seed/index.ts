@@ -67,7 +67,7 @@ export {
 // 3C — 0C only IMPORTED this into the private `LOADERS` map below; a suite in `apps/api` cannot reach
 // `./chart-of-accounts` by relative path, so the barrel is the only route to it. A re-export of a name 0C
 // already owns and already exports from its own module: no new interface, and NOT on `packages/db/src/index.ts`,
-// which §3.1 and `tests/regression/sah-039.test.ts` keep clear of `./seed` at any depth.
+// which §3.1 and `tests/regression/legacy-039.test.ts` keep clear of `./seed` at any depth.
 export { chartOfAccountsLoader } from "./chart-of-accounts";
 // 8B T4 — the payroll account wiring entry point. Not a loader (0C owns `chart-of-accounts`); the seed barrel only.
 export { linkPayrollAccountsForTenant } from "./payroll-accounts";

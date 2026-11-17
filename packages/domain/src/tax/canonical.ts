@@ -14,7 +14,7 @@ export class CanonicalJsonError extends Error {
  * Deliberately narrow about what it accepts:
  *   - a non-integer `number` is REFUSED. Every money amount on this path is `Money.toString()`'s
  *     fixed 4-dp string or `Money.toJSON()`'s `{ amount, currency }` (Global Constraint 4); a float
- *     reaching here means someone re-derived an amount, which is SAH-019 in one line.
+ *     reaching here means someone re-derived an amount, which is LEGACY-019 in one line.
  *   - `undefined` OMITS its key, so an absent optional stays absent rather than becoming `null`.
  *   - `bigint` becomes its decimal string, because `DocumentSnapshot.header.number` is `bigint | null`.
  *   - a `Date`, a `Map`, a `Set`, a function or a class instance is REFUSED, naming its pointer: an
@@ -41,7 +41,7 @@ export function canonicalJson(value: unknown): string {
         }
         if (!Number.isInteger(node)) {
           throw new CanonicalJsonError(
-            `canonicalJson: non-integer number at ${path || "/"} — money is a string on this path (§3.9, SAH-019)`,
+            `canonicalJson: non-integer number at ${path || "/"} — money is a string on this path (§3.9, LEGACY-019)`,
           );
         }
         return String(node);

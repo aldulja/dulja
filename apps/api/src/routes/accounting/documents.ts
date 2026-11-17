@@ -238,7 +238,7 @@ interface LineRow {
   unit_quantity: string | null;
   // 3D / migration 0040 — contracts §4.3.4's 3D row. Only a STOCK_COUNT or TRANSFER_RECEIPT line carries
   // them; on such a line `quantity` is the signed variance (counted - expected), never a stored third
-  // number (SAH-018).
+  // number (LEGACY-018).
   counted_quantity: string | null;
   expected_quantity: string | null;
   dimensions: Record<string, string>;
@@ -388,7 +388,7 @@ documentRoutes.openapi(
       // by the schema, and loadSnapshot would then resolve `party.receivable_account` to that company's
       // account and post this company's document into it. The party must be a live party of THIS company.
       if (body.partyId !== undefined) await assertPartyBelongs(tx, companyId, body.partyId);
-      // The party's CURRENT payment term, pinned at draft and never re-read (SAH-013) — through the one reader
+      // The party's CURRENT payment term, pinned at draft and never re-read (LEGACY-013) — through the one reader
       // of party.payment_term_id, as convertToInvoice and draftSettlement pin it (code review 2026-09-29: a
       // service invoice drafted here aged 1_30 the day after issue, and its due date was the effective date).
       // No route changes a draft's party, so the pin is taken here and nowhere else.
@@ -396,7 +396,7 @@ documentRoutes.openapi(
         body.partyId === undefined ? null : await resolvePartyTerm(tx, { partyId: body.partyId });
 
       // The series comes from the policy so a draft already shows the series it will be numbered in; the
-      // number itself is assigned at issue and never by the client (SAH-051). resolvePolicy is the ONE
+      // number itself is assigned at issue and never by the client (LEGACY-051). resolvePolicy is the ONE
       // selection rule (greatest effective_from, highest version) and it parses the definition against the
       // schema on the way out, so a stale or hand-edited policy is refused here, not later at post.
       const { definition } = await resolvePolicy(tx, type.id, body.effectiveDate);
@@ -1213,7 +1213,7 @@ documentRoutes.openapi(
         // The SOURCE order, bound to the path company. The gate above already answered 404 for a document
         // of another company, but the branch is read here because the drafted delivery inherits it and
         // `actor_has` with a NULL branch demands company-wide authority — a principal assigned to one
-        // branch would be refused for the wrong reason (spec:2166, SAH-042).
+        // branch would be refused for the wrong reason (spec:2166, LEGACY-042).
         const [order] = await tx<{ branch_id: string }[]>`
           select branch_id from app.document
            where id = ${documentId} and company_id = ${companyId}`;
@@ -1346,7 +1346,7 @@ documentRoutes.openapi(
  * The type is bound to the PATH company: RLS bounds the tenant and nothing else, so an unbound lookup by id
  * would hand a caller authorised for company A the sibling company B's type — and B's policy. The code asked
  * is the target policy's `create` stage (§4.5.4), at the SOURCE's branch, because the new document inherits
- * it and `actor_has` with a NULL branch demands company-wide authority (spec:2166, SAH-042). The first gate
+ * it and `actor_has` with a NULL branch demands company-wide authority (spec:2166, LEGACY-042). The first gate
  * already 404'd a source of another company; the source read here is bound all the same.
  */
 async function requireTargetCreate(
@@ -1504,7 +1504,7 @@ documentRoutes.openapi(
 );
 
 /**
- * Phase 4 review S1 (spec:2166, SAH-042) — an allocation acts on EVERY document it names, not only on the
+ * Phase 4 review S1 (spec:2166, LEGACY-042) — an allocation acts on EVERY document it names, not only on the
  * settlement the gate cleared: `requireDocumentPermission` asks the code at the SETTLEMENT's branch, so a
  * clerk restricted to one branch could mark another branch's invoices paid. This asks the same code at each
  * settled document's own branch — `actor_has` with that branch, never a NULL one (a NULL branch demands
@@ -2274,7 +2274,7 @@ const lineWriteColumns = (
     debit: line.debit,
     credit: line.credit,
     // Omitted with an entered pair present, `quantity` is what migration 0032's trigger derives; supplied
-    // and inconsistent with that pair, the trigger refuses the row rather than overwriting it (SAH-066).
+    // and inconsistent with that pair, the trigger refuses the row rather than overwriting it (LEGACY-066).
     quantity: line.quantity ?? null,
     unit_price: line.unitPrice ?? null,
     item_id: line.itemId ?? null,

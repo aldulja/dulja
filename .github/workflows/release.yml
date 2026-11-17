@@ -8,7 +8,7 @@
 # release-only is coverage that specifically needs `latest.yml`/`resources/app-update.yml`, which `--dir`
 # does not produce — and of that, only one half is actually executed anywhere: the updater spec that
 # reads `resources/app-update.yml` runs in the `test:electron` step below. The other half,
-# `tests/regression/sah-087.test.ts`'s "— 0E" block, runs in no CI job on either workflow: it is
+# `tests/regression/legacy-087.test.ts`'s "— 0E" block, runs in no CI job on either workflow: it is
 # reachable only through `turbo run test`, and no step here runs `bun run test`. This job builds the two
 # files that block guards and then never runs it. Adding a step that does would change what a release
 # run executes, which is the owner's decision.

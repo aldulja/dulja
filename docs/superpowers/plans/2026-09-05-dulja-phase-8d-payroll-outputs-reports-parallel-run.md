@@ -20,7 +20,7 @@
 - **Interfaces produced:** §4.16.1's **eight 8D report codes** as `packages/db/seed/my/reports/8d/*.json`; §4.16.2's **six HR `DatasetId` members** in `packages/db/src/reports/datasets/hr.ts`; §4.2.6's `hr.encryption_key.rotate` payload, handler and probe; §3.6.2's `hr.filing.generate` and (⚠️ OD-13) `hr.leave.record` / `hr.leave.approve`; §4.6.1's four ⚠️ leave tables as migration 0096; the payslip surface (`payslipRows`, `renderPayslip`, `PAYSLIP_ENGINE`, `createPayslipRoutes` composed onto 8B's `payroll-runs` module); the permit-expiry sub-path composed onto 6C's `employees` module; the two shared test helpers of amendment **A7**; `PAYSLIP_ENGINE` (**A11**); and `apps/worker/src/hr-keys.ts` (**A12**). Everything else is listed under **Contract additions** in the Self-Review and lands through **Task 0**.
 - **Owner decisions:** **OD-13** (leave register — spec:1060, 2085, 2478; Part VII #14) → **Task 8**, isolated and dropped whole; default **not built**. **OD-23** (staff list, accountant sign-off for the parallel run — spec:2407) → **Task 9**, isolated; default the run executes against the `SYNTH` fixture corpus and produces the same report. **OD-28** (form names verified against LHDN at build time — spec:2083) → **Task 6**, isolated; default a generic statement whose form identifiers are configuration, not literals. **OD-24** (screenshots and a two-minute operator description before any screen — spec:79, 108, 2408) → **Task 10**, isolated; default **the screen task is blocked, not the slice**. **OD-05** (confirmation of every ⚠️ row in §3.0.4) touches 8D through exactly one row — spec:1060 "Attendance events; leave ⚠️" — which is the same ⚠️ as OD-13; **Task 8 discharges both** and no second task is created for it.
 - **The orchestrator's slice JSON lists `OD-14` among this slice's gates; the §2.9 card does not, and §2.12 assigns OD-14 to "8A/8B → one task each if yes".** The card and the ledger agree with each other and outnumber the JSON, so **this plan writes no OD-14 task**; the discrepancy is carried in `spec_questions` for the architect to reconcile in one line.
-- **Part VI tests owned / re-run:** owns **none exclusively** (§2.9). Re-runs **33** (payslips and schedules byte-identical across runs — Task 5), **23** (the payslip PDF in both text directions — Task 5), **32** (report side channels: no HR report or dataset exposes a sensitive or compensation field — Task 3), **31** (the leave-approval clause ⚠️ — Task 8), and **30**'s schedule clause through `hr.payable_reconciliation` (Task 4). **§3.0.4 rows owned:** spec:1059 (Payslips, schedules, annual statements, `employee_ytd`, cut-over import — 8C contributes `employee_ytd`, 9B the import) and spec:1060 (Attendance events; leave ⚠️ — 6C contributes the events). **Regression files created / appended:** creates **none**; **appends** to `tests/regression/sah-011.test.ts`, `sah-020.test.ts`, `sah-033.test.ts` and `sah-085.test.ts` — all four are 0B's under §3.7.3's Plan 0A-proven and structural lists, so every 8D block is an append and no earlier block is edited.
+- **Part VI tests owned / re-run:** owns **none exclusively** (§2.9). Re-runs **33** (payslips and schedules byte-identical across runs — Task 5), **23** (the payslip PDF in both text directions — Task 5), **32** (report side channels: no HR report or dataset exposes a sensitive or compensation field — Task 3), **31** (the leave-approval clause ⚠️ — Task 8), and **30**'s schedule clause through `hr.payable_reconciliation` (Task 4). **§3.0.4 rows owned:** spec:1059 (Payslips, schedules, annual statements, `employee_ytd`, cut-over import — 8C contributes `employee_ytd`, 9B the import) and spec:1060 (Attendance events; leave ⚠️ — 6C contributes the events). **Regression files created / appended:** creates **none**; **appends** to `tests/regression/legacy-011.test.ts`, `legacy-020.test.ts`, `legacy-033.test.ts` and `legacy-085.test.ts` — all four are 0B's under §3.7.3's Plan 0A-proven and structural lists, so every 8D block is an append and no earlier block is edited.
 - **Shared namespaces this slice writes into:** **Report codes (§4.16.1) — the eight this slice owns**: `hr.employee_list`, `hr.payroll_register`, `hr.statutory_summary`, `hr.payable_reconciliation`, `hr.contract_expiry`, `hr.attendance`, `hr.payslip`, `hr.annual_statement`. **`DatasetId` members (§4.16.2) — the six this slice owns**: `employee`, `attendance_event`, `payroll_line`, `employee_ytd`, `statutory_schedule`, and ⚠️ `leave_record` (dropped with the table if OD-13 = no). **Document-type codes (§4.14) — none seeded, none invented**; `PAYROLL` (8B), `PAYROLL_PAYMENT` and `EMPLOYEE_ADVANCE` (8C) are consumed by code and asserted to exist in Task 0. **Account codes (§4.15) — seeds none.** Six are consumed as literals in a definition's `tieOut.account` or a test assertion, each with its seeding slice: **`2400`** Salaries payable, **`2411`–`2414`** Statutory payable per scheme, **`5300`** Salaries expense (all **8B**); Task 0 Step 4 asserts each resolves for the seeded company and re-seeds none — hazard 33 in the consuming direction. **`fixtures.ts` helpers (§4.17) — none added**; `seedReportDefinition` (7A), `seedEmployee` (6C/8A), `seedPayComponent` / `seedStatutoryScheme` / `seedRateTable` (8A) and `seedPayrollRun` (8B) are consumed unchanged. **Shared test helpers (§4.17.1) — one new file**, `tests/invariants/support/hr-reports.ts` (amendment **A7**), plus the two `assertTieOut` `projection` cases amendment **A6** registers.
 - **Never re-decide:** D1–D27 (spec:114–142); every name in the contracts document is frozen — a needed change goes to that document first.
 - **Contracts version:** 2026-09-08 (§4.18 already carries Round 3; this slice's twelve amendments land as an **8D** sub-heading under it).
@@ -196,10 +196,10 @@ tests/
 ├─ invariants/support/reports.ts              EDIT + the two projection cases (A6)           T4
 ├─ invariants/probes.ts                       EDIT ⚠️ one PROBES key; one JOB_PROBES key T7, T8
 └─ regression/
-   ├─ sah-011.test.ts                         EDIT + the 8D block (no NULL statutory input)  T11
-   ├─ sah-020.test.ts                         EDIT + the 8D block (no rate in a definition)  T11
-   ├─ sah-033.test.ts                         EDIT + the 8D block (report side channels)     T11
-   └─ sah-085.test.ts                         EDIT + the 8D block (payslip in both scripts)  T11
+   ├─ legacy-011.test.ts                         EDIT + the 8D block (no NULL statutory input)  T11
+   ├─ legacy-020.test.ts                         EDIT + the 8D block (no rate in a definition)  T11
+   ├─ legacy-033.test.ts                         EDIT + the 8D block (report side channels)     T11
+   └─ legacy-085.test.ts                         EDIT + the 8D block (payslip in both scripts)  T11
 
 apps/backoffice/src/                          (Task 10 — BLOCKED on OD-24; no file until then)
 
@@ -2206,7 +2206,7 @@ Expected: FAIL — `ENOENT … hr.payroll_register.json`.
     "layout": {
       "orientation": "landscape", "paper": "A4",
       "header": "{title} — {generatedAt}",
-      "footer": "Every line names the rate-table version it pinned (SAH-013) — كل سطر يحمل إصدار الجدول المثبت"
+      "footer": "Every line names the rate-table version it pinned (LEGACY-013) — كل سطر يحمل إصدار الجدول المثبت"
     },
     "tieOut": { "kind": "ledger_sum", "account": "2400" }
   }
@@ -2928,7 +2928,7 @@ export function createPayslipRoutes(objectStore: ObjectStore): OpenAPIHono<AppEn
             { lang, engine: PAYSLIP_ENGINE, formatters, generatedAt });
           // 2C's `createAttachment` is THE ONE place an attachment object and row are written
           // (2c:1239–1258): it mints the id, derives the key with `objectKeyFor` from the ids alone
-          // (SAH-038 — never from anything the client sends), writes the object BEFORE the row, computes
+          // (LEGACY-038 — never from anything the client sends), writes the object BEFORE the row, computes
           // the sha256 and returns the row. Re-implementing those four steps here would be a second
           // insert site to maintain — 3A already adds `lot_id` to that table — which is hazard 9 exactly.
           const attachment = await createAttachment(tx, c.var.ctx, objectStore, {
@@ -4009,7 +4009,7 @@ describe("the leave register — ⚠️ OD-13, spec:2085", () => {
     expect(row!.approved_by).toBe(approver);          // stamped on the NULL → value transition
   });
 
-  it("approved_by is stamped by the server and cannot be supplied or changed (SAH-044)", async () => {
+  it("approved_by is stamped by the server and cannot be supplied or changed (LEGACY-044)", async () => {
     const id = await withTenant(db.rw, s.tenant, s.human, (tx) =>
       requestLeave(tx, { companyId: s.company, employeeId, leaveTypeId: annualTypeId,
                          startsOn: "2026-06-01", endsOn: "2026-06-01", days: "1.00", reason: null }));
@@ -4606,7 +4606,7 @@ export const CreateLeaveRecordBody = z.object({
 });
 
 /** `approvedBy` is NOT a member and never will be: it is stamped from the session actor by
- *  `app.stamp_actor`, and a body that could name a decider would be SAH-044 by another name. */
+ *  `app.stamp_actor`, and a body that could name a decider would be LEGACY-044 by another name. */
 export const LeaveDecisionBody = z.object({
   decision: z.enum(["approved", "rejected"]),
   reason: z.string().max(500).optional(),
@@ -5427,7 +5427,7 @@ export async function reconcileParallelRun(
   const base = params.baseCurrency;
   // The Dulja side comes from `payslipRows` and NOT from a second query: the report must reconcile the
   // figures the employee actually received on paper, and a second aggregation here would be a third
-  // source of truth for one number (SAH-009).
+  // source of truth for one number (LEGACY-009).
   const bundles = await payslipRows(tx, {
     companyId: params.companyId, payrollDocumentId: params.payrollDocumentId,
   });
@@ -5440,7 +5440,7 @@ export async function reconcileParallelRun(
   for (const l of [...legacyByNumber.values()].sort((x, y) => x.employeeNumber.localeCompare(y.employeeNumber))) {
     const b = byNumber.get(l.employeeNumber);
     if (b === undefined) {
-      // The legacy system paid someone Dulja did not. REPORTED, never silently dropped — SAH-011's shape.
+      // The legacy system paid someone Dulja did not. REPORTED, never silently dropped — LEGACY-011's shape.
       differences.push({ employeeNumber: l.employeeNumber, kind: "missing_in_dulja", field: "employee",
                          legacy: l.net, dulja: null, delta: null });
       continue;
@@ -5686,7 +5686,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 ### Task 10: ⚠️ OD-24 — the payslip and HR-report screens (ISOLATED; BLOCKED until the owner answers)
 
-**Owner decision OD-24** (§2.12; spec:79, 108, 2408): *"Screenshots + operator description before any screen."* spec:108 is the binding sentence: *"The UI is not specified here. Before beginning any screen, request from the owner: screenshots of the equivalent Sahlisoft screen, and a two-minute description of how a fast operator uses it. Design the new screen to be at least as fast by keyboard. **Do not invent workflows from this document.**"*
+**Owner decision OD-24** (§2.12; spec:79, 108, 2408): *"Screenshots + operator description before any screen."* spec:108 is the binding sentence: *"The UI is not specified here. Before beginning any screen, request from the owner: screenshots of the equivalent legacy screen, and a two-minute description of how a fast operator uses it. Design the new screen to be at least as fast by keyboard. **Do not invent workflows from this document.**"*
 
 **This task is blocked, and the slice is not.** Tasks 0–9, 11 and 12 ship and are green with no screen. Hazard 29 is explicit — *"every screen task begins with OD-24 … no plan invents a workflow"* — so this task creates **no file** until the owner answers, and nothing in this plan imports from `apps/backoffice`.
 
@@ -5728,10 +5728,10 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 The eight definitions exist as files; this task makes them reachable — the wire enum widens, the pack is applied, and the four Part I defects this slice touches gain their 8D blocks.
 
 **Files:**
-- Modify: `packages/contracts/src/accounting/reports.ts`, `packages/db/test/seed/reports.test.ts`, `tests/regression/sah-011.test.ts`, `tests/regression/sah-020.test.ts`, `tests/regression/sah-033.test.ts`, `tests/regression/sah-085.test.ts`
+- Modify: `packages/contracts/src/accounting/reports.ts`, `packages/db/test/seed/reports.test.ts`, `tests/regression/legacy-011.test.ts`, `tests/regression/legacy-020.test.ts`, `tests/regression/legacy-033.test.ts`, `tests/regression/legacy-085.test.ts`
 
 **Interfaces:**
-- Consumes: `ReportCodeSchema` (1B, widened by each report-shipping slice — §4.16.3); `loadReportDefinitions`, `reportsLoader` (7A); `HR_CATALOGUE`, `readHrDefinition`, `hrReportFixture` (Task 2); `repoFile`, `REPO_ROOT` (§4.17.1); `pdfText` (2C); `payslipRows`, `reconcileParallelRun`, `permitExpiry`, `writeSensitive`, `createHrKeyRing` (Tasks 3, 5, 9 and 8A); `payrollFixture`, `postPayrollRun` (8B); `seedTenantV2`, `grantCodes`, `seedEmployee`, `uuidv7`, `startDb` (§4.17, §4.1); `startApi` (§4.2.12). **`hrFixture` is NOT consumed by any of the four blocks** — it seeds a `SYNTH` `statutory_scheme` and so does `payrollFixture`, and `app.statutory_scheme` is `unique (company_id, code)` (8a:4248), so sah-011 and sah-085 seed their own tenants. **`thinRegression` / `fullRegression` are NOT consumed** — Step 3 records why.
+- Consumes: `ReportCodeSchema` (1B, widened by each report-shipping slice — §4.16.3); `loadReportDefinitions`, `reportsLoader` (7A); `HR_CATALOGUE`, `readHrDefinition`, `hrReportFixture` (Task 2); `repoFile`, `REPO_ROOT` (§4.17.1); `pdfText` (2C); `payslipRows`, `reconcileParallelRun`, `permitExpiry`, `writeSensitive`, `createHrKeyRing` (Tasks 3, 5, 9 and 8A); `payrollFixture`, `postPayrollRun` (8B); `seedTenantV2`, `grantCodes`, `seedEmployee`, `uuidv7`, `startDb` (§4.17, §4.1); `startApi` (§4.2.12). **`hrFixture` is NOT consumed by any of the four blocks** — it seeds a `SYNTH` `statutory_scheme` and so does `payrollFixture`, and `app.statutory_scheme` is `unique (company_id, code)` (8a:4248), so legacy-011 and legacy-085 seed their own tenants. **`thinRegression` / `fullRegression` are NOT consumed** — Step 3 records why.
 - Produces: nothing importable. `ReportCodeSchema` gains eight members.
 
 - [ ] **Step 1: Widen `ReportCodeSchema` and prove the two registers agree**
@@ -5775,11 +5775,11 @@ bun run seed --tenant "$TENANT_ID" --only reports
 
 - [ ] **Step 3: Append the four regression blocks**
 
-Each is a `describe("SAH-NNN <Part I heading> — 8D", …)` **appended** to a file 0B created; no earlier block is edited (§3.7.3). This is the shape 8B, 8C and 7C all use for their own appends (8b:3091, 8c:3896, 7c:5878) — **not** `thinRegression(...)`, whose `describe` title hard-codes `— 0B` (0b:5317–5322) and which therefore cannot title an 8D block. Each block below carries its own imports and its own `beforeAll`, so it is self-contained and an earlier block's bindings are never borrowed.
+Each is a `describe("LEGACY-NNN <Part I heading> — 8D", …)` **appended** to a file 0B created; no earlier block is edited (§3.7.3). This is the shape 8B, 8C and 7C all use for their own appends (8b:3091, 8c:3896, 7c:5878) — **not** `thinRegression(...)`, whose `describe` title hard-codes `— 0B` (0b:5317–5322) and which therefore cannot title an 8D block. Each block below carries its own imports and its own `beforeAll`, so it is self-contained and an earlier block's bindings are never borrowed.
 
 Two blocks are pure source scans and need no database; two need the payroll corpus and seed a **fresh** tenant of their own through `seedTenantV2` rather than reaching for `sharedDb()`'s `a` or `b` — 8B and 8C already run payroll fixtures against those seeds, and `payrollFixture` makes no idempotency promise.
 
-`tests/regression/sah-011.test.ts` — *NULL statutory inputs and silent zeroes.* 8B proved the **refusal** and 8C the **schedule**; this block proves the **output** half. Add these imports at the top of the file, beside the ones already there:
+`tests/regression/legacy-011.test.ts` — *NULL statutory inputs and silent zeroes.* 8B proved the **refusal** and 8C the **schedule**; this block proves the **output** half. Add these imports at the top of the file, beside the ones already there:
 
 ```ts
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -5790,13 +5790,13 @@ import { hrReportFixture, type HrReportFixture } from "../invariants/support/hr-
 ```
 
 ```ts
-describe("SAH-011 Statutory figures computed from NULL inputs — 8D", () => {
+describe("LEGACY-011 Statutory figures computed from NULL inputs — 8D", () => {
   const MYR = currency("MYR");
   let db: Db; let s: Seed; let f: HrReportFixture;
 
   beforeAll(async () => {
     db = await startDb();
-    s = await seedTenantV2(db, "sah-011-8d");
+    s = await seedTenantV2(db, "legacy-011-8d");
     f = await hrReportFixture(db, s);
   }, 300_000);
   afterAll(async () => { await db.stop(); });
@@ -5822,7 +5822,7 @@ describe("SAH-011 Statutory figures computed from NULL inputs — 8D", () => {
 });
 ```
 
-`tests/regression/sah-020.test.ts` — *no rate in code.* A pure source scan: no database, no fixture, and therefore no `beforeAll`. Add these imports at the top of the file:
+`tests/regression/legacy-020.test.ts` — *no rate in code.* A pure source scan: no database, no fixture, and therefore no `beforeAll`. Add these imports at the top of the file:
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -5833,7 +5833,7 @@ import { REPO_ROOT } from "../support/source";
 ```
 
 ```ts
-describe("SAH-020 Statutory rates hard-coded in application logic — 8D", () => {
+describe("LEGACY-020 Statutory rates hard-coded in application logic — 8D", () => {
   const FILES = [
     "packages/db/src/reports/datasets/hr.ts", "packages/db/src/hr/payslip.ts",
     "packages/db/src/hr/reconcile.ts", "packages/db/src/hr/rotate.ts",
@@ -5871,7 +5871,7 @@ describe("SAH-020 Statutory rates hard-coded in application logic — 8D", () =>
 });
 ```
 
-`tests/regression/sah-033.test.ts` — *sensitive reads gated by an RLS predicate on the actor's permission, never by a parameter.* The report-side clause of **test 32**. Its first two cases are source scans; its third needs two principals with different codes, so the block seeds its own. Add these imports at the top of the file:
+`tests/regression/legacy-033.test.ts` — *sensitive reads gated by an RLS predicate on the actor's permission, never by a parameter.* The report-side clause of **test 32**. Its first two cases are source scans; its third needs two principals with different codes, so the block seeds its own. Add these imports at the top of the file:
 
 ```ts
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -5885,7 +5885,7 @@ import { REPO_ROOT } from "../support/source";
 ```
 
 ```ts
-describe("SAH-033 Sensitive employee data readable through a side channel — 8D", () => {
+describe("LEGACY-033 Sensitive employee data readable through a side channel — 8D", () => {
   const SENSITIVE = ["national_id", "passport", "date_of_birth", "bank_account", "residency_category",
     "epf_number", "socso_number", "tax_number", "work_permit_expiry"];
   const RING = createHrKeyRing({ current: DEV_HR_KEY, currentVersion: 1 });
@@ -5895,17 +5895,17 @@ describe("SAH-033 Sensitive employee data readable through a side channel — 8D
 
   beforeAll(async () => {
     db = await startDb();
-    s = await seedTenantV2(db, "sah-033-8d");
+    s = await seedTenantV2(db, "legacy-033-8d");
     await grantCodes(db, s, { codes: ["hr.employee.read", "hr.employee.read_sensitive"] });
     holder = s.human;
     outsider = await uuidv7(db.admin);
     await withTenant(db.rw, s.tenant, s.human, async (tx) => {
       await tx`insert into app.principal (id, tenant_id, kind, auth_subject, display_name)
-               values (${outsider}, ${s.tenant}, 'human', ${`stub:sah033-${outsider}`}, 'Outsider')`;
+               values (${outsider}, ${s.tenant}, 'human', ${`stub:legacy033-${outsider}`}, 'Outsider')`;
       await tx`insert into app.membership (tenant_id, principal_id) values (${s.tenant}, ${outsider})
                on conflict do nothing`;
     });
-    await grantCodes(db, s, { codes: ["hr.employee.read"], principalId: outsider, roleCode: "sah033-clerk" });
+    await grantCodes(db, s, { codes: ["hr.employee.read"], principalId: outsider, roleCode: "legacy033-clerk" });
     const withPermit = await seedEmployee(db, s, { employeeNumber: "E-7001" });
     await withTenant(db.rw, s.tenant, holder, (tx) =>
       writeSensitive(tx, RING, withPermit, { work_permit_expiry: "2026-02-15" }));
@@ -5941,7 +5941,7 @@ describe("SAH-033 Sensitive employee data readable through a side channel — 8D
 });
 ```
 
-`tests/regression/sah-085.test.ts` — *RTL/LTR parity.* The payslip half, recorded against the defect. It needs a running API and a posted run, so it seeds its own through `startApi` rather than borrowing `sharedApi()`'s seeds — which 7C's own SAH-085 block already shares. Add these imports at the top of the file:
+`tests/regression/legacy-085.test.ts` — *RTL/LTR parity.* The payslip half, recorded against the defect. It needs a running API and a posted run, so it seeds its own through `startApi` rather than borrowing `sharedApi()`'s seeds — which 7C's own LEGACY-085 block already shares. Add these imports at the top of the file:
 
 ```ts
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -5955,7 +5955,7 @@ import { startApi, type StartedApi } from "../../apps/api/test/support/app";
 ```
 
 ```ts
-describe("SAH-085 Arabic and English layouts diverge — 8D", () => {
+describe("LEGACY-085 Arabic and English layouts diverge — 8D", () => {
   let api: StartedApi; let s: Seed; let runId: string;
 
   beforeAll(async () => {
@@ -5963,7 +5963,7 @@ describe("SAH-085 Arabic and English layouts diverge — 8D", () => {
     // `seedTenantV2` + `payrollFixture`, not 8A's `hrFixture`: both seed a `SYNTH` statutory_scheme and
     // the table is `unique (company_id, code)` (8a:4248), so the two cannot share a company. Task 5's
     // route test carries the same note for the same reason.
-    s = await seedTenantV2(api.db, "sah-085-8d");
+    s = await seedTenantV2(api.db, "legacy-085-8d");
     const payroll = await payrollFixture(api.db, s);
     await grantCodes(api.db, s, { codes: ["hr.filing.generate", "hr.payroll.read"] });
     runId = await postPayrollRun(api.db, s, payroll, {
@@ -6006,7 +6006,7 @@ describe("SAH-085 Arabic and English layouts diverge — 8D", () => {
 });
 ```
 
-**Why none of the four uses `thinRegression` / `fullRegression`, recorded so a reviewer does not read it as an omission.** 0B's `thinRegression(sah, heading, cites, body)` builds `describe(\`${sah} ${heading} — 0B\`)` (0b:5317–5322): the slice suffix is a literal, so an 8D block routed through it would announce itself as 0B's. `fullRegression` has the same shape. 8B, 8C and 7C therefore all append a bare `describe(… — <slice>)` with their own context, and these four follow them. What the wrappers exist to enforce — one `describe` per defect per slice, naming the defect and citing it — is satisfied by the titles above.
+**Why none of the four uses `thinRegression` / `fullRegression`, recorded so a reviewer does not read it as an omission.** 0B's `thinRegression(legacyDefect, heading, cites, body)` builds `describe(\`${legacyDefect} ${heading} — 0B\`)` (0b:5317–5322): the slice suffix is a literal, so an 8D block routed through it would announce itself as 0B's. `fullRegression` has the same shape. 8B, 8C and 7C therefore all append a bare `describe(… — <slice>)` with their own context, and these four follow them. What the wrappers exist to enforce — one `describe` per defect per slice, naming the defect and citing it — is satisfied by the titles above.
 
 - [ ] **Step 4: Run the re-run matrix**
 
@@ -6014,7 +6014,7 @@ describe("SAH-085 Arabic and English layouts diverge — 8D", () => {
 |---|---|---|
 | **23** RTL/LTR parity | the payslip PDF in both directions | `bun run --cwd apps/api test test/routes/hr/payslips.test.ts` |
 | **31** SoD | the ⚠️ leave-approval clause (Task 8) | `bun run --cwd apps/api test test/routes/hr/leave.test.ts` |
-| **32** no sensitive side channel | the report and dataset clauses | `bun run test --filter @dulja/tests -t "SAH-033"` |
+| **32** no sensitive side channel | the report and dataset clauses | `bun run test --filter @dulja/tests -t "LEGACY-033"` |
 | **33** golden payroll | payslips byte-identical **at the text layer** across generations | `bun run --cwd apps/api test test/routes/hr/payslips.test.ts -t "test 33"` |
 | **30** payslip ties to the ledger | Σ net = the `2400` credit, through `hr.payroll_register` | `bun run --cwd packages/db test test/reports/hr-definitions.test.ts -t "salaries payable"` |
 | **12/13** isolation and audit | the four ⚠️ leave tables and the new job | `bun run test --filter @dulja/tests` |
@@ -6026,8 +6026,8 @@ Run all six. Expected: PASS.
 ```bash
 git add packages/contracts/src/accounting/reports.ts packages/contracts/openapi.json \
         packages/db/test/seed/reports.test.ts packages/db/test/reports/hr-definitions.test.ts \
-        tests/regression/sah-011.test.ts tests/regression/sah-020.test.ts \
-        tests/regression/sah-033.test.ts tests/regression/sah-085.test.ts
+        tests/regression/legacy-011.test.ts tests/regression/legacy-020.test.ts \
+        tests/regression/legacy-033.test.ts tests/regression/legacy-085.test.ts
 git commit -m "test(regression): widen ReportCodeSchema by eight and append the 8D blocks [8D T11]
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
@@ -6110,7 +6110,7 @@ Run against the spec and the contracts document with fresh eyes, per the writing
 | ADRs 0079–0080 | T5, T7 — both proposals (spec:95) |
 | Re-runs 33, 23, 31 ⚠️, 32 | T5, T5, T8, T3 + T11 |
 | §3.0.4 rows spec:1059 and spec:1060 | T5/T6 and T3/T8 |
-| Regression appends sah-011, 020, 033, 085 | T11 |
+| Regression appends legacy-011, 020, 033, 085 | T11 |
 | Owner gates OD-13, OD-23, OD-28, OD-24 — one isolated task each | T8, T9, T6, T10 |
 
 **Five gaps found and closed while reviewing.** (a) spec:2091's "contract and permit expiry" had **no data source for either half** — `employee` carries no contract end date and the permit expiry is ciphertext. Closed by amendment A2 (migration 0098) and amendment A3 (the gated route), rather than by narrowing the report and hoping nobody noticed. (b) §4.16.1's `hr.annual_statement` reads `employee_ytd`, whose stored `by_scheme` is jsonb and cannot be a `DatasetRow` value; closed by unnesting the dataset in T2 and by the `employee_ytd` tie-out case in T4, which compares distinct pairs rather than summing a repeated column. (c) **Three `ledger_sum` tie-outs would have thrown before comparing anything**: 7B's `firstMoneyTotal` requires the first money `sum` total to be a key of `LEDGER_MEASURE`, and all three definitions originally summed `amount` — which is in any case a number the ledger does not hold. Closed by amendment A10: two signed measures computed in the dataset's SQL, two keys added to the map, and `hr.payslip` moved to `tieOut: none` because 7B's query has no dimension filter and would compare one employee against the whole run. (d) **Task 2 could not have gone green before Task 3**: `employeeDataset` reads `contract_ends_on`. Migration 0098 moved into Task 2, with the mirror. (e) **`hr.filing.generate` would have failed `permission-catalogue` from Task 1 until Task 5**, breaking §3.1's "green after every task"; closed by shipping `requireFilingGenerate` in Task 1, 7A's precedent. (f) **`net_contribution` counted net twice.** Its `case` had no arm for the net-pay leg's own all-null `payroll_line` (8b:4730–4734), so that row fell to `else pl.amount` and Σ came to 2 × Σnet against a `2400` credit of exactly Σnet — `hr.payroll_register`'s tie-out could not have passed. Closed by a first arm scoring the leg zero, so the measure re-derives net from the component and scheme lines; that is also what makes it an independent second path rather than a re-read of the posting's own figure. (g) **`hr.attendance` totalled `attendance_event_id`, which is a dataset column but not one of the definition's**, so 7A's validator rule 4 (7a:1988–1992) rejected it and Task 3's own Step 1 could not have gone green. The total is `employee_number`, matching `hr.employee_list` and `hr.contract_expiry`. (h) **Both leave write routes read back through a filter with no id**, so the decision handler returned the company's newest record instead of the one named in the path and its 404 branch was unreachable; closed by `LeaveRecordFilter.id` and a read-back by it on both.
@@ -6123,7 +6123,7 @@ Run against the spec and the contracts document with fresh eyes, per the writing
 
 **3. Type consistency.** `net_contribution` and `payable_contribution` are spelled identically in T2's `DatasetColumn` list, T2's `select` clause, T4's two definitions, T4's `LEDGER_MEASURE` entry and T4's assertions — a mismatch there would make a tie-out pass vacuously against `undefined → "0.0000"`, which is the failure mode 7B's own `account_balance` case carries a comment about. `payslipRows` / `PayslipBundle` / `PayslipHeader` are spelled identically in T5's produces block, its implementation, `renderPayslip`'s parameter and T9's consumes list. `rotateSensitiveBatch` returns `RotationBatch` and the handler accumulates a `RotationResult` — two types, two names, both declared. `permitExpiry` / `PermitExpiryRow` match across `packages/db`, `packages/contracts` and `apps/api`. The six dataset consts are named `<thing>Dataset` and their `id` strings are the `DatasetId` members exactly. `HR_CATALOGUE`'s eight entries are §4.16.1's eight codes in register order, and T11 asserts that against `ReportCodeSchema` in both directions.
 
-**4. Hazards re-checked, one by one.** Hazard 1: no rate, threshold, ceiling or formula appears anywhere — the only statutory table named is `SYNTH`, and T11's sah-020 block scans for one mechanically. Hazard 2 (in spirit): no LHDN form name, deadline, channel or schema version, and T6's test asserts their absence. Hazard 5: T6, T9 and T10 each carry "owner provides X; verify with `<exact command>`" and a local equivalent that must print the same lines. Hazard 6: four owner decisions, four isolated tasks, each droppable. Hazard 7: no D1–D27 decision and no §2.12 item is re-opened. Hazard 8: every Plan 0A helper is cited by its exact name. Hazard 9: `fixtures.ts` gains nothing, and the two shared test helpers are registered by A6 and A7. Hazard 13: `lint-schema.ts` is not edited. Hazard 14: migrations 0096–0098 are inside the range, 0099 is left unused, and no plan asserts `max(version)`. Hazard 20: the rotation job runs as the system principal in many short transactions. Hazard 22: `app.employee_ytd` is read and never written. Hazard 28: 7A and 2C are in the phase gate and T0 asserts both. Hazard 29: T10 is blocked. Hazard 30: the PDF engine is 2C's `engineFor`, never re-evaluated. Hazard 31: one new module, one `PROBES` key, one `JOB_PROBES` key; the two sub-paths add none. Hazard 32: no literal is invented in any of the five registers. Hazard 33: `2400`, `2411`–`2414` and `5300` are 8B's and T0 asserts they resolve.
+**4. Hazards re-checked, one by one.** Hazard 1: no rate, threshold, ceiling or formula appears anywhere — the only statutory table named is `SYNTH`, and T11's legacy-020 block scans for one mechanically. Hazard 2 (in spirit): no LHDN form name, deadline, channel or schema version, and T6's test asserts their absence. Hazard 5: T6, T9 and T10 each carry "owner provides X; verify with `<exact command>`" and a local equivalent that must print the same lines. Hazard 6: four owner decisions, four isolated tasks, each droppable. Hazard 7: no D1–D27 decision and no §2.12 item is re-opened. Hazard 8: every Plan 0A helper is cited by its exact name. Hazard 9: `fixtures.ts` gains nothing, and the two shared test helpers are registered by A6 and A7. Hazard 13: `lint-schema.ts` is not edited. Hazard 14: migrations 0096–0098 are inside the range, 0099 is left unused, and no plan asserts `max(version)`. Hazard 20: the rotation job runs as the system principal in many short transactions. Hazard 22: `app.employee_ytd` is read and never written. Hazard 28: 7A and 2C are in the phase gate and T0 asserts both. Hazard 29: T10 is blocked. Hazard 30: the PDF engine is 2C's `engineFor`, never re-evaluated. Hazard 31: one new module, one `PROBES` key, one `JOB_PROBES` key; the two sub-paths add none. Hazard 32: no literal is invented in any of the five registers. Hazard 33: `2400`, `2411`–`2414` and `5300` are 8B's and T0 asserts they resolve.
 
 **5. Contract additions** (also reported in the structured result): `HR_FIELD_ENCRYPTION_KEY_VERSION`; `app.employee.contract_ends_on`; the six dataset consts and the six `DatasetId` members; the two signed measure columns `net_contribution` / `payable_contribution` and their two `LEDGER_MEASURE` keys; `requireFilingGenerate`; `payslipRows` / `PayslipParams` / `PayslipHeader` / `PayslipBundle`; **`PAYSLIP_ENGINE`** (§4.5.9, beside A4) and `renderPayslip` / `RenderedPayslip` (**which carries no `sha256`** — 2C's `createAttachment` owns the hash); `createPayslipRoutes`; `permitExpiry` / `PermitExpiryParams` / `PermitExpiryRow` / `createPermitExpiryRoutes`; `rotateSensitiveBatch` / `RotationBatch` / `RotationResult` / `hrKeyRotateHandler`; **`apps/worker/src/hr-keys.ts`'s `hrKeyRing` / `setHrKeyRing` / `hrKeyRingFromEnv`** — 7A's `objectStore()` trio in shape, registered as the worker's second injected singleton; the `JobPayload["hr.encryption_key.rotate"]` shape; `reconcileParallelRun` / `renderReconciliation` / `LegacyPayslip` / `Difference` / `DifferenceKind` / `ReconciliationReport`; `requestLeave` / `approveLeave` / `rejectLeave` / `listLeaveRecords` / `setEntitlement` / `listEntitlements` / `createLeaveType` / `listLeaveTypes` / `createPublicHoliday` / `listPublicHolidays` / `RequestLeaveInput` / `SetEntitlementInput` / `LeaveRecordFilter` (**with its `id` member — both write routes read back by it**) / `LeaveRecordRow` / `CreateLeaveTypeInput` / `LeaveTypeRow` / `LeaveTypeFilter` / `LeaveEntitlementRow` / `LeaveEntitlementFilter` / `CreatePublicHolidayInput` / `PublicHolidayRow` / `PublicHolidayFilter`, the four Drizzle mirrors `leaveType` / `leaveEntitlement` / `leaveRecord` / `publicHoliday`, and `leaveRoutes` / `leaveRouteModule` with its seven routes (contracts side: `LeaveTypeQuery`, `LeaveEntitlementQuery`, `PublicHolidayQuery`, `LeaveEntitlementList`); `ApiConfig.hrFieldEncryptionKeyVersion`; the two `assertTieOut` projection cases; and `tests/invariants/support/hr-reports.ts`'s exports — **nine**, not seven: `HrReportFixture` gains `schedules` and `draftRunDocumentId`, both consumed by four test files.
 

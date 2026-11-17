@@ -81,7 +81,7 @@ export async function listNeedsAttention(
   },
 ): Promise<NeedsAttentionRow[]> {
   // Every filter is a bound parameter with a null-guard in SQL — never a conditionally concatenated fragment
-  // (Global Constraint 1, SAH-036/037/069). `branchId is null` means "every branch this caller can see", and
+  // (Global Constraint 1, LEGACY-036/037/069). `branchId is null` means "every branch this caller can see", and
   // Restrictive branch RLS and the current resolve permission on each row bound that scope.
   // Bind the cursor as text: the timestamp serializer passes through JS Date and loses
   // PostgreSQL microseconds, which can skip siblings from the same transaction.
@@ -105,7 +105,7 @@ export async function listNeedsAttention(
 
 /**
  * Closes one row of `companyId`'s queue. `resolved_by` is **stamped by `app.stamp_actor` from the session**
- * and is not a parameter: the caller cannot name a resolver, which is SAH-044 for this table. The SET list
+ * and is not a parameter: the caller cannot name a resolver, which is LEGACY-044 for this table. The SET list
  * still names the column, because the trigger stamps only an UPDATE that sets it non-null (0060) and the
  * `(resolved_by is null) = (resolved_at is null)` check needs both.
  */

@@ -23,7 +23,7 @@ export const CashierSchema = z
   })
   .meta({ id: "Cashier" });
 // `pinHash` is NOT a member and never becomes one: it is a credential, and a response schema is the one
-// place a credential leaks without anybody writing the word "leak" (SAH-028).
+// place a credential leaks without anybody writing the word "leak" (LEGACY-028).
 
 const Pin = z.string().regex(/^[0-9]{4,12}$/, "a PIN is 4-12 digits"); // the same band `hashPin` enforces
 

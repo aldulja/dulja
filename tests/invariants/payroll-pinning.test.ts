@@ -84,7 +84,7 @@ afterAll(async () => {
   await db.stop();
 });
 
-describe("acceptance test 29 — rate-table pinning (spec:2447, SAH-013, SAH-020)", () => {
+describe("acceptance test 29 — rate-table pinning (spec:2447, LEGACY-013, LEGACY-020)", () => {
   it("run M pins the version effective at M; a later version leaves M byte-identical", async () => {
     const january = await postPayrollRun(db, s, f, {
       periodStart: "2026-01-01",
@@ -220,7 +220,7 @@ describe("acceptance test 29 — rate-table pinning (spec:2447, SAH-013, SAH-020
   }, 180_000);
 });
 
-describe("acceptance test 38 — payroll period lock (spec:2456, SAH-031)", () => {
+describe("acceptance test 38 — payroll period lock (spec:2456, LEGACY-031)", () => {
   it("a run whose period is CLOSED cannot post, and reopening with a reason is the only remedy", async () => {
     const [marchPeriod] = await db.admin<{ id: string }[]>`
       select id from app.fiscal_period where company_id = ${s.company}
@@ -274,7 +274,7 @@ describe("acceptance test 38 — payroll period lock (spec:2456, SAH-031)", () =
     expect(audit).toEqual({ reason: "March payroll approved after close", actor: reopener });
   }, 180_000);
 
-  it("test 9 re-run — a LOCKED period reaches the payroll LINES, not only the ledger (SAH-031)", async () => {
+  it("test 9 re-run — a LOCKED period reaches the payroll LINES, not only the ledger (LEGACY-031)", async () => {
     const documentId = await postPayrollRun(db, s, f, {
       periodStart: "2026-04-01",
       periodEnd: "2026-04-30",

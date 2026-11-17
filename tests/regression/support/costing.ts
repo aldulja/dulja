@@ -55,16 +55,16 @@ export interface CostingFixture {
 }
 
 /**
- * @param sah this file's SAH number, e.g. "004". It names the tenant, and the ISOLATION is the point:
+ * @param legacyDefect this file's LEGACY number, e.g. "004". It names the tenant, and the ISOLATION is the point:
  *   one company per regression file. The files below assert absolute figures — a valuation that is
  *   `undefined`, a unit cost of exactly 1.0000 — and every one of them would be false in some file order if
- *   they shared a company, because `sah-004` leaves stock on the shelf and `sah-005` deliberately leaves
+ *   they shared a company, because `legacy-004` leaves stock on the shelf and `legacy-005` deliberately leaves
  *   invalidated layers behind (it back-dates against a `recordingJobs()` client and never runs the replay).
  *   The container is still shared: `sharedDb()` starts one for the whole `tests` run (§4.17.1).
  *   `seedTenantV2` rather than `sharedDb().a` because 1A's version wires `fx_rounding_account_id` and the
  *   1000/4000 accounts that every policy in this slice resolves; Plan 0A's `seedTenant` does not.
  */
-export function costingContext(sah: string) {
+export function costingContext(legacyDefect: string) {
   let fixture: CostingFixture | null = null;
 
   const api = {
@@ -72,17 +72,17 @@ export function costingContext(sah: string) {
     async inventory(): Promise<CostingFixture> {
       if (fixture) return fixture;
       const { db } = await sharedDb();
-      const s = await seedTenantV2(db, `SAH-${sah}`);
+      const s = await seedTenantV2(db, `LEGACY-${legacyDefect}`);
       // `grantCodes(db, s)` with no `codes` grants NOTHING, and 2B's R2 evaluates both fixture policies'
       // `approval.post` inside the posting transaction (the reversal and COST_ADJUSTMENT post under it too).
       await grantCodes(db, s, { codes: ["accounting.journal.post"] });
       await ensureOpenPeriods(db, s, 2026);
       // trackLots: false — `seedItem` defaults it to TRUE (§4.6.1), and every regression file posts this item
       // on lot-less lines, which `evaluatePolicy` refuses for a lot-tracked item (ERR_POLICY_REQUIRES_MISSING).
-      const { itemId } = await seedItem(db, s, { code: "SAH-COST", trackLots: false });
+      const { itemId } = await seedItem(db, s, { code: "LEGACY-COST", trackLots: false });
       // `COST_ADJUSTMENT` has to exist in THIS tenant before `runReplay`: `replay` calls
       // `resolveAdjustmentAccounts` unconditionally as soon as anything is in scope (Task 9 Step 3), and
-      // that raises `ERR_NOT_FOUND` on a missing document type before any arithmetic. `sah-054` asserts one
+      // that raises `ERR_NOT_FOUND` on a missing document type before any arithmetic. `legacy-054` asserts one
       // adjustment IS posted, so this load is load-bearing rather than defensive. The path is absolute
       // because Vitest runs the `tests` workspace from `tests/` — a bare `"packages/db/seed/…"` would
       // resolve under `tests/` and the loader would raise ENOENT (0B's `REPO_ROOT`, §4.17.1).
@@ -100,7 +100,7 @@ export function costingContext(sah: string) {
         db,
         s,
         item: itemId,
-        warehouse: await seedWarehouse(db, s, { code: "SAH-WH" }),
+        warehouse: await seedWarehouse(db, s, { code: "LEGACY-WH" }),
         receipt: await seedDocumentType(db, s, {
           code: "STOCK_RECEIPT_TEST",
           module: "inventory",
@@ -116,7 +116,7 @@ export function costingContext(sah: string) {
     },
 
     async secondWarehouse(db: Db, s: Seed): Promise<string> {
-      return seedWarehouse(db, s, { code: "SAH-WH2" });
+      return seedWarehouse(db, s, { code: "LEGACY-WH2" });
     },
 
     /**
@@ -237,7 +237,7 @@ export function costingContext(sah: string) {
     /**
      * The valued-but-unconsumed part of every authorised shortfall (ADR 0038 note 7), derived from
      * **quantities and unit costs** — NOT as `Σ document_line.cost − Σ cost_consumption.value`. Deriving it
-     * by that subtraction would make `sah-009`'s first assertion (`Σ consumption + shortfall = Σ cost`) an
+     * by that subtraction would make `legacy-009`'s first assertion (`Σ consumption + shortfall = Σ cost`) an
      * identity that holds over any data at all, including data where costing is broken, which is the one
      * thing that tie-out exists to detect.
      *
@@ -300,7 +300,7 @@ export function costingContext(sah: string) {
       return walk(roots);
     },
 
-    /** The two pure inputs `sah-007` and `sah-008` hand straight to the engine. */
+    /** The two pure inputs `legacy-007` and `legacy-008` hand straight to the engine. */
     valuelessReceipt() {
       return {
         method: "avco" as const,
@@ -323,10 +323,10 @@ export function costingContext(sah: string) {
       };
     },
     /**
-     * A ZERO-quantity issue — SAH-008(c)'s wash line. Named for what it is: there is no such thing as a
+     * A ZERO-quantity issue — LEGACY-008(c)'s wash line. Named for what it is: there is no such thing as a
      * sub-micro `Quantity` (`Quantity.of` throws above six decimal places, 0d:1034-1039), so the engine's
      * `MIN_MEANINGFUL_QTY` refusal cannot be reached from a constructed quantity and this is the arm of
-     * SAH-008 a runtime input can still present. It is refused with `ERR_COST_VALUE_MISSING`.
+     * LEGACY-008 a runtime input can still present. It is refused with `ERR_COST_VALUE_MISSING`.
      */
     washLineIssue() {
       const layer: Layer = {

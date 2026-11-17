@@ -59,7 +59,7 @@ cost a second adapter nothing needs), and `react-pdf` fails shaping and bidi. Th
 6. **A spreadsheet cell holds the decimal STRING, with `numFmt` for display.** spec:2041: "No `number` type
    ever holds a monetary value", and 0D's `no-number-money` lint covers `apps/**`. The cost is that Excel
    shows "number stored as text" and an in-sheet `SUM()` needs `VALUE()`. That is accepted: a float in a
-   monetary cell is the SAH-008 defect, the CSV carries the same raw strings, and 7C's tenant export is the
+   monetary cell is the LEGACY-008 defect, the CSV carries the same raw strings, and 7C's tenant export is the
    machine-readable path. A subtotal or total row is bold; the header row is frozen; a literal `&` in the
    page header or footer is doubled, because Excel reads `&` as a field code.
 7. **The CSV carries a BOM.** Its reader is an accountant opening it in Excel, which needs the BOM to sniff

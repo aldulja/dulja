@@ -13,7 +13,7 @@
   are in neither warehouse's on-hand and in the company's total"); contracts §4.2.11 (custom fields as
   core's extension point), §4.3.4 (`document` and `document_line`), §4.4.1 (`inventory.to_warehouse`),
   §4.4.2 (`planMovements`), §4.7.3 (`inventory_movement`, `stock_on_hand`); §3.4.1 (unused migration
-  numbers stay unused). Part I SAH-018.
+  numbers stay unused). Part I LEGACY-018.
 
 ## Context
 
@@ -279,7 +279,7 @@ loss is booked. It is not built.
 **Proof.** The "full review INV-01/INV-05" cases in `packages/db/test/inventory/transfer-receipt.test.ts`: a
 total loss and then a full receipt, and 6 and then 4 of 10, each refuse the second receipt and leave the other
 dispatch's 10 in the corridor; a void receipt releases the dispatch; `recordCounts` refuses a draft receipt.
-Also the `PATCH …/counts` case in `apps/api/test/routes/accounting/document-transfer.test.ts` and the SAH-017
+Also the `PATCH …/counts` case in `apps/api/test/routes/accounting/document-transfer.test.ts` and the LEGACY-017
 block "A transfer dispatch is received at most once". The 2026-11-04 case for the receiving branch now expects
 the link to account for the whole line (3, not 2) with nothing left open.
 
@@ -313,5 +313,5 @@ reversal commits. Its link insert then waits on the reversal's `for update` (the
 SHARE`) and commits a draft receipt against a reversed dispatch. Closing it needs a `for share` read in
 `draftTransferReceipt`, as `convertToInvoice` does, or a post-time check that the dispatch is still posted.
 
-**Proof.** `packages/db/test/inventory/transfer-reversal.test.ts` and SAH-018's "review MON-03" block in
-`tests/regression/sah-018.test.ts`.
+**Proof.** `packages/db/test/inventory/transfer-reversal.test.ts` and LEGACY-018's "review MON-03" block in
+`tests/regression/legacy-018.test.ts`.

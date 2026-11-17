@@ -1,4 +1,4 @@
--- 0068_create_branch_isolation_policies.sql — §4.5.6 in full; spec:1566–1569, 2166; SAH-042, SAH-045.
+-- 0068_create_branch_isolation_policies.sql — §4.5.6 in full; spec:1566–1569, 2166; LEGACY-042, LEGACY-045.
 -- Phases 1-5 relied on app.actor_has(code, company, branch) in handlers and triggers. This file adds the
 -- ROW-level half, so a missed handler check cannot leak another branch's rows. Five forms, no sixth.
 

@@ -211,7 +211,7 @@ describe("zero code: a document type created through the API numbers, posts and 
 
     const posted = await read(id);
     expect(posted.status).toBe("posted");
-    expect(await pinnedPolicyOf(id)).not.toBeNull(); // SAH-013: the rule is pinned on the row
+    expect(await pinnedPolicyOf(id)).not.toBeNull(); // LEGACY-013: the rule is pinned on the row
 
     // 1A's `LedgerEntryQuery` is flat — `documentId`, `accountId`, `fiscalPeriodId`, `from`, `to` — not the
     // `filter[x][eq]` form this slice's own two configuration routes use. Consume it as 1A shipped it.
@@ -331,7 +331,7 @@ describe("zero code: a document type created through the API numbers, posts and 
   it("a policy version added later takes effect from its own effective_from and never re-interprets history", async () => {
     // The zero-code claim includes CHANGING a type without code. Version 2 sends both legs to `1000` from
     // 2026-01-20; the 2026-01-15 documents above keep the rows version 1 produced, because the effective
-    // policy is chosen by the document's effective_date and pinned at post (spec:1075, SAH-013).
+    // policy is chosen by the document's effective_date and pinned at post (spec:1075, LEGACY-013).
     //
     // Both dates sit inside 2026-01, which is the ONLY open period `seedTenant` creates — §4.1 pins the three
     // as "2026-01 open, 2026-02 closed, 2026-03 locked". A February document would be refused at §4.3.2

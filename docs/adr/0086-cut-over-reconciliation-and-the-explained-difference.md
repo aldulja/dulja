@@ -49,7 +49,7 @@ employee's gross salary. None of it said what `3900` is made of.
      stands on `3900`.
    - `ar_control` / `ap_control` — explained when Dulja equals the legacy open items of that side (`BILLS`, read with
      Task 7's own rules). What separates the legacy control from its own items is named and quantified as the legacy
-     control's drift (SAH-001's kind), standing on `3900`. An item the load did not open (an orphan, a refusal) leaves
+     control's drift (LEGACY-001's kind), standing on `3900`. An item the load did not open (an orphan, a refusal) leaves
      Dulja short of the items, and the row is not explained.
    - `inventory_control` — explained when Dulja (every inventory-control code together) equals the RECOMPUTED
      valuation: `BILLITEMS` parsed by the opening-stock loader's own `map` and replayed by `replayLegacyMovements` at the
@@ -61,9 +61,9 @@ employee's gross salary. None of it said what `3900` is made of.
 3. **The legacy trial balance's own imbalance is explained by 9A's reports, or not at all.** `explain(difference,
    reports)` searches the subsets (at most sixty-four) of the reports that carry a trial-balance figure and returns the
    matched reports' sentences when their **signed** effects sum to the difference exactly, else `null`. Two of the six
-   kinds carry one: `unbalanced_vouchers` (its net imbalance, debit − credit; SAH-003) and `aggregate_drift` (`ACCTOTALS`' stored
+   kinds carry one: `unbalanced_vouchers` (its net imbalance, debit − credit; LEGACY-003) and `aggregate_drift` (`ACCTOTALS`' stored
    totals less their `VOUITEMS` recomputation: Σ of `ACCTOTALS.DEBIT`'s signed `stored − recomputed` less the same for
-   `ACCTOTALS.CREDIT`, a missing stored row counting as a stored zero; SAH-001). `orphans`, `null_poison`,
+   `ACCTOTALS.CREDIT`, a missing stored row counting as a stored zero; LEGACY-001). `orphans`, `null_poison`,
    `duplicate_aggregates` and `employee_mapping` count rows, not money, and are never named. Signed rather than the
    plan's absolute values: a report that moves the trial balance by +100 does not explain −100, and two reports of
    +100 and −100 together explain only a zero.
@@ -104,7 +104,7 @@ employee's gross salary. None of it said what `3900` is made of.
   unexplained rows — which is what it is.
 - The reconciliation refuses, rather than reading as zero, a source without the `BILLS` or `BILLITEMS` the map's
   controls need, an account map that puts a legacy account on `3900` (whose balance could then not be decomposed), and
-  a duplicated source key with different values (the load's SAH-049 rule).
+  a duplicated source key with different values (the load's LEGACY-049 rule).
 - 9A's reports read `ACCTOTALS` and `VOUITEMS` in their own (unprefixed) spelling while 9B's loaders read the
   dossier-prefixed one (9B T4's recorded split); the committed `cut-over` corpus therefore carries `VOUITEMS` in 9A's
   spelling. OD-17's live catalogue corrects whichever spelling is wrong, in one place each. _(Amended by decision 8:

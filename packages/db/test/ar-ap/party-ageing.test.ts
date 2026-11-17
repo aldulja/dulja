@@ -400,7 +400,7 @@ describe("app.party_ageing_rows and app.item_profitability_rows over posted docu
     const c1 = await seedParty(db, f, { kind: "customer", code: "C-TERM" });
     await invoice(c1, "2026-01-05", "100.0000", { paymentTermId: net30 }); // due 2026-02-04
     await invoice(c1, "2026-01-10", "50.0000"); // no term: due on its effective date
-    // The party's term changes AFTER both were drafted. Re-reading it would re-age history (SAH-013).
+    // The party's term changes AFTER both were drafted. Re-reading it would re-age history (LEGACY-013).
     await withTenant(
       db.rw,
       f.tenant,

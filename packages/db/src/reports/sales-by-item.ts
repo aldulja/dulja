@@ -27,7 +27,7 @@ export interface SalesByItemRow {
    * too (code review B4). `ledger_entry` carries no item id and its `line_no` is the ledger ordinal with no join back
    * to `document_line`, so revenue cannot come from there; the conversion is the `base = value × rate`
    * identity the ledger CHECK enforces (spec:1816), computed in SQL on the document's OWN pinned rate — never
-   * a current one (SAH-014). A credit note's `amount` is already negated (4A Task 8), so a return subtracts
+   * a current one (LEGACY-014). A credit note's `amount` is already negated (4A Task 8), so a return subtracts
    * by arithmetic and the query contains no sign logic.
    *
    * `cost` is cut on DELIVERIES and `revenue` on INVOICES, so a range with goods delivered and not yet
@@ -126,7 +126,7 @@ export async function salesByItem(tx: Sql, params: SalesByItemParams): Promise<S
     ),
     revenue as (
       -- 4A: the item lines the pinned policy credits (or debits) to item.revenue_account, converted on the
-      -- document's own rate (spec:1816's identity, SAH-014) — app.item_revenue_rows (0048 §3a), the ONE
+      -- document's own rate (spec:1816's identity, LEGACY-014) — app.item_revenue_rows (0048 §3a), the ONE
       -- definition item_profitability reads too (code review B4), never a list of type codes. 'reversed' is a
       -- document that POSTED and was then reversed; its mirror is a posted SALES_CREDIT_NOTE with negated
       -- magnitudes, so the pair nets by arithmetic, exactly as its ledger rows do.

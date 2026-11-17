@@ -117,7 +117,7 @@ describe("the DatasetId registry — contracts §4.16.2", () => {
     }
   });
 
-  it("no dataset file contains a template-literal or concatenated identifier (test 27, SAH-069)", () => {
+  it("no dataset file contains a template-literal or concatenated identifier (test 27, LEGACY-069)", () => {
     // The whole point of `ref: (tx) => tx`l.account_id`` is that no identifier can come from data. A `${` inside
     // a SQL-looking template that is NOT a bound value would defeat it, so the shape is asserted mechanically:
     // every `${…}` in these files interpolates either a fragment-returning call or a bound parameter name.
@@ -267,7 +267,7 @@ describe("the accounting datasets", () => {
     await expect(run(a, "ledger_entry", { companyId: "x" })).rejects.toBeInstanceOf(ReportError);
   });
 
-  it("like is a prefix match and never a pattern (SAH-069's locale-fragile interpolation)", async () => {
+  it("like is a prefix match and never a pattern (LEGACY-069's locale-fragile interpolation)", async () => {
     const hit = await run(a, "account", {
       filters: [{ field: "name_en", op: "like", value: "Ca" }],
     });
@@ -648,7 +648,7 @@ describe("the inventory datasets", () => {
     }
   });
 
-  it("cost_layer exposes unit_cost and qty_remaining and computes NO cost of its own (SAH-055)", () => {
+  it("cost_layer exposes unit_cost and qty_remaining and computes NO cost of its own (LEGACY-055)", () => {
     const fields = datasetFor("cost_layer").columns.map((c) => c.field);
     expect(fields).toEqual(
       expect.arrayContaining(["unit_cost", "qty_in", "qty_remaining", "effective_at", "sequence"]),
@@ -657,7 +657,7 @@ describe("the inventory datasets", () => {
       fileURLToPath(new URL("../../src/reports/datasets/inventory.ts", import.meta.url)),
       "utf8",
     );
-    // A division inside a cost dataset would be a recomputed unit cost — the defect SAH-055 and spec:1228 forbid.
+    // A division inside a cost dataset would be a recomputed unit cost — the defect LEGACY-055 and spec:1228 forbid.
     expect(text).not.toMatch(/\bvalue\s*\/\s*quantity\b/);
     expect(text).not.toMatch(/\bsum\(\s*\w+\.value\s*\)\s*\/\s*/);
     expect(text).not.toMatch(/\w+\.(?:value|qty_in|quantity)\s*\/\s*/);

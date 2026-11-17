@@ -50,14 +50,14 @@ export const document = app.table(
     warehouseId: uuid("warehouse_id"),
     toWarehouseId: uuid("to_warehouse_id"),
     // 4A, migration 0045 (contracts §4.3.4) — the payment term PINNED at draft from the party and never
-    // re-read (SAH-013). The due date is derived (app.payment_due_date) and has no column.
+    // re-read (LEGACY-013). The due date is derived (app.payment_due_date) and has no column.
     paymentTermId: uuid("payment_term_id"),
-    // 9B, migration 0101 (contracts §4.13.3) — the legacy number as a string (SAH-051); never `number`.
+    // 9B, migration 0101 (contracts §4.13.3) — the legacy number as a string (LEGACY-051); never `number`.
     legacyRef: text("legacy_ref"),
   },
   (table) => [
     unique("document_company_id_posting_seq_key").on(table.companyId, table.postingSeq),
-    // 1B, migration 0016 (SAH-070) — the accounting.ledger report's document join and the fiscal-period
+    // 1B, migration 0016 (LEGACY-070) — the accounting.ledger report's document join and the fiscal-period
     // screen's per-period counts filter (company_id, fiscal_period_id[, status]); the unique above puts
     // `series` between the two filtered columns.
     index("document_company_period_status_idx").on(
@@ -65,7 +65,7 @@ export const document = app.table(
       table.fiscalPeriodId,
       table.status,
     ),
-    // 7B, migration 0077 (SAH-070) — the registers' required date range, their type cut and their branch
+    // 7B, migration 0077 (LEGACY-070) — the registers' required date range, their type cut and their branch
     // cut, each seekable after `company_id`.
     index("document_company_date_idx").on(table.companyId, table.effectiveDate),
     index("document_company_type_date_idx").on(

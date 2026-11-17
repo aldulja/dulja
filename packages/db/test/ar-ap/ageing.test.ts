@@ -46,7 +46,7 @@ beforeAll(async () => {
   s = await seedTenantV2(db, "ageing");
   f = await arApFixture(db, s);
 
-  // Four documents, all MYR, all against the 30-day term `postFromPack` pins from the party (SAH-013).
+  // Four documents, all MYR, all against the 30-day term `postFromPack` pins from the party (LEGACY-013).
   // as_of is 2026-04-30 throughout — a month later than the plan's 2026-03-31, because every pack policy is
   // effective from 2026-01-01 and a 61_90 invoice as of March on a 30-day term would have to be dated 2025:
   //   2026-04-15 invoice → due 2026-05-15 → current
@@ -144,7 +144,7 @@ describe("party_ageing — the buckets (§4.8.2, spec:1042)", () => {
     expect(current.amount).toBe("910.0000"); // 1000 invoice − 90 on account
   });
 
-  it("SAH-011: a party with NO payment term and a document with no control-account leg yield 0, never NULL", async () => {
+  it("LEGACY-011: a party with NO payment term and a document with no control-account leg yield 0, never NULL", async () => {
     // A party with no term: its invoice is due on its own effective date. 2026-02-14 is 75 days before
     // as_of — `61_90` with no term, where a 30-day term would have put it in `31_60`.
     const noTerm = await seedParty(db, s, {

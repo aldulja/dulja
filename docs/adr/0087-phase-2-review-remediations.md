@@ -31,7 +31,7 @@ The worker raises the incident before it writes the row, so a failed write can n
 **2. A pinned posting-policy version is immutable in the database, and the seed refuses to rewrite one**
 (migration 0106). Contracts §3.4.8 says a seeded policy version is `do update` so a staging placeholder
 does not survive the real definition; ADR 0027 says a version is append-only through the API; and
-`document.posting_policy_id` is the pin SAH-013 relies on. All three hold at once: a version nothing has
+`document.posting_policy_id` is the pin LEGACY-013 relies on. All three hold at once: a version nothing has
 posted under may still be replaced (the placeholder case); one a document or ledger entry pins cannot
 change by any path, and the seed says "bump `policyVersion`" instead of failing on the trigger.
 

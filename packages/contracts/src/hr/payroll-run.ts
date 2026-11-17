@@ -38,7 +38,7 @@ export const PayrollLineSchema = z
     /** §4.2.8's MoneySchema — `{ amount: "2000.0000", currency: "MYR" }`, a magnitude: the policy's `side` carries
      *  the direction (§4.4.2 A9). */
     amount: MoneySchema,
-    /** SAH-013: the rate-table version a statutory line pinned; null on a component or net-pay line. */
+    /** LEGACY-013: the rate-table version a statutory line pinned; null on a component or net-pay line. */
     rateTableVersion: z.number().int().nullable(),
     /** spec:2087: a manual statutory override is never silent — its reason is on the line. */
     overrideReason: z.string().nullable(),

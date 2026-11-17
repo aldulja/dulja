@@ -2,7 +2,7 @@
 -- spec:1052 "Stock count / cycle count with variance posted through a STOCK_COUNT document".
 -- spec:1053 "dispatched into an in-transit warehouse, received at the branch, variance on receipt".
 -- Expand only (spec:2057, contracts §3.4.7): two nullable columns, no rename, no drop, no backfill.
--- SAH-018: the VARIANCE itself gets no column — app.document_line.quantity carries
+-- LEGACY-018: the VARIANCE itself gets no column — app.document_line.quantity carries
 -- counted_quantity - expected_quantity and every consumer derives from that one number.
 -- Nothing here writes a row: hazard 10, and FORCE ROW LEVEL SECURITY binds app_migrator too (spec:1366).
 

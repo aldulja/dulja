@@ -21,7 +21,7 @@ export interface AllocationTarget {
   weightKg: Quantity | null;
 }
 
-/** One computed share. `weight` is the BASIS, returned for display and never stored (SAH-017, SAH-018). */
+/** One computed share. `weight` is the BASIS, returned for display and never stored (LEGACY-017, LEGACY-018). */
 export interface AllocationShare {
   costLineId: string;
   targetLineId: string;
@@ -210,7 +210,7 @@ export async function allocateLandedCostForDocument(
 
   for (const share of shares) {
     // `on conflict` is the ONLY replacement mechanism: app_rw holds no DELETE (§3.5.4) and every pair is
-    // written on every call, so re-allocating by another method cannot leave a stale share behind (SAH-049).
+    // written on every call, so re-allocating by another method cannot leave a stale share behind (LEGACY-049).
     await tx`
       insert into app.landed_cost_allocation
         (tenant_id, company_id, shipment_document_id, cost_line_id, target_line_id, method, allocated_amount)
@@ -263,7 +263,7 @@ export interface LandedCostSummaryRow {
 
 /**
  * Per goods line: the amount, the total allocated onto it, and their sum. A READ MODEL — `landedAmount` is
- * recomputed here on every read and stored nowhere (SAH-018), and the arithmetic is `Money`, never a
+ * recomputed here on every read and stored nowhere (LEGACY-018), and the arithmetic is `Money`, never a
  * hand-rolled integer (Global Constraint 4). Task 9's two routes return it as `summary`.
  */
 export async function landedCostSummary(

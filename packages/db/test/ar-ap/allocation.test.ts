@@ -665,7 +665,7 @@ describe("app.allocation — migration 0046, contracts §4.8.1", () => {
     );
     expect(mid.byCurrency["MYR"]!.toString()).toBe("100.0000");
     expect(mid.base.toString()).toBe("100.0000");
-    // A party with nothing posted owes 0.0000 in base, never NULL (SAH-011), and names no currency.
+    // A party with nothing posted owes 0.0000 in base, never NULL (LEGACY-011), and names no currency.
     const idle = await seedParty(db, s, { kind: "customer", code: "CUST-IDLE" });
     const none = await withTenant(db.rw, s.tenant, s.human, (tx) =>
       partyBalance(tx, { companyId: s.company, partyId: idle, asOf: "2026-01-31" }),
@@ -700,7 +700,7 @@ describe("app.allocation — migration 0046, contracts §4.8.1", () => {
     expect(bal.base.toString()).toBe("42.0000");
   });
 
-  it("an allocation is fixed at insert: only the un-allocation changes it, once, and never back (SAH-041)", async () => {
+  it("an allocation is fixed at insert: only the un-allocation changes it, once, and never back (LEGACY-041)", async () => {
     const inv = await invoiceFor("12.0000", "2026-01-26");
     const rct = await receiptFor("12.0000", "2026-01-26");
     const { allocationIds } = await allocate(rct.documentId, [

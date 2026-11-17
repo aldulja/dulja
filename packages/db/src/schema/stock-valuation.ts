@@ -29,7 +29,7 @@ export const stockValuation = app.table(
       name: "stock_valuation_pkey",
       columns: [table.companyId, table.itemId, table.warehouseId, table.asOf],
     }),
-    // 7B, migration 0077 (SAH-070) — report-filter indexes the 7B EXPLAIN gate found unserved.
+    // 7B, migration 0077 (LEGACY-070) — report-filter indexes the 7B EXPLAIN gate found unserved.
     index("stock_valuation_company_as_of_idx").on(table.companyId, table.asOf, table.warehouseId),
   ],
 );

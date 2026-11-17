@@ -54,7 +54,7 @@ describe("apps/edge/src/updates — the electron-builder feed from R2 (spec:1104
     expect(await res.text()).toBe("not found");
   });
 
-  it("refuses path traversal and an empty key — the feed is not a file browser (SAH-038)", async () => {
+  it("refuses path traversal and an empty key — the feed is not a file browser (LEGACY-038)", async () => {
     for (const p of ["/updates/../wrangler.jsonc", "/updates/a/../../b", "/updates/"]) {
       expect((await serveUpdate(bucket({}), p)).status).toBe(400);
     }

@@ -249,7 +249,7 @@ describe("Phase 4's staging re-seed, run locally (4B Task 12 Step 4, hazard 5)",
     // ⚠️ OD-09 is not built, so neither post-dated-cheque type exists (4B Task 9).
     expect(created).not.toContain("PDC_RECEIPT");
     expect(created).not.toContain("PDC_DEPOSIT");
-    // Each created type carries its policy version, and no Phase 3 policy was rewritten (0106, SAH-013).
+    // Each created type carries its policy version, and no Phase 3 policy was rewritten (0106, LEGACY-013).
     const policies = await db.admin<{ code: string; versions: number }[]>`
       select t.code, count(p.id)::int as versions
         from app.document_type t left join app.posting_policy p on p.document_type_id = t.id

@@ -33,7 +33,7 @@ afterAll(async () => {
   await db?.stop();
 });
 
-describe("migration 0053 — tax_regime and tax_code (§4.9.2, SAH-020)", () => {
+describe("migration 0053 — tax_regime and tax_code (§4.9.2, LEGACY-020)", () => {
   it("applies as version 53 and lintSchema reports zero violations", async () => {
     expect(await listApplied(db.migrator)).toContain(53);
     expect(await lintSchema(db.admin)).toEqual([]);
@@ -63,7 +63,7 @@ describe("migration 0053 — tax_regime and tax_code (§4.9.2, SAH-020)", () => 
     expect(cols.find((c) => c.column_name === "jurisdiction")!.data_type).toBe("character");
   });
 
-  it("a code cannot exist without a regime — regime_id is NOT NULL (SAH-020's missing discriminator)", async () => {
+  it("a code cannot exist without a regime — regime_id is NOT NULL (LEGACY-020's missing discriminator)", async () => {
     const [c] = await db.admin<{ is_nullable: string }[]>`
       select is_nullable from information_schema.columns
        where table_schema = 'app' and table_name = 'tax_code' and column_name = 'regime_id'`;
@@ -91,7 +91,7 @@ describe("migration 0053 — tax_regime and tax_code (§4.9.2, SAH-020)", () => 
     ]);
   });
 
-  it("a rate is numeric(19,8) and cannot be negative (SAH-019's NULL/overflow class)", async () => {
+  it("a rate is numeric(19,8) and cannot be negative (LEGACY-019's NULL/overflow class)", async () => {
     const [r] = await db.admin<
       { numeric_precision: number; numeric_scale: number; is_nullable: string }[]
     >`

@@ -12,17 +12,17 @@ spec:2172 states the mechanism in one sentence: "an AFTER UPDATE OF status trigg
 `document_event` row itself** … handlers never write `document_event`, so a direct `app_rw` update cannot skip
 it", and "a BEFORE UPDATE OF status trigger enforces the legal transitions … and, for a type whose effective
 policy declares `approval.required`, **fails closed**". spec:2173 adds that the handler's own check "is a
-pre-flight for a better error message, not the control (SAH-032)". Acceptance tests 10 and 31 (spec:2428,
+pre-flight for a better error message, not the control (LEGACY-032)". Acceptance tests 10 and 31 (spec:2428,
 2449) require the rules to hold "through any path — API, job, or direct SQL as `app_rw`".
 
-SAH-032 is the legacy system letting a user raise a document's approval level above their own; SAH-027 is one
+LEGACY-032 is the legacy system letting a user raise a document's approval level above their own; LEGACY-027 is one
 client-settable variable disabling every write-time control. Both are the same shape of failure: the control
 lived above the data.
 
 Three placements were considered.
 
 1. **In the API handler.** Rejected outright: it fails the "direct SQL as `app_rw`" clause of tests 10 and 31,
-   and it is exactly SAH-032.
+   and it is exactly LEGACY-032.
 2. **In the posting service (`packages/db/src/posting/`).** Rejected: the sync-apply job, the importer and the
    payroll engine all reach `app.document` through `withTenant`, and a future writer that forgets the helper is
    one line away from a silent bypass. The `posting-only-tables` lint protects ledger and movement tables, not

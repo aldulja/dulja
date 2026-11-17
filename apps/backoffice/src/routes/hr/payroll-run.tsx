@@ -34,7 +34,7 @@ type Share = "employee" | "employer";
  * What spec:2081/2087/2174 put on this screen, in reading order: the run's period, kind, status and pinned
  * rate-table versions; every MANUAL OVERRIDE, flagged with its reason and who entered it (spec:2087); everyone who
  * CHANGED COMPENSATION in the period (spec:2174 R3); then every line per employee with its pin. The screen adds no
- * figure of its own — a total computed here would be a second payroll arithmetic (SAH-009).
+ * figure of its own — a total computed here would be a second payroll arithmetic (LEGACY-009).
  */
 export function PayrollRunRoute({
   api,

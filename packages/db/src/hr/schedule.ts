@@ -44,7 +44,7 @@ export interface ScheduleRow {
   employeeName: string;
   /** The scheme reference from the employee's statutory profile covering the period end, blank when it has none. */
   schemeReference: string;
-  /** Fixed-scale 4-dp strings, produced once by `to_char` and never re-formatted (SAH-019). */
+  /** Fixed-scale 4-dp strings, produced once by `to_char` and never re-formatted (LEGACY-019). */
   employeeShare: string;
   employerShare: string;
 }
@@ -339,7 +339,7 @@ export async function generateStatutorySchedule(
 
 /**
  * Writes the CSV as an `app.attachment` with its sha256 (spec:2083 "attachment hash") through 2C's own
- * `createAttachment`: the OBJECT first under a freshly minted, server-derived key (SAH-038), then the row, so a row
+ * `createAttachment`: the OBJECT first under a freshly minted, server-derived key (LEGACY-038), then the row, so a row
  * never points at nothing and a rollback leaves only an unreferenced object.
  *
  * An archived file is never rewritten in place. When the schedule already links a live attachment whose sha256 is

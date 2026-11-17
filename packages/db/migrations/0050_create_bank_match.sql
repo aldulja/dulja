@@ -2,8 +2,8 @@
 -- Slice 4B. Contracts §4.8.3; ADR 0048; acceptance test 39 (spec:2457).
 -- A match is a row HERE and nowhere else: no ledger_entry, no account_balance and no document row is
 -- written, updated or deleted by matching or unmatching, so test 39's ledger fingerprint is byte-identical
--- before the first match and after the last unmatch. SAH-031's failure was a direct UPDATE on a locked voucher
--- rewriting the balances; SAH-041's was hard deletion with the anti-tampering triggers shipped inactive.
+-- before the first match and after the last unmatch. LEGACY-031's failure was a direct UPDATE on a locked voucher
+-- rewriting the balances; LEGACY-041's was hard deletion with the anti-tampering triggers shipped inactive.
 -- Financial rows: reversed by `unmatched_at`, never deleted (spec:2049); §3.5.4's DELETE list is unchanged.
 
 -- ── 1. the company-binding key the match row needs on its statement line ─────────────────────────────────
@@ -16,7 +16,7 @@ alter table app.bank_statement_line
 
 -- ── 2. the table (§4.8.3's DDL, plus the reason the unmatch compels) ──────────────────────────────────────
 create table app.bank_match (
-  id                       uuid primary key default uuidv7(),                 -- §3.2 identifiers (SAH-021)
+  id                       uuid primary key default uuidv7(),                 -- §3.2 identifiers (LEGACY-021)
   tenant_id                uuid not null references app.tenant(id),
   company_id               uuid not null,
   statement_line_id        uuid not null,
@@ -26,7 +26,7 @@ create table app.bank_match (
   -- direction from this figure (§4.4.2 A9's rule applied one layer out, ADR 0048). In the statement's own
   -- currency, which is its bank account's.
   amount                   numeric(19,4) not null,
-  matched_by               uuid not null default app.current_actor() references app.principal(id),  -- stamped below (SAH-044)
+  matched_by               uuid not null default app.current_actor() references app.principal(id),  -- stamped below (LEGACY-044)
   matched_at               timestamptz not null default now(),
   unmatched_by             uuid references app.principal(id),                 -- stamped on the NULL → value transition
   unmatched_at             timestamptz,                                       -- the reversal: set once, never cleared
@@ -41,7 +41,7 @@ create table app.bank_match (
     check ((unmatched_at is null and unmatched_by is null)
         or (unmatched_at is not null and unmatched_by is not null)),
   unique (tenant_id, id),
-  -- composite: an FK check bypasses RLS, so a plain `references` would admit another tenant's row (SAH-035)
+  -- composite: an FK check bypasses RLS, so a plain `references` would admit another tenant's row (LEGACY-035)
   foreign key (tenant_id, company_id)                    references app.company(tenant_id, id),
   -- company_id rides the key, so a match's company is its statement line's, never a second, unbound column
   foreign key (tenant_id, company_id, statement_line_id) references app.bank_statement_line(tenant_id, company_id, id),
@@ -76,7 +76,7 @@ create unique index bank_match_live_idx
 create index bank_match_document_idx
   on app.bank_match (reconcilable_document_id) where unmatched_at is null;
 
--- ── 5. what may change: the unmatch, once, with its reason (spec:2457, SAH-041) ──────────────────────────
+-- ── 5. what may change: the unmatch, once, with its reason (spec:2457, LEGACY-041) ──────────────────────────
 -- 0046's allocation_guard, applied to the twin table. A match is born live, and the ONE legal update is the
 -- unmatch transition with its reason and its stamped actor. Every figure and every reference is fixed at
 -- insert: a direct app_rw UPDATE of `amount` would change what reconciledBalance says without any
@@ -117,4 +117,4 @@ $$;
 -- Named so it sorts before stamp_matched_by/stamp_unmatched_by: BEFORE triggers fire in name order, so the
 -- guard reads the values the statement wrote, before a stamp overwrites the actor.
 create trigger bank_match_guard before insert or update on app.bank_match
-  for each row execute function app.bank_match_guard();  -- SAH-041: live at insert; unmatch only, and only once
+  for each row execute function app.bank_match_guard();  -- LEGACY-041: live at insert; unmatch only, and only once

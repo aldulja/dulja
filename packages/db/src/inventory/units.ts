@@ -115,7 +115,7 @@ export async function listUnitConversions(tx: Sql, itemId: string): Promise<Unit
 /**
  * The rational for one (item, unit). The item's own base unit needs no row and resolves to
  * IDENTITY_CONVERSION; anything else must be configured, and an unconfigured unit raises rather than
- * defaulting to 1/1 — a silent identity is exactly SAH-066's failure mode with a different sign.
+ * defaulting to 1/1 — a silent identity is exactly LEGACY-066's failure mode with a different sign.
  */
 export async function resolveUnitConversion(
   tx: Sql,

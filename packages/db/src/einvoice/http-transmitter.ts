@@ -85,7 +85,7 @@ export interface RemoteCallResult {
 /**
  * What this factory returns: §4.9.3's frozen interface plus the two members the transmission log
  * needs and that interface has no room for — `profile.version`, written to
- * `einvoice_transmission.profile_version` (SAH-013), and `lastCall`, which carries the HTTP status
+ * `einvoice_transmission.profile_version` (LEGACY-013), and `lastCall`, which carries the HTTP status
  * and the unmapped remote label into `last_error`. Declared HERE rather than in `registry.ts` so
  * `synthetic.ts` can name it without closing a cycle (registry imports synthetic).
  */

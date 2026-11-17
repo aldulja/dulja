@@ -8,7 +8,7 @@
 -- PURCHASE_RETURN, so reversing the return (R1, depth 1) gives its units back, but reversing R1 (R2, depth
 -- 2 — 0048's "an ordinary live document of its kind") takes them out again while the return itself still
 -- reads 'reversed'. Both readers then showed GR1's ten units open while three were out with the vendor, and
--- the guard linked a second return against the quantity R2 had already taken (SAH-017's over-fulfilment,
+-- the guard linked a second return against the quantity R2 had already taken (LEGACY-017's over-fulfilment,
 -- by the chain instead of by a race). reverseDocument's full-reversal guard was fixed for the same chain in
 -- code review 2 (packages/db/src/posting/reverse.ts, F1); this is the data layer's half.
 --
@@ -149,7 +149,7 @@ begin
     return new;                                               -- a header-only or amount-only link has no quantity to bound
   end if;
 
-  -- SAH-017's concurrency face — lock the SOURCE LINE, then read, correct at READ COMMITTED because each
+  -- LEGACY-017's concurrency face — lock the SOURCE LINE, then read, correct at READ COMMITTED because each
   -- statement takes a fresh snapshot (3a:5719-5727 applied to this table; 0037's comment has the argument).
   perform pg_advisory_xact_lock(hashtextextended('document_link:' || new.source_line_id::text, 0));
 
@@ -202,8 +202,8 @@ $$;
 -- reversed document's own claim cannot stand again, code review 4). It is one recursive CTE over one
 -- reversal chain (its depth is the number of reversals), and it runs only for a write that changes a chain —
 -- the WHEN clauses below — never for an ordinary write: the shape of 3A's warehouse_no_cycle, one CTE walking up
--- from the changed row, and not SAH-071's recursive procedure per row. It is a function rather than a CTE in the
--- trigger body because SAH-071's regression keeps `with recursive` out of trigger functions by name.
+-- from the changed row, and not LEGACY-071's recursive procedure per row. It is a function rather than a CTE in the
+-- trigger body because LEGACY-071's regression keeps `with recursive` out of trigger functions by name.
 create function app.document_chain_ancestors(p_document_id uuid) returns setof uuid
 language sql stable as $$
   with recursive up (id, parent) as (

@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript (Bun 1.4 for install/build, Vitest under Node 24 for tests) · PostgreSQL 18 + postgres.js + Drizzle mirrors · Ajv 2020 + `json-schema-to-typescript` · `decimal.js` behind `@dulja/domain`'s `Money` · Hono + `@hono/zod-openapi` + Zod · pg-boss · ExcelJS · the ADR-0016 PDF engine (`typst` binary and/or Playwright Chromium) · `pdfjs-dist` in tests only · Cloudflare R2 through the `ObjectStore` port · Testcontainers.
 
-**Spec:** `C:/Users/Edres101/Desktop/dulja/rebuild-spec.md` (v1.2). Sections this slice implements: §3.2.2 PDF and Spreadsheets rows (spec:1132–1133), §3.3 projections (spec:1204), §3.5 end-user report designer and feature gating (spec:1240–1241), §3.6 "Delphi-serialised report files" on the do-not-carry-over list (spec:1246), §3.9 Localisation (spec:2061), §4.2.1 the report codes and the `auditor` row (spec:2146–2147, 2150, 2163), §4.5 bulk endpoints with async job semantics and a status resource (spec:2206), §4.8 read replicas and graceful degradation (spec:2235, 2237), §4.9 the report-generation SLO (spec:2245), §4.10 RTL/LTR parity on every generated PDF (spec:2253), Part V row 7 (spec:2293) and its sequencing note (spec:2300), Part VI tests 23 and 27, Part I SAH-069, SAH-077, SAH-085.
+**Spec:** `C:/Users/Edres101/Desktop/dulja/rebuild-spec.md` (v1.2). Sections this slice implements: §3.2.2 PDF and Spreadsheets rows (spec:1132–1133), §3.3 projections (spec:1204), §3.5 end-user report designer and feature gating (spec:1240–1241), §3.6 "Delphi-serialised report files" on the do-not-carry-over list (spec:1246), §3.9 Localisation (spec:2061), §4.2.1 the report codes and the `auditor` row (spec:2146–2147, 2150, 2163), §4.5 bulk endpoints with async job semantics and a status resource (spec:2206), §4.8 read replicas and graceful degradation (spec:2235, 2237), §4.9 the report-generation SLO (spec:2245), §4.10 RTL/LTR parity on every generated PDF (spec:2253), Part V row 7 (spec:2293) and its sequencing note (spec:2300), Part VI tests 23 and 27, Part I LEGACY-069, LEGACY-077, LEGACY-085.
 
 ## Assumptions and contracts (from docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md)
 
@@ -18,7 +18,7 @@
 - **Interfaces consumed:** §4.1 (the Plan 0A produced surface); §4.2.2 (`withTenant`, `TenantContext`, `systemContext`, `createDb`); §4.2.3 (`Logger`, `AppEnv`, `RequestContext`, `ApiConfig`, `readConfig`, **and `AppEnv["Variables"]`'s eighth member `jobs: JobClient` — 3B's amendment A5**, 3b:39, set by the two-line middleware in `apps/api/src/app.ts` from `deps.jobs`; Task 12's `POST …/runs` reads `c.var.jobs` and **this slice adds no `Variables` member of its own**, so A5 must be ratified in §4.2.3 before Task 12 executes); §4.2.4 (`Problem`, `ERRORS`, `ErrCode`, `AppError`, `fromDatabaseError`, and the `PostingError` precedent for a `packages/db` error class); §4.2.5 (`PERMISSION`, `PERMISSIONS`, `PermissionDef`, `PermissionCode`, `requirePermission`, `ScopeSource`, `ROLES`); §4.2.6 (`JOBS`, `JobName`, `JobPayload`, `JobEnvelope`, `JobClient`, `registerHandler`, `JobHandler`, `runJob`, `eachTenant`, `JOB_PROBES`, `log`, `setLogger`); §4.2.7 (`RouteModule`, `buildRoutes`, `ROUTES`, `IdempotencyHeader`, `createApp`, `AppDeps`, `PROBES`); §4.2.8 (`UuidSchema`, `DateSchema`, `TimestampSchema`, `MoneySchema`, `CursorSchema`, `ListEnvelope`, `ListQuery`, `ProblemSchema`, `encodeCursor`, `decodeCursor`, `FILTER_OPS`, `FilterOp`, `FilterClause`, `parseFilters`); §4.2.9 (`idempotency`, `IdempotencyHeader`, `REPLAY_BY_RERUN`, `isReplayByRerun`); §4.2.12 (`startApi`, `StartedApi`, `ApiRequest`, `TEST_ISSUER`); §4.2.13 (`SubPack`, `SUB_PACKS`, `PackLoader`, `LoaderContext`, `readPackFile`, `assertPackShape`, `PHASE_0_SUB_PACK_DIRECTORIES`, `LOADERS`, `runLoaders`); §4.3.3 (`app.account_balance`); §4.3.4 (`app.document_line` and the `app.document` header additions); §4.4.1 (the schema-plus-generated-type pattern and `packages/domain/scripts/generate-policy-type.ts`, reused, not re-invented); §4.5.2 (`app.document_event`); §4.5.7 (`app.party`); §4.5.8 (`ObjectStore`, `StoredObject`, `MemoryObjectStore`, `R2ObjectStore`, `R2ObjectStoreOptions`); §4.5.9 (`app.print_template` and the `A4 | A5 | receipt` paper vocabulary); §4.6.1 (the table register — every dataset's source columns); §4.7.3 (`app.inventory_movement`, `app.stock_on_hand`, `app.cost_layer`, `app.cost_consumption`); §4.8.1 (`app.allocation`); §4.8.3 (`app.bank_statement_line`, `app.bank_match`); §4.9.2 (`app.tax_transaction`); §4.16.3 (`reportsRoutes`, `reportsRouteModule`, `ReportCodeSchema`, `trialBalance`, `accountLedger`); §4.17 (`seedTenantV2`, `seedAccount`, `seedBranch`, `seedParty`, `seedDocumentType`, `grantCodes`, `seedItem`, `seedWarehouse`, `seedLot`, `seedUnit`, `seedTaxCode`, `seedPaymentTerm`); §4.17.1 (`sharedDb`, `thinRegression`, `sharedApi`, `grantAdmin`, `fullRegression`, `problemOf`, `REPO_ROOT`, `sourceFiles`, `repoFile`, `postJournal`, `startWorker`, `pdfText`).
 - **Interfaces produced:** §4.11.1 verbatim (`ReportDefinition` and `packages/domain/report-definition.schema.json`); §4.11.2 **with the two amendments the Execution-handoff table records** (`statusUrl` becomes `/v1/companies/<companyId>/report-runs/<runId>`, ADR 0067, because §4.2.7 assigns `/v1/jobs/{jobId}` to no module and 6A dropped its own `statusUrl` for the same reason; and the seed file is the `{ definitionVersion, definition }` envelope of §4.16.1, Task 14) — otherwise verbatim: `app.report_definition`, `app.saved_view`, `app.report_run`, `POST …/reports/{code}/runs`, the `reporting.render` job, `renderReport`; §4.16.2's **twenty-six 7A rows** of `DatasetId` in `packages/db/src/reports/datasets.ts` (7B adds none and never edits the file; 7C adds the three Phase 6 rows; 8D the six HR rows); §3.6.2's `accounting.report.export` row and its `auditor` grant; §4.17's `seedReportDefinition`; §4.2.13's `SubPack` member `"reports"` and the `reportsLoader` `PackLoader`. **Beyond §4.11, and named here because 7B and 7C import them:** `STATEMENT_LAYOUTS`, `statementLayout`, `statementDefinition`, `statementSectionFor`, `STATEMENT_SECTION_LABELS`, `StatementKind`, `StatementSection`, `StatementLayout`, `StatementLayoutOptions`, **`STATEMENT_CODES`**, **`statementKindFor`** and **`STATEMENT_EXTRA_FIELDS`** (`packages/domain/src/reports/statement.ts`); `statementRows`, `StatementParams`, **`rowsForDefinition`** and **`assertDefinitionFields`** (`packages/db/src/reports/statement.ts`) — the one row provider and the one field check every run path, store write and seed load goes through. `STATEMENT_CODES` is the binding that tells the run path a definition is a statement; §4.11.1's `dataset.source` remains the only source a non-statement definition names.
 - **Owner decisions:** **OD-24** → **Task 15** (isolated). Default written into the plan: the report-designer screen task is **blocked, the slice is not** — Task 15 carries no React code and cannot be started until the owner attaches screenshots and a two-minute operator description; every other task ships without it.
-- **Part VI tests owned / re-run:** owned — **none exclusively**. Re-run — **23** (RTL/LTR parity on every generated PDF — labels, numerals, Hijri/Gregorian and column order — **Task 10**, `apps/worker/test/reports/pdf.test.ts`) and **27** (no SQL text across the API — the dataset registry, Tasks 5–7, and the `no-sql-concat`/`no-bare-db` rules in CI). **§3.0.4 rows owned:** none — this slice contributes the builder and the layouts to spec:1047, which 7B owns. **Regression files created / appended:** creates `tests/regression/sah-077.test.ts` (7A is the plain creator; 9A is a create-if-absent appender under §3.7.3's first corollary, so the file exists exactly once whichever runs first); appends a `describe("… — 7A")` block to `tests/regression/sah-069.test.ts` (created by 0B) and `tests/regression/sah-085.test.ts` (created by 0E).
+- **Part VI tests owned / re-run:** owned — **none exclusively**. Re-run — **23** (RTL/LTR parity on every generated PDF — labels, numerals, Hijri/Gregorian and column order — **Task 10**, `apps/worker/test/reports/pdf.test.ts`) and **27** (no SQL text across the API — the dataset registry, Tasks 5–7, and the `no-sql-concat`/`no-bare-db` rules in CI). **§3.0.4 rows owned:** none — this slice contributes the builder and the layouts to spec:1047, which 7B owns. **Regression files created / appended:** creates `tests/regression/legacy-077.test.ts` (7A is the plain creator; 9A is a create-if-absent appender under §3.7.3's first corollary, so the file exists exactly once whichever runs first); appends a `describe("… — 7A")` block to `tests/regression/legacy-069.test.ts` (created by 0B) and `tests/regression/legacy-085.test.ts` (created by 0E).
 - **Shared namespaces this slice writes into:** document-type codes (§4.14) — **none**. Account codes (§4.15) — **none seeded and none consumed by literal**; the statement layouts group by `app.account.type` (the `account_type` enum), never by an account code, so hazard 33 does not engage. Report codes (§4.16.1) — **none seeded**, and **three named**: 7A ships the format, the validator, the layouts and the loader; the `accounting.profit_and_loss` and `accounting.balance_sheet` **definitions** are 7B's and `accounting.branch_profit_and_loss` is 7C's, and this slice's tests build definitions from `STATEMENT_LAYOUTS` through `seedReportDefinition` rather than seeding a pack file. The three codes appear as the **keys of `STATEMENT_CODES`** (Task 9) — the binding that tells the run path a definition is a statement rather than a plain dataset read. Naming three of §4.16.1's own rows is not seeding them and is not a fourth register: no code is invented, and a code §4.16.1 does not carry cannot be added to the map. `DatasetId` members (§4.16.2) — the twenty-six: `ledger_entry`, `account_balance`, `account`, `document`, `document_line`, `document_event`, `audit_log`, `party`, `party_ageing`, `allocation`, `payment_term`, `bank_statement_line`, `bank_match`, `pdc` ⚠️, `item`, `lot`, `warehouse`, `price_list_line`, `promotion`, `inventory_movement`, `stock_on_hand`, `cost_layer`, `cost_consumption`, `stock_valuation`, `item_profitability`, `tax_transaction`. `fixtures.ts` helpers (§4.17) — **`seedReportDefinition`** and no other. Shared test helpers (§4.17.1) — **none added**; this slice consumes `pdfText`, `postJournal`, `grantAdmin`, `problemOf`, `sharedDb`, `thinRegression`, `sourceFiles`, `repoFile` and `startWorker` as they stand.
 - **Never re-decide:** D1–D27 (spec:114–142); every name in the contracts document is frozen — a needed change goes to that document first.
 - **Contracts version:** 2026-09-07.
@@ -29,7 +29,7 @@
 
 Every task's requirements implicitly include this section. The values are copied verbatim from the spec and the contracts document.
 
-**The never list (spec:97–104, contracts §3.3).** Never write to a ledger or movement table outside the posting service — **this slice writes none at all**; never represent money as a float, anywhere, including in TypeScript; never build SQL by string concatenation (SAH-036/037/069); never issue DDL from application code (SAH-053); never disable an invariant, constraint or trigger "temporarily"; never gate an audit write on any flag; never hard-code a package version into a source file — the lockfile owns versions.
+**The never list (spec:97–104, contracts §3.3).** Never write to a ledger or movement table outside the posting service — **this slice writes none at all**; never represent money as a float, anywhere, including in TypeScript; never build SQL by string concatenation (LEGACY-036/037/069); never issue DDL from application code (LEGACY-053); never disable an invariant, constraint or trigger "temporarily"; never gate an audit write on any flag; never hard-code a package version into a source file — the lockfile owns versions.
 
 **The always list for every new table (spec:106, contracts §3.3, §3.5.1).** `tenant_id uuid not null references app.tenant(id)`; `id uuid primary key default uuidv7()`; `created_at timestamptz not null default now()`; `unique (tenant_id, id)`; composite `(tenant_id, <parent>_id)` foreign keys to every tenant-scoped parent; `call app_meta.enable_tenant_rls('app.<name>')` (which enables **and forces** RLS and creates the policy named exactly `tenant_isolation`); `call app_meta.attach_audit('app.<name>')` unless the table is in `AUDIT_EXEMPT`; `call app_meta.attach_stamp('app.<name>', '<col>_by')` for every `*_by` column; a migration with a hand-written down; a test that a second tenant cannot see it.
 
@@ -43,7 +43,7 @@ Every task's requirements implicitly include this section. The values are copied
 
 **Deletion (spec:2049).** `app_rw`'s DELETE grants are the pinned five-row list of contracts §3.5.4 and **2B is the only slice that extends it**. This slice adds no grant and **does not touch `packages/db/test/privileges.test.ts`** beyond re-asserting the unchanged list. `saved_view` and `report_definition` archive with `archived_at`; `report_run` rows are never removed.
 
-**Migrations (spec:2057, contracts §3.4).** One migration per PR; file names match `/^(\d{4})_([a-z0-9_]+)\.sql$/`; each file runs whole in one transaction, so no `create index concurrently`; every object the up creates has a drop in the down in reverse dependency order; every statement carries a comment naming the SAH- or spec- reference it serves; SQL keywords lowercase; section banners `-- ── N. title ───`. A slice writes only inside its range (0074–0076) and never asserts `max(version)` — Phase 8 may have applied 0080+ already.
+**Migrations (spec:2057, contracts §3.4).** One migration per PR; file names match `/^(\d{4})_([a-z0-9_]+)\.sql$/`; each file runs whole in one transaction, so no `create index concurrently`; every object the up creates has a drop in the down in reverse dependency order; every statement carries a comment naming the LEGACY- or spec- reference it serves; SQL keywords lowercase; section banners `-- ── N. title ───`. A slice writes only inside its range (0074–0076) and never asserts `max(version)` — Phase 8 may have applied 0080+ already.
 
 **Per-tenant rows cannot be written by a migration** (contracts §3.4.8, hazard 10). `FORCE ROW LEVEL SECURITY` binds `app_migrator`, so a migration file sees no tenants. `report_definition` and `saved_view` rows are **seed-pack data** applied by `bun run seed --tenant <id> --only reports`. Only `app.permission` (global) is migration data.
 
@@ -72,11 +72,11 @@ Every task's requirements implicitly include this section. The values are copied
 | Clause | Source | Task | Evidence |
 |---|---|---|---|
 | A user clones and edits a report **without a release** | spec:2293 Phase 7 DoD; §2.8 card | 13 | `apps/api/test/routes/accounting/report-definitions.test.ts` — clone a core definition, edit the clone's columns, run it, and assert the core row is byte-unchanged |
-| `ReportDefinition` is text-defined, diffable and version-controlled | spec:1240, spec:1246 (no Delphi-serialised blobs) | 4, 14 | `packages/domain/test/reports/definition.test.ts`; `tests/regression/sah-077.test.ts` |
-| A definition never contributes SQL text | test 27; §2.8 card | 5, 6, 7, 14 | `packages/db/test/reports/datasets.test.ts`; `tests/regression/sah-069.test.ts`'s 7A block; `bun run lint:rules` |
+| `ReportDefinition` is text-defined, diffable and version-controlled | spec:1240, spec:1246 (no Delphi-serialised blobs) | 4, 14 | `packages/domain/test/reports/definition.test.ts`; `tests/regression/legacy-077.test.ts` |
+| A definition never contributes SQL text | test 27; §2.8 card | 5, 6, 7, 14 | `packages/db/test/reports/datasets.test.ts`; `tests/regression/legacy-069.test.ts`'s 7A block; `bun run lint:rules` |
 | An unknown dataset id is `ERR_REPORT_DATASET_UNKNOWN` | §4.11.1, §4.2.4 | 5 | `packages/db/test/reports/datasets.test.ts` |
 | Server-side render produces PDF, XLSX and CSV with a status resource | spec:2206, §4.11.2 | 10, 11, 12 | `apps/worker/test/reports/render.test.ts`; `apps/api/test/routes/accounting/report-runs.test.ts` |
-| RTL/LTR parity including numerals, Hijri/Gregorian and column order | spec:2253, test 23 | 8, 10, 14 | `apps/worker/test/reports/pdf.test.ts` through `pdfText`; `tests/regression/sah-085.test.ts`'s 7A block |
+| RTL/LTR parity including numerals, Hijri/Gregorian and column order | spec:2253, test 23 | 8, 10, 14 | `apps/worker/test/reports/pdf.test.ts` through `pdfText`; `tests/regression/legacy-085.test.ts`'s 7A block |
 | Saved views archive, never delete | spec:2049, §4.11.2, hazard 25 | 2, 13 | `packages/db/test/reports/saved-view.test.ts`; `packages/db/test/privileges.test.ts` re-asserted unchanged |
 | Financial-statement layouts: balance sheet and P&L, per BRANCH | spec:1066, §2.8 card | 9 | `packages/domain/test/reports/statement.test.ts`; `packages/db/test/reports/statement-tie-out.test.ts` |
 | `accounting.report.export` enters the catalogue with its role grant | §3.6.2, spec:2163 | 3 | `packages/db/test/permission-catalogue.test.ts`; `packages/db/test/roles-seed.test.ts` (the auditor grant, beside 1A's role `it`s); `apps/api/test/reports/authorise.test.ts`; `bun run lint:rules` (`role-seed`, `permission-catalogue`) |
@@ -235,9 +235,9 @@ infra/
 tests/
 ├─ invariants/probes.ts                         EDIT three PROBES entries + the runs sub-path      T11,T12,T13
 └─ regression/
-   ├─ sah-077.test.ts                           NEW  report definitions as version-controlled text            T14
-   ├─ sah-069.test.ts                           EDIT + the 7A block (static SQL only)                          T14
-   └─ sah-085.test.ts                           EDIT + the 7A block (both catalogues in every PDF)             T14
+   ├─ legacy-077.test.ts                           NEW  report definitions as version-controlled text            T14
+   ├─ legacy-069.test.ts                           EDIT + the 7A block (static SQL only)                          T14
+   └─ legacy-085.test.ts                           EDIT + the 7A block (both catalogues in every PDF)             T14
 
 docs/adr/
 ├─ 0065-report-definition-format.md             NEW                                                          T4
@@ -439,7 +439,7 @@ Then run `bun run --cwd packages/db exec drizzle-kit generate`, rename its outpu
 -- ── 0074. app.report_definition — the report builder's stored definition ───────
 -- contracts §4.11.2. spec:1240 wants an end-user report designer that is "text-defined, diffable,
 -- version-controlled"; spec:1246 puts "Delphi-serialised report files" on the explicit do-NOT-carry-over
--- list and SAH-077 is the defect that follows from them (report definitions as MEMO blobs in customer
+-- list and LEGACY-077 is the defect that follows from them (report definitions as MEMO blobs in customer
 -- databases, so no static analysis can ever tell whether a procedure is live). A definition here is
 -- validated JSON seeded from a version-controlled file, and a tenant's edit is a NEW version row.
 
@@ -465,7 +465,7 @@ create table app.report_definition (
 );
 
 -- ── 2. the index the definition list and the run route filter on ──────────────
--- SAH-070: index coverage was thin on exactly the columns reports filter by. Every read of this table is
+-- LEGACY-070: index coverage was thin on exactly the columns reports filter by. Every read of this table is
 -- "the live definitions of this company for this code", so the index carries all three and excludes archived rows.
 create index report_definition_lookup_idx on app.report_definition (company_id, code, version desc)
   where archived_at is null;
@@ -628,7 +628,7 @@ describe("app.saved_view — contracts §4.11.2; archived, never deleted (spec:2
       select tgname from pg_trigger where tgrelid = 'app.saved_view'::regclass and not tgisinternal order by tgname`;
     // owner_principal_id records WHOM the view belongs to, which is data — so it takes the column default and
     // gets no stamp trigger. A *_by spelling would either fail the stamp_actor linter rule or silently replace
-    // the owner with whoever last touched the row, which is SAH-044 in the opposite direction (§3.3).
+    // the owner with whoever last touched the row, which is LEGACY-044 in the opposite direction (§3.3).
     expect(stamps.map((t) => t.tgname)).toEqual(["audit_row"]);
   });
 
@@ -859,7 +859,7 @@ create table app.saved_view (
   name_ar              text,
   parameters           jsonb not null default '{}'::jsonb,     -- the definition's parameter names → entered values
   -- owner_principal_id, NOT owner_by: this records WHOM the view belongs to, which is data. A *_by name would
-  -- attract app.stamp_actor and silently replace the owner with the acting principal (§3.3, SAH-044 inverted).
+  -- attract app.stamp_actor and silently replace the owner with the acting principal (§3.3, LEGACY-044 inverted).
   owner_principal_id   uuid not null default app.current_actor() references app.principal(id),
   shared               boolean not null default false,         -- visible to every principal of the company
   archived_at          timestamptz,
@@ -869,7 +869,7 @@ create table app.saved_view (
   foreign key (tenant_id, report_definition_id) references app.report_definition(tenant_id, id)
 );
 create index saved_view_owner_idx on app.saved_view (company_id, owner_principal_id)
-  where archived_at is null;                                   -- SAH-070: the column the list filters by
+  where archived_at is null;                                   -- LEGACY-070: the column the list filters by
 create index saved_view_shared_idx on app.saved_view (company_id, report_definition_id)
   where archived_at is null and shared;
 
@@ -890,7 +890,7 @@ create table app.report_run (
   lang                 char(2) not null check (lang in ('en','ar')),   -- @dulja/i18n's two Locales (0E)
   status               text not null default 'queued' check (status in ('queued','running','done','failed')),
   requested_by         uuid not null default app.current_actor() references app.principal(id),   -- stamped
-  object_key           text,                                   -- '<tenant_id>/reports/<run_id>.<ext>' (SAH-038: server-generated)
+  object_key           text,                                   -- '<tenant_id>/reports/<run_id>.<ext>' (LEGACY-038: server-generated)
   sha256               bytea,                                  -- of the rendered bytes
   finished_at          timestamptz,
   error                text,                                   -- the problem code and detail on 'failed'
@@ -898,14 +898,14 @@ create table app.report_run (
   constraint report_run_object_key_key unique (object_key),
   constraint report_run_tenant_id_id_key unique (tenant_id, id),
   -- done implies an artefact; failed implies a reason. Without these a run could report success with nothing
-  -- to download, which is the class of defect SAH-084 describes on the error side.
+  -- to download, which is the class of defect LEGACY-084 describes on the error side.
   constraint report_run_done_has_artefact check (status <> 'done' or (object_key is not null and sha256 is not null)),
   constraint report_run_failed_has_error  check (status <> 'failed' or error is not null),
   foreign key (tenant_id, company_id)           references app.company(tenant_id, id),
   foreign key (tenant_id, report_definition_id) references app.report_definition(tenant_id, id),
   foreign key (tenant_id, saved_view_id)        references app.saved_view(tenant_id, id)
 );
-create index report_run_recent_idx on app.report_run (company_id, created_at desc);   -- SAH-070: the list's sort key
+create index report_run_recent_idx on app.report_run (company_id, created_at desc);   -- LEGACY-070: the list's sort key
 create index report_run_queued_idx on app.report_run (company_id, status) where status in ('queued','running');
 
 call app_meta.enable_tenant_rls('app.report_run');
@@ -1133,7 +1133,7 @@ on conflict (code) do update
 --     `using (id = app.current_tenant())`, so the migrator enumerating it sees nothing.
 -- The operator, not this file, removes the grant per tenant first (a seed-tier act, under
 -- `set_config('app.tenant_id', …)`), and re-runs `bun run seed --tenant <id> --only roles` after
--- re-migrating. NEVER disable or drop the policy to make this file "work" — SAH-027, SAH-041, SAH-053.
+-- re-migrating. NEVER disable or drop the policy to make this file "work" — LEGACY-027, LEGACY-041, LEGACY-053.
 delete from app.permission where code = 'accounting.report.export';
 ```
 
@@ -1539,7 +1539,7 @@ describe("validateReportDefinition — contracts §4.11.1", () => {
     expect(validateReportDefinition(withTotal, SETS)).toEqual({ ok: true, errors: [] });
   });
 
-  it("refuses additional properties anywhere (the anti-blob rule of spec:1246, SAH-078)", () => {
+  it("refuses additional properties anywhere (the anti-blob rule of spec:1246, LEGACY-078)", () => {
     const def = { ...base(), sqlOverride: "select * from app.ledger_entry" };
     const result = validateReportDefinition(def, SETS);
     expect(result.ok).toBe(false);
@@ -1714,7 +1714,7 @@ Expected: FAIL — `Failed to resolve import "../../src/reports"`, because the d
 }
 ```
 
-**Two schema decisions worth stating.** `additionalProperties: false` at every level is what makes a definition a *reviewable document* rather than an opaque blob — spec:1246 puts "Delphi-serialised report files" on the do-not-carry-over list and SAH-078 is the defect ("configuration that determines system behaviour is undiffable, unreviewable, untestable"). Without it, a `sqlOverride` key would be silently carried and test 27 would have a hole. And `"version": { "const": 1 }`: a schema change is a **new** `const` and a **new** `$id`, exactly as §4.4.1 rules for the posting policy — never a widened `enum` on the same `$id`.
+**Two schema decisions worth stating.** `additionalProperties: false` at every level is what makes a definition a *reviewable document* rather than an opaque blob — spec:1246 puts "Delphi-serialised report files" on the do-not-carry-over list and LEGACY-078 is the defect ("configuration that determines system behaviour is undiffable, unreviewable, untestable"). Without it, a `sqlOverride` key would be silently carried and test 27 would have a hole. And `"version": { "const": 1 }`: a schema change is a **new** `const` and a **new** `$id`, exactly as §4.4.1 rules for the posting policy — never a widened `enum` on the same `$id`.
 
 - [ ] **Step 4: Extend 1A's generator-option module and write the generator**
 
@@ -1916,7 +1916,7 @@ const ajv = new Ajv2020({ allErrors: true, strict: true });
 const compiled: ValidateFunction<ReportDefinition> = ajv.compile<ReportDefinition>(schema);
 
 /** Ajv's instancePath is already a JSON Pointer; an additionalProperties error points at the parent, so the
- *  offending key is appended to make the message actionable (SAH-084: name the specific offending entity). */
+ *  offending key is appended to make the message actionable (LEGACY-084: name the specific offending entity). */
 function pointerOf(e: ErrorObject): string {
   if (e.keyword === "additionalProperties") {
     const extra = (e.params as { additionalProperty: string }).additionalProperty;
@@ -2005,7 +2005,7 @@ export function validateReportDefinition(
   });
 
   // 5. every filter must name a declared parameter — this is what makes a value a bound parameter and never
-  //    text spliced into SQL (test 27, SAH-069's root cause)
+  //    text spliced into SQL (test 27, LEGACY-069's root cause)
   def.dataset.filters.forEach((f, i) => {
     if (!seenParams.has(f.param)) {
       errors.push({
@@ -2091,10 +2091,10 @@ Expected: PASS — every `it` in `definition.test.ts` and `report-type.test.ts`,
 ## Context
 
 spec:1240 wants "an end-user report designer — text-defined, diffable, version-controlled". spec:1246 puts
-"Delphi-serialised report files" on the explicit do-NOT-carry-over list. SAH-077 is the defect they produce:
+"Delphi-serialised report files" on the explicit do-NOT-carry-over list. LEGACY-077 is the defect they produce:
 because report definitions lived as `MEMO` blobs inside customer databases, no static analysis could ever
 determine whether a stored procedure was live, so near-duplicates accumulated instead of being consolidated.
-SAH-069 is the other half: every report query was rebuilt, re-parsed and re-planned per call, concatenated
+LEGACY-069 is the other half: every report query was rebuilt, re-parsed and re-planned per call, concatenated
 into a fixed-size buffer, with ~54 sites interpolating `DATE` parameters as text.
 
 ## Decision
@@ -2115,7 +2115,7 @@ into a fixed-size buffer, with ~54 sites interpolating `DATE` parameters as text
 4. **The module is derived, never asserted twice.** §4.16.1's grammar puts the module in the code's first
    segment; the validator refuses a `module` that disagrees. Two segments, so a report code can never be
    mistaken for a three-segment permission code.
-5. **Every rejection names a JSON Pointer.** SAH-084's fix ("a human message naming the specific offending
+5. **Every rejection names a JSON Pointer.** LEGACY-084's fix ("a human message naming the specific offending
    entity") applied to configuration: `ReportDefinitionValidation.errors[]` entries are `{ path, message }`
    with `path` a JSON Pointer into the rejected document, and §4.2.4 already lets `ERR_VALIDATION_FAILED`
    carry that array to the wire.
@@ -2128,7 +2128,7 @@ into a fixed-size buffer, with ~54 sites interpolating `DATE` parameters as text
   layout), a merge hotspot 7B, 7C and 8D would each edit, and it would drag the ⚠️ `accounting.pdc_register`
   and `hr.leave_*` conditionals into a compiled constant. `REPORT_CODE_PATTERN` plus the seed loader's
   file-name check is the whole enforcement the format needs.
-- **A SQL string in the definition, sandboxed by a parser.** This is SAH-036/037/069 with extra steps, and
+- **A SQL string in the definition, sandboxed by a parser.** This is LEGACY-036/037/069 with extra steps, and
   spec:97 forbids it outright.
 ```
 
@@ -2161,7 +2161,7 @@ This is the task test 27 exists for. §4.16.2 makes `packages/db/src/reports/dat
 
 **The mechanism that makes "never SQL text" a fact rather than a promise.** A `DatasetColumn` does not carry a column *name*; it carries `ref: (tx: Sql) => SqlFragment`, a closure whose body is a literal tagged template authored in this file — `(tx) => tx\`l.account_id\``. A definition contributes a `field` string, which is looked up in the dataset's own `columns` array; a `field` that matches nothing is `ERR_VALIDATION_FAILED`, and a matching one yields the pre-authored fragment. No identifier, table name, operator or clause ever originates outside these three files. Values arrive as **bound parameters**, cast per column kind, and are shape-checked in TypeScript first so Postgres never has to raise `22P02` on a malformed uuid.
 
-**Every date and timestamp leaves SQL as a string.** postgres.js parses `date` and `timestamptz` into JS `Date` objects, and a `Date` in a rendered report is a locale- and machine-dependent value — precisely the class of fragility SAH-069 describes on the input side. Every select list therefore emits `to_char(…)` with an explicit `at time zone 'UTC'` for timestamps, so a `DatasetRow` value is always `string | number | boolean | null` and never a `Date`. `numeric` columns come back from postgres.js as strings already, which is what keeps money out of a JS `number` (spec:2041).
+**Every date and timestamp leaves SQL as a string.** postgres.js parses `date` and `timestamptz` into JS `Date` objects, and a `Date` in a rendered report is a locale- and machine-dependent value — precisely the class of fragility LEGACY-069 describes on the input side. Every select list therefore emits `to_char(…)` with an explicit `at time zone 'UTC'` for timestamps, so a `DatasetRow` value is always `string | number | boolean | null` and never a `Date`. `numeric` columns come back from postgres.js as strings already, which is what keeps money out of a JS `number` (spec:2041).
 
 **Files:**
 - Create: `packages/db/src/reports/sql-fragment.ts`, `packages/db/src/reports/errors.ts`, `packages/db/src/reports/query.ts`, `packages/db/src/reports/datasets.ts`, `packages/db/src/reports/datasets/accounting.ts`, `packages/db/src/reports/index.ts`, `packages/db/test/reports/datasets.test.ts`
@@ -2309,7 +2309,7 @@ describe("the DatasetId registry — contracts §4.16.2", () => {
     }
   });
 
-  it("no dataset file contains a template-literal or concatenated identifier (test 27, SAH-069)", () => {
+  it("no dataset file contains a template-literal or concatenated identifier (test 27, LEGACY-069)", () => {
     // The whole point of `ref: (tx) => tx`l.account_id`` is that no identifier can come from data. A `${` inside
     // a SQL-looking template that is NOT a bound value would defeat it, so the shape is asserted mechanically:
     // every `${…}` in these files interpolates either a fragment-returning call or a bound parameter name.
@@ -2399,7 +2399,7 @@ describe("the accounting datasets", () => {
       .rejects.toThrowError(/value '15\/01\/2026' is not a date \(field 'effective_date'\)/);
   });
 
-  it("like is a prefix match and never a pattern (SAH-069's locale-fragile interpolation)", async () => {
+  it("like is a prefix match and never a pattern (LEGACY-069's locale-fragile interpolation)", async () => {
     const hit = await run(a, "account", { filters: [{ field: "name_en", op: "like", value: "Ca" }] });
     expect(hit.map((r) => r["code"])).toEqual(["1000"]);
     const wild = await run(a, "account", { filters: [{ field: "name_en", op: "like", value: "%as" }] });
@@ -2450,7 +2450,7 @@ import type { PendingQuery, Row } from "postgres";
  * one larger tagged template; nothing is ever concatenated as text (§3.3, test 27).
  *
  * If the installed postgres.js type declarations export these two names differently, alias them HERE — a
- * `string` return type would silently re-open SAH-036/037/069 and is not an acceptable fallback.
+ * `string` return type would silently re-open LEGACY-036/037/069 and is not an acceptable fallback.
  */
 export type SqlFragment = PendingQuery<Row[]>;
 ```
@@ -2534,7 +2534,7 @@ const INTEGER = /^-?\d+$/;
 
 /**
  * Shape-check a bound value BEFORE it reaches Postgres. Without this a malformed uuid raises SQLSTATE 22P02,
- * which `fromDatabaseError` maps to `ERR_INTERNAL` (§4.2.4) — a 500 for a caller's typo. SAH-084's fix is a
+ * which `fromDatabaseError` maps to `ERR_INTERNAL` (§4.2.4) — a 500 for a caller's typo. LEGACY-084's fix is a
  * message naming the specific offending entity, which is what this produces.
  */
 function assertValue(kind: DatasetColumnKind, value: string, field: string): void {
@@ -2691,7 +2691,7 @@ import { defineDataset, type Dataset, type DatasetColumn } from "../query";
 
 /**
  * Every `ref` below is a literal tagged template. A ReportDefinition contributes a `field` STRING, which is
- * looked up in the `columns` array; the fragment it maps to was authored here (test 27, SAH-036/037/069).
+ * looked up in the `columns` array; the fragment it maps to was authored here (test 27, LEGACY-036/037/069).
  *
  * Every `date` is emitted as `to_char(x, 'YYYY-MM-DD')` and every `timestamptz` as
  * `to_char(x at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')`, so a DatasetRow value is never a JS `Date`
@@ -2990,7 +2990,7 @@ const AUDIT_LOG_COLUMNS: readonly DatasetColumn[] = [
   { field: "actor_display_name", kind: "text", ref: (tx) => tx`ap.display_name` },
   { field: "actor_kind", kind: "text", ref: (tx) => tx`ap.kind::text` },
   // The before/after images are visible but neither filterable nor sortable: a jsonb comparison in a WHERE is
-  // not indexable (SAH-070) and a filter over a before-image is a search over historical PII by another name.
+  // not indexable (LEGACY-070) and a filter over a before-image is a search over historical PII by another name.
   { field: "before", kind: "text", ref: (tx) => tx`al.before::text`, filterable: false, sortable: false },
   { field: "after", kind: "text", ref: (tx) => tx`al.after::text`, filterable: false, sortable: false },
 ];
@@ -3178,7 +3178,7 @@ feat(db): add the dataset registry seam and the eight accounting datasets [7A T5
 
 A DatasetColumn carries a literal SqlFragment closure, not a column name, so a
 ReportDefinition contributes only a `field` string and no identifier, operator or
-clause can originate outside datasets/*.ts (test 27, SAH-036/037/069). Values are
+clause can originate outside datasets/*.ts (test 27, LEGACY-036/037/069). Values are
 bound parameters, shape-checked in TypeScript first; every date and timestamp
 leaves SQL as a string so no JS Date or locale reaches a rendered report.
 
@@ -3579,7 +3579,7 @@ EOF
 
 `item`, `lot`, `warehouse`, `price_list_line`, `promotion`, `inventory_movement`, `stock_on_hand`, `cost_layer`, `cost_consumption`, `stock_valuation` and `item_profitability` — every source table exists at migration ≤ 0048. With these the registry has all twenty-six 7A members, `DATASETS` satisfies `Record<DatasetId, Dataset>`, and both the membership assertions and `bun run typecheck` go green.
 
-**Two rules from §3.4 and hazard 22 these datasets obey literally.** Stock **ageing** and stock **valuation** read `cost_layer` / `cost_consumption` / `stock_valuation` and **never recompute a cost** (spec:1222, 1228; SAH-055) — the datasets expose the layer columns and 7B's definition groups them; nothing here divides a value by a quantity. And `item_profitability` is 4B's async projection: the dataset reads it and never re-derives revenue or margin (§4.6.1, test 7's revenue-bearing re-run in 7B).
+**Two rules from §3.4 and hazard 22 these datasets obey literally.** Stock **ageing** and stock **valuation** read `cost_layer` / `cost_consumption` / `stock_valuation` and **never recompute a cost** (spec:1222, 1228; LEGACY-055) — the datasets expose the layer columns and 7B's definition groups them; nothing here divides a value by a quantity. And `item_profitability` is 4B's async projection: the dataset reads it and never re-derives revenue or margin (§4.6.1, test 7's revenue-bearing re-run in 7B).
 
 **Files:**
 - Create: `packages/db/src/reports/datasets/inventory.ts`
@@ -3670,12 +3670,12 @@ describe("the inventory datasets", () => {
     }
   });
 
-  it("cost_layer exposes unit_cost and qty_remaining and computes NO cost of its own (SAH-055)", () => {
+  it("cost_layer exposes unit_cost and qty_remaining and computes NO cost of its own (LEGACY-055)", () => {
     const fields = datasetFor("cost_layer").columns.map((c) => c.field);
     expect(fields).toEqual(expect.arrayContaining(["unit_cost", "qty_in", "qty_remaining", "effective_at", "sequence"]));
     const text = readFileSync(
       fileURLToPath(new URL("../../src/reports/datasets/inventory.ts", import.meta.url)), "utf8");
-    // A division inside a cost dataset would be a recomputed unit cost — the defect SAH-055 and spec:1228 forbid.
+    // A division inside a cost dataset would be a recomputed unit cost — the defect LEGACY-055 and spec:1228 forbid.
     expect(text).not.toMatch(/\bvalue\s*\/\s*quantity\b/);
     expect(text).not.toMatch(/\bsum\(\s*\w+\.value\s*\)\s*\/\s*/);
   });
@@ -3932,7 +3932,7 @@ export const stockOnHandDataset: Dataset = defineDataset({
   defaultOrder: (tx) => tx`it.code asc, w.code asc, lo.code asc`,
 });
 
-// ── cost_layer — read as stored. SAH-055: stock ageing reads layers, it never recomputes a cost ──────
+// ── cost_layer — read as stored. LEGACY-055: stock ageing reads layers, it never recomputes a cost ──────
 const COST_LAYER_COLUMNS: readonly DatasetColumn[] = [
   { field: "layer_id", kind: "uuid", ref: (tx) => tx`cl.id` },
   { field: "item_id", kind: "uuid", ref: (tx) => tx`cl.item_id` },
@@ -4108,7 +4108,7 @@ feat(db): add the eleven inventory datasets; the registry closes [7A T7]
 All twenty-six 7A members of §4.16.2 are present, so DATASETS satisfies
 Record<DatasetId, Dataset> and typecheck is green. cost_layer and
 cost_consumption expose stored unit costs and a DATE age_days and compute no
-cost of their own (SAH-055, spec:1228); stock_valuation and item_profitability
+cost of their own (LEGACY-055, spec:1228); stock_valuation and item_profitability
 read 3B's and 4B's async projections and never re-derive them (spec:1204).
 
 7B adds no dataset and never edits this file. 7C adds shift, till_event and
@@ -6649,7 +6649,7 @@ importing `apps/api`, where 2C's `engineFor` lives.
 5. **A spreadsheet cell holds the decimal STRING, with `numFmt` for display.** spec:2041: "No `number` type
    ever holds a monetary value", and 0D's `no-number-money` lint covers `apps/**`. The cost is that Excel
    shows "number stored as text" and an in-sheet `SUM()` needs `VALUE()`. That is accepted: a float in a
-   monetary cell is the SAH-008 defect (a unit cost of 500,020.00 from a `double precision` residue), and the
+   monetary cell is the LEGACY-008 defect (a unit cost of 500,020.00 from a `double precision` residue), and the
    CSV carries the same raw strings while 7C's tenant export is the machine-readable path.
 6. **Determinism is asserted at the rendered-TEXT layer, never at the byte layer.** Chromium embeds a
    `CreationDate`; §4.5.9 already settled this for 2C's print path and the same rule binds here. The source
@@ -6720,7 +6720,7 @@ export interface ReportRunRow {
   finishedAt: string | null; error: string | null; createdAt: string;
 }
 /** '<tenant_id>/reports/<run_id>.<ext>' — server-generated from ids alone, so no client path can reach the
- *  store (SAH-038, the same rule §4.5.8's `objectKeyFor` follows for attachments). */
+ *  store (LEGACY-038, the same rule §4.5.8's `objectKeyFor` follows for attachments). */
 export function reportObjectKeyFor(tenantId: string, runId: string, extension: string): string;
 export interface NewReportRun {
   companyId: string; reportDefinitionId: string; savedViewId?: string | null;
@@ -6789,7 +6789,7 @@ describe("the report_run store", () => {
   const asHuman = <T>(fn: (tx: Parameters<Parameters<typeof withTenant>[3]>[0]) => Promise<T>) =>
     withTenant(db.rw, s.tenant, s.human, fn);
 
-  it("derives the object key from ids alone (SAH-038)", () => {
+  it("derives the object key from ids alone (LEGACY-038)", () => {
     expect(reportObjectKeyFor("01927f3a-0000-7000-8000-000000000001", "01927f3a-0000-7000-8000-0000000000aa", "pdf"))
       .toBe("01927f3a-0000-7000-8000-000000000001/reports/01927f3a-0000-7000-8000-0000000000aa.pdf");
   });
@@ -7069,7 +7069,7 @@ export interface ReportRunRow {
   createdAt: string;
 }
 
-/** Server-generated from ids alone — a client path can never reach the store (SAH-038, §4.5.8's rule). */
+/** Server-generated from ids alone — a client path can never reach the store (LEGACY-038, §4.5.8's rule). */
 export function reportObjectKeyFor(tenantId: string, runId: string, extension: string): string {
   return `${tenantId}/reports/${runId}.${extension}`;
 }
@@ -7751,7 +7751,7 @@ export const ReportRunSchema = z.object({
   error: z.string().nullable(),
   createdAt: TimestampSchema,
   // `object_key` is deliberately NOT on the wire: it is a store path, and the download route is the only way
-  // to reach the bytes (SAH-038 — attachment identity is a side channel, and a report artefact is the same).
+  // to reach the bytes (LEGACY-038 — attachment identity is a side channel, and a report artefact is the same).
 }).openapi("ReportRun");
 
 /**
@@ -7966,7 +7966,7 @@ export const REPORT_RUN_ROUTE_PATH = "/v1/companies/:companyId/report-runs";
 export function createReportRunRoutes(objectStore: ObjectStore): OpenAPIHono<AppEnv> {
 const reportRunRoutes = new OpenAPIHono<AppEnv>();
 
-/** `object_key` never reaches the wire; the download route is the only path to the bytes (SAH-038). */
+/** `object_key` never reaches the wire; the download route is the only path to the bytes (LEGACY-038). */
 function toDto(run: ReportRunRow) {
   return {
     id: run.id, companyId: run.companyId, reportDefinitionId: run.reportDefinitionId,
@@ -8692,7 +8692,7 @@ function toRow(raw: RawView): SavedViewRow {
 }
 
 /** A saved view's parameters must be a subset of the definition's own declaration, or the view would fail at
- *  render time rather than at save time — SAH-078's lesson applied to a bookmark. */
+ *  render time rather than at save time — LEGACY-078's lesson applied to a bookmark. */
 async function assertParameters(
   tx: Sql, reportDefinitionId: string, parameters: Readonly<Record<string, string>>,
 ): Promise<void> {
@@ -8726,7 +8726,7 @@ export async function createSavedView(
             ${input.nameAr ?? null}, ${JSON.stringify(input.parameters)}::jsonb, ${input.shared ?? false})
     returning ${selectList(tx)}`;
   // owner_principal_id takes its column default `app.current_actor()`, so the owner is the session's — never
-  // a payload field (§3.3's rule for attributed columns, and SAH-044's lesson for acting ones).
+  // a payload field (§3.3's rule for attributed columns, and LEGACY-044's lesson for acting ones).
   return toRow(raw!);
 }
 
@@ -8892,7 +8892,7 @@ export const CreateSavedViewBody = z.object({
   parameters: ReportParametersSchema.default({}),
   shared: z.boolean().default(false),
   // `ownerPrincipalId` is deliberately ABSENT: the column defaults to app.current_actor(), so a payload can
-  // never claim another principal's bookmark (§3.3, SAH-044's lesson applied to an attributed column).
+  // never claim another principal's bookmark (§3.3, LEGACY-044's lesson applied to an attributed column).
 }).openapi("CreateSavedViewBody");
 
 export const UpdateSavedViewBody = z.object({
@@ -9379,7 +9379,7 @@ describe("/v1/companies/{companyId}/report-definitions", () => {
       body: {
         definition: {
           ...CORE, code: "accounting.bad_report",
-          nameAr: "",                                            // minLength 1 - SAH-085's guard
+          nameAr: "",                                            // minLength 1 - LEGACY-085's guard
           dataset: { source: "not_a_dataset", filters: [] },     // outside the closed DatasetId registry
           // `columns[0].field` is deliberately NOT asserted on here: `validateReportDefinition` takes the
           // dataset IDS and the permission codes as its two sets (§4.11.1) and cannot see a dataset's
@@ -9630,8 +9630,8 @@ EOF
 §3.4.8 assigns the **`reports` sub-pack loader** to this slice: "0C builds the CLI, the flag and the `chart-of-accounts` and `fiscal-periods` loaders; 1A ships the `document-types` loader …; 2C `templates`, 5A `tax`, **7A `reports`**, 8A `statutory`." And **7A itself seeds no definition** (§2.8's card): the loader is the seam 7B, 7C and 8D pour their directories into.
 
 **Files:**
-- Create: `packages/db/src/seed/reports.ts`, `packages/db/seed/my/reports/README.md`, `packages/db/test/seed/reports.test.ts`, `tests/regression/sah-077.test.ts`
-- Modify: `packages/db/src/seed/types.ts`, `packages/db/src/seed/packs.ts`, `packages/db/src/seed/index.ts`, `packages/db/test/seed-packs.test.ts`, `tests/regression/sah-069.test.ts`, `tests/regression/sah-085.test.ts`
+- Create: `packages/db/src/seed/reports.ts`, `packages/db/seed/my/reports/README.md`, `packages/db/test/seed/reports.test.ts`, `tests/regression/legacy-077.test.ts`
+- Modify: `packages/db/src/seed/types.ts`, `packages/db/src/seed/packs.ts`, `packages/db/src/seed/index.ts`, `packages/db/test/seed-packs.test.ts`, `tests/regression/legacy-069.test.ts`, `tests/regression/legacy-085.test.ts`
 
 **Interfaces:**
 - Consumes: `PackLoader`, `LoaderContext`, `readPackFile`, `assertPackShape`, `PHASE_0_SUB_PACK_DIRECTORIES`, `OWNED_ELSEWHERE` from `packages/db/src/seed/packs.ts`; `SubPack`, `SUB_PACKS` from `packages/db/src/seed/types.ts`; `LOADERS`, `runLoaders` from `packages/db/src/seed/index.ts` (§4.2.13, 0C, widened by 1A, 2C and 5A); `withTenant`, `TenantContext` (§4.2.2); `reportDefinitionSets` (Task 13); `assertDefinitionFields` (Task 9); `validateReportDefinition`, `parseReportDefinition` (Task 4); `sharedDb`, `thinRegression`, `sourceFiles`, `repoFile`, `REPO_ROOT` (§4.17.1, 0B/0C).
@@ -10011,7 +10011,7 @@ export const reportsLoader: PackLoader = {
 Exactly the five §4.2.13 reserves for a loader-owning slice, and nothing more:
 
 1. `packages/db/src/seed/types.ts` — add `"reports"` to the `SubPack` union and to `SUB_PACKS`, **last**: application order, never alphabetical, because a definition is validated against the permission catalogue and the dataset registry and must be applied after everything it can name.
-2. `packages/db/src/seed/index.ts` — `export { loadReportDefinitions, reportsLoader, type ReportSeedResult } from "./reports";` and `"reports": reportsLoader,` in `LOADERS`. **Never in `packages/db/src/index.ts` at any depth** — 0C's `sah-039` regex catches a deeper path too (§3.1).
+2. `packages/db/src/seed/index.ts` — `export { loadReportDefinitions, reportsLoader, type ReportSeedResult } from "./reports";` and `"reports": reportsLoader,` in `LOADERS`. **Never in `packages/db/src/index.ts` at any depth** — 0C's `legacy-039` regex catches a deeper path too (§3.1).
 3. `packages/db/src/seed/index.ts` — add `reports: 0` to `runLoaders`' `applied` initialiser.
 4. `packages/db/src/seed/packs.ts` — add `"reports"` to `PHASE_0_SUB_PACK_DIRECTORIES` (the *required-presence* list, §4.2.13) and **remove** the `reports` row from `OWNED_ELSEWHERE`; `statutory` (8A) stays.
 5. `packages/db/test/seed-packs.test.ts` — update the two literal lists to their new state.
@@ -10064,7 +10064,7 @@ upserted on `(company_id, code, version)` — the §3.4.8 policy-version rule �
 same version is refused rather than overwritten.
 ```
 
-- [ ] **Step 5: Write `tests/regression/sah-077.test.ts` (7A is the plain creator)**
+- [ ] **Step 5: Write `tests/regression/legacy-077.test.ts` (7A is the plain creator)**
 
 §3.7.3's first corollary makes **9A** a create-if-absent appender (it has no fixed position in execution order) and **7A the plain creator**, so the file exists exactly once whichever runs first:
 
@@ -10074,7 +10074,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { REPO_ROOT } from "../support/source";
 
-describe("SAH-077 The call graph is unresolvable, so dead code cannot be identified — 7A", () => {
+describe("LEGACY-077 The call graph is unresolvable, so dead code cannot be identified — 7A", () => {
   // The defect: "report definitions are stored as MEMO blobs in the Reports table inside customer
   // databases, not as files … no static analysis can ever determine whether a procedure is live."
   // spec:1246 puts "Delphi-serialised report files" on the do-NOT-carry-over list; spec:1240 wants the
@@ -10087,7 +10087,7 @@ describe("SAH-077 The call graph is unresolvable, so dead code cannot be identif
     expect(schema.additionalProperties).toBe(false);
     expect(schema.properties.version).toEqual({ const: 1 });
     // additionalProperties: false at EVERY level is what makes an escape hatch impossible — without it a
-    // `sqlOverride` or a serialised blob could ride along and SAH-077 would be back.
+    // `sqlOverride` or a serialised blob could ride along and LEGACY-077 would be back.
     for (const [name, def] of Object.entries<{ additionalProperties?: boolean; type?: string }>(schema.$defs)) {
       if (def.type === "object") expect(def.additionalProperties, name).toBe(false);
     }
@@ -10126,13 +10126,13 @@ describe("SAH-077 The call graph is unresolvable, so dead code cannot be identif
 });
 ```
 
-- [ ] **Step 6: Append the 7A blocks to `sah-069` and `sah-085`**
+- [ ] **Step 6: Append the 7A blocks to `legacy-069` and `legacy-085`**
 
-Both files exist — `sah-069` created by **0B**, `sah-085` by **0E** — so this slice **appends** a `describe` and never edits an earlier block (§3.7.3). **The appended blocks below need imports the existing files may not already carry**: add `import { readdirSync, readFileSync } from "node:fs"`, `import { join } from "node:path"`, `import { REPO_ROOT } from "../support/source"` and `import { sharedDb } from "../support/regression"` to the top of each file **only where they are missing** — adding an import is not editing an earlier `describe` block, and a duplicate import is a `lint` failure rather than a silent problem.
+Both files exist — `legacy-069` created by **0B**, `legacy-085` by **0E** — so this slice **appends** a `describe` and never edits an earlier block (§3.7.3). **The appended blocks below need imports the existing files may not already carry**: add `import { readdirSync, readFileSync } from "node:fs"`, `import { join } from "node:path"`, `import { REPO_ROOT } from "../support/source"` and `import { sharedDb } from "../support/regression"` to the top of each file **only where they are missing** — adding an import is not editing an earlier `describe` block, and a duplicate import is a `lint` failure rather than a silent problem.
 
 ```ts
-// tests/regression/sah-069.test.ts — appended
-describe("SAH-069 Every report query is rebuilt, re-parsed and re-planned on each call — 7A", () => {
+// tests/regression/legacy-069.test.ts — appended
+describe("LEGACY-069 Every report query is rebuilt, re-parsed and re-planned on each call — 7A", () => {
   // 61 `execute statement` sites; `procSerInventory` appended up to 24 fragments into a varchar(600);
   // ~54 sites interpolated DATE parameters as text. The report engine's answer is a CLOSED registry of
   // named static queries whose column references are literal fragments authored in three files.
@@ -10159,7 +10159,7 @@ describe("SAH-069 Every report query is rebuilt, re-parsed and re-planned on eac
     expect(query).toContain("value.replace(/([\\\\%_])/g, \"\\\\$1\")");
   });
 
-  it("every column a report filters on is indexed, on the three tables this slice created (SAH-070's twin)", async () => {
+  it("every column a report filters on is indexed, on the three tables this slice created (LEGACY-070's twin)", async () => {
     const { db } = await sharedDb();
     const indexes = await db.migrator<{ tablename: string; indexdef: string }[]>`
       select tablename, indexdef from pg_indexes
@@ -10173,8 +10173,8 @@ describe("SAH-069 Every report query is rebuilt, re-parsed and re-planned on eac
 ```
 
 ```ts
-// tests/regression/sah-085.test.ts — appended
-describe("SAH-085 The English build was never proofread — 7A", () => {
+// tests/regression/legacy-085.test.ts — appended
+describe("LEGACY-085 The English build was never proofread — 7A", () => {
   // 61 untranslated Arabic strings, 122 empty translations, 452 misspellings; two Arabic DIALOGS reached
   // English users. spec:2061: "Both catalogues must be complete before merge — no empty msgstr, no
   // source-language fallbacks in the other language." A report is a user-facing surface, so it is bound too.
@@ -10232,8 +10232,8 @@ describe("SAH-085 The English build was never proofread — 7A", () => {
 
 - [ ] **Step 7: Run everything to see it pass**
 
-Run: `bun run --cwd packages/db test -- seed/reports seed-packs && bun run --cwd tests test -- regression/sah-077 regression/sah-069 regression/sah-085 && bun run --cwd packages/db test -- seed-idempotent`
-Expected: PASS throughout. 0C's `sah-039` (the seed is unreachable from the main barrel) must also stay green — run `bun run --cwd tests test -- regression/sah-039` and confirm; a `export … from "./seed/reports"` on `packages/db/src/index.ts` is exactly what that regex catches.
+Run: `bun run --cwd packages/db test -- seed/reports seed-packs && bun run --cwd tests test -- regression/legacy-077 regression/legacy-069 regression/legacy-085 && bun run --cwd packages/db test -- seed-idempotent`
+Expected: PASS throughout. 0C's `legacy-039` (the seed is unreachable from the main barrel) must also stay green — run `bun run --cwd tests test -- regression/legacy-039` and confirm; a `export … from "./seed/reports"` on `packages/db/src/index.ts` is exactly what that regex catches.
 
 - [ ] **Step 8: Commit**
 
@@ -10241,7 +10241,7 @@ Expected: PASS throughout. 0C's `sah-039` (the seed is unreachable from the main
 git add packages/db/src/seed/reports.ts packages/db/src/seed/types.ts packages/db/src/seed/packs.ts \
         packages/db/src/seed/index.ts packages/db/seed/my/reports/README.md \
         packages/db/test/seed/reports.test.ts packages/db/test/seed-packs.test.ts \
-        tests/regression/sah-077.test.ts tests/regression/sah-069.test.ts tests/regression/sah-085.test.ts
+        tests/regression/legacy-077.test.ts tests/regression/legacy-069.test.ts tests/regression/legacy-085.test.ts
 git commit -m "$(cat <<'EOF'
 feat(db): ship the reports sub-pack loader and the regression files [7A T14]
 
@@ -10253,7 +10253,7 @@ insert (F-21). A core row upserts; a tenant's clone at the same version is
 refused by name rather than overwritten. 7A ships the directory and no
 definition. The five §4.2.13 registration edits and no others.
 
-sah-077 created (7A is the plain creator per §3.7.3); sah-069 and sah-085
+legacy-077 created (7A is the plain creator per §3.7.3); legacy-069 and legacy-085
 appended.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
@@ -10265,7 +10265,7 @@ EOF
 
 ### Task 15: OD-24 — the report-designer and report-viewer screens (ISOLATED; BLOCKED until the owner answers)
 
-**This task carries no code and cannot be started.** Hazard 29 and §2.12's OD-24 row are unambiguous: "**Screenshots + operator description before any screen**", gate "every slice with a screen task", default "**screen task blocked, not the slice**". spec:79 and spec:108 say the same in the spec's own voice: "**The UI is not specified here.** Before beginning any screen, request from the owner: screenshots of the equivalent Sahlisoft screen, and a two-minute description of how a fast operator uses it. Design the new screen to be *at least as fast by keyboard*. **Do not invent workflows from this document.**"
+**This task carries no code and cannot be started.** Hazard 29 and §2.12's OD-24 row are unambiguous: "**Screenshots + operator description before any screen**", gate "every slice with a screen task", default "**screen task blocked, not the slice**". spec:79 and spec:108 say the same in the spec's own voice: "**The UI is not specified here.** Before beginning any screen, request from the owner: screenshots of the equivalent legacy screen, and a two-minute description of how a fast operator uses it. Design the new screen to be *at least as fast by keyboard*. **Do not invent workflows from this document.**"
 
 **Files:** none until OD-24 lands — this task creates no file, and the files it *will* create are listed under "What this task will be" below.
 **Interfaces:**
@@ -10274,7 +10274,7 @@ EOF
 
 **Owner provides (OD-24):**
 
-1. Screenshots of the Sahlisoft **report list / report selection** screen and of the **report designer** (the screen that edits a `Reports` blob), including every parameter-entry dialog a user sees before a report runs.
+1. Screenshots of the legacy **report list / report selection** screen and of the **report designer** (the screen that edits a `Reports` blob), including every parameter-entry dialog a user sees before a report runs.
 2. Screenshots of one rendered report in **each** of the three outputs the owner actually uses today — the printed/PDF form, the spreadsheet export, and the on-screen grid — in **both** Arabic and English if both are in use.
 3. A two-minute description of how a fast operator uses each: which keys they press, in what order, what they retype every time, and which reports they run more than once a day.
 4. The answer to one question the designer cannot be built without: **which parts of a report a user is expected to change** — parameters only, or columns, groups and totals as well? §4.11.1's format supports all of them; the screen's shape depends entirely on the answer.
@@ -10307,10 +10307,10 @@ Run against the spec, the contracts document's §2.8 card, §3, §4.11, §4.16, 
 | Requirement | Source | Task |
 |---|---|---|
 | `ReportDefinition` JSON format: parameters, datasets, layout (columns, groups, totals, both directions), permissions | §2.8 card, §4.11.1 | 4 (format), 8 (both directions) |
-| Text-defined, diffable, version-controlled | spec:1240, spec:1246, SAH-077 | 4, 14 |
+| Text-defined, diffable, version-controlled | spec:1240, spec:1246, LEGACY-077 | 4, 14 |
 | `validateReportDefinition` enforcing the `ReportCode` grammar and `DatasetId` membership at seed time | §2.8 card | 4 (both), 14 (at seed time) |
 | `packages/db/src/reports/datasets.ts` with every §4.16.2 dataset marked 7A — twenty-six | §2.8 card, §4.16.2 | 5 (8), 6 (7), 7 (11) |
-| Each a named `withTenant` read query, never SQL text from a definition or a client | §2.8 card, test 27 | 5 (the `ref` closure seam), 14 (sah-069) |
+| Each a named `withTenant` read query, never SQL text from a definition or a client | §2.8 card, test 27 | 5 (the `ref` closure seam), 14 (legacy-069) |
 | An unknown id is `ERR_REPORT_DATASET_UNKNOWN` | §2.8 card, §4.2.4 | 5 |
 | Core definitions from `packages/db/seed/my/reports/<slice>/<code>.json`, one directory per owning slice | §2.8 card, §4.16.1 | 14 |
 | 7A itself seeds none | §2.8 card | 9 (layouts only), 14 (README, and the test that asserts zero `.json`) |
@@ -10319,21 +10319,21 @@ Run against the spec, the contracts document's §2.8 card, §3, §4.11, §4.16, 
 | `app.report_run` | §4.11.2 | 2, 11 |
 | Clone-and-edit through the API without a release | Phase 7 DoD | **13** (the DoD `it`) |
 | `reporting.render` pg-boss job producing PDF, XLSX, CSV with a status resource | §4.11.2, spec:2206 | 10 (renderers), 11 (job), 12 (status resource) |
-| RTL/LTR parity including numerals, Hijri/Gregorian and column order — test 23 for PDFs | spec:2253, §6.1 | 8 (layout), 10 (`pdf.test.ts`), 14 (sah-085) |
+| RTL/LTR parity including numerals, Hijri/Gregorian and column order — test 23 for PDFs | spec:2253, §6.1 | 8 (layout), 10 (`pdf.test.ts`), 14 (legacy-085) |
 | Financial-statement layouts: balance sheet and P&L, per BRANCH | §2.8 card, spec:1066 | 9 |
 | Permission gates `accounting.report.read`/`.export`, `pos.report.read`, module read codes; `.export` enters here | §2.8 card, §3.6.2 | 3 (catalogue + role + `requireReportExport` and its unit test), 12 (`requireReportRead`, the data-resolved gate, with the cross-module refusal `it` that covers "module read codes") |
 | §3.2.2 PDF and Spreadsheets rows | spec:1132–1133 | 10 (ADR 0016 consumed, ExcelJS) |
 | §3.3 async projections read, never recomputed | spec:1204 | 6 (`party_ageing`), 7 (`stock_valuation`, `item_profitability`) |
 | §3.5 report designer, feature gating | spec:1240–1241 | 4, 13, 15 (the screen, blocked) |
-| §3.6 no Delphi-serialised report files | spec:1246 | 4 (`additionalProperties: false`), 14 (sah-077) |
-| §3.9 Localisation: both catalogues complete, no source-language fallback | spec:2061, SAH-085 | 4 (schema `minLength: 1` on `nameAr`/`labelAr`), 14 |
+| §3.6 no Delphi-serialised report files | spec:1246 | 4 (`additionalProperties: false`), 14 (legacy-077) |
+| §3.9 Localisation: both catalogues complete, no source-language fallback | spec:2061, LEGACY-085 | 4 (schema `minLength: 1` on `nameAr`/`labelAr`), 14 |
 | §4.2.1 report codes and the `auditor` row | spec:2146–2147, 2150, 2163 | 3, 12 |
 | §4.5 bulk/async with a status resource | spec:2206 | 11, 12 |
 | §4.8 read replicas / graceful degradation | spec:2235, 2237 | see the gap note below |
 | §4.9 report-generation SLO | spec:2245 | 5 (`MAX_DATASET_ROWS`), 11 (short transactions, the run's `finishedAt`) |
 | §4.10 keyboard-first, WCAG 2.2 AA | spec:2253 | 15 (blocked on OD-24) |
 | Part VI 27 re-run | §6.1 | 5, 6, 7, 14 |
-| Part I SAH-069, 077, 085 | §2.8 card | 14 |
+| Part I LEGACY-069, 077, 085 | §2.8 card | 14 |
 | OD-24 isolated | §2.12, hazard 6 | 15 |
 
 **One partial coverage, stated rather than hidden.** spec:2235's "read replicas for reporting" and spec:2237's "if the reporting store is down, transactional entry continues" are **infrastructure** clauses, not code ones: they need a replica endpoint, which is 0C's topology (ADR 0011) and does not exist. What this slice *does* deliver against them is the part that is code — every dataset is a **read-only** query on a `tx` from `withTenant`, the render happens in `apps/worker` rather than in the request path, and `reporting.render` failing leaves the ledger untouched, so a reporting outage already cannot stop document entry. Pointing the datasets at a replica connection is a one-line change to `createDb`'s URL in the worker when a replica exists; it is **not** added here, because inventing a `DATABASE_URL_REPLICA` would be a §3.11 row this document has not allocated. Recorded in the spec-questions list below.
@@ -10370,7 +10370,7 @@ A later review of the finished plan found eleven more, all fixed inline above.
 14. **The multi-error `it` asserted push order where the validator sorts by path.** `errors.sort` puts `/groups/0/field` before `/sort/0/field` before `/totals/0/field`; the expectation now says so.
 15. **The financial-statement layouts could not be stored, seeded or run.** `statementDefinition` emits `section` as a column, group and sort key over `account_balance`, which declares no such column, so the field check refused every statement — and the render handler called `datasetFor(...).run` directly, leaving `statementRows` unreachable outside its own test. Task 9 now ships the dispatch the header always promised: `STATEMENT_CODES` / `statementKindFor` / `STATEMENT_EXTRA_FIELDS` in domain, and `rowsForDefinition` / `assertDefinitionFields` in `packages/db/src/reports/statement.ts`. The handler (Task 11), the definition store (Task 13) and the seed loader (Task 14) all go through those two functions, and Task 13's module-private `assertFields` is gone.
 16. **The header's produced-interfaces block named three exports no task shipped** (`STATEMENT_CODES`, `rowsForDefinition`, `assertDefinitionFields`). All three now exist; the block also lists the rest of the statement surface 7B and 7C import, and no longer claims "§4.11.2 verbatim" when two amendments are recorded against it.
-17. **The seed loader wrote the definition FORMAT version into `report_definition.version`.** The schema pins `definition.version` to `const 1`, so every seeded core row would have been version 1 forever and §4.16.1's `version = 2` rule — which 7B and 7C depend on for eight re-expressed codes — would have been unimplementable. The file is now the `{ definitionVersion, definition }` envelope of §4.3.7's precedent (and of 7B's own amendment A1); the file-name check, the README, the loader tests and `sah-077` all follow it, and `seedReportDefinition`'s option is `definitionVersion` for the same reason.
+17. **The seed loader wrote the definition FORMAT version into `report_definition.version`.** The schema pins `definition.version` to `const 1`, so every seeded core row would have been version 1 forever and §4.16.1's `version = 2` rule — which 7B and 7C depend on for eight re-expressed codes — would have been unimplementable. The file is now the `{ definitionVersion, definition }` envelope of §4.3.7's precedent (and of 7B's own amendment A1); the file-name check, the README, the loader tests and `legacy-077` all follow it, and `seedReportDefinition`'s option is `definitionVersion` for the same reason.
 18. **Task 12's "requires BOTH" `it` expected 403 where the handler answered 404**, and Task 13's isolation-probe note described a gate order the handler did not have. `requireReportExport` now runs **before** `resolveDefinitionForRun` on the POST, matching both GET handlers, so the route is never an existence oracle and the probe note is true.
 19. **Test 23's re-run asserted labels and column order but never numerals or the calendar**, which the §2.8 card names explicitly. `pdf.test.ts`'s fixture moved to `ledger_entry` with an `effective_date` column and a dated row, and three assertions now compare the rendered PDF text against strings computed from `@dulja/i18n` — Hijri in the Arabic render, Gregorian in the English, and the Arabic-Indic money digits — so the numeral and calendar policy stays 0E's rather than becoming a second one here.
 20. **Task 2's `report_run` test called `digest('x','sha256')`**, a pgcrypto function; Plan 0A creates only `btree_gist` (plan0A:952). It is now `sha256('x'::bytea)`, the PostgreSQL 18 builtin 4B already recorded.
@@ -10399,7 +10399,7 @@ Ten findings were filed — three major, seven minor. **All ten are real and all
 
 ### 4. Contracts compliance — the checks a reviewer will run
 
-- **Migrations** are 0074, 0075, 0076 only; each has a hand-written `NNNN.down.sql`; the 0075 name is §2.8's own (`0075_create_saved_view_report_run.sql`, which names both tables §3.4.2 requires it to name); no `create index concurrently`; every statement comments its SAH-/spec reference; **no migration asserts `max(version)`** (hazard 14).
+- **Migrations** are 0074, 0075, 0076 only; each has a hand-written `NNNN.down.sql`; the 0075 name is §2.8's own (`0075_create_saved_view_report_run.sql`, which names both tables §3.4.2 requires it to name); no `create index concurrently`; every statement comments its LEGACY-/spec reference; **no migration asserts `max(version)`** (hazard 14).
 - **`lint-schema.ts` is never opened.** §3.5.3 gives all three tables no set membership, so all three carry `id`, `created_at` and `audit_row`, and the six sets are exactly as 5A left them. Tasks 1 and 2 assert `lintSchema` returns zero violations for each table instead.
 - **`privileges.test.ts`** gains one `it` re-asserting 2B's unchanged five-row DELETE list and nothing else (§3.5.4, hazard 25). §3.5.4's closing sentence and the §2.8 card both read "7A … does not touch `privileges.test.ts`", so the Execution-handoff amendments table asks for that sentence to become "7A adds no grant; it re-asserts the pinned list in `privileges.test.ts` and changes nothing else." The addition is purely additive and proves the fact rather than assuming it, but the two documents must not disagree in plain text.
 - **`fixtures.ts`** gains exactly `seedReportDefinition` — §4.17's one row for this slice — additively, with the uniform `(db, s, opts?)` shape (hazard 9).
@@ -10411,7 +10411,7 @@ Ten findings were filed — three major, seven minor. **All ten are real and all
 
 ### 5. What a reviewer should look at first
 
-The **`ref: (tx) => tx\`l.account_id\`` closure** in `DatasetColumn` (Task 5) is the load-bearing idea of the whole slice: it is what makes "a definition never contributes SQL text" a structural fact rather than a convention, and every one of the twenty-six datasets depends on it being right. If `postgres`' exported `PendingQuery`/`Row` type names differ in the installed version, alias them in `sql-fragment.ts` — a `string` return type there silently re-opens SAH-036/037/069 and is the one shortcut this plan forbids by name.
+The **`ref: (tx) => tx\`l.account_id\`` closure** in `DatasetColumn` (Task 5) is the load-bearing idea of the whole slice: it is what makes "a definition never contributes SQL text" a structural fact rather than a convention, and every one of the twenty-six datasets depends on it being right. If `postgres`' exported `PendingQuery`/`Row` type names differ in the installed version, alias them in `sql-fragment.ts` — a `string` return type there silently re-opens LEGACY-036/037/069 and is the one shortcut this plan forbids by name.
 
 ---
 

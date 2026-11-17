@@ -79,7 +79,7 @@ export async function loadTaxCodeRefs(
 /**
  * The regime every tax code on one document belongs to, or `null` when no line carries a code.
  *
- * **A document whose lines span two regimes is refused.** SAH-020's failure was that nothing said which
+ * **A document whose lines span two regimes is refused.** LEGACY-020's failure was that nothing said which
  * regime a code belonged to, so a VAT tenant ran the GST return and reported sales as purchases; a document
  * mixing two regimes would put half its transactions in one return and half in another, with both returns
  * looking complete. The refusal names both regimes.

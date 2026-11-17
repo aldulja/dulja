@@ -88,7 +88,7 @@ Both are recorded in contracts **round 16** (end of `docs/superpowers/plans/2026
 - `apps/api` whole suite on T3's tree: **897 passed in 93 files**.
 - `tests`: `tenant-isolation`, `auth-bypass`, `tax-permissions-5a`, `export-audit` 80 passed; a scratch
   `hrFixture` smoke test passed and was removed. The rest of the `tests` workspace and `bun run e2e` were not run.
-- `packages/contracts` 69, `apps/edge` 46, `infra` 25, `apps/backoffice` staff 20, `tests` lint + sah-082 +
+- `packages/contracts` 69, `apps/edge` 46, `infra` 25, `apps/backoffice` staff 20, `tests` lint + legacy-082 +
   lint-rules invariant 71 — green.
 - Static: `bun run typecheck` 14/14, `bun run lint` 0, `bun run format:check` clean, `openapi.json` regenerated
   with no further diff after T1, `contracts-8a-amendments.sh` OK. **`bun run lint:rules` reports exactly GC 19's
@@ -185,8 +185,8 @@ Both are recorded in contracts **round 16** (end of `docs/superpowers/plans/2026
   green.
 - Whole suites on T7's head (`8141a4d`): **`packages/db` 2,024 passed in 206 files**, **`apps/api` 936 passed in 97
   files**. `tests` (subset): `job-isolation`, `phase-5a/6c/6d` pins, `report-catalogue-pins`, `lint-rules`,
-  `export-audit`, `sah-039`, `sah-046` green. There are two failures. The first is test 15's PDF in `zero-code-document-type`,
-  the known one. The second is **`regression/sah-047.test.ts` "every catalogue code has a registered route"**, which fails on
+  `export-audit`, `legacy-039`, `legacy-046` green. There are two failures. The first is test 15's PDF in `zero-code-document-type`,
+  the known one. The second is **`regression/legacy-047.test.ts` "every catalogue code has a registered route"**, which fails on
   `hr.statutory_table.manage`. This is GC 19's same declared exception, seen from the runtime side: the case already
   failed at T3's head on all six 8A codes, and it closes at Task 10 when the statutory-scheme routes land. It is not a
   T4–T7 regression.
@@ -283,7 +283,7 @@ Both are recorded in contracts **round 16** (end of `docs/superpowers/plans/2026
   **391 in 39 files**. contracts **69**.
 - Whole suites on T10's tree: **`packages/db` 2,055 passed in 208 files**, **`apps/api` 952 passed in 98 files**,
   **`apps/worker` 125 in 19** plus its two Bun cases. The rest of the `tests` workspace and `bun run e2e` were not run. `tests`: `tenant-isolation`, `job-isolation`, `auth-bypass`, `lint-rules`,
-  `hr-sensitive-side-channels` and **`regression/sah-047` — green (GC 19's exception closed)**.
+  `hr-sensitive-side-channels` and **`regression/legacy-047` — green (GC 19's exception closed)**.
 - Static: `bun run typecheck` 14/14, `lint` 0, **`lint:rules` 11 rules, 0 violations**, `format:check` clean, all
   fourteen `scripts/check/*.sh` gates OK, `openapi.json` regenerated with no further diff.
 
@@ -330,7 +330,7 @@ Both are recorded in contracts **round 16** (end of `docs/superpowers/plans/2026
   (v1 for the en run, v2 for ar); `E2E_HR_EMPLOYEE` in `support/people.ts`. Record `docs/ui/od-24-phase-8a.md`;
   decisions row OD-24.
 - **T14** (`f57d224`) — six `— 8A` blocks appended with `sliceRegression` (the tree's helper; the plan's
-  `thinRegression(…, ["8A T1"…], (ctx) => { it(…) })` shape does not exist) to sah-029/030/033/044/045/078.
+  `thinRegression(…, ["8A T1"…], (ctx) => { it(…) })` shape does not exist) to legacy-029/030/033/044/045/078.
   `packages/db/src/export/tables.ts`: rows for `employee_sensitive` (metadata only, `hr.employee.read_sensitive`),
   `employee_statutory_profile`, `pay_component`, `pay_component_scheme`, `compensation_line`
   (`hr.compensation.read`), `statutory_scheme`, `statutory_rate_table` (`hr.statutory_table.manage`), plus T11's
@@ -350,13 +350,13 @@ Both are recorded in contracts **round 16** (end of `docs/superpowers/plans/2026
    picker (it carries `baseCurrency`, which a compensation amount needs). **Recorded limit:** a verify-only
    accountant is in no staff-context company, so the statutory-tables screen shows "no accessible company" to them —
    widening `/v1/staff-context` is a 6C contract change, not made.
-4. T14's regression blocks were adapted to the tree: sah-029's `employee` audit row comes from an `update … set
+4. T14's regression blocks were adapted to the tree: legacy-029's `employee` audit row comes from an `update … set
    position` by `a.human` (6C's `seedEmployee` writes as the system principal, so the plan's "every actor is
-   a.human" could not hold); sah-030 and sah-033 build no `fullRegression` (its label is hard-wired `— 0B`) —
-   sah-030 starts its own API inside a `sliceRegression` body and stops it; sah-033 checks parameter **names** and
+   a.human" could not hold); legacy-030 and legacy-033 build no `fullRegression` (its label is hard-wired `— 0B`) —
+   legacy-030 starts its own API inside a `sliceRegression` body and stops it; legacy-033 checks parameter **names** and
    schema **member** names against an anchored off-switch pattern (the plan's `JSON.stringify(doc).match(/level…/)`
    would match prose), and its non-holder is a company member with an empty role (so the zeros are the gates', not
-   branch isolation's); sah-044's impostor is `b.human` (another tenant's principal, as 0B's block does).
+   branch isolation's); legacy-044's impostor is `b.human` (another tenant's principal, as 0B's block does).
 5. Statutory schemes and rate tables are gated on `hr.statutory_table.manage` in the export (one code per row; the
    read route admits either code).
 
@@ -455,7 +455,7 @@ Whole suites on T14's tree (2026-11-07, Linux, Node 22, PostgreSQL 18 Testcontai
   `routes/accounting/documents.test.ts`'s `DOCUMENT_STAGE_CODES` pin (T3's three codes), fixed in the progress commit;
   the file re-run 26/26.
 - **`tests` workspace: 887 passed, 5 skipped, 1 failed in 138 files** — the failure is test 15's PDF hyphens
-  (`zero-code-document-type`), the known pre-existing one. role-catalogue (accountant 26, auditor 10) and sah-047 green.
+  (`zero-code-document-type`), the known pre-existing one. role-catalogue (accountant 26, auditor 10) and legacy-047 green.
 - `packages/contracts` 69. Focused: api `middleware/*`, `routes/admin/*`, `routes/hr/*`, `openapi` green; `openapi.json`
   regenerated with no diff (T3 adds no route).
 - Static on T4's head: `bun run typecheck` 14/14, `lint` 0, **`lint:rules` 11 rules, 0 violations** (no declared
@@ -480,12 +480,12 @@ Whole suites on T14's tree (2026-11-07, Linux, Node 22, PostgreSQL 18 Testcontai
   index}.ts` (`calculators`) and an extra **`schemes/shape.ts`** (`DEFAULT_ROUNDING_MODE`, `modeOf`, `nameOf`,
   `shapeMismatch`, `missingInput`, `assertRequiredInputs`, `within`; not on the barrel). The barrel is **appended**
   (8A's exports intact); `"./payroll"` was already present (asserted). `no-number-money` `ALLOWED` += `rateTableVersion`
-  (A14). ADR `0074` (**Proposed**). Tests: domain `payroll/schemes` 9; sah-019 8B block 2.
+  (A14). ADR `0074` (**Proposed**). Tests: domain `payroll/schemes` 9; legacy-019 8B block 2.
 - **T6** (`8b0b4df`) — `payroll/period.ts` (`periodDays`, `eligibleDays`; constants exactly `MS_PER_DAY`, `SUNDAY`,
-  `SATURDAY` — sah-020 pins them), `payroll/calculator.ts` (`payrollCalculator`, `prorationFactor`, `ytdKey`,
+  `SATURDAY` — legacy-020 pins them), `payroll/calculator.ts` (`payrollCalculator`, `prorationFactor`, `ytdKey`,
   `schemeYtdKey`, re-exports `periodDays`/`eligibleDays`; all on the barrel). `ERRORS` += `ERR_PAYROLL_RATE_TABLE_UNVERIFIED`,
   `ERR_PAYROLL_INPUT_MISSING` (both 422, pinned in `packages/contracts/test/contracts.test.ts`); `apps/api/src/problem.ts`
-  maps `PayrollCalculationError` in the `ReportError` branch (+ a `problem.test.ts` case). sah-011 and sah-020 8B blocks.
+  maps `PayrollCalculationError` in the `ReportError` branch (+ a `problem.test.ts` case). legacy-011 and legacy-020 8B blocks.
   Tests: domain `payroll/calculator` 18.
 - **T7** (`84f9e8e`, ⚠️ OD-28) — `packages/domain/test/payroll/proration.test.ts` (6 passed, 2 skipped — the two
   `OD-28 CONFIRMED …` gate cases); owner record **`docs/owner/od-28-proration-rule.md`** (three `> **Answer:**` lines:
@@ -520,7 +520,7 @@ Whole suites on T14's tree (2026-11-07, Linux, Node 22, PostgreSQL 18 Testcontai
 8. **A16 is moot:** `error-codes` has no root list (it reads all of `apps`, `packages`, `scripts` via
    `scripts/lint/source.ts`), so `packages/domain/payroll/**` was already read. A comment in the rule and a
    `scripts/lint/lint.test.ts` case pin it.
-9. sah-020's literal scan covers **`schemes/shape.ts`** too and additionally fails if a new file appears under
+9. legacy-020's literal scan covers **`schemes/shape.ts`** too and additionally fails if a new file appears under
    `packages/domain/payroll/` that is not in its list (period/rate-table/validate excepted).
 10. Test messages in T6 avoid authority names ("authority letter on file", not the plan's LHDN wording).
 
@@ -550,7 +550,7 @@ Whole suites on T14's tree (2026-11-07, Linux, Node 22, PostgreSQL 18 Testcontai
   dependency files.
 - **`apps/api` whole suite: 963 passed in 99 files** (incl. the new `problem.test.ts` case).
 - **`tests` whole workspace: 894 passed, 5 skipped, 1 failed in 138 files** — the failure is test 15's PDF hyphens
-  (`zero-code-document-type`), the known pre-existing one. sah-011/019/020 and `scripts/lint/lint.test.ts` green.
+  (`zero-code-document-type`), the known pre-existing one. legacy-011/019/020 and `scripts/lint/lint.test.ts` green.
 - `packages/contracts` 69.
 - Static: `bun run typecheck` 14/14, `lint` 0, **`lint:rules` 11 rules, 0 violations**, `format:check` clean, all
   fifteen `scripts/check/*.sh` gates OK. No route changed, so `openapi.json` was not regenerated.
@@ -676,9 +676,9 @@ Whole suites on T14's tree (2026-11-07, Linux, Node 22, PostgreSQL 18 Testcontai
 - **T13** (`98ffe4f`) — `tests/golden/payroll.test.ts` (+ `golden:payroll` script, `GOLDEN_WRITE=1`) and three cases
   `tests/golden/payroll/{synth-regular,synth-proration,synth-missing-input}/{input,expected}.json`, reviewed figure by
   figure; `tests/invariants/payroll-one-posting-path.test.ts` (test 28, 2); `JournalLine.dimensions` in
-  `tests/invariants/support/post-journal.ts` (A13); 8B blocks in sah-003 (1) and sah-009 (2).
+  `tests/invariants/support/post-journal.ts` (A13); 8B blocks in legacy-003 (1) and legacy-009 (2).
 - **T14** (`aa0c44f`) — `tests/invariants/payroll-pinning.test.ts` (9: test 29 ×4, test 38, test 9, test 31 ×2,
-  test 10); 8B blocks in sah-013, sah-031, sah-032, sah-042.
+  test 10); 8B blocks in legacy-013, legacy-031, legacy-032, legacy-042.
 - **T15** (`9198117`, ⚠️ OD-24 — owner: BUILD) — `apps/backoffice/src/lib/payroll-api.ts` (`payrollApi`),
   `src/routes/hr/payroll-runs.tsx` (`PayrollRunsRoute`, register + new run; exports `monthOf`, `statusKey`,
   `kindKey`, `RUN_STATUSES`), `src/routes/hr/payroll-run.tsx` (`PayrollRunRoute`, the approval screen), routes
@@ -707,7 +707,7 @@ Whole suites on T14's tree (2026-11-07, Linux, Node 22, PostgreSQL 18 Testcontai
 6. **T14:** no `startWorker().run(fn)` exists — the job legs run under `systemContext` + production `withTenant`
    (exactly `runJob`'s context). **The plan's leg "a system principal that did not submit is refused approval with
    ERR_RBAC_FORBIDDEN" is not written**: spec:2179 makes `actor_has` true for it. Test 10's raw-SQL leg is omitted
-   (`approved → posted` is not a matrix edge). SAH-042's stranger has an empty company-wide role → R2's
+   (`approved → posted` is not a matrix edge). LEGACY-042's stranger has an empty company-wide role → R2's
    `ERR_RBAC_FORBIDDEN`, pinned exactly.
 7. **T15 was built** (owner answer) where the plan defaulted to blocked; the plan's `src/screens/PayrollApproval.tsx`
    path follows the tree's layout instead (`src/routes/hr/payroll-run{,s}.tsx`, tests under `apps/backoffice/test/`).
@@ -736,7 +736,7 @@ golden harness, the T14 job legs, OD-24 for the payroll screens, the staff-conte
 - **`apps/backoffice` whole suite: 257 passed in 14 files** (payroll 15).
 - **`tests` whole workspace: 917 passed, 5 skipped, 1 failed in 141 files** — the failure is test 15's PDF hyphens
   (`zero-code-document-type`), the known pre-existing one. Golden payroll 4 (3 cases + layout), test 28 2,
-  payroll-pinning 9, sah-003/009/013/031/032/042 green.
+  payroll-pinning 9, legacy-003/009/013/031/032/042 green.
 - **`bun run e2e`: 29/29** (payroll 2 new; hr 2 with the `arrayContaining` change).
 - `packages/contracts` 69, `packages/i18n` 41.
 - Static: `bun run typecheck` 14/14, `lint` 0, **`lint:rules` 11 rules, 0 violations**, `format:check` clean, all
@@ -813,7 +813,7 @@ MERGE lock, the unswapped calculator read, the F-21 move.
 - **`packages/db` whole suite: 2,181 passed in 220 files.**
 - **`apps/api` whole suite: 977 passed in 100 files.**
 - **`tests` whole workspace: 917 passed, 5 skipped, 1 failed in 141 files** — the failure is test 15's PDF hyphens
-  (`zero-code-document-type`), the known pre-existing one. role-catalogue, sah-032, sah-047 green.
+  (`zero-code-document-type`), the known pre-existing one. role-catalogue, legacy-032, legacy-047 green.
 - `apps/worker` 125 in 19 (Vitest), `packages/contracts` 69.
 - Static: `bun run typecheck` 14/14, `lint` 0, **`lint:rules` 11 rules, 0 violations**, `format:check` clean, all
   **sixteen** `scripts/check/*.sh` gates OK; `openapi.json` regenerated with no diff (no route changed).
@@ -905,7 +905,7 @@ batch pays and excludes, company/type-bound reads, the currency check, the CSV, 
   reason in the progress commit; the file re-ran 25/25.
 - **`apps/api` whole suite: 999 passed in 102 files** (payroll-payments 11, employee-advances 11, openapi 3).
 - **`tests` whole workspace: 919 passed, 5 skipped, 1 failed in 141 files** — the failure is test 15's PDF hyphens
-  (`zero-code-document-type`), the known pre-existing one. `tenant-isolation` (both new probes), sah-047 green.
+  (`zero-code-document-type`), the known pre-existing one. `tenant-isolation` (both new probes), legacy-047 green.
 - Static: `bun run typecheck` 14/14, `lint` 0, **`lint:rules` 11 rules, 0 violations**, `format:check` clean, all
   **sixteen** `scripts/check/*.sh` gates OK; `openapi.json` regenerated with no diff.
 - Not run: `apps/worker`, `bun run e2e`, `packages/domain` and the UI workspaces (nothing they load changed).
@@ -963,7 +963,7 @@ batch pays and excludes, company/type-bound reads, the currency check, the CSV, 
   - `tests/invariants/payslip-ties-to-ledger.test.ts` — **acceptance test 30** (four clauses) + the DoD clause (Σ net =
     2400's movement on the run and in January's `account_balance`; a posted batch clears 2400 to zero) — 6 cases.
   - `packages/db/test/hr/remittance.test.ts` (14, order-dependent); `— 8C` blocks appended to
-    `tests/regression/sah-011.test.ts` (2) and `sah-019.test.ts` (3).
+    `tests/regression/legacy-011.test.ts` (2) and `legacy-019.test.ts` (3).
 
 ### Deviations from the plan (and why)
 
@@ -984,7 +984,7 @@ batch pays and excludes, company/type-bound reads, the currency check, the CSV, 
 6. **Settlement also refuses** a non-`PAYMENT` document, a PAYMENT to a party other than the scheme's
    `authority_party_id`, and a payment that already settles another schedule (service sentence + 0091's new unique
    index). Payment of another company → `ERR_NOT_FOUND`.
-7. The plan's sah-019 regex `/\d,\d{3}\./` matches the legitimate `0.0000,100.0000`; replaced by "exactly five cells and
+7. The plan's legacy-019 regex `/\d,\d{3}\./` matches the legitimate `0.0000,100.0000`; replaced by "exactly five cells and
    each figure `^-?\d+\.\d{4}$`". Test 30 clause 4 uses a one-cent-over remittance and also asserts the payable clears
    to zero after the right one; clause 2 asserts by string equality, not `toBeCloseTo`.
 8. Route statuses: a named scheme the run lacks → 400; a not-posted run → 409; a non-run id → 404; probe → 403.
@@ -1000,8 +1000,8 @@ schedule, the unsettle reason, `postRemittance`).
 - **`packages/db` whole suite: 2,233 passed in 224 files.**
 - **`apps/api` whole suite: 1,015 passed in 103 files** (statutory-schedules 16, openapi 3).
 - **`tests` whole workspace: 931 passed, 5 skipped, 1 failed in 142 files** — the failure is test 15's PDF hyphens
-  (`zero-code-document-type`), the known pre-existing one. Test 30 (6), `tenant-isolation` (the new probe), sah-011,
-  sah-019 green.
+  (`zero-code-document-type`), the known pre-existing one. Test 30 (6), `tenant-isolation` (the new probe), legacy-011,
+  legacy-019 green.
 - Static: `bun run typecheck` 14/14, `lint` 0, **`lint:rules` 11 rules, 0 violations**, `format:check` clean, all
   **sixteen** `scripts/check/*.sh` gates OK (incl. `contracts-8c-amendments.sh` after B17); `openapi.json` regenerated
   with no diff.
@@ -1044,13 +1044,13 @@ schedule, the unsettle reason, `postRemittance`).
     `ar-ap/item-profitability.test.ts`).
   - Tests: `packages/db/test/hr/employee-ytd-opening.test.ts` (9), `tests/invariants/employee-ytd-rebuild.test.ts`
     (**acceptance test 35** + test 2 re-run, 7), `apps/worker/test/jobs/employee-ytd-rebuild.test.ts` (7), `— 8C`
-    blocks in `tests/regression/sah-004.test.ts` (2) and `sah-016.test.ts` (2).
+    blocks in `tests/regression/legacy-004.test.ts` (2) and `legacy-016.test.ts` (2).
   - Contracts round 18 **B18**; the gate's B4 literal moved to `year`; ADR 0077 decision 1's wording (CTE, 0121).
 - **T10** (`9b32735`) —
   - Migration **`0093_create_termination_trigger.sql`** (+ down): **`app.terminate_employee()`** and trigger
     **`employee_terminated`** (AFTER UPDATE OF `terminated_on`, `when old is null and new is not null`).
   - ADR **0078** (**Proposed**, two owner questions).
-  - Tests: `packages/db/test/hr/termination.test.ts` (11), a `— 8C` block in `tests/regression/sah-044.test.ts` (2).
+  - Tests: `packages/db/test/hr/termination.test.ts` (11), a `— 8C` block in `tests/regression/legacy-044.test.ts` (2).
   - Contracts round 18 **B19**.
 
 ### Deviations from the plan (and why)
@@ -1066,7 +1066,7 @@ schedule, the unsettle reason, `postRemittance`).
 5. Test 35's clause 2 re-runs the clause itself (submitted → recalculated → draft, reason `recalculated`, approval
    refused) plus the plan's posted-run refusal; test 35 posts a second run so the fold covers two deltas.
 6. The opening loader also refuses a non-base currency and an out-of-range year.
-7. SAH-016's recovery run is a real `supplementary` draft whose lines are replaced by the recovery shape (the calculator
+7. LEGACY-016's recovery run is a real `supplementary` draft whose lines are replaced by the recovery shape (the calculator
    refuses a negative net), not hand-inserted `document`/`payroll_run` headers.
 8. **0093 order and actor** (B19, ADR 0078): assignments expire **first** as the terminating actor (6C's trigger
    refreshes the snapshot), the credential is revoked **last** as the **tenant's system principal** (actor restored
@@ -1087,7 +1087,7 @@ Nine rows appended to `docs/review/2026-11-07-phase-8-decisions.md` (six T9, thr
 - **`apps/worker`: 132 passed in 20 files (Vitest) plus its two Bun cases.**
 - **`tests` whole workspace: 944 passed, 5 skipped, 1 failed in 143 files** — the failure is test 15's PDF hyphens
   (`zero-code-document-type`), the known pre-existing one. Test 35 (7), `job-isolation` (the new JOB_PROBES entry),
-  `phase-5-exit`, `projection-rebuild`, `audit-chain`, sah-004, sah-016, sah-044 green.
+  `phase-5-exit`, `projection-rebuild`, `audit-chain`, legacy-004, legacy-016, legacy-044 green.
 - Static: `bun run typecheck` 14/14, `lint` 0, **`lint:rules` 11 rules, 0 violations**, `format:check` clean, all
   **sixteen** `scripts/check/*.sh` gates OK (incl. `contracts-8c-amendments.sh` after B18/B19). No route changed, so
   `openapi.json` is untouched.
@@ -1116,7 +1116,7 @@ Nine rows appended to `docs/review/2026-11-07-phase-8-decisions.md` (six T9, thr
   **`employee_cashier_still_employed`** (`after update of terminated_on`), raising **`ERR_HR_CASHIER_NOT_EMPLOYEE`**
   (409; `ERRORS` + contracts pin, same commit). Tests: `packages/db/test/hr/cashier-is-employee.test.ts` (9),
   **acceptance test 34** `tests/invariants/termination-closes-everything.test.ts` (7, incl. test 20's resume re-run as
-  clause 2b), a `— 8C` block in `tests/regression/sah-021.test.ts` (5). 6C's pinned `pos_cashier` trigger list
+  clause 2b), a `— 8C` block in `tests/regression/legacy-021.test.ts` (5). 6C's pinned `pos_cashier` trigger list
   (`packages/db/test/staff/pos-cashier.test.ts`) gains the new name. ADR 0078 decision 5 as built + owner question 3;
   its question 2 corrected (0094 does not make a principal mismatch impossible). Contracts round 18 **B20**; the 8C gate
   checks it and 0094.
@@ -1182,7 +1182,7 @@ OD-23's 8C clauses).
 - **`tests` whole workspace: 966 passed, 5 skipped, 1 failed in 145 files** (run twice, the second after the worker and
   Docker restart) — the failure is test 15's PDF hyphens (`zero-code-document-type`), the known pre-existing one. The
   first run on the T12 tree also failed `pos-till-banking`'s registry pin, moved in `ef1d167`. Test 34 (7), money-out
-  SoD (10), sah-021, sah-041, tenant-isolation, job-isolation green.
+  SoD (10), legacy-021, legacy-041, tenant-isolation, job-isolation green.
 - **`bun run e2e`: 29/29** — the first run after the restart failed once in `exports.spec.ts` (ar: `boundingBox()`
   null on the format select, a layout race in a 7C screen 8C does not touch); the spec passed 6/6 with
   `--repeat-each 3` and the full re-run was 29/29.
@@ -1266,12 +1266,12 @@ OD-23's 8C clauses).
 ### Decisions
 
 Nine rows appended to `docs/review/2026-11-07-phase-8-decisions.md` (round 19; the durable gate; **OD-13 answered
-build**; 0097's down; sah-047 red until T5; the F-21 move; the dataset gates; tax year and local date; contract end
+build**; 0097's down; legacy-047 red until T5; the F-21 move; the dataset gates; tax year and local date; contract end
 on the export and not yet on the wire).
 
 ### Open — for the next agents
 
-- **sah-047 is red** (`hr.filing.generate` has no mounted route): **Task 5** must compose the payslip route onto 8B's
+- **legacy-047 is red** (`hr.filing.generate` has no mounted route): **Task 5** must compose the payslip route onto 8B's
   `payroll-runs` module with `requireFilingGenerate()` AND add `PERMISSION["hr.filing.generate"]` to that module's
   `permissions` in `apps/api/src/routes/index.ts` (and `payrollRunRouteModule`). That closes it.
 - **Task 8** (leave register, OD-13 = build): append `leave_record` to `datasets/hr.ts`, the union, `DATASETS` and
@@ -1294,8 +1294,8 @@ on the export and not yet on the wire).
 - **`packages/db` whole suite: 2,301 passed, 5 skipped in 232 files.**
 - **`apps/api` whole suite: 1,018 passed in 104 files.**
 - **`tests` whole workspace: 965 passed, 5 skipped, 2 failed in 145 files** — test 15's PDF hyphens
-  (`zero-code-document-type`, known, pre-existing) and **`regression/sah-047`** on `hr.filing.generate` (declared above;
-  closes at Task 5). role-catalogue, report-catalogue-pins, sah-077, tenant-isolation green.
+  (`zero-code-document-type`, known, pre-existing) and **`regression/legacy-047`** on `hr.filing.generate` (declared above;
+  closes at Task 5). role-catalogue, report-catalogue-pins, legacy-077, tenant-isolation green.
 - Static: `bun run typecheck` 14/14, `lint` 0, **`lint:rules` 11 rules, 0 violations**, `format:check` clean, all
   **seventeen** `scripts/check/*.sh` gates OK (incl. the new 8D gate). No route changed, so `openapi.json` is untouched.
 - Not run: `apps/worker`, `bun run e2e`, `packages/domain` and the UI workspaces (nothing they load changed).
@@ -1329,7 +1329,7 @@ on the export and not yet on the wire).
   `@dulja/contracts/hr/payslip`: `GeneratePayslipsBody` (strict; `lang`, `employeeIds?`), `PayslipSchema` (id `Payslip`),
   `GeneratePayslipsResult`. **`createPayslipRoutes(objectStore)`** (`apps/api/src/routes/hr/payslips.ts`) = `POST
   …/payroll-runs/{documentId}/payslips`, composed onto 8B's module by `composePayrollRunRouter` in
-  `apps/api/src/routes/index.ts`, whose `permissions` gain **`hr.filing.generate`** → **SAH-047 passes**. ADR
+  `apps/api/src/routes/index.ts`, whose `permissions` gain **`hr.filing.generate`** → **LEGACY-047 passes**. ADR
   **0079** (Proposed, two owner questions). `apps/api/test/openapi.test.ts`'s path pin gains the two new paths.
   Tests: `packages/db/test/hr/payslip.test.ts` (7), `apps/api/test/routes/hr/payslips.test.ts` (13),
   `hr-definitions.test.ts` 9 → 17 → 19.
@@ -1391,7 +1391,7 @@ in an RTL row it splits the digits in extraction). A correct build passes the sa
 - **`apps/api` whole suite: 1,036 passed in 106 files.**
 - **`apps/worker`: 132 passed in 20 files, plus its two Bun cases.**
 - **`tests` whole workspace: 966 passed, 5 skipped, 1 failed in 145 files** — only test 15's PDF hyphens
-  (`zero-code-document-type`, known, pre-existing). **`regression/sah-047` now passes** (closed by T5);
+  (`zero-code-document-type`, known, pre-existing). **`regression/legacy-047` now passes** (closed by T5);
   `hr-sensitive-side-channels`, `report-catalogue-pins`, `report-tie-out` / `-7c`, `tenant-isolation` green.
 - Static: `bun run typecheck` 14/14, `lint` 0, `lint:rules` 11 rules 0 violations, `format:check` clean, all
   seventeen `scripts/check/*.sh` gates OK. `openapi.json` regenerated (the two new paths and `PermitExpiry`,
@@ -1565,7 +1565,7 @@ unsafe methods need `Idempotency-Key`. The seeded `hr_payroll` holds all three c
 7. `0096.down.sql` deletes `app.permission` only (0089/0095/0097 precedent; unseeded-database precondition).
 8. Three more branch-policy pins moved 20 → 21 for `public_holiday`'s Form B: `packages/db/test/staff/branch-isolation.test.ts`
    (the policy list), `tests/invariants/branch-scoping.test.ts` (count + the Form B tables the A/B fixture does not
-   cover) and `tests/regression/sah-033.test.ts` (count).
+   cover) and `tests/regression/legacy-033.test.ts` (count).
 
 ### Decisions
 
@@ -1591,7 +1591,7 @@ report definition). Contracts round 19 **A13 item 19**; the 8D gate passes.
 - **`apps/worker`: 147 passed in 22 files, plus its two Bun cases.**
 - **`tests` whole workspace: 965 passed, 5 skipped, 3 failed in 145 files** — test 15's PDF hyphens
   (`zero-code-document-type`, known, pre-existing) and the two 20 → 21 branch-policy pins (`branch-scoping`,
-  `sah-033`), moved and re-run green with `tenant-isolation`, `sah-047` and `report-catalogue-pins` (5 files, 102).
+  `legacy-033`), moved and re-run green with `tenant-isolation`, `legacy-047` and `report-catalogue-pins` (5 files, 102).
 - `packages/contracts` 69, `apps/backoffice` 257. Static: `bun run typecheck` 14/14, `lint` 0, `lint:rules` 11 rules
   0 violations, `format:check` clean, all seventeen `scripts/check/*.sh` gates OK. `openapi.json` regenerated (the five
   leave paths and their schemas; the large diff is component re-ordering by registration).
@@ -1690,10 +1690,10 @@ e2e operator and seed).
   "8D pins" block holds the wire enum and `HR_CATALOGUE` together in both directions (and every 8D gate is a registered
   read code, five on `hr.payroll.read`, three on `hr.employee.read`). `packages/db/test/seed/reports.test.ts`: the real
   `8d/` directory loads idempotently on a tenant of its own (eight `hr.*` rows at version 1; the second run inserts
-  nothing). Regression blocks appended: **sah-011** (payslip header figures are 4 dp, never null; an employee missing
-  from Dulja is reported), **sah-020** (no rate shape in the seven 8D sources, no number in an 8D definition but
-  `version`/`width`, no scheme name as a value), **sah-033** (no 8D definition names a sensitive field, no HR dataset
-  joins a gated table, the permit list is empty for a company member without the code), **sah-085** (the payslip's
+  nothing). Regression blocks appended: **legacy-011** (payslip header figures are 4 dp, never null; an employee missing
+  from Dulja is reported), **legacy-020** (no rate shape in the seven 8D sources, no number in an 8D definition but
+  `version`/`width`, no scheme name as a value), **legacy-033** (no 8D definition names a sensitive field, no HR dataset
+  joins a gated table, the permit list is empty for a company member without the code), **legacy-085** (the payslip's
   labels per language and the same figures as a set; one definition per code, every Arabic label its own). Contracts
   round 19 **A13 item 22**.
 - **T12** — `docs/reports/phase-8.md` (the clause-by-clause record), `docs/review/2026-11-08-phase-8-exit.md` (the exit
@@ -1711,7 +1711,7 @@ e2e operator and seed).
    the Phase 7 total and said the next widening slice must move it.
 2. **The regression blocks share the workspace's single database and API** (`sharedDb()` / `sharedApi()`) with a fresh
    `seedTenantV2` tenant per block — the 8C precedent — rather than the plan's `startDb()` / `startApi()` per block.
-   SAH-085's figures are compared as a set (test 15's PDF hyphen artefact, as `payslips.test.ts`); SAH-020's scan covers
+   LEGACY-085's figures are compared as a set (test 15's PDF hyphen artefact, as `payslips.test.ts`); LEGACY-020's scan covers
    seven 8D sources (the plan's four plus `permit-expiry.ts`, `leave.ts` and `apps/api/src/print/payslip.ts`) and
    matches scheme names on word boundaries across sources and definitions.
 3. **T12's deliverables follow the orchestrator's names** — `docs/reports/phase-8.md` and

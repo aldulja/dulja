@@ -1,6 +1,6 @@
 -- ── 0027 · app.document.notes — the EXPAND half of an expand/contract change on a LIVE table ────────
 -- spec:2057 (§3.9 "Expand/contract for any change touching a live table"), spec:2236 (§4.8 zero-downtime
--- deployments). Answers SAH-080 (spec:872): the legacy schema upgrade is a full dump-and-repump.
+-- deployments). Answers LEGACY-080 (spec:872): the legacy schema upgrade is a full dump-and-repump.
 -- Contracts §4.3.4 assigns `document.notes` to 2C. The CONTRACT half is a later slice's PR — the
 -- procedure is docs/runbooks/expand-contract.md and the reasoning is ADR 0033. Acceptance test 25
 -- (spec:2443) is asserted against this file by packages/db/test/expand-contract.test.ts.

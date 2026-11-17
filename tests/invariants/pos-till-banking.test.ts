@@ -75,7 +75,7 @@ const bankFromDrawer = (amount: string, reference: string | null) =>
     ],
   });
 
-/** Every ledger row of the banking document, fingerprinted: matching must never alter one (SAH-041). */
+/** Every ledger row of the banking document, fingerprinted: matching must never alter one (LEGACY-041). */
 const ledgerFingerprint = async (): Promise<string> =>
   JSON.stringify(
     await db.admin`
@@ -186,7 +186,7 @@ describe("test 39 — a till banking is reconcilable, and matching never alters 
     expect(unreconciled.find((r) => r.kind === "till_banking")).toBeUndefined();
   });
 
-  it("matching and unmatching alter NO ledger entry, and the unmatched row is kept (SAH-041)", async () => {
+  it("matching and unmatching alter NO ledger entry, and the unmatched row is kept (LEGACY-041)", async () => {
     const before = await ledgerFingerprint();
     await asClerk((tx) =>
       unmatch(tx as never, ctx(), { companyId: f.seed.company, matchId, reason: "wrong line" }),

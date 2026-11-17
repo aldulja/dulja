@@ -89,7 +89,7 @@ terminalRoutes.openapi(
         );
     });
     // Every column EXCEPT code_hash, named one by one. `EnrolmentSchema` has no `codeHash` member, so even if
-    // this became a `select *` the response would fail wire validation rather than leak the hash (SAH-025).
+    // this became a `select *` the response would fail wire validation rather than leak the hash (LEGACY-025).
     const items = await c.var.withTenant(
       (tx) => tx<z.infer<typeof EnrolmentSchema>[]>`
       select id, company_id as "companyId", branch_id as "branchId", name, terminal_code as "terminalCode",

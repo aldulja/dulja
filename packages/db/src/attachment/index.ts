@@ -89,7 +89,7 @@ export interface StagedAttachment {
 
 /**
  * The half that touches the OBJECT STORE and no database: mints the id (uuidv7, client-side — the same
- * generator the table's default uses, with no round trip), derives the key from it (SAH-038), hashes the
+ * generator the table's default uses, with no round trip), derives the key from it (LEGACY-038), hashes the
  * bytes and writes the object. Called BEFORE the row's transaction opens, so up to 25 MiB of network I/O
  * holds no row lock and no pooled connection. Object first: a rollback afterwards leaves an unreferenced
  * object that 7C's export never sees, whereas a row without an object would be a 404 in a list.

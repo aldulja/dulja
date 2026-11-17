@@ -4,11 +4,11 @@
 
 **Goal.** Build the one costing implementation the whole system calls, and the machinery that keeps it honest when a document arrives late. Concretely: `app.cost_layer`, `app.cost_consumption` and `app.stock_valuation`; `company.costing_method` defaulting to `'avco'` with FIFO behind the same layer model; a pure `costingEngine` in `packages/domain/src/costing/` that refuses a negative unit cost, refuses an issue that exceeds the open layers, refuses a movement with no value and no way to compute one, and refuses a divisor below one micro-unit (amendment A22 — §4.7.1's doc comment says "clamped"; clamping a sub-micro divisor still yields the exploded unit cost test 6 forbids, so the engine refuses instead); the full body of `applyMovements`, which replaces 3A's provisional one and 2A's fail-closed step-9b guard so that posting inserts movements, then layers, then consumptions, then writes `document_line.cost`; `invalidateFrom` plus the `inventory.cost.replay` job, which replays forward from a back-dated document's own chronological point in bounded transactions and posts a visible `COST_ADJUSTMENT` document through the posting service rather than rewriting history; a valuation read under `inventory.cost.read`; and the `stock_valuation` snapshot with the nightly `inventory.projection.rebuild` rebuild-and-compare. At the end of this slice: twelve months of movements plus a purchase back-dated into month three recomputes months three to twelve and nothing earlier, in time proportional to the affected movements, with an adjustment entry a reader can explain; and the stock-valuation figure and the cost figure a profit report reads come out of the same function.
 
-**Architecture.** The split of contracts §3.1 is unchanged and this slice deepens it once more. The **pure** half — the layer model, the AVCO and FIFO consumption algorithms, the guards, the running average — lives in `packages/domain/src/costing/engine.ts`, imports nothing but `decimal.js` and `packages/domain`'s own money module, and never touches a database, a clock, a network or a random number. That is what makes `tests/golden/costing/` a byte-comparable fixture set (spec:2264) and what makes SAH-009 unrepeatable: there is exactly one formula, in one file, and reporting, valuation and posting all import it. The **I/O** half lives in `packages/db/src/costing/` — `apply-movements.ts` (the `postDocument` step-9 hook and the only writer of `app.inventory_movement`), `invalidate.ts`, `replay.ts`, `valuation.ts` — and is exported from `@dulja/db`. Layers are *derived*: `inventory_movement` is the append-only record, `cost_layer` and `cost_consumption` are rebuildable from it, and a back-dated document invalidates rows at or after its own `(effective_date, posting_seq)` and no earlier row (spec:1216–1221). The replay never edits a posted ledger entry; it posts a new `COST_ADJUSTMENT` document through `postDocument`, so contracts §5 item 22 holds — nothing outside `packages/db/src/posting/` and `packages/db/src/costing/` writes a ledger, movement, layer or projection table.
+**Architecture.** The split of contracts §3.1 is unchanged and this slice deepens it once more. The **pure** half — the layer model, the AVCO and FIFO consumption algorithms, the guards, the running average — lives in `packages/domain/src/costing/engine.ts`, imports nothing but `decimal.js` and `packages/domain`'s own money module, and never touches a database, a clock, a network or a random number. That is what makes `tests/golden/costing/` a byte-comparable fixture set (spec:2264) and what makes LEGACY-009 unrepeatable: there is exactly one formula, in one file, and reporting, valuation and posting all import it. The **I/O** half lives in `packages/db/src/costing/` — `apply-movements.ts` (the `postDocument` step-9 hook and the only writer of `app.inventory_movement`), `invalidate.ts`, `replay.ts`, `valuation.ts` — and is exported from `@dulja/db`. Layers are *derived*: `inventory_movement` is the append-only record, `cost_layer` and `cost_consumption` are rebuildable from it, and a back-dated document invalidates rows at or after its own `(effective_date, posting_seq)` and no earlier row (spec:1216–1221). The replay never edits a posted ledger entry; it posts a new `COST_ADJUSTMENT` document through `postDocument`, so contracts §5 item 22 holds — nothing outside `packages/db/src/posting/` and `packages/db/src/costing/` writes a ledger, movement, layer or projection table.
 
 **Tech Stack.** TypeScript on Bun (apps and packages) with Vitest on Node 24 for tests (D5); PostgreSQL 18 through `postgres.js` tagged templates; Drizzle ORM mirrors for reads and as the migration diff source (ADR-0002, contracts §3.4.9); Hono + `@hono/zod-openapi` for the valuation route; `decimal.js` behind `Money` and `Quantity` (0D); pg-boss for `inventory.cost.replay` and `inventory.projection.rebuild` (0D); Testcontainers for every database test. No package version appears in any source file — the lockfile owns versions (spec:104).
 
-**Spec.** `docs/spec/rebuild-spec.md` v1.2 — §0.2 (spec:97–106), §3.3 the entity map's `InventoryMovement ── CostLayer + CostConsumption` line and the projections paragraph (spec:1198, 1204), **§3.4 in full (spec:1208–1228)**, §3.7 the POS posting rule (spec:1360), §3.8 the transactions paragraph, the linter-rule paragraph and the privileges block (spec:1368, 1370, 1979–1993), §3.9 (spec:2039–2051), §4.2.1 `inventory.cost.read` (spec:2148), §4.11 golden-file tests (spec:2262–2267), §5.2 `packages/domain` and `tests/golden/` (spec:2352–2389), Part V phase 3 row (spec:2289) and the §5.3 phase-3 confirmation row (spec:2404), Part VI tests 5, 6 and 7 (spec:2423–2425), Part I SAH-004, 005, 006, 007, 008, 009, 010, 015, 016, 017, 022, 054, 055, 060, 061, 062, 076. Contracts: `docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md` (2026-09-07).
+**Spec.** `docs/spec/rebuild-spec.md` v1.2 — §0.2 (spec:97–106), §3.3 the entity map's `InventoryMovement ── CostLayer + CostConsumption` line and the projections paragraph (spec:1198, 1204), **§3.4 in full (spec:1208–1228)**, §3.7 the POS posting rule (spec:1360), §3.8 the transactions paragraph, the linter-rule paragraph and the privileges block (spec:1368, 1370, 1979–1993), §3.9 (spec:2039–2051), §4.2.1 `inventory.cost.read` (spec:2148), §4.11 golden-file tests (spec:2262–2267), §5.2 `packages/domain` and `tests/golden/` (spec:2352–2389), Part V phase 3 row (spec:2289) and the §5.3 phase-3 confirmation row (spec:2404), Part VI tests 5, 6 and 7 (spec:2423–2425), Part I LEGACY-004, 005, 006, 007, 008, 009, 010, 015, 016, 017, 022, 054, 055, 060, 061, 062, 076. Contracts: `docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md` (2026-09-07).
 
 ---
 
@@ -21,7 +21,7 @@
 - **Interfaces produced:** §4.7.1 in full (`CostingMethod`, `Layer`, `Consumption`, `CostingInput`, `CostingOutput`, `CostingEngine`, `costingEngine`, plus amendment A2's `CostingError` and `MIN_MEANINGFUL_QTY`); §4.7.2 in full (`applyMovements`'s completed body, `invalidateFrom`, `replay`); §4.7.3's `cost_layer`, `cost_consumption` and `company.costing_method` verbatim, plus §4.6.1's `stock_valuation` row; §3.6.2's one `inventory.cost.read` code; §4.14's `COST_ADJUSTMENT` row; the two 3B-owned entries of §4.2.6's `JOBS` (`inventory.cost.replay`, `inventory.projection.rebuild`).
 - **Two 0D behaviours every guard in this slice rests on, stated here because three tasks depend on them and neither is obvious from §4.2.1's signature list.** (1) **`Quantity.of` refuses more than six decimal places** — 0d:1034–1039 tests `/^-?\d+(\.\d{1,6})?$/` and throws a `RangeError`, so a sub-micro quantity *cannot be represented at all*. `MIN_MEANINGFUL_QTY` is therefore the smallest representable non-zero quantity, the refusal in `unitCostOf` is unreachable by construction from a `Quantity`, and it stays in the code as the guard that catches a future scale change rather than a runtime input (Task 3 guards case (b) asserts both halves). (2) **`Money.allocate` hands its residue by largest remainder with ties to the lowest index** (0d:474–477), not unconditionally to the first weight as §4.2.1's one-line summary reads; a zero weight has remainder zero and so cannot receive a residue unit while any positive-remainder share is unpaid. Task 2's AVCO split filters the zero-quantity shares out before allocating anyway, so the positional zip is correct by construction and not by that argument.
 - **Owner decisions:** **OD-06** → **Task 4** (isolated); default `company.costing_method = 'avco'`. No other owner decision touches this slice — 3B has **no screen**, so OD-24 does not apply.
-- **Part VI tests owned / re-run:** owned — **5** (back-dated costing, Task 9) and **6** (costing edge cases, Task 3). Re-run — **2** (`cost_layer`, Task 12; `stock_valuation`, Task 11), **7** partially (the cost side only — Task 13; 3D completes it and 7B re-runs it against 4B's `item_profitability`), **1** (the ledger invariant through an inventory-bearing document, Task 6), **12** and **13** and **36** for the three new tables. **§3.0.4 rows owned:** spec:1055 — cost layers, AVCO ⚠️, recost forward, one implementation, free-of-charge lines (3C contributes landed cost). **Regression files created / appended:** created — `sah-004`, `sah-006`, `sah-007`, `sah-009`, `sah-010`, `sah-015`, `sah-016`, `sah-017`, `sah-022`, `sah-054`, `sah-060`, `sah-061`, `sah-062`, `sah-076`, and **`sah-055`** in the OD-06 task (contracts §3.7.3's "Conditional defects" paragraph names 3B as its creator and 7B as the appender — amendment A13); appended — `sah-005`, `sah-008` (both created by 0B, contracts §3.7.3).
+- **Part VI tests owned / re-run:** owned — **5** (back-dated costing, Task 9) and **6** (costing edge cases, Task 3). Re-run — **2** (`cost_layer`, Task 12; `stock_valuation`, Task 11), **7** partially (the cost side only — Task 13; 3D completes it and 7B re-runs it against 4B's `item_profitability`), **1** (the ledger invariant through an inventory-bearing document, Task 6), **12** and **13** and **36** for the three new tables. **§3.0.4 rows owned:** spec:1055 — cost layers, AVCO ⚠️, recost forward, one implementation, free-of-charge lines (3C contributes landed cost). **Regression files created / appended:** created — `legacy-004`, `legacy-006`, `legacy-007`, `legacy-009`, `legacy-010`, `legacy-015`, `legacy-016`, `legacy-017`, `legacy-022`, `legacy-054`, `legacy-060`, `legacy-061`, `legacy-062`, `legacy-076`, and **`legacy-055`** in the OD-06 task (contracts §3.7.3's "Conditional defects" paragraph names 3B as its creator and 7B as the appender — amendment A13); appended — `legacy-005`, `legacy-008` (both created by 0B, contracts §3.7.3).
 - **Shared namespaces this slice writes into:** document-type codes (§4.14) — **`COST_ADJUSTMENT`**, module **`accounting`**, series `CA`, direction `internal`, `inventory.effect: "none"`, `approval.post: "accounting.journal.post"`, seeded as `packages/db/seed/my/document-types/COST_ADJUSTMENT.json`. **No *new* document-type code appears in this slice besides `COST_ADJUSTMENT`**: the registered test-only codes `POLICY_TEST` (2A, §4.14) and `STOCK_ISSUE_TEST` / `STOCK_RECEIPT_TEST` / `STOCK_TRANSFER_TEST` (3A, §4.14) are reused with this slice's own policies per amendment A14, which is what makes hazard 32 — *unregistered* codes — satisfied rather than the absence of every literal. Account codes (§4.15) — **none seeded**; consumed but seeded elsewhere: **`1300` Inventory control (0C)**, **`5000` Cost of goods sold (0C)** — resolved by code inside the replay job — and **`5900` Other operating expense (0C)**, which only the `STOCK_RECEIPT_TEST` *test* policy credits as a stand-in for 3C's GRNI; Task 8 asserts all three resolve before Task 9 uses them (contracts §5 item 33), and 3A's `seedItem` seeds all three idempotently in a Testcontainers company; `5920` FX rounding (0C, wired by 1A's `seedTenantV2`) is consumed only through `balanceInBase`. Report codes (§4.16.1) and `DatasetId` members (§4.16.2) — **none**: `inventory.valuation` is **3D's** code and 7B re-expresses it; this slice ships a valuation *read function and route*, not a report code (contracts §5 item 4 assigns the minimal inventory report set to 3D). `fixtures.ts` helpers (§4.17) — **none**; every fixture this slice needs is 3A's or earlier. Shared test helpers (§4.17.1) — **`postInventoryDocument`** in `tests/invariants/support/post-inventory.ts` under the `seedEmployee` rule (amendment A11: whichever of 3A/3B lands first commits it, the other verifies and extends its options additively).
 - **Never re-decide:** D1–D27 (spec:114–142); every name in the contracts document is frozen — a needed change goes to that document first.
 - **Contracts version:** 2026-09-07.
@@ -34,33 +34,33 @@ contracts:1261 says a plan implements §4's blocks **verbatim** and "may add mem
 |---|---|---|---|
 | **A1** | 3.4.1, 3.4.2 | Migration 0034 is **`0034_create_cost_layer_consumption_valuation.sql`**, not the 3B card's `0034_create_cost_layer_consumption.sql`. §4.6.1 assigns `stock_valuation` to `3B / 0034`, the slice's range 0034–0036 has no fourth slot, and §3.4.2's settled rule is "a file whose name understates what it does is renamed, not left" — the same rule that produced 2A's `0018_alter_document_party_fk_and_document_type_module.sql` and 2B's `0023_grant_document_draft_delete_and_add_series_gaps.sql`. The card's expected-name cell is amended to the long name. | T1 |
 | **A2** | 4.7.1 | Five additions to the costing interface, all forced by the block's own prose. **(a) `CostingError` is declared with a body** — §4.7.1's doc comment says the engine "Throws ERR_COST_NEGATIVE" and "otherwise ERR_STOCK_INSUFFICIENT" but names no class; `packages/domain` may not import `AppError` (§3.1), so this is the `PolicyEvaluationError` situation exactly (§4.4.2) and takes the same shape: one class, three codes, each a literal member of `ErrCode`. **(b) `MIN_MEANINGFUL_QTY` is exported** rather than left as a comment literal, so the clamp is one name and not three copies of `"0.000001"`. **(c) `average` takes a second parameter, `baseCurrency: CurrencyCode`** — a `Money` cannot exist without a currency and `average([])` has no layer to borrow one from; this is the identical reasoning §4.4.2 already records for `balanceInBase`'s third parameter. **(d) `CostingInput.movement`'s intersection gains `movementId: string; lotId: string`** — `newLayer` is `Omit<Layer, "id">` and `Layer` carries both, but `PlannedMovement.lotId` is `string | null` (the sentinel is resolved by `applyMovements`) and `PlannedMovement` has no movement id at all; `(string | null) & string` reduces to `string`, so the intersection narrows the lot rather than redeclaring it, and the movement id is pre-generated with `select uuidv7()` before the engine is called, which is Plan 0A's own id convention. **(e) `CostingInput` gains `allowShortfall: boolean`** — `applyMovements` sets it when `movement.costing === "zero"` (a free-of-charge line, spec:1055) or when an `inventory.negative_stock.override` `document_event` exists for the document (F-6, test 7 and test 18). Without it the engine would refuse the very excursion 3A's override path exists to authorise, and test 7's "gone negative" clause could not be produced. **(f)** `CostingOutput.value` and `unitCost` are **magnitudes, never negative**: `effect` carries the direction exactly as `side` does for a planned ledger line (§4.4.2 amendment A9), and `applyMovements` writes `inventory_movement.value` as the negated magnitude for an issue. | T2, T3 |
-| **A3** | 4.2.4 | One new `ERR_*` row and one widened union. **New row: `ERR_COST_VALUE_MISSING` — 422, raised by the costing engine (3B)** — "a stock movement reached the costing engine with no value and no way to compute one". SAH-007 is the Part I defect this slice owns and its fix is "value is a mandatory non-null attribute of every stock movement, rejected at write time if absent" (spec:1226); no allocated code says that (`ERR_COST_NEGATIVE` is about a computed sign, `ERR_POLICY_REQUIRES_MISSING` is about a policy input the *document* lacks). It joins `ERRORS` in the same PR that raises it, or `error-codes` (§3.7.5) goes red. **Widened: `PostingErrorCode` gains `ERR_STOCK_INSUFFICIENT`, `ERR_COST_NEGATIVE`, `ERR_COST_VALUE_MISSING` and `ERR_INTERNAL`** — all four are members of `ErrCode`, so the block's own rule ("a literal subset of ErrCode — never a new code") is respected, and §4.3.8 already lists the first two among the errors the posting service raises. | T2, T6, T7 |
+| **A3** | 4.2.4 | One new `ERR_*` row and one widened union. **New row: `ERR_COST_VALUE_MISSING` — 422, raised by the costing engine (3B)** — "a stock movement reached the costing engine with no value and no way to compute one". LEGACY-007 is the Part I defect this slice owns and its fix is "value is a mandatory non-null attribute of every stock movement, rejected at write time if absent" (spec:1226); no allocated code says that (`ERR_COST_NEGATIVE` is about a computed sign, `ERR_POLICY_REQUIRES_MISSING` is about a policy input the *document* lacks). It joins `ERRORS` in the same PR that raises it, or `error-codes` (§3.7.5) goes red. **Widened: `PostingErrorCode` gains `ERR_STOCK_INSUFFICIENT`, `ERR_COST_NEGATIVE`, `ERR_COST_VALUE_MISSING` and `ERR_INTERNAL`** — all four are members of `ErrCode`, so the block's own rule ("a literal subset of ErrCode — never a new code") is respected, and §4.3.8 already lists the first two among the errors the posting service raises. | T2, T6, T7 |
 | **A4** | 4.4.2, 4.3.2, 4.3.4 | **`document_line.cost` and `LineSnapshot.cost` are in the company's BASE currency, and `PlannedLedgerLine.role` gains `"cost"`.** §4.7.3 already declares `inventory_movement.value` "base currency", and a cost layer's `unit_cost` is base by construction — a layer outlives the exchange rate of the document that created it. 2A's `loadSnapshot` builds `cost: Money.of(r.cost, docCurrency)`, which is wrong in both directions: read as document currency it books a foreign-currency sale's COGS at the header rate (base COGS then depends on the sales rate, not on what the goods cost); read as base currency it makes `toBase(amount, rate)` throw `ERR_MONEY_CURRENCY_MISMATCH` inside `push`. The coherent fix is four one-expression edits, all in Task 5: `loadSnapshot` builds the field with `baseCurrency`; `evaluatePolicy` tags a planned line whose `amount` ref is `line.cost` or `line.variance_value` with `role: "cost"` and sets its `base` to the amount itself instead of calling `toBase`; `balanceInBase` is unchanged (it already sums `l.base`); and 1A's `insertLedger` widens its `isFx` branch to `role !== "policy"`, so a cost line is written in base currency at rate `1.00000000` exactly as an `fx_rounding` line already is. **The evaluator does the tagging, not `applyMovements`** — otherwise 3D's `line.variance_value` lines and every reversal of an already-costed document (whose `cost` is non-null and never passes through `applyMovements` at all) would carry the wrong currency and the wrong rate. | T5 |
-| **A5** | 4.3.1, 4.2.3 | **`postDocument`'s input gains an optional `jobs?: JobClient`, and `AppEnv["Variables"]` gains an eighth member `jobs: JobClient`.** §4.3.2 step 14 requires `postDocument` to enqueue `inventory.cost.replay` "on this same `tx`", and `enqueue(tx, name, job, opts)` is a method on `JobClient` — which `postDocument(tx, ctx, { documentId })` has no way to reach. 3B is the first slice whose step 14 does anything, so it is the slice that opens the seam. The member is **optional**, so every 1A/1B/2A/2B/2C/3A call site compiles untouched: a document that plans no movement never consults it. When it is needed and absent — a back-dated inventory document posted through a caller that supplied none — `postDocument` fail-closes with `PostingError("ERR_INTERNAL", …)` rather than silently skipping a recost, which is SAH-005 (`CstChanged` never set on insert) reintroduced. `createApp` sets the Hono variable from `deps.jobs` in a two-line middleware; `apps/worker` handlers close over the client the entrypoint already constructed. | T7 |
+| **A5** | 4.3.1, 4.2.3 | **`postDocument`'s input gains an optional `jobs?: JobClient`, and `AppEnv["Variables"]` gains an eighth member `jobs: JobClient`.** §4.3.2 step 14 requires `postDocument` to enqueue `inventory.cost.replay` "on this same `tx`", and `enqueue(tx, name, job, opts)` is a method on `JobClient` — which `postDocument(tx, ctx, { documentId })` has no way to reach. 3B is the first slice whose step 14 does anything, so it is the slice that opens the seam. The member is **optional**, so every 1A/1B/2A/2B/2C/3A call site compiles untouched: a document that plans no movement never consults it. When it is needed and absent — a back-dated inventory document posted through a caller that supplied none — `postDocument` fail-closes with `PostingError("ERR_INTERNAL", …)` rather than silently skipping a recost, which is LEGACY-005 (`CstChanged` never set on insert) reintroduced. `createApp` sets the Hono variable from `deps.jobs` in a two-line middleware; `apps/worker` handlers close over the client the entrypoint already constructed. | T7 |
 | **A6** | 4.7.2 | `invalidateFrom`'s input object gains `jobs: JobClient` (required — its whole purpose is to enqueue), and **`replay` is registered through a thin `JobHandler` wrapper**: §4.7.2 gives it the signature `(sql, job, ctx) => Promise<{ movementsReplayed; adjustmentsPosted }>` while §4.2.6's `JobHandler<N>` returns `Promise<void>`, so `apps/worker/src/handlers/cost-replay.ts` registers `async (sql, job, ctx) => { const r = await replay(sql, job, ctx); log().info({ ...r }, "cost replay finished"); }`. The return value is contract because the job's own test asserts it; the registration adapts it. | T7, T9 |
-| **A7** | 3.7.4 | For the **costing** area only, `expected.json` is a `CostingGoldenExpectation`: `{ plans: PostingPlan[]; consumptions: Consumption[][]; layersAfter: GoldenLayer[] }`. §3.7.4's sentence ("`expected.json` is the `PostingPlan`") still holds — the plans are in there — but a `PostingPlan` cannot express *which layers an issue consumed*, and SAH-009's entire failure was two implementations disagreeing about exactly that. The type is declared in `tests/golden/costing.test.ts` and the fixtures are `tests/golden/costing/<case>/input.json` (a `DocumentSnapshot[]`) plus `expected.json`. | T12 |
+| **A7** | 3.7.4 | For the **costing** area only, `expected.json` is a `CostingGoldenExpectation`: `{ plans: PostingPlan[]; consumptions: Consumption[][]; layersAfter: GoldenLayer[] }`. §3.7.4's sentence ("`expected.json` is the `PostingPlan`") still holds — the plans are in there — but a `PostingPlan` cannot express *which layers an issue consumed*, and LEGACY-009's entire failure was two implementations disagreeing about exactly that. The type is declared in `tests/golden/costing.test.ts` and the fixtures are `tests/golden/costing/<case>/input.json` (a `DocumentSnapshot[]`) plus `expected.json`. | T12 |
 | **A8** | 4.2.7 | Register one `RouteModule` path: **`/v1/companies/:companyId/valuation`** → `valuationRoutes`, gate `inventory.cost.read`, with sub-paths `GET …/valuation` (as-of quantity and value per item and warehouse) and `GET …/valuation/layers` (the open layers of one item, the raw data 7B's `inventory.stock_ageing` reads). One `PROBES` entry keyed by that exact path. This is **not** the `inventory.valuation` report code of §4.16.1 — that is 3D's, mounted on 1B's `reports` module — and the two never collide because they are different modules on different paths. | T10 |
 | **A9** | 4.2.6 | `JobPayload` gains the two 3B-owned keys — `"inventory.cost.replay": { companyId: string }` and `"inventory.projection.rebuild": { companyId?: string; asOf?: string }` — and `JOB_PROBES` gains an entry for each (hazard 31). The `JOBS` registry itself is **not** edited: both names and both schedules are already in 0B's closed sixteen-name const with `owner: "3B"`. | T7, T11 |
 | **A10** | 4.16.3 | `cost_layer` joins 1B's `projectionChecks` registry, so **`IntegrityReport.projections.checked` becomes `["account_balance", "cost_layer", "document_series", "stock_on_hand"]`** — `projectionChecks()` sorts by name (1b:930–932), so the array is alphabetical and 3A's `stock_on_hand` needs no re-ordering. The three pinned assertions that read it — `tests/invariants/audit-chain.test.ts`, `apps/worker/test/handlers/integrity-check.test.ts` (both 1B's) and `tests/invariants/projection-rebuild.test.ts` — are updated in the same PR, exactly as 2B did for `document_series`. `stock_valuation` does **not** join it: it is an as-of history keyed by date, not a current-state projection, and its rebuild-and-compare belongs to `inventory.projection.rebuild` (ADR 0039). | T11, T12 |
 | **A11** | 4.17.1 | Register **one row for the whole file `tests/invariants/support/post-inventory.ts`**, owner "**3A / 3B — whichever executes first**", under the `seedEmployee` rule of §4.17: the first of the two to land commits the file and the other's task is "verify these exports exist and their options cover this slice's needs", extending them additively if not. The row's Shape cell is the file's **full export list**, exactly as Task 6's Interfaces block declares it — `postInventoryDocument(db, s, opts): Promise<{ documentId: string; result: PostResult }>` with `PostInventoryOptions` and `InventoryLine`; `recordingJobs(): JobClient & { readonly enqueued: readonly RecordedJob[] }` with `RecordedJob`; **`ensureOpenPeriods(db, s, year): Promise<void>`**; and the two policy consts `STOCK_ISSUE_COST_POLICY` / `STOCK_RECEIPT_COST_POLICY`. (`postOverriddenIssue` and `postInventoryDocument`'s `beforePost` option are amendment A21(b)'s two additive rows against this same file, and stay there.) **`ensureOpenPeriods` is registered rather than left internal because a later slice's test names a month other than January only because of it** — Plan 0A's `seedTenant` creates three fiscal periods, one open, and `app.fiscal_period` carries an overlap constraint, so every slice whose fixtures span a year needs this one reopener rather than a second copy of it; **8B is the first, in every T13/T14 payroll suite**, and it depends on the name without being able to register it. **The contracts document does not yet carry the row**: §4.17.1's register lists no `tests/invariants/support/post-inventory.ts` entry, and §4.18's round 3 — the round that folds in plans 3A–9B — carries only two §4.17 rows (7A's `seedReportDefinition` and 5A's `DraftLine.taxCodeId`) and no §4.17.1 row at all. So this amendment is one of the ones round 3's own preamble exempts from "stays that slice's to land": *"an amendment a later slice depends on"*, which is the ⚑ treatment amendment A5 already has there, and landing it is the contracts editor's, not 8B's. Nothing in execution order breaks meanwhile — 3B runs in Phase 3 and 8B in Phase 8, so Task 6 Step 4 commits the file and the register row long before a payroll suite imports the name; what 8B cannot do is *cite* a register row that does not exist yet. 1B's `postJournal` is JOURNAL-shaped and cannot draft an item line; §4.17 assigns 3B no `fixtures.ts` helper and hazard 9 forbids inventing one beside the register, so all of it belongs in the test tier's own register beside `postJournal`. | T6 |
 | **A12** | 4.7.3 | §4.7.3's closing paragraph calls `COST_ADJUSTMENT` "a `JOURNAL`-shaped document type (`direction: internal`, `account.code` lines for the `1300` inventory control and `5000` COGS accounts)". Realised as: **the policy addresses `{ from: "line.account" }` like JOURNAL's, and the replay *job* resolves the two §4.15 codes to `document_line.account_id`.** An `account: { code: "1300" }` reference cannot express "debit when the recomputed value rose, credit when it fell" — `document_line.debit` carries `check (debit >= 0)`, so the direction has to live in which column the job fills, and the job is the only thing that knows the sign. Hazard 33's rule is honoured through Task 8's assertion that both codes resolve in the company before Task 9 posts to them. | T8, T9 |
-| **A13** | 3.7.3 | §3.7.3 states sah-055's creator twice and the two disagree: the paragraph on conditional creators says "**055** — 7B (OD-06, with the stock-ageing report)" and the *Conditional defects* paragraph below it says "055 (FIFO — OD-06, **3B creates** with the FIFO layer path; 7B appends the stock-ageing report)". The 3B card's "Regression files created" list also names it. **Resolved in favour of the second: 3B creates, 7B appends** — the rule §3.7.3 itself states is that a conditional file's creator is "the slice that owns the conditional work", and the FIFO layer path is this slice's. The first sentence is corrected. | T4 |
+| **A13** | 3.7.3 | §3.7.3 states legacy-055's creator twice and the two disagree: the paragraph on conditional creators says "**055** — 7B (OD-06, with the stock-ageing report)" and the *Conditional defects* paragraph below it says "055 (FIFO — OD-06, **3B creates** with the FIFO layer path; 7B appends the stock-ageing report)". The 3B card's "Regression files created" list also names it. **Resolved in favour of the second: 3B creates, 7B appends** — the rule §3.7.3 itself states is that a conditional file's creator is "the slice that owns the conditional work", and the FIFO layer path is this slice's. The first sentence is corrected. | T4 |
 | **A14** | 4.14 | **The `policy` a test configures through `seedDocumentType` is not part of a §4.14 code's registration.** 3A registers `STOCK_ISSUE_TEST`, `STOCK_RECEIPT_TEST` and `STOCK_TRANSFER_TEST` as test-only codes and notes that *its own* tests address them over `line.debit`/`line.credit` "so amendment A5's step-9b guard never fires". 3B is the slice that deletes that guard, so it configures the same two codes with a `line.cost` policy over `item.cogs_account` / `item.inventory_account` — the shape step 9 exists to fill. The §4.14 rows are unchanged (direction, `inventory.effect`, series and module all still hold) and **no new document-type code appears in this slice besides `COST_ADJUSTMENT`**. Without this, either the slice invents a fourth test-only code (hazard 32) or it cannot exercise a cost line at all. | T6 |
 | **A15** | 4.3.1 | **`reverseDocument`'s input gains the same optional `jobs?: JobClient` as `postDocument`.** `reverseDocument` calls `postDocument` on the reversal document it creates, and a reversal whose `effective_date` precedes later movements of the same items **is** back-dated — so without the pass-through, amendment A5's fail-closed guard fires on an ordinary reversal and D13's reversal path breaks the moment Phase 3 ships. Optional for the same reason: a reversal that plans no movement never consults it. `voidDocument` needs nothing — a void writes no movement. The two API call sites (1A's post handler, 2B's `…/reverse` handler) each pass `jobs: c.var.jobs`. | T7 |
-| **A16** | 4.7.2, 4.14 | **Three settled behaviours of the replay, recorded because a later slice will hit each one.** (a) One `COST_ADJUSTMENT` per **(fiscal period, `warehouse.branch_id`)** — `app.document.branch_id` is required, 3A's `warehouse.branch_id` is NOT NULL, and spec:1066 makes BRANCH meaningful on a COGS line, so grouping by branch is the only shape in which the adjustment tags correctly. (b) A **closed** source period carries the entry forward to the earliest open period on or after it, with `document.notes` naming the source period; **no** open period records an integrity incident and returns, rather than letting `ERR_PERIOD_NOT_OPEN` retry until pg-boss dead-letters the job. (c) The replay **does** rewrite `document_line.cost` on already-posted documents — it is the current answer, read by reversals, 3D's `line.variance_value` and every margin report, and two answers to one question is SAH-009; the audit trigger keeps the before-image and the adjustment reconciles the immutable ledger. All three are ADR 0038. | T9 |
+| **A16** | 4.7.2, 4.14 | **Three settled behaviours of the replay, recorded because a later slice will hit each one.** (a) One `COST_ADJUSTMENT` per **(fiscal period, `warehouse.branch_id`)** — `app.document.branch_id` is required, 3A's `warehouse.branch_id` is NOT NULL, and spec:1066 makes BRANCH meaningful on a COGS line, so grouping by branch is the only shape in which the adjustment tags correctly. (b) A **closed** source period carries the entry forward to the earliest open period on or after it, with `document.notes` naming the source period; **no** open period records an integrity incident and returns, rather than letting `ERR_PERIOD_NOT_OPEN` retry until pg-boss dead-letters the job. (c) The replay **does** rewrite `document_line.cost` on already-posted documents — it is the current answer, read by reversals, 3D's `line.variance_value` and every margin report, and two answers to one question is LEGACY-009; the audit trigger keeps the before-image and the adjustment reconciles the immutable ledger. All three are ADR 0038. | T9 |
 | **A17** | 3.7.4 | **A golden costing case carries its own `policies.json` — an object keyed by `documentTypeCode`.** Amendment A7 fixes `expected.json`'s shape but leaves the policy unaccounted for: `input.json` is a `DocumentSnapshot[]`, a snapshot does not say how to post, and `expected.plans` came from an `evaluatePolicy` call — so the policy is fixture *input*. It is a **map, not a single policy**, because `inventory.effect` is a per-policy field and every costing case mixes receipts with issues: one policy would plan a receipt as an issue. The map lives per case rather than in the harness so a case wanting a different `inventory.costing` (a free-of-charge line) edits one file. Also recorded: **`bigint` is not JSON** — the harness serialises with a replacer rendering a bigint as its decimal string, and the fixtures store `header.number` and `postingSeq` as strings. | T12 |
 | **A18** | 4.2.8 | The §4.2.8 contracts-module register gains **`packages/contracts/src/inventory/valuation.ts`** — the first `inventory/` module — with `ValuationRowSchema`, `ValuationQuery`, `ValuationList`, `CostLayerRowSchema`, `CostLayerQuery`, `CostLayerList`. It uses **literal `filter[<field>][<op>]` Zod keys**, which §4.2.8's round-2 settlement makes the default mechanism for a narrow surface (two filterable fields); `parseFilters` is for a wide or open one, and never both on one route. | T10 |
 | **A19** | 4.7.2 | **Nine module-level names §4.7.2 does not carry, all of them consumed by more than one task or more than one slice.** `openLayersFor(tx, { companyId, itemId, warehouseId, baseCurrency }): Promise<Layer[]>` in `apply-movements.ts` — **the ONE open-layer reader**, and the most load-bearing of the nine: `applyMovements`, `replay`, `valuationAsOf`'s sibling reads and Task 13's helpers all call it, and 3C, 3D, 4B and 7B will each need the one definition of "open layer" (`invalidated_at is null and qty_remaining > 0`, ordered by all four §4.3.5 columns). Then `MOVEMENTS_PER_BATCH = 500` (`replay.ts`) and `VALUATION_PAGE = 1000` (`valuation.ts`), the two bounds spec:1368 requires and the two figures a test asserts; `valuationAsOf` with `ValuationParams`/`ValuationRow` and `openLayersOf` with `OpenLayersParams`/`CostLayerRow` (`valuation.ts`) — the read side §4.7.2's prose implies and its code block omits; `rebuildStockValuation` with `StockValuationRebuildResult` (`valuation.ts`), the `stock_valuation` half of §4.6.1's register row; and `COST_ADJUSTMENT_CODE`, `ADJUSTMENT_ACCOUNT_CODES`, `AdjustmentAccounts`, `resolveAdjustmentAccounts` (`cost-adjustment.ts`), which is amendment A12's realisation made importable. Recorded together because they ship in one PR and a later slice that cannot find them in the registry will write a second one. | T7, T8, T9, T10, T11 |
 | **A20** | 4.16.3 | **`COST_LAYER_CHECK: ProjectionCheck` lives in `packages/db/src/integrity/cost-layer-check.ts`**, registered from `integrity/index.ts` exactly as 1B's `ACCOUNT_BALANCE_CHECK` and 3A's `STOCK_ON_HAND_CHECK` are. A10 already records the *consequence* (the four-name `projections.checked` array); this row records the name and its file, so §4.16.3's registry list is complete. Its `run` matches `ProjectionCheck` exactly — `run(tx: Sql)`, no second parameter: the invariant `qty_remaining = qty_in − Σ valid consumptions` is per-layer and RLS has already reduced the table to the caller's tenant, which is why 1B's and 3A's checks take no company either. | T12 |
-| **A21** | 4.17.1 | **Two rows and one widening in the test tier's register.** (a) `costingContext(sah)` and `CostingFixture` in **`tests/regression/support/costing.ts`**, owner 3B — a cross-file shared helper, which §4.17.1 requires be registered before it is added; it is *this slice's own* module rather than a fifteenth export on 0B's `tests/support/regression.ts`, which is the merge hotspot §4.17 exists to prevent. (b) `postInventoryDocument`'s `beforePost` option **and the `postOverriddenIssue` export** in the same file, both additive, beside A11's row — the override sequence is written once because §4.5.3's guard refuses two plausible shapings of it (Task 6 Step 3 records which). (c) §4.17.1's closing paragraph names **two** files outside the `tests` workspace that import `tests/invariants/support/**` — `apps/worker/test/**` and `apps/api/test/**`; this slice makes it **three** by adding `packages/db/test/**`, through a third named allowance on `scripts/lint/rules/dependency-rule.ts` with its reason on the line plus one `include` entry in `packages/db/tsconfig.json`. Three DB-tier costing suites must post through the *real* `postDocument`, and §4.17 assigns 3B no `fixtures.ts` helper, so a second copy of the helper inside `packages/db` is the alternative hazard 9 forbids. | T7, T13 |
-| **A22** | 4.7.1 | **The divisor is REFUSED below `MIN_MEANINGFUL_QTY`, not clamped to it.** §4.7.1's doc comment reads "the divisor is clamped to MIN_MEANINGFUL_QTY = Quantity.of(\"0.000001\") (spec:1227)". Clamping does not close SAH-008(b): dividing a value by `0.000001` instead of by `0.0000005` still produces the exploded unit cost Part VI test 6 forbids being *stored*, so the engine raises `ERR_STOCK_INSUFFICIENT` instead. Two facts make this a documentation fix more than a behavioural one: at `QUANTITY_SCALE = 6` a sub-micro quantity is unrepresentable (`Quantity.of` throws — see the Assumptions block), so no `Quantity` can reach the branch; and spec:1227's own word is "clamped to a minimum meaningful quantity", which the *representation* now enforces. The plan's Goal, ADR 0037 decision 5 and Task 3 guards case (b) all say "refused below" for the same reason. | T2, T3 |
-| **A23** | 4.7.3 | **`app.cost_consumption` gains three CHECK constraints and one composite foreign key §4.7.3's block does not carry:** `quantity > 0`, `unit_cost >= 0`, `value >= 0`, and `foreign key (tenant_id, company_id) references app.company(tenant_id, id)`. Taking the FK first: §4.7.3 declares `company_id` on this table and no key over it, while `cost_layer` in the same block and `stock_valuation` in §4.6.1 both carry that exact FK, and the Always list of every plan in this phase requires "composite FKs `(tenant_id, <parent>_id)` to every tenant-scoped parent". Plan 0A's `composite_fk` rule only inspects the FKs a table *has*, so `lintSchema` stays green either way — which makes this a silent divergence rather than a caught one, and the reason it is recorded here instead of assumed. Then the CHECKs. §4.7.3 gives `cost_layer` the matching pair (`unit_cost >= 0`, `qty_remaining >= 0`) and leaves the consumption row unconstrained; SAH-008's arms are equally storable there, and a consumption is the row a margin report multiplies. Recorded rather than assumed because `quantity > 0` is load-bearing for a later slice: it forbids a **zero-quantity** consumption row, so 3C's landed cost and 3D's variance must adjust a layer's `unit_cost` or post an adjustment rather than write a nil consumption. Migration 0034's header comment and commit message name this amendment instead of claiming the block is verbatim. | T1 |
+| **A21** | 4.17.1 | **Two rows and one widening in the test tier's register.** (a) `costingContext(legacyDefect)` and `CostingFixture` in **`tests/regression/support/costing.ts`**, owner 3B — a cross-file shared helper, which §4.17.1 requires be registered before it is added; it is *this slice's own* module rather than a fifteenth export on 0B's `tests/support/regression.ts`, which is the merge hotspot §4.17 exists to prevent. (b) `postInventoryDocument`'s `beforePost` option **and the `postOverriddenIssue` export** in the same file, both additive, beside A11's row — the override sequence is written once because §4.5.3's guard refuses two plausible shapings of it (Task 6 Step 3 records which). (c) §4.17.1's closing paragraph names **two** files outside the `tests` workspace that import `tests/invariants/support/**` — `apps/worker/test/**` and `apps/api/test/**`; this slice makes it **three** by adding `packages/db/test/**`, through a third named allowance on `scripts/lint/rules/dependency-rule.ts` with its reason on the line plus one `include` entry in `packages/db/tsconfig.json`. Three DB-tier costing suites must post through the *real* `postDocument`, and §4.17 assigns 3B no `fixtures.ts` helper, so a second copy of the helper inside `packages/db` is the alternative hazard 9 forbids. | T7, T13 |
+| **A22** | 4.7.1 | **The divisor is REFUSED below `MIN_MEANINGFUL_QTY`, not clamped to it.** §4.7.1's doc comment reads "the divisor is clamped to MIN_MEANINGFUL_QTY = Quantity.of(\"0.000001\") (spec:1227)". Clamping does not close LEGACY-008(b): dividing a value by `0.000001` instead of by `0.0000005` still produces the exploded unit cost Part VI test 6 forbids being *stored*, so the engine raises `ERR_STOCK_INSUFFICIENT` instead. Two facts make this a documentation fix more than a behavioural one: at `QUANTITY_SCALE = 6` a sub-micro quantity is unrepresentable (`Quantity.of` throws — see the Assumptions block), so no `Quantity` can reach the branch; and spec:1227's own word is "clamped to a minimum meaningful quantity", which the *representation* now enforces. The plan's Goal, ADR 0037 decision 5 and Task 3 guards case (b) all say "refused below" for the same reason. | T2, T3 |
+| **A23** | 4.7.3 | **`app.cost_consumption` gains three CHECK constraints and one composite foreign key §4.7.3's block does not carry:** `quantity > 0`, `unit_cost >= 0`, `value >= 0`, and `foreign key (tenant_id, company_id) references app.company(tenant_id, id)`. Taking the FK first: §4.7.3 declares `company_id` on this table and no key over it, while `cost_layer` in the same block and `stock_valuation` in §4.6.1 both carry that exact FK, and the Always list of every plan in this phase requires "composite FKs `(tenant_id, <parent>_id)` to every tenant-scoped parent". Plan 0A's `composite_fk` rule only inspects the FKs a table *has*, so `lintSchema` stays green either way — which makes this a silent divergence rather than a caught one, and the reason it is recorded here instead of assumed. Then the CHECKs. §4.7.3 gives `cost_layer` the matching pair (`unit_cost >= 0`, `qty_remaining >= 0`) and leaves the consumption row unconstrained; LEGACY-008's arms are equally storable there, and a consumption is the row a margin report multiplies. Recorded rather than assumed because `quantity > 0` is load-bearing for a later slice: it forbids a **zero-quantity** consumption row, so 3C's landed cost and 3D's variance must adjust a layer's `unit_cost` or post an adjustment rather than write a nil consumption. Migration 0034's header comment and commit message name this amendment instead of claiming the block is verbatim. | T1 |
 
 ---
 
 ## Global Constraints
 
-**Never** (spec:97–104, restated because each task must be able to stand alone): write to a ledger or movement table outside the posting service — for this slice that means outside `packages/db/src/posting/**` and `packages/db/src/costing/**`, the two directories `posting-only-tables` (§3.7.5) allows; represent money as a float anywhere, TypeScript included; build SQL by string concatenation (SAH-036/037/069); issue DDL from application code (SAH-053); disable an invariant, constraint or trigger "temporarily" (SAH-027, 041, 053) — the replay in particular never disables `assert_stock_available` or `forbid_change`; gate an audit write on any flag (SAH-030); hard-code a package version into a source file — the lockfile owns versions.
+**Never** (spec:97–104, restated because each task must be able to stand alone): write to a ledger or movement table outside the posting service — for this slice that means outside `packages/db/src/posting/**` and `packages/db/src/costing/**`, the two directories `posting-only-tables` (§3.7.5) allows; represent money as a float anywhere, TypeScript included; build SQL by string concatenation (LEGACY-036/037/069); issue DDL from application code (LEGACY-053); disable an invariant, constraint or trigger "temporarily" (LEGACY-027, 041, 053) — the replay in particular never disables `assert_stock_available` or `forbid_change`; gate an audit write on any flag (LEGACY-030); hard-code a package version into a source file — the lockfile owns versions.
 
 **Always**, for every new table (spec:106 unioned with the Plan 0A linter, contracts §3.3): `tenant_id`; RLS enabled **and forced** through `call app_meta.enable_tenant_rls('app.<name>')`; the policy named exactly `tenant_isolation`; `id uuid primary key default uuidv7()` unless the table is in `NO_ID_TABLES`; `created_at timestamptz not null default now()`; `call app_meta.attach_audit('app.<name>')` unless the table is in `AUDIT_EXEMPT`; `call app_meta.attach_stamp('app.<name>', '<col>_by')` for every `*_by` column; composite FKs `(tenant_id, <parent>_id)` to every tenant-scoped parent; a migration with a hand-written down; a Drizzle mirror in `packages/db/src/schema/`; and a test that a second tenant cannot see it. `lintSchema` must report **zero** violations after every migration. This slice's three new tables all appear in contracts §3.5.3: `cost_layer` and `cost_consumption` are **already** in `AUDIT_EXEMPT` (plan0A:2707–2710 lists both as forward declarations) and join no other set; `stock_valuation` **joins `NO_ID_TABLES` and `AUDIT_EXEMPT`**. None of the three attracts a `branch_isolation` policy here — contracts §3.5.1 item 7 puts all three (and `cost_consumption` through its movement) in **6C's migration 0068**, which names them explicitly, and 6C is also the slice that adds the `branch_isolation_policy` linter rule.
 
@@ -70,7 +70,7 @@ contracts:1261 says a plan implements §4's blocks **verbatim** and "may add mem
 
 **Money is `numeric(19,4)` in Postgres and `Money` in TypeScript** (spec:2041); quantities are `numeric(19,6)` and `Quantity` (spec:2043); rates are `numeric(19,8)`. Base conversion is `round(value × rate, 4)` with `HALF_AWAY_FROM_ZERO` (spec:1816, contracts §5 item 23). A unit cost is `round(value ÷ quantity, 4)` with `HALF_AWAY_FROM_ZERO` for the same symmetry reason. `effective_date` is a `date` the user enters and is never derived from `posted_at` (spec:2039).
 
-**The chronological key is explicit and total, and never an index definition** (spec:1225, SAH-067): `(document.effective_date, document.posting_seq, document_line.line_no, inventory_movement.movement_no)` — contracts §4.3.5. Every ordering in this slice — the open-layer read, the FIFO walk, the replay's forward pass, the golden fixtures — writes those four columns out in that order. A query that orders by fewer than four is a defect: SAH-005's incremental path ordered by document **id** while its batch path ordered by **date**, and that single disagreement is the defect.
+**The chronological key is explicit and total, and never an index definition** (spec:1225, LEGACY-067): `(document.effective_date, document.posting_seq, document_line.line_no, inventory_movement.movement_no)` — contracts §4.3.5. Every ordering in this slice — the open-layer read, the FIFO walk, the replay's forward pass, the golden fixtures — writes those four columns out in that order. A query that orders by fewer than four is a defect: LEGACY-005's incremental path ordered by document **id** while its batch path ordered by **date**, and that single disagreement is the defect.
 
 **No new document-type code, account code, report code, `DatasetId` member or `fixtures.ts` helper beyond the ones this plan's Assumptions block names** (hazard 32). The one document-type code is `COST_ADJUSTMENT`; the two account codes are `1300` and `5000`, both seeded by 0C and only *resolved* here.
 
@@ -138,21 +138,21 @@ no tier row at all (0b:5064).
 | `tests/golden/costing.test.ts` | the byte-compare harness (spec:2264), `CostingGoldenExpectation`, `GoldenLayer` |
 | `tests/invariants/support/post-inventory.ts` | `postInventoryDocument`, `recordingJobs`, `ensureOpenPeriods`, the two policy consts (amendment A11) |
 | `tests/regression/support/costing.ts` | `costingContext()` — the sixteen helpers the regression files share (T13) |
-| `tests/regression/sah-004.test.ts` | cost advanced on INSERT only, with no rebuild path (T13) |
-| `tests/regression/sah-006.test.ts` | an edit keyed on the OLD key desynchronising two aggregates (T13) |
-| `tests/regression/sah-007.test.ts` | value-less movements NULL-poisoning a cost for all history (T13) |
-| `tests/regression/sah-009.test.ts` | three irreconcilable averages — **and acceptance test 7's cost side** (T13) |
-| `tests/regression/sah-010.test.ts` | a dimension in the SELECT list but not in the sort or group break (T13) |
-| `tests/regression/sah-015.test.ts` | a date window from a predicate that can never be satisfied (T13) |
-| `tests/regression/sah-016.test.ts` | min/max prices that ratchet permanently (T13) |
-| `tests/regression/sah-017.test.ts` | the open-quantity projection half; 3C and 3D append (T13) |
-| `tests/regression/sah-022.test.ts` | a singleton SELECT omitting a key column (T13) |
-| `tests/regression/sah-054.test.ts` | a recost aborting on the first historical below-cost sale (T13) |
-| `tests/regression/sah-055.test.ts` | the FIFO carry-forward (OD-06 conditional; **3B creates**, 7B appends) — T4 |
-| `tests/regression/sah-060.test.ts` | a repair with two sort orders that dropped columns it rebuilt (T13) |
-| `tests/regression/sah-061.test.ts` | a repair that reset every cost to its opening value (T13) |
-| `tests/regression/sah-062.test.ts` | the watermark written at a group break (T13) |
-| `tests/regression/sah-076.test.ts` | duplicate and near-duplicate costing procedures (T13) |
+| `tests/regression/legacy-004.test.ts` | cost advanced on INSERT only, with no rebuild path (T13) |
+| `tests/regression/legacy-006.test.ts` | an edit keyed on the OLD key desynchronising two aggregates (T13) |
+| `tests/regression/legacy-007.test.ts` | value-less movements NULL-poisoning a cost for all history (T13) |
+| `tests/regression/legacy-009.test.ts` | three irreconcilable averages — **and acceptance test 7's cost side** (T13) |
+| `tests/regression/legacy-010.test.ts` | a dimension in the SELECT list but not in the sort or group break (T13) |
+| `tests/regression/legacy-015.test.ts` | a date window from a predicate that can never be satisfied (T13) |
+| `tests/regression/legacy-016.test.ts` | min/max prices that ratchet permanently (T13) |
+| `tests/regression/legacy-017.test.ts` | the open-quantity projection half; 3C and 3D append (T13) |
+| `tests/regression/legacy-022.test.ts` | a singleton SELECT omitting a key column (T13) |
+| `tests/regression/legacy-054.test.ts` | a recost aborting on the first historical below-cost sale (T13) |
+| `tests/regression/legacy-055.test.ts` | the FIFO carry-forward (OD-06 conditional; **3B creates**, 7B appends) — T4 |
+| `tests/regression/legacy-060.test.ts` | a repair with two sort orders that dropped columns it rebuilt (T13) |
+| `tests/regression/legacy-061.test.ts` | a repair that reset every cost to its opening value (T13) |
+| `tests/regression/legacy-062.test.ts` | the watermark written at a group break (T13) |
+| `tests/regression/legacy-076.test.ts` | duplicate and near-duplicate costing procedures (T13) |
 | `docs/adr/0037-avco-is-the-v1-costing-method-and-fifo-shares-the-layer-model.md` | the proposal (spec:95) |
 | `docs/adr/0038-bounded-restartable-recost-and-the-cost-adjustment-document.md` | |
 | `docs/adr/0039-stock-valuation-is-an-as-of-snapshot-and-cost-layer-joins-the-projection-registry.md` | |
@@ -193,7 +193,7 @@ no tier row at all (0b:5064).
 | `tests/invariants/ledger-balance.test.ts` | one appended `describe` — test 1 over costed documents (T6) |
 | `tests/support/regression.ts` | **not** touched — Task 13's helpers live in `tests/regression/support/costing.ts` (§4.17.1 registers only 0B's three exports there) |
 | `tests/package.json` | the dev-only `golden:costing` script (T12) |
-| `tests/regression/sah-005.test.ts`, `sah-008.test.ts` | one appended `describe` block each (§3.7.3 — 0B created both) |
+| `tests/regression/legacy-005.test.ts`, `legacy-008.test.ts` | one appended `describe` block each (§3.7.3 — 0B created both) |
 | `tests/invariants/projection-rebuild.test.ts` | the registry assertion and the `cost_layer` cases |
 | `tests/invariants/audit-chain.test.ts` | the pinned `projections.checked` array |
 | `apps/worker/test/handlers/integrity-check.test.ts` | the same pinned array |
@@ -385,8 +385,8 @@ The `lintSchema` case passes vacuously (there is nothing new to lint yet); that 
 --            record exactly what they consumed; a back-dated document invalidates only layers at or
 --            after its sequence; the replay writes an adjustment entry.
 -- spec:1370, 1993  derived tables are AUDIT-EXEMPT but MUST stay updatable by app_rw.
--- SAH-004  cost is a derived function of an immutable ordered movement ledger, never a running scalar.
--- SAH-008  unit_cost >= 0 and qty_remaining >= 0 are CHECKs, not conventions: a negative computed cost
+-- LEGACY-004  cost is a derived function of an immutable ordered movement ledger, never a running scalar.
+-- LEGACY-008  unit_cost >= 0 and qty_remaining >= 0 are CHECKs, not conventions: a negative computed cost
 --          is a hard error and must never reach a stored row.
 
 -- ── 1. cost_layer ───────────────────────────────────────────────────────────────────
@@ -399,8 +399,8 @@ create table app.cost_layer (
   lot_id         uuid not null,
   movement_id    uuid not null,
   qty_in         numeric(19,6) not null,
-  unit_cost      numeric(19,4) not null check (unit_cost >= 0),          -- SAH-008: never a negative stored cost
-  qty_remaining  numeric(19,6) not null check (qty_remaining >= 0),      -- SAH-008: never a negative residue
+  unit_cost      numeric(19,4) not null check (unit_cost >= 0),          -- LEGACY-008: never a negative stored cost
+  qty_remaining  numeric(19,6) not null check (qty_remaining >= 0),      -- LEGACY-008: never a negative residue
   effective_at   date   not null,                                        -- = movement.effective_date
   sequence       bigint not null,                                        -- = movement.posting_seq (spec:1220 "sequence")
   invalidated_at timestamptz,                                            -- set by invalidateFrom; cleared by the replay
@@ -429,7 +429,7 @@ create index cost_layer_open_idx
   where invalidated_at is null and qty_remaining > 0;
 create index cost_layer_invalid_idx
   on app.cost_layer (company_id, item_id, effective_at, sequence)
-  where invalidated_at is not null;                                      -- the replay's resume point (SAH-054)
+  where invalidated_at is not null;                                      -- the replay's resume point (LEGACY-054)
 
 -- ── 2. cost_consumption ─────────────────────────────────────────────────────────────
 -- spec:1218 "record exactly what they consumed". No natural unique key: an AVCO issue takes a proportional
@@ -643,7 +643,7 @@ feat(db): cost_layer, cost_consumption and stock_valuation [3B T1]
 contracts §4.7.3 verbatim for cost_layer and §4.6.1 for the valuation
 snapshot. cost_consumption is §4.7.3 plus the four additions amendment A23
 records: the CHECKs quantity > 0, unit_cost >= 0 and value >= 0, which the
-block does not carry and which SAH-008 makes as necessary on a consumption as
+block does not carry and which LEGACY-008 makes as necessary on a consumption as
 on a layer, and the composite foreign key (tenant_id, company_id) to
 app.company, which the block also omits while cost_layer beside it and
 stock_valuation both carry it. Plan 0A's composite_fk rule only inspects the
@@ -711,7 +711,7 @@ export class CostingError extends Error {
 }
 ```
 
-**Read this before writing a line of it.** This file is the answer to SAH-009 — three weighted-average formulas in one codebase that could never reconcile. There is **one** implementation, it is pure, and reporting, valuation and posting all import `costingEngine` (spec:1228). Two invariants follow and both are asserted below: the function never reads a clock, a database, `Math.random` or a mutable module variable, so the same input always yields the same output; and **the costing scope is `(company, item, warehouse)`, not the lot** — AVCO has no per-lot average and FIFO takes the oldest layer whatever lot it belongs to. The lot is on `Layer` because a consumption must say which lot left the shelf, and per-lot *availability* is 3A's `assert_stock_available` trigger, which is a different question.
+**Read this before writing a line of it.** This file is the answer to LEGACY-009 — three weighted-average formulas in one codebase that could never reconcile. There is **one** implementation, it is pure, and reporting, valuation and posting all import `costingEngine` (spec:1228). Two invariants follow and both are asserted below: the function never reads a clock, a database, `Math.random` or a mutable module variable, so the same input always yields the same output; and **the costing scope is `(company, item, warehouse)`, not the lot** — AVCO has no per-lot average and FIFO takes the oldest layer whatever lot it belongs to. The lot is on `Layer` because a consumption must say which lot left the shelf, and per-lot *availability* is 3A's `assert_stock_available` trigger, which is a different question.
 
 - [ ] **Step 1: Write the failing test `packages/domain/test/costing/engine.test.ts`**
 
@@ -759,7 +759,7 @@ function receipt(quantity: string, value: string | null, over: Partial<CostingIn
   };
 }
 
-describe("costingEngine — the ONE implementation (spec:1228; SAH-009)", () => {
+describe("costingEngine — the ONE implementation (spec:1228; LEGACY-009)", () => {
   it("a receipt creates one layer at value ÷ quantity and consumes nothing", () => {
     const out = costingEngine.cost(receipt("100.000000", "1000.0000"));
     expect(out.value.toString()).toBe("1000.0000");
@@ -818,7 +818,7 @@ describe("costingEngine — the ONE implementation (spec:1228; SAH-009)", () => 
     // The oldest layer holds one micro-unit beside two of a hundred. 1.000000 split by weight gives it
     // 1_000_000 × 1 ÷ 200_000_001 = 0 micro-units, so it must receive neither a consumption row nor an
     // allocation weight — Σ consumption value has to equal out.value exactly, or COST_LAYER_CHECK's sibling
-    // invariant and sah-009's tie-out both drift by the difference.
+    // invariant and legacy-009's tie-out both drift by the difference.
     const layers = [
       layer({ id: "TINY", qtyIn: "0.000001", unitCost: "1.0000", qtyRemaining: "0.000001", seq: 1, effectiveDate: "2026-01-01" }),
       layer({ id: "BIG1", qtyIn: "100.000000", unitCost: "10.0000", qtyRemaining: "100.000000", seq: 2, effectiveDate: "2026-01-02" }),
@@ -845,7 +845,7 @@ describe("costingEngine — the ONE implementation (spec:1228; SAH-009)", () => 
     expect(MIN_MEANINGFUL_QTY.toString()).toBe("0.000001");
   });
 
-  it("a receipt with no value is refused — value is mandatory on every movement (SAH-007)", () => {
+  it("a receipt with no value is refused — value is mandatory on every movement (LEGACY-007)", () => {
     expect(() => costingEngine.cost(receipt("10.000000", null)))
       .toThrow(/ERR_COST_VALUE_MISSING.*carries no value/s);
   });
@@ -877,7 +877,7 @@ export type CostingMethod = "avco" | "fifo";
 
 /**
  * The minimum meaningful quantity — spec:1227's clamp, exported as ONE name so no call site retypes it.
- * SAH-008(b): the guard in the old system was `if (aCurrentQnt <> 0)`, which excludes only exact zero, and
+ * LEGACY-008(b): the guard in the old system was `if (aCurrentQnt <> 0)`, which excludes only exact zero, and
  * the smallest non-zero numeric(18,4) is 0.0001 — so a divisor could be 10,000× smaller than one unit and a
  * return of 5.0001 against 5.0000 on hand produced a stored unit cost of 500,020.00. Anything below this
  * value is not a denominator; it is a residue, and an issue against it is refused.
@@ -933,7 +933,7 @@ export interface CostingEngine {
    * oldest layers, AVCO a proportional slice of all open layers at the running average (spec:1222).
    * Throws `CostingError`: `ERR_COST_NEGATIVE` if a computed unit cost is negative, `ERR_STOCK_INSUFFICIENT`
    * if the open layers cannot cover the issue and `allowShortfall` is false or if the divisor would fall
-   * below `MIN_MEANINGFUL_QTY` (spec:1227), `ERR_COST_VALUE_MISSING` if a receipt carries no value (SAH-007).
+   * below `MIN_MEANINGFUL_QTY` (spec:1227), `ERR_COST_VALUE_MISSING` if a receipt carries no value (LEGACY-007).
    */
   cost(input: CostingInput): CostingOutput;
   /** Running average for display and valuation: Σ(qtyRemaining × unitCost) ÷ Σ qtyRemaining over open layers. */
@@ -983,14 +983,14 @@ function sumRemaining(layers: readonly Layer[]): Quantity {
 /**
  * `value ÷ quantity`, rounded HALF_AWAY_FROM_ZERO at MONEY_SCALE — the same mode and scale base conversion
  * uses (spec:1816), so a unit cost and a base amount round the same way in both directions of the sign.
- * Refuses a divisor below MIN_MEANINGFUL_QTY (spec:1227) and a negative result (SAH-008).
+ * Refuses a divisor below MIN_MEANINGFUL_QTY (spec:1227) and a negative result (LEGACY-008).
  */
 function unitCostOf(value: Money, quantity: Quantity, where: string): Money {
   const divisor = quantity.toDecimal();
   if (divisor.lessThan(MIN_MEANINGFUL_QTY.toDecimal())) {
     throw new CostingError(
       "ERR_STOCK_INSUFFICIENT",
-      `${where}: quantity ${quantity.toString()} is below the minimum meaningful quantity ${MIN_MEANINGFUL_QTY.toString()} — dividing by a residue is what produced SAH-008's stored unit cost of 500,020.00`,
+      `${where}: quantity ${quantity.toString()} is below the minimum meaningful quantity ${MIN_MEANINGFUL_QTY.toString()} — dividing by a residue is what produced LEGACY-008's stored unit cost of 500,020.00`,
     );
   }
   const unit = value.divide(divisor, "HALF_AWAY_FROM_ZERO");
@@ -1045,7 +1045,7 @@ function costReceipt(input: CostingInput): CostingOutput {
   if (movement.value === null) {
     throw new CostingError(
       "ERR_COST_VALUE_MISSING",
-      `${where} carries no value; value is a mandatory non-null attribute of every stock movement and is rejected at write time if absent (SAH-007, spec:1226)`,
+      `${where} carries no value; value is a mandatory non-null attribute of every stock movement and is rejected at write time if absent (LEGACY-007, spec:1226)`,
     );
   }
   if (movement.value.isNegative()) {
@@ -1102,7 +1102,7 @@ function costIssue(input: CostingInput): CostingOutput {
   if (short && !allowShortfall) {
     throw new CostingError(
       "ERR_STOCK_INSUFFICIENT",
-      `${where}: ${need.toString()} requested but only ${available.toString()} remains in the open cost layers of item ${movement.itemId} in warehouse ${movement.warehouseId} — refuse rather than absorb (SAH-008)`,
+      `${where}: ${need.toString()} requested but only ${available.toString()} remains in the open cost layers of item ${movement.itemId} in warehouse ${movement.warehouseId} — refuse rather than absorb (LEGACY-008)`,
     );
   }
   const covered = short ? available : need;
@@ -1134,7 +1134,7 @@ function costIssue(input: CostingInput): CostingOutput {
     } else {
       // FIFO — Task 3 fills this branch. Until then the method is unreachable: migration 0035's CHECK
       // admits 'fifo' but no company can be set to it before Task 4, and `cost` refuses it here rather
-      // than silently costing a FIFO company at AVCO, which is SAH-009 in one file instead of three.
+      // than silently costing a FIFO company at AVCO, which is LEGACY-009 in one file instead of three.
       // A PLAIN Error, not a CostingError: this is scaffolding Task 3 deletes, and giving it a registered
       // ErrCode would put a fake occurrence of a real code in front of the `error-codes` lint (§3.7.5).
       throw new Error(`${where}: costing method fifo is not implemented yet (3B Task 3 fills this branch)`);
@@ -1197,7 +1197,7 @@ In `packages/contracts/src/errors.ts`, add one row to `ERRORS` (amendment A3). I
   },
 ```
 
-**The title and remedy cover both arms the engine raises this code for**, and that is deliberate rather than loose. SAH-007 is the missing *value* (`procProducePackage` inserted both legs with no `BtmPureTotal`) and SAH-008(c) is the zero *quantity* (a wash line at zero stock); both are "this movement cannot be costed", and a remedy naming only the unit price would point a user at the wrong field on a wash line. The alternative — a second code for the quantity arm — would need a new `ErrCode` row *and* a fourth member on `CostingError`'s union, which amendment A3 does not carry.
+**The title and remedy cover both arms the engine raises this code for**, and that is deliberate rather than loose. LEGACY-007 is the missing *value* (`procProducePackage` inserted both legs with no `BtmPureTotal`) and LEGACY-008(c) is the zero *quantity* (a wash line at zero stock); both are "this movement cannot be costed", and a remedy naming only the unit price would point a user at the wrong field on a wash line. The alternative — a second code for the quantity arm — would need a new `ErrCode` row *and* a fourth member on `CostingError`'s union, which amendment A3 does not carry.
 
 `ERR_COST_NEGATIVE` and `ERR_STOCK_INSUFFICIENT` are already allocated in contracts §4.2.4 — `ERR_STOCK_INSUFFICIENT` shipped with 3A's `assert_stock_available` trigger and `ERR_COST_NEGATIVE` is allocated to this slice. Check both are present in `ERRORS` before adding the row; if `ERR_COST_NEGATIVE` is absent, add it too:
 
@@ -1271,7 +1271,7 @@ EOF
 - Consumes: everything Task 2 produced — `costingEngine`, `CostingError`, `MIN_MEANINGFUL_QTY`, `Layer`, `Consumption`, `CostingInput`, `CostingOutput` — plus `Money`, `Quantity`, `currency` from `packages/domain/src/money`.
 - Produces: no new exported name. The FIFO branch of `cost()` and the `byChronology` ordering become behaviour of `costingEngine`, which every later task and both later phases consume unchanged.
 
-This task owns **acceptance test 6** (spec:2424 — "Costing edge cases. Return exceeding stock; wash line at zero stock; value-less movement. All rejected or handled; **no negative, NULL, or exploded cost is ever stored**." — SAH-007, 008) at the engine layer. Task 13's `sah-007` and `sah-008` regression files re-assert the same three cases through `postDocument` against a real database, which is where "is ever stored" is actually provable.
+This task owns **acceptance test 6** (spec:2424 — "Costing edge cases. Return exceeding stock; wash line at zero stock; value-less movement. All rejected or handled; **no negative, NULL, or exploded cost is ever stored**." — LEGACY-007, 008) at the engine layer. Task 13's `legacy-007` and `legacy-008` regression files re-assert the same three cases through `postDocument` against a real database, which is where "is ever stored" is actually provable.
 
 - [ ] **Step 1: Write the failing test `packages/domain/test/costing/guards.test.ts`**
 
@@ -1306,8 +1306,8 @@ function move(over: Partial<CostingInput["movement"]>, openLayers: Layer[], rest
   };
 }
 
-describe("costing guards — acceptance test 6 (spec:2424; SAH-007, SAH-008)", () => {
-  it("(a) a return exceeding stock is REFUSED, not absorbed — SAH-008(a)'s exact numbers", () => {
+describe("costing guards — acceptance test 6 (spec:2424; LEGACY-007, LEGACY-008)", () => {
+  it("(a) a return exceeding stock is REFUSED, not absorbed — LEGACY-008(a)'s exact numbers", () => {
     // On hand 5 @ 10; return 6 to the supplier. The old system computed (10·5 − 30)/(−1) = −20.00 and
     // stored it, so every later sale booked negative COGS. Here the issue is refused before any arithmetic.
     const layers = [layer("L1", "5.000000", "10.0000", 1)];
@@ -1323,7 +1323,7 @@ describe("costing guards — acceptance test 6 (spec:2424; SAH-007, SAH-008)", (
     }
   });
 
-  it("(b) a sub-micro divisor is unrepresentable, and one micro-unit is a real denominator — SAH-008(b)", () => {
+  it("(b) a sub-micro divisor is unrepresentable, and one micro-unit is a real denominator — LEGACY-008(b)", () => {
     // The old guard was `if (aCurrentQnt <> 0)`, which excludes only exact zero; the smallest non-zero
     // numeric(18,4) is 0.0001, so returning 5.0001 against 5.0000 left a divisor of −0.0001 and stored a unit
     // cost of 500,020.00. Two things close that here, and this case asserts both.
@@ -1339,7 +1339,7 @@ describe("costing guards — acceptance test 6 (spec:2424; SAH-007, SAH-008)", (
     // SECOND: the smallest representable quantity IS a denominator, and the boundary sits ON
     // MIN_MEANINGFUL_QTY, which `lessThan` admits. A one-micro-unit issue against a one-micro-unit layer
     // therefore posts: it empties the layer and its value rounds to 0.0000 at MONEY_SCALE. Nothing explodes
-    // and nothing is falsely refused — which is the pair of failures SAH-008(b) actually produced.
+    // and nothing is falsely refused — which is the pair of failures LEGACY-008(b) actually produced.
     const layers = [layer("L1", "0.000001", "10.0000", 1)];
     const out = costingEngine.cost(move({ quantity: qty("0.000001") }, layers));
     expect(out.value.toString()).toBe("0.0000");        // round(0.000001 × 10.0000, 4) = 0.0000
@@ -1347,7 +1347,7 @@ describe("costing guards — acceptance test 6 (spec:2424; SAH-007, SAH-008)", (
     expect(out.updatedRemaining).toEqual([{ layerId: "L1", qtyRemaining: qty("0.000000") }]);
   });
 
-  it("(c) a wash line — a movement of zero quantity — is refused, never costed at zero (SAH-008(c))", () => {
+  it("(c) a wash line — a movement of zero quantity — is refused, never costed at zero (LEGACY-008(c))", () => {
     // A landed-cost or reconciliation line posted at zero stock set Cost = 0 in the old system and every
     // later sale booked zero COGS. A movement of nothing has no cost; in 3C a landed cost adjusts a LAYER's
     // unit_cost and is not a movement at all.
@@ -1357,7 +1357,7 @@ describe("costing guards — acceptance test 6 (spec:2424; SAH-007, SAH-008)", (
       .toThrow(/ERR_COST_VALUE_MISSING.*quantity is zero/s);
   });
 
-  it("(d) a value-less receipt is refused — SAH-007's NULL poisoning", () => {
+  it("(d) a value-less receipt is refused — LEGACY-007's NULL poisoning", () => {
     // procProducePackage inserted both legs with no BtmPureTotal; (42·500 + NULL)/500 = NULL, coalesced to
     // 0.00 on the next sale, and a full recompute hit the same NULL. Value is mandatory here.
     expect(() => costingEngine.cost(move({ effect: "receipt", value: null, costing: "create_layer", quantity: qty("500.000000") }, [])))
@@ -1425,7 +1425,7 @@ describe("costing guards — acceptance test 6 (spec:2424; SAH-007, SAH-008)", (
 - [ ] **Step 2: Append the FIFO cases to `packages/domain/test/costing/engine.test.ts`**
 
 ```ts
-describe("costingEngine — FIFO shares the layer model (spec:1214, SAH-055)", () => {
+describe("costingEngine — FIFO shares the layer model (spec:1214, LEGACY-055)", () => {
   const layers = () => [
     layer({ id: "L2", qtyIn: "100.000000", unitCost: "20.0000", qtyRemaining: "100.000000", seq: 2, effectiveDate: "2026-01-20" }),
     layer({ id: "L1", qtyIn: "100.000000", unitCost: "10.0000", qtyRemaining: "100.000000", seq: 1, effectiveDate: "2026-01-10" }),
@@ -1455,7 +1455,7 @@ describe("costingEngine — FIFO shares the layer model (spec:1214, SAH-055)", (
     expect(avco.consumptions[0]!.unitCost.toString()).toBe("15.0000");
   });
 
-  it("the FIFO carry-forward is total — every layer touched, none skipped, and the quantities close (SAH-055)", () => {
+  it("the FIFO carry-forward is total — every layer touched, none skipped, and the quantities close (LEGACY-055)", () => {
     // procMatStorage's `if ((Material is not null) or (Material <> aMat))` reset the carry-forward on every
     // row, so the FIFO walk never happened. This asserts the opposite: the walk visits layers in order until
     // the need is met and Σ consumed = the issue exactly.
@@ -1470,7 +1470,7 @@ describe("costingEngine — FIFO shares the layer model (spec:1214, SAH-055)", (
     expect(out.value.toString()).toBe("12.0000");              // 3×1 + 3×2 + 1×3
   });
 
-  it("two layers with the same date and sequence are ordered by (line_no, movement_no) — the key is total (SAH-067)", () => {
+  it("two layers with the same date and sequence are ordered by (line_no, movement_no) — the key is total (LEGACY-067)", () => {
     const sameKey = [
       { ...layer({ id: "SECOND", qtyIn: "1.000000", unitCost: "9.0000", qtyRemaining: "1.000000", seq: 4 }), lineNo: 1, movementNo: 2 },
       { ...layer({ id: "FIRST", qtyIn: "1.000000", unitCost: "1.0000", qtyRemaining: "1.000000", seq: 4 }), lineNo: 1, movementNo: 1 },
@@ -1512,10 +1512,10 @@ First the ordering. Add above `costReceipt`:
 /**
  * The contracts §4.3.5 chronological key, written out in full: (effective_date, posting_seq, line_no,
  * movement_no). The engine sorts its own input rather than trusting the caller's order, and that is
- * deliberate: SAH-005's whole defect was one path ordering by document **id** while the other ordered by
+ * deliberate: LEGACY-005's whole defect was one path ordering by document **id** while the other ordered by
  * **date**, so "the incremental mode" and "the batch replay" disagreed about what "the newest transaction"
  * meant. There is one ordering, in one function, and neither `applyMovements` nor `replay` can get it wrong.
- * spec:1225 — "the chronological key is explicit and total — never dependent on an index definition (SAH-067)".
+ * spec:1225 — "the chronological key is explicit and total — never dependent on an index definition (LEGACY-067)".
  */
 function byChronology(a: Layer, b: Layer): number {
   if (a.effectiveDate !== b.effectiveDate) return a.effectiveDate < b.effectiveDate ? -1 : 1;
@@ -1553,7 +1553,7 @@ Then replace the whole `else` branch — the `throw new Error(… "costing metho
       }
       if (!left.isZero()) {
         // Unreachable: `covered` is min(need, available) and `available` is Σ over the same filtered set.
-        // It is here because SAH-055's carry-forward bug was exactly a loop that silently did not finish.
+        // It is here because LEGACY-055's carry-forward bug was exactly a loop that silently did not finish.
         throw new CostingError(
           "ERR_STOCK_INSUFFICIENT",
           `${where}: the FIFO walk ended with ${left.toString()} unconsumed over ${open.length} open layer(s)`,
@@ -1595,7 +1595,7 @@ supported by the same layer model … and can be enabled per company later witho
 The old system had three weighted-average formulas — `procCalcCosts`, `procSumBillItems` and the
 `OnBillItemsAIUD` trigger — which disagreed on transfer revaluation, on the zero-divisor fallback, on
 reject-out revaluation and on whether a negative prior balance was clamped. Over the same data the trigger
-answered 1.667 and `procCalcCosts` answered 10.00 (SAH-009). No amount of recosting could make the stock
+answered 1.667 and `procCalcCosts` answered 10.00 (LEGACY-009). No amount of recosting could make the stock
 valuation report and the profit report tie, because the formulas differed.
 
 ## Decision
@@ -1618,7 +1618,7 @@ valuation report and the profit report tie, because the formulas differed.
    0.0000005 to 0.000001 still returns the exploded unit cost test 6 forbids storing), and at
    `QUANTITY_SCALE = 6` such a divisor is unrepresentable anyway, so the refusal guards a future scale change
    rather than a runtime input; and a movement with no value and no way to compute one, or a movement of zero
-   quantity, raises `ERR_COST_VALUE_MISSING`. These close SAH-007 and all three arms of SAH-008.
+   quantity, raises `ERR_COST_VALUE_MISSING`. These close LEGACY-007 and all three arms of LEGACY-008.
 
 ## Consequences
 
@@ -1626,9 +1626,9 @@ valuation report and the profit report tie, because the formulas differed.
   replay of ADR 0038 can do it, but nothing in v1 exposes it as an operation, and the switch is therefore a
   configuration decision taken once per company at setup.
 - FIFO ships tested but not defaulted. If the owner answers OD-06 with FIFO, one literal in migration 0035
-  changes and `tests/regression/sah-055.test.ts` becomes the ageing report's proof rather than a switch test.
+  changes and `tests/regression/legacy-055.test.ts` becomes the ageing report's proof rather than a switch test.
 - Reports may never recompute a cost. 7B's `inventory.stock_ageing` and `inventory.profit_by_item` read
-  `cost_layer` and `cost_consumption`; a report that re-derived a figure would be SAH-009's fourth formula.
+  `cost_layer` and `cost_consumption`; a report that re-derived a figure would be LEGACY-009's fourth formula.
 ```
 
 - [ ] **Step 7: Commit**
@@ -1642,12 +1642,12 @@ feat(domain): FIFO, the chronological sort, and every costing guard [3B T3]
 Acceptance test 6 at the engine layer (spec:2424). The three cases the spec
 names — a return exceeding stock, a wash line at zero stock, a value-less
 movement — are refused with ERR_STOCK_INSUFFICIENT, ERR_COST_VALUE_MISSING and
-ERR_COST_VALUE_MISSING, using SAH-008's own worked numbers as the assertions.
+ERR_COST_VALUE_MISSING, using LEGACY-008's own worked numbers as the assertions.
 
 FIFO walks the oldest layer first at that layer's own cost; AVCO takes a
 proportional slice at the running average. The engine sorts its own input by the
 contracts §4.3.5 key (effective_date, posting_seq, line_no, movement_no) rather
-than trusting the caller, because SAH-005 was two paths ordering by two
+than trusting the caller, because LEGACY-005 was two paths ordering by two
 different columns.
 
 ADR 0037 is a PROPOSAL (spec:95, OD-06): the model is the architect's, the
@@ -1660,17 +1660,17 @@ EOF
 
 ---
 
-### Task 4: OD-06 — `company.costing_method`, the FIFO switch, and `sah-055`
+### Task 4: OD-06 — `company.costing_method`, the FIFO switch, and `legacy-055`
 
 > **Owner decision OD-06 (contracts §2.12; spec:92, 1214, 2404): the v1 costing method.**
 > **Owner provides:** a confirmation that weighted average (AVCO) is the v1 method for the first customer, or an instruction to default to FIFO instead.
 > **Verify:** `bun run --cwd packages/db test -- test/costing/method.test.ts` prints `default costing_method: avco` and passes both the AVCO and the FIFO case.
 > **Until provided:** the default written into migration 0035 is **`'avco'`**, which is spec:1214's own recommendation and contracts §2.12's stated default. Nothing blocks: FIFO ships fully implemented and tested behind the column, so the owner's answer changes **one literal in one migration** and nothing else.
-> **What changes if the owner answers FIFO:** the `default 'avco'` in `0035_alter_company_add_costing_method.sql` becomes `default 'fifo'`; the one assertion in `method.test.ts` that reads the default flips; and `tests/regression/sah-055.test.ts` stops being a switch test and becomes the standing proof for 7B's `inventory.stock_ageing`. No other file, no other task, no schema change (spec:1214 — "can be enabled per company later without a schema change").
-> **What changes if the owner removes FIFO from v1 entirely:** delete `'fifo'` from the CHECK in migration 0035, delete the FIFO branch of `costIssue` and its four tests, and delete `tests/regression/sah-055.test.ts`; 7B's stock-ageing report then documents itself as AVCO-only. That is the only branch in which a file is removed, and it removes exactly those four things.
+> **What changes if the owner answers FIFO:** the `default 'avco'` in `0035_alter_company_add_costing_method.sql` becomes `default 'fifo'`; the one assertion in `method.test.ts` that reads the default flips; and `tests/regression/legacy-055.test.ts` stops being a switch test and becomes the standing proof for 7B's `inventory.stock_ageing`. No other file, no other task, no schema change (spec:1214 — "can be enabled per company later without a schema change").
+> **What changes if the owner removes FIFO from v1 entirely:** delete `'fifo'` from the CHECK in migration 0035, delete the FIFO branch of `costIssue` and its four tests, and delete `tests/regression/legacy-055.test.ts`; 7B's stock-ageing report then documents itself as AVCO-only. That is the only branch in which a file is removed, and it removes exactly those four things.
 
 **Files:**
-- Create: `packages/db/migrations/0035_alter_company_add_costing_method.sql`, `packages/db/migrations/0035.down.sql`, `packages/db/test/costing/method.test.ts`, `tests/regression/sah-055.test.ts`
+- Create: `packages/db/migrations/0035_alter_company_add_costing_method.sql`, `packages/db/migrations/0035.down.sql`, `packages/db/test/costing/method.test.ts`, `tests/regression/legacy-055.test.ts`
 - Modify: `packages/db/src/schema/company.ts`, `packages/db/src/posting/load.ts`
 
 **Interfaces:**
@@ -1791,11 +1791,11 @@ In `packages/db/src/posting/load.ts`, the header query already selects from `app
 
 The cast is safe and is the same shape 2A used for `h.status` and `h.party_kind`: the column's CHECK is the guarantee, and `parsePolicy`-style runtime re-validation of a two-label CHECK would be noise.
 
-- [ ] **Step 6: Write `tests/regression/sah-055.test.ts`**
+- [ ] **Step 6: Write `tests/regression/legacy-055.test.ts`**
 
 Contracts §3.7.3 names **3B as this file's creator** (amendment A13) and 7B as its appender, because the conditional work — the FIFO layer path — is this slice's.
 
-**This is a plain `describe`, not a `thinRegression` call, and the same decision governs the fourteen new files and two appended blocks Task 13 writes.** §3.7.3's rule is about the *title* — `describe("SAH-NNN <Part I heading> — <slice id>", …)` — and about never editing an earlier block. 0B's `thinRegression(sah, heading, cites: string, body)` wraps a **single `it`** and invokes the body inside it (0b:5317–5326), which is the right shape for the twenty-one one-assertion files 0B created and the wrong shape for a costing file with two or more cases: a `test` declared inside a running `test` is a Vitest error, not a failed assertion. So this slice writes the `describe` itself, exactly as 2A did when it appended to 0B's `sah-013` (2a:4664), and cites the first-proving file in the case titles:
+**This is a plain `describe`, not a `thinRegression` call, and the same decision governs the fourteen new files and two appended blocks Task 13 writes.** §3.7.3's rule is about the *title* — `describe("LEGACY-NNN <Part I heading> — <slice id>", …)` — and about never editing an earlier block. 0B's `thinRegression(legacyDefect, heading, cites: string, body)` wraps a **single `it`** and invokes the body inside it (0b:5317–5326), which is the right shape for the twenty-one one-assertion files 0B created and the wrong shape for a costing file with two or more cases: a `test` declared inside a running `test` is a Vitest error, not a failed assertion. So this slice writes the `describe` itself, exactly as 2A did when it appended to 0B's `legacy-013` (2a:4664), and cites the first-proving file in the case titles:
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -1808,7 +1808,7 @@ const layer = (id: string, qty: string, unitCost: string, seq: number, date: str
   effectiveDate: date, postingSeq: BigInt(seq), lineNo: 1, movementNo: 1,
 });
 
-describe("SAH-055 procMatStorage (FIFO stock ageing) is non-functional — 3B", () => {
+describe("LEGACY-055 procMatStorage (FIFO stock ageing) is non-functional — 3B", () => {
   it("the FIFO carry-forward happens on every layer and the walk is a total function (first proven by packages/domain/test/costing/engine.test.ts)", () => {
       // The defect: `if ((Material is not null) or (Material <> aMat)) then aRemain = 0;` — OR where AND was
       // meant, so from the second row onward the condition was always true and `aRemain` reset every
@@ -1866,7 +1866,7 @@ Both cases are pure — no database, no `sharedDb()`, no container — which is 
 Run: `bun run --cwd packages/db test -- test/costing/method.test.ts`
 Expected: **PASS**, all four cases.
 
-Run: `bun run --cwd tests test -- regression/sah-055.test.ts`
+Run: `bun run --cwd tests test -- regression/legacy-055.test.ts`
 Expected: **PASS**, both cases.
 
 Run: `bun run --cwd packages/db test -- test/privileges.test.ts && bun run typecheck && bun run lint && bun run lint:rules`
@@ -1877,7 +1877,7 @@ Expected: PASS. The reversibility test now applies and rolls back 0034 and 0035;
 ```bash
 git add packages/db/migrations/0035_alter_company_add_costing_method.sql packages/db/migrations/0035.down.sql \
         packages/db/src/schema/company.ts packages/db/src/posting/load.ts packages/db/test/costing/method.test.ts \
-        tests/regression/sah-055.test.ts
+        tests/regression/legacy-055.test.ts
 git commit -m "$(cat <<'EOF'
 feat(db): company.costing_method, defaulting to avco [3B T4]
 
@@ -1890,7 +1890,7 @@ enabled per company later without a schema change").
 loadSnapshot now reads the column instead of hard-coding "avco", closing the
 last of the four fields 2A left stubbed for a named later slice.
 
-tests/regression/sah-055.test.ts is created here, not by 7B: contracts §3.7.3's
+tests/regression/legacy-055.test.ts is created here, not by 7B: contracts §3.7.3's
 rule is that a conditional file's creator is the slice that owns the conditional
 work, and the FIFO layer path is this slice's. 7B appends the stock-ageing
 report's own block.
@@ -2298,7 +2298,7 @@ export function recordingJobs(): JobClient & { readonly enqueued: readonly Recor
 export async function ensureOpenPeriods(db: Db, s: Seed, year: number): Promise<void>;
 
 /** An issue the open layers cannot cover, authorised through a second principal's `override` event — the
- *  ONE way F-6 admits (§4.5.3). Consumed by Task 11's exclusion case and Task 13's `sah-009`; it lives here
+ *  ONE way F-6 admits (§4.5.3). Consumed by Task 11's exclusion case and Task 13's `legacy-009`; it lives here
  *  rather than in either because `app.assert_override_authorised` has two clauses a caller gets wrong once
  *  each (see the doc comment on the implementation). */
 export async function postOverriddenIssue(db: Db, s: Seed, opts: {
@@ -2337,7 +2337,7 @@ import { seedDocumentType, seedItem, seedWarehouse, grantCodes } from "@dulja/db
 ```ts
 // ── 3B: appended at the END of the file — the invariant holds when the amounts come from the
 //        costing engine (test 1 re-run) ──────────────────────────────────────────────────────────
-describe("SAH-003 ledger invariant — inventory-bearing documents (test 1 re-run, 3B)", () => {
+describe("LEGACY-003 ledger invariant — inventory-bearing documents (test 1 re-run, 3B)", () => {
   let db: Db; let s: Seed;
   let receiptType: string; let issueType: string;
   let itemId: string; let warehouseId: string;
@@ -2746,7 +2746,7 @@ export interface JobPayload extends Record<JobName, unknown> {
 
 1. **Compute first, write second, and write in exactly this order:** the engine call (pure, no I/O) for every movement in emission order, threading each movement's layer effect into the next; then the `inventory_movement` inserts (the BEFORE INSERT `assert_stock_available` trigger fires here, and it counts this transaction's earlier rows); then `cost_layer`, whose FK `(tenant_id, movement_id) → inventory_movement(tenant_id, id)` makes the reverse order a `23503`; then `cost_consumption`, whose FK points at both; then `document_line.cost`. `inventory_movement.value` is NOT NULL and an *issue's* value is not known until the engine has walked the layers — which is the whole reason the compute pass cannot be interleaved with the inserts.
 
-2. **`openLayersFor` reads every valid open layer, with no date filter, and that is deliberate.** At step 9 the document being posted is the newest thing in the company (its `posting_seq` is the maximum), so "every open layer" and "every open layer at or before this key" are the same set — except for a **back-dated** document, where later layers exist. Filtering them out would let this issue consume a layer that a later, already-posted issue has already emptied, driving that layer's `qty_remaining` below zero into `cost_layer_qty_remaining_check`. The correct sequence is: post now against the layers as they stand, *then* invalidate from this document's own key forward (step 14) and let the replay recompute the whole affected tail. Post-now-replay-later is the design (spec:1220–1223); a clever date filter here is SAH-005's incremental mode reintroduced.
+2. **`openLayersFor` reads every valid open layer, with no date filter, and that is deliberate.** At step 9 the document being posted is the newest thing in the company (its `posting_seq` is the maximum), so "every open layer" and "every open layer at or before this key" are the same set — except for a **back-dated** document, where later layers exist. Filtering them out would let this issue consume a layer that a later, already-posted issue has already emptied, driving that layer's `qty_remaining` below zero into `cost_layer_qty_remaining_check`. The correct sequence is: post now against the layers as they stand, *then* invalidate from this document's own key forward (step 14) and let the replay recompute the whole affected tail. Post-now-replay-later is the design (spec:1220–1223); a clever date filter here is LEGACY-005's incremental mode reintroduced.
 
 3. **Every ISSUE reaches the engine with `Money.zero(baseCurrency)` on `movement.value` — unconditionally, not just for a free-of-charge line.** Task 2's `costIssue` uses `movement.value` for exactly one thing: as the currency to answer in when there is no open layer to borrow one from. With no layers and no value it raises `ERR_COST_VALUE_MISSING`, which is right for a direct caller and wrong for two real posting paths — a free-of-charge line at zero stock (`costing === "zero"`, spec:1055) *and* an `inventory.negative_stock.override` issue against an empty layer set (`costing === "consume_layers"`, `value: null` from the evaluator; F-6, tests 7 and 18). Scoping the substitution to `costing === "zero"` would leave the authorised excursion dying on a message about a missing unit price. So the rule is one line and covers both: `const value = movement.effect === "issue" ? Money.zero(baseCurrency) : movement.value;`. It is a **substitution, not a fallback** (`??`) — an issue's planned `value` is a document-currency figure the evaluator computed from `unit_price`, and letting it through would hand the engine the *sales* currency as the currency to cost in. A receipt keeps its own value untouched: that value IS the layer's cost, and zeroing a `costing === "zero"` receipt would open every FOC receipt's layer at 0.0000. `allowShortfall` stays `movement.costing === "zero" || overridden`.
 
@@ -2878,7 +2878,7 @@ describe("applyMovements — the full body (contracts §4.7.2; spec:1216-1226)",
     expect(counts).toEqual({ invalid_layers: 2, valid_layers: 0 });
   });
 
-  it("a back-dated document posted with no JobClient fail-closes rather than skipping the recost (SAH-005)", async () => {
+  it("a back-dated document posted with no JobClient fail-closes rather than skipping the recost (LEGACY-005)", async () => {
     await expect(postInventoryDocument(db, s, {
       documentTypeId: receiptType, warehouseId, effectiveDate: "2026-01-10",
       lines: [{ itemId, warehouseId, quantity: "1.000000", unitPrice: "1.0000" }],
@@ -2930,7 +2930,7 @@ import type { TenantContext } from "../with-tenant";
 /**
  * Every VALID open layer of one (company, item, warehouse), in the contracts §4.3.5 chronological order
  * `(effective_date, posting_seq, line_no, movement_no)` — all four columns, spelled out, never an index's
- * implicit order (spec:1225, SAH-067). `line_no` and `movement_no` live on the movement, which is why the
+ * implicit order (spec:1225, LEGACY-067). `line_no` and `movement_no` live on the movement, which is why the
  * join is here and not optional.
  *
  * NO DATE FILTER, deliberately: see this task's note 2. The engine sorts its own input anyway (Task 3's
@@ -3158,7 +3158,7 @@ import type { TenantContext } from "../with-tenant";
  * Marks every layer and consumption of the affected items at or after `(effectiveDate, postingSeq)` invalid
  * and enqueues ONE `inventory.cost.replay` per company (§4.7.2). Runs on the caller's `tx`, so the
  * invalidation and the enqueue commit with the posting or roll back with it (spec:1127 — the guarantee
- * SAH-005 lacked, where a dirty flag was set from three of four code paths).
+ * LEGACY-005 lacked, where a dirty flag was set from three of four code paths).
  *
  * The comparison is Postgres's row-wise `>=`, which is the contracts §4.3.5 key's first two elements
  * compared lexicographically — exactly "at or after its sequence" (spec:1220). Writing it as
@@ -3259,7 +3259,7 @@ export async function postDocument(
            and m.effective_date > ${snapshot.header.effectiveDate}::date) as back_dated`;
     if (later?.back_dated) {
       if (!input.jobs) {
-        // Never silently skip a recost. SAH-005 is exactly this: the flag that should have said "recost me"
+        // Never silently skip a recost. LEGACY-005 is exactly this: the flag that should have said "recost me"
         // was never set on insert, so a back-dated goods receipt mis-costed a whole month and nothing noticed.
         throw new PostingError(
           "ERR_INTERNAL",
@@ -3403,12 +3403,12 @@ cost_layer, which FKs to them; then cost_consumption; then document_line.cost.
 openLayersFor reads every valid open layer with NO date filter. Post now,
 invalidate from this document's own key forward, replay later — a date filter
 here would let an issue consume a layer a later posted issue has emptied, and
-that is SAH-005's incremental mode by another name.
+that is LEGACY-005's incremental mode by another name.
 
 Amendment A5 opens postDocument's optional `jobs` seam and A15 threads it
 through reverseDocument, whose reversal document is back-dated whenever later
 movements exist. Absent where needed, step 14 raises ERR_INTERNAL rather than
-skipping a recost — SAH-005 was a flag set from three of four code paths.
+skipping a recost — LEGACY-005 was a flag set from three of four code paths.
 
 2A's step-9b guard and its test are deleted. Amendment A9 adds the two
 JobPayload keys; JOBS itself is untouched. Amendment A21(c) adds the third
@@ -3590,7 +3590,7 @@ The §4.3.7 envelope, exactly. This is a **file added to an existing sub-pack**,
 }
 ```
 
-**Four decisions in that file worth stating so a reviewer does not have to reconstruct them.** `inventory.effect` is `"none"` because a recost changes what stock is *worth*, never how much of it there is — the movements are immutable and already correct (spec:1210). `approval.required` is `false` because the poster is a job, and a maker-checker on a system-generated correction is SAH-054's mutual-recursion defect in a new costume. `reversal.allowed` is `true` with `producesType: "COST_ADJUSTMENT"` so an accountant who disputes an adjustment reverses it like any other document (D13) rather than editing it. `dimensions.required` is `[]`, and BRANCH still lands on every line: §4.3.2 step 10 tags every ledger line from `document.branch_id`, which Task 9 sets per branch.
+**Four decisions in that file worth stating so a reviewer does not have to reconstruct them.** `inventory.effect` is `"none"` because a recost changes what stock is *worth*, never how much of it there is — the movements are immutable and already correct (spec:1210). `approval.required` is `false` because the poster is a job, and a maker-checker on a system-generated correction is LEGACY-054's mutual-recursion defect in a new costume. `reversal.allowed` is `true` with `producesType: "COST_ADJUSTMENT"` so an accountant who disputes an adjustment reverses it like any other document (D13) rather than editing it. `dimensions.required` is `[]`, and BRANCH still lands on every line: §4.3.2 step 10 tags every ledger line from `document.branch_id`, which Task 9 sets per branch.
 
 - [ ] **Step 4: Write `packages/db/src/costing/cost-adjustment.ts`**
 
@@ -3681,7 +3681,7 @@ live, and the job is the only thing that knows it.
 
 inventory.effect is none — a recost changes what stock is worth, never how
 much there is. approval.required is false: a maker-checker on a
-system-generated correction is SAH-054's defect in a new costume.
+system-generated correction is LEGACY-054's defect in a new costume.
 
 resolveAdjustmentAccounts is hazard 33's assertion made executable: 3B
 consumes 1300 and 5000 and seeds neither, so it proves both resolve before
@@ -3709,7 +3709,7 @@ EOF
 // packages/db/src/costing/replay.ts
 /** Movements per `withTenant` transaction (spec:1368 — "long jobs run as many short transactions"). */
 export const MOVEMENTS_PER_BATCH = 500;
-/** §4.7.2 verbatim. Idempotent and restartable (SAH-054). */
+/** §4.7.2 verbatim. Idempotent and restartable (LEGACY-054). */
 export async function replay(sql: Sql, job: JobEnvelope<{ companyId: string }>, ctx: TenantContext): Promise<{ movementsReplayed: number; adjustmentsPosted: string[] }>;
 ```
 
@@ -3717,7 +3717,7 @@ export async function replay(sql: Sql, job: JobEnvelope<{ companyId: string }>, 
 
 **(1) An issue's `inventory_movement.value` is never rewritten — that is why the table can be immutable while layers are derived.** `app.inventory_movement` carries `forbid_change` (§4.7.3). So a recost does **not** correct the value the issue was posted with; it recomputes `cost_consumption` and books the *difference* as a `COST_ADJUSTMENT`. That is spec:1224 read literally — "the replay writes an adjustment entry, never silently rewriting posted history" — and it is what makes the whole design hold together: the movement is the immutable record of what happened, the consumptions are the derived answer to what it cost, and the adjustment is the ledger's reconciliation between the two. A plan that proposes updating `inventory_movement.value` has misread this and will die on the trigger.
 
-**(2) `document_line.cost` IS rewritten.** It is the *current* answer to "what did this line cost", read by reversals, by 3D's `line.variance_value` and by every margin report, so leaving it at a superseded figure would give two reports two answers — SAH-009 by another route. `document_line` has no BEFORE UPDATE guard (3A assumption 5), it is audited (§4.3.4), and the audit row keeps the before-image, so the change is visible. The ledger is not touched: the adjustment reconciles it.
+**(2) `document_line.cost` IS rewritten.** It is the *current* answer to "what did this line cost", read by reversals, by 3D's `line.variance_value` and by every margin report, so leaving it at a superseded figure would give two reports two answers — LEGACY-009 by another route. `document_line` has no BEFORE UPDATE guard (3A assumption 5), it is audited (§4.3.4), and the audit row keeps the before-image, so the change is visible. The ledger is not touched: the adjustment reconciles it.
 
 **(3) A layer is UPDATED, never re-inserted.** `unique (movement_id)` (Task 1) makes that structural rather than a convention.
 
@@ -3744,7 +3744,7 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => `2026-${String(i + 1).padSta
  *  would resolve to `packages/db/packages/db/seed/…` (1a:5114 does the same). */
 const TYPES = fileURLToPath(new URL("../../seed/my/document-types", import.meta.url));
 
-describe("acceptance test 5 — back-dated costing (spec:2423; SAH-004, 005, 010)", () => {
+describe("acceptance test 5 — back-dated costing (spec:2423; LEGACY-004, 005, 010)", () => {
   let db: Db; let s: Seed; let receiptType: string; let issueType: string;
   let itemId: string; let warehouseId: string; let catalogue: string[];
 
@@ -3888,7 +3888,7 @@ describe("acceptance test 5 — back-dated costing (spec:2423; SAH-004, 005, 010
     expect(again).toEqual({ movementsReplayed: 0, adjustmentsPosted: [] });
   });
 
-  it("re-running after a completed run adds nothing, and no period gets two adjustments (SAH-054)", async () => {
+  it("re-running after a completed run adds nothing, and no period gets two adjustments (LEGACY-054)", async () => {
     const jobs = recordingJobs();
     await postInventoryDocument(db, s, { documentTypeId: receiptType, warehouseId, jobs, effectiveDate: "2026-04-02",
       lines: [{ itemId, warehouseId, quantity: "10.000000", unitPrice: "50.0000" }] });
@@ -4041,7 +4041,7 @@ interface MovementRow {
 /**
  * §4.7.2's job handler. Replays movements forward from the earliest invalidation in bounded batches,
  * rewrites layers and consumptions, and posts one `COST_ADJUSTMENT` per (fiscal period, branch) whose
- * COGS total moved (spec:1224). Idempotent and restartable (SAH-054): every write is a formula over
+ * COGS total moved (spec:1224). Idempotent and restartable (LEGACY-054): every write is a formula over
  * committed state, so a crash mid-run leaves the next run computing the same resume point.
  *
  * Opens its OWN transactions — it is given `sql`, not a `tx` — because one transaction over twelve months
@@ -4053,7 +4053,7 @@ export async function replay(
   const companyId = job.payload.companyId;
 
   // ── 1. What needs work, and from where ──────────────────────────────────────────────────────────
-  // "Needs work" is structural, never a boolean somebody remembered to set (SAH-005): a layer that is
+  // "Needs work" is structural, never a boolean somebody remembered to set (LEGACY-005): a layer that is
   // invalidated, or a movement whose only consumptions are invalidated.
   const scope = await withTenant(sql, ctx, (tx) => tx<{
     item_ids: string[] | null; effective_date: string | null; posting_seq: string | null; line_no: number | null; movement_no: number | null;
@@ -4198,7 +4198,7 @@ export async function replay(
 
         // An issue: recompute the consumption set. `allowShortfall` is true here and only here — the
         // movement is already posted and its override, if any, was authorised at post time; refusing now
-        // would abort a correction over a historical excursion, which is SAH-054 exactly.
+        // would abort a correction over a historical excursion, which is LEGACY-054 exactly.
         let out;
         try {
           out = costingEngine.cost({
@@ -4445,13 +4445,13 @@ describe("inventory.cost.replay through the worker", () => {
 - **Status:** Accepted
 - **Date:** 2026-09-07
 - **Deciders:** Phase 3B
-- **Spec:** §3.4 (spec:1220–1224), §3.8 transactions (spec:1368), Part VI test 5 (spec:2423), Part I SAH-004, 005, 010, 054
+- **Spec:** §3.4 (spec:1220–1224), §3.8 transactions (spec:1368), Part VI test 5 (spec:2423), Part I LEGACY-004, 005, 010, 054
 
 ## Context
 
 The old system's recost was one all-or-nothing transaction over every material, entered from two code
-paths that ordered their work differently — one by document id, one by date (SAH-005) — and aborted on
-the first historical below-cost sale, rolling back every material already processed (SAH-054). Its
+paths that ordered their work differently — one by document id, one by date (LEGACY-005) — and aborted on
+the first historical below-cost sale, rolling back every material already processed (LEGACY-054). Its
 incremental mode visited only materials whose dirty flag was set, and the flag was set from three of the
 four code paths that could dirty one, so `vForce=0` was a silent-wrong-answer mode.
 
@@ -4463,7 +4463,7 @@ Six things, and each one is a direct answer to one of those failures.
    (`forbid_change`); the recost rewrites `cost_consumption` and books the difference as a
    `COST_ADJUSTMENT`. spec:1224's "never silently rewriting posted history", read literally.
 2. **`document_line.cost` IS rewritten.** It is the current answer, read by reversals, by 3D's
-   `line.variance_value` and by every margin report; two answers to one question is SAH-009.
+   `line.variance_value` and by every margin report; two answers to one question is LEGACY-009.
 3. **A layer is UPDATEd, never re-inserted** — `unique (movement_id)` makes that structural.
 4. **The restore pass is a formula** (`qty_remaining = qty_in − Σ valid consumptions`), so a crash-restart
    re-runs it harmlessly and the resume point is derived from committed state, never from a flag.
@@ -4482,7 +4482,7 @@ Six things, and each one is a direct answer to one of those failures.
    historical shortfall — and `document_line.cost` exceeds `Σ cost_consumption.value` by the shortfall's value.
    **Consequences, both stated rather than papered over:** Task 11's nightly quantity compare **excludes
    `(item, warehouse)` pairs with an open shortfall**, naming them in the log rather than raising an
-   incident; and `sah-009`'s tie-out asserts
+   incident; and `legacy-009`'s tie-out asserts
    `Σ document_line.cost = Σ cost_consumption.value + shortfall value`, which is the true identity.
    **The exclusion is bounded by a test, not by this paragraph:** `packages/db/test/costing/valuation.test.ts`
    opens a shortfall through `overriddenIssue`, asserts the pair appears in `excluded` and **not** in
@@ -4514,7 +4514,7 @@ disables `assert_stock_available` or `forbid_change` — it writes no movement, 
   is deliberate — `sum(base_debit) = sum(base_credit)` holds per document and BRANCH stays meaningful.
 - A company whose chart lacks `1300` or `5000` fails at the top of the job with the seed command in the
   message (Task 8), not at an insert halfway through a batch.
-- **Rejected:** a per-item watermark column. It is the shape SAH-005's `CstChanged` had, and the whole
+- **Rejected:** a per-item watermark column. It is the shape LEGACY-005's `CstChanged` had, and the whole
   lesson of that defect is that invalidation must be structural — a row's own `invalidated_at` — rather
   than a scalar somebody has to remember to move.
 ```
@@ -4549,7 +4549,7 @@ asserted on rows, never on a wall clock.
 
 ADR 0038's six decisions: an issue's immutable movement value is never
 rewritten and the difference becomes a COST_ADJUSTMENT; document_line.cost IS
-rewritten, because two answers to one question is SAH-009; a layer is UPDATEd
+rewritten, because two answers to one question is LEGACY-009; a layer is UPDATEd
 under unique (movement_id); the restore pass is a formula so a restart re-runs
 it harmlessly; "before" is the latest invalidated generation per movement, so
 a twice-recosted movement is not double-counted; a closed source period
@@ -4559,7 +4559,7 @@ infinite retry.
 500 movements per withTenant transaction (spec:1368). No invariant is
 disabled: the replay writes no movement, so assert_stock_available and
 forbid_change never fire. Rejected: a per-item watermark column — that is
-SAH-005's CstChanged, and invalidation must be structural.
+LEGACY-005's CstChanged, and invalidation must be structural.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 EOF
@@ -4618,7 +4618,7 @@ export const valuationRoutes: OpenAPIHono<AppEnv>;
 export const valuationRouteModule: RouteModule;         // path "/v1/companies/:companyId/valuation"
 ```
 
-**Read this before writing the SQL.** The as-of figure is derived **from the layers**, and every consumer derives it from this one function — that is spec:1228 and the whole reason SAH-009 cannot recur. Two clauses make it as-of rather than current:
+**Read this before writing the SQL.** The as-of figure is derived **from the layers**, and every consumer derives it from this one function — that is spec:1228 and the whole reason LEGACY-009 cannot recur. Two clauses make it as-of rather than current:
 
 - a layer counts only if **its own** movement's `effective_date <= asOf` (a receipt after the date has not happened yet); and
 - its remaining quantity is `qty_in − Σ(valid consumption quantities whose consuming movement's `effective_date <= asOf`)` — the *consumption's* date, not the layer's.
@@ -4792,7 +4792,7 @@ export interface ValuationRow {
 /**
  * THE valuation read (spec:1228). Every consumer — this slice's route, 3D's `inventory.valuation` report,
  * 4B's `item_profitability`, 7B's re-expression and Task 11's `stock_valuation` rebuild — calls this
- * function. None re-derives it, which is the whole answer to SAH-009.
+ * function. None re-derives it, which is the whole answer to LEGACY-009.
  *
  * As-of, in two clauses: a layer counts only if ITS OWN movement's `effective_date <= asOf`, and its
  * residue subtracts only consumptions whose CONSUMING movement's `effective_date <= asOf`. Value is
@@ -5169,7 +5169,7 @@ describe("stock_valuation — the as-of snapshot (spec:1204; test 2 re-run)", ()
     expect(rows).toEqual([{ quantity: "50.000000", value: "625.0000", as_of: "2026-01-31" }]);
   });
 
-  it("it agrees with valuationAsOf to the cent — one function, one answer (spec:1228, SAH-009)", async () => {
+  it("it agrees with valuationAsOf to the cent — one function, one answer (spec:1228, LEGACY-009)", async () => {
     const direct = await withTenant(db.rw, s.tenant, s.system, (tx) =>
       valuationAsOf(tx, { companyId: s.company, asOf: "2026-01-31", limit: 50 }));
     const stored = await withTenant(db.rw, s.tenant, s.system, (tx) => tx<{ quantity: string; value: string }[]>`
@@ -5308,7 +5308,7 @@ export interface StockValuationRebuildResult {
 
 /**
  * Rebuilds `app.stock_valuation` for one company at one date, **from `valuationAsOf`** — not from a second
- * query that happens to compute the same thing. Two derivations of one figure is SAH-009, and this function
+ * query that happens to compute the same thing. Two derivations of one figure is LEGACY-009, and this function
  * exists to be the one place a stored snapshot and a live report cannot diverge.
  *
  * Compares the QUANTITY half to `sum(inventory_movement.quantity)` as at the date; a difference is a
@@ -5563,7 +5563,7 @@ feat(db): the stock_valuation snapshot and its nightly rebuild [3B T11]
 
 rebuildStockValuation pages through valuationAsOf and MERGEs the result, so a
 stored snapshot and a live report cannot diverge — two derivations of one
-figure is SAH-009.
+figure is LEGACY-009.
 
 ADR 0039: stock_valuation is an as-of HISTORY and does not join 1B's
 projectionChecks registry; cost_layer does, because it is current state with a
@@ -5605,7 +5605,7 @@ export interface GoldenLayer { movementId: string; qtyIn: string; unitCost: stri
 export interface CostingGoldenExpectation { plans: PostingPlan[]; consumptions: Consumption[][]; layersAfter: GoldenLayer[] }
 ```
 
-**Amendment A7, stated once so the shape is not re-litigated.** §3.7.4 says `expected.json` is the `PostingPlan`, and the plans **are** in there — but a `PostingPlan` cannot express *which layers an issue consumed*, and SAH-009's entire failure was two implementations disagreeing about exactly that. So for the costing area only, `expected.json` is a `CostingGoldenExpectation`: the plans, the per-document consumption sets, and the layer state after the last document.
+**Amendment A7, stated once so the shape is not re-litigated.** §3.7.4 says `expected.json` is the `PostingPlan`, and the plans **are** in there — but a `PostingPlan` cannot express *which layers an issue consumed*, and LEGACY-009's entire failure was two implementations disagreeing about exactly that. So for the costing area only, `expected.json` is a `CostingGoldenExpectation`: the plans, the per-document consumption sets, and the layer state after the last document.
 
 **Amendment A17 settles the harness's one open question: each case carries its own `policies.json`, keyed by `documentTypeCode`.** `input.json` is a `DocumentSnapshot[]` and a snapshot alone does not say how to post — the plans in `expected.json` came from an `evaluatePolicy` call, so the policy is fixture input. It has to be a **map**: `inventory.effect` is a per-policy field, every case here mixes `STOCK_RECEIPT_TEST` and `STOCK_ISSUE_TEST` documents, and a single `effect: "issue"` policy would plan a receipt as an issue and cost it against layers it should have created. The map is per case rather than in the harness so a case that wants a different `inventory.costing` (a free-of-charge line) changes one file rather than a shared table.
 
@@ -6062,7 +6062,7 @@ pinned assertions, in this same PR.
 
 Amendment A7's expected.json carries the plans, the per-document consumption
 sets and the layer state after — a PostingPlan cannot say WHICH layers an
-issue consumed, and that disagreement was the whole of SAH-009. A17 gives each
+issue consumed, and that disagreement was the whole of LEGACY-009. A17 gives each
 case its own policies.json map keyed by document type, because a snapshot alone does not say how to
 post and one policy would plan a receipt as an issue.
 
@@ -6080,16 +6080,16 @@ EOF
 ### Task 13: The fourteen new regression files and two appended blocks, test 7's cost side, and the staging re-seed
 
 **Files:**
-- Create: `tests/regression/sah-004.test.ts`, `sah-006.test.ts`, `sah-007.test.ts`, `sah-009.test.ts`, `sah-010.test.ts`, `sah-015.test.ts`, `sah-016.test.ts`, `sah-017.test.ts`, `sah-022.test.ts`, `sah-054.test.ts`, `sah-060.test.ts`, `sah-061.test.ts`, `sah-062.test.ts`, `sah-076.test.ts`
+- Create: `tests/regression/legacy-004.test.ts`, `legacy-006.test.ts`, `legacy-007.test.ts`, `legacy-009.test.ts`, `legacy-010.test.ts`, `legacy-015.test.ts`, `legacy-016.test.ts`, `legacy-017.test.ts`, `legacy-022.test.ts`, `legacy-054.test.ts`, `legacy-060.test.ts`, `legacy-061.test.ts`, `legacy-062.test.ts`, `legacy-076.test.ts`
 - Create: `tests/regression/support/costing.ts` (**Step 1** — write it FIRST; every file above imports it), `scripts/reseed-verify.ts` (Step 6)
-- Modify: `tests/regression/sah-005.test.ts` (append), `tests/regression/sah-008.test.ts` (append), `packages/db/package.json` (the `reseed:verify` script, Step 6), `tests/invariants/support/post-inventory.ts` (**verify only** — `beforePost` and `postOverriddenIssue` are Task 6's; extend additively if the head lacks either)
+- Modify: `tests/regression/legacy-005.test.ts` (append), `tests/regression/legacy-008.test.ts` (append), `packages/db/package.json` (the `reseed:verify` script, Step 6), `tests/invariants/support/post-inventory.ts` (**verify only** — `beforePost` and `postOverriddenIssue` are Task 6's; extend additively if the head lacks either)
 - Test: all of the above
 
 **Interfaces:**
-- Consumes: `sharedDb()` (contracts §4.17.1, 0B) — for the shared container only; **not** `thinRegression` or `ThinContext`, for the reason the second box below gives; `postInventoryDocument`, `postOverriddenIssue`, `recordingJobs`, `ensureOpenPeriods`, the two policy consts (Task 6); `replay`, `valuationAsOf`, `openLayersFor`, `rebuildStockValuation`, `reverseDocument`, `MOVEMENTS_PER_BATCH` (Tasks 7–11); `costingEngine`, `MIN_MEANINGFUL_QTY`, `Quantity`, `Money`, `currency`, `Layer` (Tasks 2–3); `seedTenantV2`, `seedItem`, `seedWarehouse`, `seedDocumentType`, `grantCodes`, `uuidv7` (§4.17, §4.1); `sourceFiles`, `SourceFile` **and `REPO_ROOT`** (§4.17.1); `loadDocumentTypes` (§4.3.7, as `@dulja/db/seed`) and `PERMISSIONS` (§4.2.5) — legal here because `tests/**` has no `dependency-rule` tier owner (0b:5064), and needed because `costingContext` seeds `COST_ADJUSTMENT` into its own tenant before `sah-054` runs the replay.
-- Produces: `costingContext(sah)` and `CostingFixture` in `tests/regression/support/costing.ts` — this slice's own regression module, registered by amendment A21(a) and **not** a `ThinContext` member (§4.17.1 registers only `sharedDb`/`ThinContext`/`thinRegression` in 0B's file). Fourteen regression files, per §3.7.3's rule that the first slice in execution order to touch a defect creates the file, plus two appended blocks. Also `scripts/reseed-verify.ts` and the `reseed:verify` script (Step 6).
+- Consumes: `sharedDb()` (contracts §4.17.1, 0B) — for the shared container only; **not** `thinRegression` or `ThinContext`, for the reason the second box below gives; `postInventoryDocument`, `postOverriddenIssue`, `recordingJobs`, `ensureOpenPeriods`, the two policy consts (Task 6); `replay`, `valuationAsOf`, `openLayersFor`, `rebuildStockValuation`, `reverseDocument`, `MOVEMENTS_PER_BATCH` (Tasks 7–11); `costingEngine`, `MIN_MEANINGFUL_QTY`, `Quantity`, `Money`, `currency`, `Layer` (Tasks 2–3); `seedTenantV2`, `seedItem`, `seedWarehouse`, `seedDocumentType`, `grantCodes`, `uuidv7` (§4.17, §4.1); `sourceFiles`, `SourceFile` **and `REPO_ROOT`** (§4.17.1); `loadDocumentTypes` (§4.3.7, as `@dulja/db/seed`) and `PERMISSIONS` (§4.2.5) — legal here because `tests/**` has no `dependency-rule` tier owner (0b:5064), and needed because `costingContext` seeds `COST_ADJUSTMENT` into its own tenant before `legacy-054` runs the replay.
+- Produces: `costingContext(legacyDefect)` and `CostingFixture` in `tests/regression/support/costing.ts` — this slice's own regression module, registered by amendment A21(a) and **not** a `ThinContext` member (§4.17.1 registers only `sharedDb`/`ThinContext`/`thinRegression` in 0B's file). Fourteen regression files, per §3.7.3's rule that the first slice in execution order to touch a defect creates the file, plus two appended blocks. Also `scripts/reseed-verify.ts` and the `reseed:verify` script (Step 6).
 
-**The one shared preamble.** Every file below opens with the same block, so each is independently runnable. The `costingContext` argument is the file's own SAH number and is **not decoration** — see the two boxes under it:
+**The one shared preamble.** Every file below opens with the same block, so each is independently runnable. The `costingContext` argument is the file's own LEGACY number and is **not decoration** — see the two boxes under it:
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -6098,18 +6098,18 @@ import { MOVEMENTS_PER_BATCH } from "@dulja/db";
 import { postInventoryDocument, recordingJobs } from "../invariants/support/post-inventory";
 import { costingContext } from "./support/costing";
 
-const ctx = costingContext("004");        // ← this file's own SAH number
+const ctx = costingContext("004");        // ← this file's own LEGACY number
 ```
 
-**Each file writes a plain `describe`, not a `thinRegression` call, and the title carries the ` — 3B` suffix §3.7.3 requires.** 0B's `thinRegression(sah, heading, cites: string, body)` invokes its body *inside a single `it`* (0b:5317–5326): a `test` declared within a running `test` is a Vitest error, `cites` is a `string` and not an array, and the body's parameter is 0B's `ThinContext` (`{ db, rw, a, b, withTenant, expect }`), which has none of this slice's helpers on it. The wrapper is right for the twenty-one one-assertion files 0B created and wrong for a costing file with two or more cases, so these files are **full** files in §3.7.3's own sense — the shape 0B used for `sah-026`, `034` and `035`. Each `describe` is titled `SAH-NNN <Part I heading> — 3B`, each `it` names the file that first proved the fact, and appending to `sah-005` / `sah-008` adds a `describe` beside 0B's `thinRegression` call without touching it, exactly as 2A did for `sah-013` (2a:4664).
+**Each file writes a plain `describe`, not a `thinRegression` call, and the title carries the ` — 3B` suffix §3.7.3 requires.** 0B's `thinRegression(legacyDefect, heading, cites: string, body)` invokes its body *inside a single `it`* (0b:5317–5326): a `test` declared within a running `test` is a Vitest error, `cites` is a `string` and not an array, and the body's parameter is 0B's `ThinContext` (`{ db, rw, a, b, withTenant, expect }`), which has none of this slice's helpers on it. The wrapper is right for the twenty-one one-assertion files 0B created and wrong for a costing file with two or more cases, so these files are **full** files in §3.7.3's own sense — the shape 0B used for `legacy-026`, `034` and `035`. Each `describe` is titled `LEGACY-NNN <Part I heading> — 3B`, each `it` names the file that first proved the fact, and appending to `legacy-005` / `legacy-008` adds a `describe` beside 0B's `thinRegression` call without touching it, exactly as 2A did for `legacy-013` (2a:4664).
 
-**Each file also gets its own tenant, and that is load-bearing rather than tidy.** `costingContext(sah)` seeds `SAH-<sah>` on `sharedDb()`'s shared `Db` — one container for the whole run, one *company* per file. Sharing one company would make most of the absolute assertions below false in any file order: `sah-006` expects the valuation of its item to be `undefined`, `sah-015` expects it to be `undefined` before its own receipt, `sah-016` expects a unit cost of exactly `1.0000` — and `sah-004` leaves 100 units at 10.0000 on the shelf, while `sah-005` deliberately back-dates a document with a `recordingJobs()` client and never runs the replay, leaving invalidated layers that every later `valuation` and `openLayers` read silently skips. Per-file tenants also give each file its own `seedTenantV2` company, which is what wires `fx_rounding_account_id` and the `1000`/`4000` accounts; `sharedDb()`'s `a` and `b` come from Plan 0A's `seedTenant`, which does not.
+**Each file also gets its own tenant, and that is load-bearing rather than tidy.** `costingContext(legacyDefect)` seeds `LEGACY-<legacyDefect>` on `sharedDb()`'s shared `Db` — one container for the whole run, one *company* per file. Sharing one company would make most of the absolute assertions below false in any file order: `legacy-006` expects the valuation of its item to be `undefined`, `legacy-015` expects it to be `undefined` before its own receipt, `legacy-016` expects a unit cost of exactly `1.0000` — and `legacy-004` leaves 100 units at 10.0000 on the shelf, while `legacy-005` deliberately back-dates a document with a `recordingJobs()` client and never runs the replay, leaving invalidated layers that every later `valuation` and `openLayers` read silently skips. Per-file tenants also give each file its own `seedTenantV2` company, which is what wires `fx_rounding_account_id` and the `1000`/`4000` accounts; `sharedDb()`'s `a` and `b` come from Plan 0A's `seedTenant`, which does not.
 
 `costingContext` is written out in full in **Step 1** — write that file first, because every `ctx.*` call in the files below is defined there.
 
 - [ ] **Step 1: Write `tests/regression/support/costing.ts` — every file below imports it**
 
-**`ctx` is not a `ThinContext` member.** 0B owns `tests/support/regression.ts` and §4.17.1 registers exactly `sharedDb`, `ThinContext` and `thinRegression` there; adding sixteen costing helpers to another slice's shared file is the merge hotspot §4.17 exists to prevent. So the helpers live in **`tests/regression/support/costing.ts`**, this slice's own module (amendment A21(a)), and each file's block opens `const ctx = costingContext("<sah>");`. Write it in full — every regression file above depends on it:
+**`ctx` is not a `ThinContext` member.** 0B owns `tests/support/regression.ts` and §4.17.1 registers exactly `sharedDb`, `ThinContext` and `thinRegression` there; adding sixteen costing helpers to another slice's shared file is the merge hotspot §4.17 exists to prevent. So the helpers live in **`tests/regression/support/costing.ts`**, this slice's own module (amendment A21(a)), and each file's block opens `const ctx = costingContext("<legacyDefect>");`. Write it in full — every regression file above depends on it:
 
 ```ts
 // tests/regression/support/costing.ts — 3B's own regression helpers. Not a ThinContext member (§4.17.1).
@@ -6134,16 +6134,16 @@ export interface CostingFixture {
 }
 
 /**
- * @param sah this file's SAH number, e.g. "004". It names the tenant, and the ISOLATION is the point:
+ * @param legacyDefect this file's LEGACY number, e.g. "004". It names the tenant, and the ISOLATION is the point:
  *   one company per regression file. The files below assert absolute figures — a valuation that is
  *   `undefined`, a unit cost of exactly 1.0000 — and every one of them would be false in some file order if
- *   they shared a company, because `sah-004` leaves stock on the shelf and `sah-005` deliberately leaves
+ *   they shared a company, because `legacy-004` leaves stock on the shelf and `legacy-005` deliberately leaves
  *   invalidated layers behind (it back-dates against a `recordingJobs()` client and never runs the replay).
  *   The container is still shared: `sharedDb()` starts one for the whole `tests` run (§4.17.1).
  *   `seedTenantV2` rather than `sharedDb().a` because 1A's version wires `fx_rounding_account_id` and the
  *   1000/4000 accounts that every policy in this slice resolves; Plan 0A's `seedTenant` does not.
  */
-export function costingContext(sah: string) {
+export function costingContext(legacyDefect: string) {
   let fixture: CostingFixture | null = null;
   const ctxOf = async (s: Seed, db: Db) =>
     ({ tenantId: s.tenant, actorId: s.human, requestId: await uuidv7(db.admin) });
@@ -6153,13 +6153,13 @@ export function costingContext(sah: string) {
     async inventory(): Promise<CostingFixture> {
       if (fixture) return fixture;
       const { db } = await sharedDb();
-      const s = await seedTenantV2(db, `SAH-${sah}`);
+      const s = await seedTenantV2(db, `LEGACY-${legacyDefect}`);
       await grantCodes(db, s);
       await ensureOpenPeriods(db, s, 2026);
-      const { itemId } = await seedItem(db, s, { code: "SAH-COST" });
+      const { itemId } = await seedItem(db, s, { code: "LEGACY-COST" });
       // `COST_ADJUSTMENT` has to exist in THIS tenant before `runReplay`: `replay` calls
       // `resolveAdjustmentAccounts` unconditionally as soon as anything is in scope (Task 9 Step 3), and
-      // that raises `ERR_NOT_FOUND` on a missing document type before any arithmetic. `sah-054` asserts one
+      // that raises `ERR_NOT_FOUND` on a missing document type before any arithmetic. `legacy-054` asserts one
       // adjustment IS posted, so this load is load-bearing rather than defensive. The path is absolute
       // because Vitest runs the `tests` workspace from `tests/` — a bare `"packages/db/seed/…"` would
       // resolve under `tests/` and the loader would raise ENOENT (0B's `REPO_ROOT`, §4.17.1).
@@ -6169,7 +6169,7 @@ export function costingContext(sah: string) {
                           PERMISSIONS.map((p) => p.code)));
       fixture = {
         db, s, item: itemId,
-        warehouse: await seedWarehouse(db, s, { code: "SAH-WH" }),
+        warehouse: await seedWarehouse(db, s, { code: "LEGACY-WH" }),
         receipt: await seedDocumentType(db, s, { code: "STOCK_RECEIPT_TEST", module: "inventory", policy: STOCK_RECEIPT_COST_POLICY }),
         issueType: await seedDocumentType(db, s, { code: "STOCK_ISSUE_TEST", module: "inventory", policy: STOCK_ISSUE_COST_POLICY }),
       };
@@ -6177,7 +6177,7 @@ export function costingContext(sah: string) {
     },
 
     async secondWarehouse(db: Db, s: Seed): Promise<string> {
-      return seedWarehouse(db, s, { code: "SAH-WH2" });
+      return seedWarehouse(db, s, { code: "LEGACY-WH2" });
     },
 
     /**
@@ -6250,7 +6250,7 @@ export function costingContext(sah: string) {
     /**
      * The valued-but-unconsumed part of every authorised shortfall (ADR 0038 note 7), derived from
      * **quantities and unit costs** — NOT as `Σ document_line.cost − Σ cost_consumption.value`. Deriving it
-     * by that subtraction would make `sah-009`'s first assertion (`Σ consumption + shortfall = Σ cost`) an
+     * by that subtraction would make `legacy-009`'s first assertion (`Σ consumption + shortfall = Σ cost`) an
      * identity that holds over any data at all, including data where costing is broken, which is the one
      * thing that tie-out exists to detect.
      *
@@ -6299,7 +6299,7 @@ export function costingContext(sah: string) {
 
     async sourceFiles(roots: string[]): Promise<SourceFile[]> { return walk(roots); },
 
-    /** The two pure inputs `sah-007` and `sah-008` hand straight to the engine. */
+    /** The two pure inputs `legacy-007` and `legacy-008` hand straight to the engine. */
     valuelessReceipt() {
       return {
         method: "avco" as const, openLayers: [], allowShortfall: false,
@@ -6311,10 +6311,10 @@ export function costingContext(sah: string) {
       };
     },
     /**
-     * A ZERO-quantity issue — SAH-008(c)'s wash line. Named for what it is: there is no such thing as a
+     * A ZERO-quantity issue — LEGACY-008(c)'s wash line. Named for what it is: there is no such thing as a
      * sub-micro `Quantity` (`Quantity.of` throws above six decimal places, 0d:1034-1039), so the engine's
      * `MIN_MEANINGFUL_QTY` refusal cannot be reached from a constructed quantity and this is the arm of
-     * SAH-008 a runtime input can still present. It is refused with `ERR_COST_VALUE_MISSING`.
+     * LEGACY-008 a runtime input can still present. It is refused with `ERR_COST_VALUE_MISSING`.
      */
     washLineIssue() {
       const layer: Layer = {
@@ -6340,10 +6340,10 @@ export function costingContext(sah: string) {
 
 - [ ] **Step 2: Write the four costing-core files — 004, 007, 008 (append), 009**
 
-`sah-004.test.ts` — *Weighted-average cost is advanced on INSERT but never recomputed on UPDATE or DELETE, and nothing can rebuild it.* The old system's failure: buy 100 @ 10, buy 100 @ 20 (cost 15), delete the second purchase, quantity returns to 100 and **cost stays 15**, permanently, with no recovery path.
+`legacy-004.test.ts` — *Weighted-average cost is advanced on INSERT but never recomputed on UPDATE or DELETE, and nothing can rebuild it.* The old system's failure: buy 100 @ 10, buy 100 @ 20 (cost 15), delete the second purchase, quantity returns to 100 and **cost stays 15**, permanently, with no recovery path.
 
 ```ts
-describe("SAH-004 Weighted-average cost advanced on INSERT only, with no rebuild path — 3B", () => {          // first proven by spec:231, spec:1210
+describe("LEGACY-004 Weighted-average cost advanced on INSERT only, with no rebuild path — 3B", () => {          // first proven by spec:231, spec:1210
   it("cost is a function of the movements, so reversing the second purchase restores the first's cost", async () => {
     const { db, s, item, warehouse, receipt } = await ctx.inventory();
     const jobs = recordingJobs();
@@ -6364,10 +6364,10 @@ describe("SAH-004 Weighted-average cost advanced on INSERT only, with no rebuild
 });
 ```
 
-`sah-007.test.ts` — *Production/repackaging writes value-less movements that NULL-poison a material's cost for all history.*
+`legacy-007.test.ts` — *Production/repackaging writes value-less movements that NULL-poison a material's cost for all history.*
 
 ```ts
-describe("SAH-007 Value-less movements NULL-poison a material's cost — 3B", () => {          // first proven by spec:264, spec:1226
+describe("LEGACY-007 Value-less movements NULL-poison a material's cost — 3B", () => {          // first proven by spec:264, spec:1226
   it("a receipt with no value is refused by the engine, and value is NOT NULL on the table", async () => {
     expect(() => costingEngine.cost(ctx.valuelessReceipt())).toThrow(/ERR_COST_VALUE_MISSING/);
   });
@@ -6381,10 +6381,10 @@ describe("SAH-007 Value-less movements NULL-poison a material's cost — 3B", ()
 });
 ```
 
-`sah-008.test.ts` — **append** (0B created it, §3.7.3). One block, and the same two placements 2A used at 2a:4664: the preamble's imports go into the file's **existing import block at the top** (0B's version imports only `thinRegression`, so `describe`, `it`, `expect` and every `@dulja/*` name are new there) and `const ctx = costingContext("008");` goes beside them at module scope; the `describe` is appended at the **end**, leaving 0B's `thinRegression` call untouched. The same applies to `sah-005.test.ts` in Step 3.
+`legacy-008.test.ts` — **append** (0B created it, §3.7.3). One block, and the same two placements 2A used at 2a:4664: the preamble's imports go into the file's **existing import block at the top** (0B's version imports only `thinRegression`, so `describe`, `it`, `expect` and every `@dulja/*` name are new there) and `const ctx = costingContext("008");` goes beside them at module scope; the `describe` is appended at the **end**, leaving 0B's `thinRegression` call untouched. The same applies to `legacy-005.test.ts` in Step 3.
 
 ```ts
-describe("SAH-008 Weighted-average cost can go negative, explode 10,000x, or be wiped — 3B", () => {
+describe("LEGACY-008 Weighted-average cost can go negative, explode 10,000x, or be wiped — 3B", () => {
   it("a residue cannot even be expressed as a quantity, so no divisor can explode a cost", () => {
     // Two guards, and the first is the reason the second is unreachable. `Quantity` is fixed at six decimal
     // places and `Quantity.of` throws above them (0d:1034-1039), so the 0.0001-scale residue that gave the
@@ -6394,7 +6394,7 @@ describe("SAH-008 Weighted-average cost can go negative, explode 10,000x, or be 
     expect(() => Quantity.of("0.0000005")).toThrow(/at most 6 decimal places/);
     expect(MIN_MEANINGFUL_QTY.toString()).toBe("0.000001");
   });
-  it("a wash line — the zero-quantity arm of SAH-008 — is refused, never costed at zero", () => {
+  it("a wash line — the zero-quantity arm of LEGACY-008 — is refused, never costed at zero", () => {
     // This is the arm a runtime input can still present: a landed-cost or reconciliation line of zero
     // quantity. The old system set Cost = 0 and every later sale booked zero COGS.
     expect(() => costingEngine.cost(ctx.washLineIssue()))
@@ -6412,10 +6412,10 @@ describe("SAH-008 Weighted-average cost can go negative, explode 10,000x, or be 
 });
 ```
 
-`sah-009.test.ts` — *Three different weighted-average formulas exist, so cost and profit reports cannot reconcile.* **This file is also acceptance test 7's cost side** (§6.1: test 7 is 3D's, re-run partially here; hazard 4 splits it cost-side at 3D and revenue-bearing from 4B):
+`legacy-009.test.ts` — *Three different weighted-average formulas exist, so cost and profit reports cannot reconcile.* **This file is also acceptance test 7's cost side** (§6.1: test 7 is 3D's, re-run partially here; hazard 4 splits it cost-side at 3D and revenue-bearing from 4B):
 
 ```ts
-describe("SAH-009 Three weighted-average formulas that cannot reconcile — 3B", () => {          // first proven by spec:286, spec:1228, spec:2425
+describe("LEGACY-009 Three weighted-average formulas that cannot reconcile — 3B", () => {          // first proven by spec:286, spec:1228, spec:2425
   it("there is exactly ONE weighted-average implementation in the repository", async () => {
     // The mechanical half: no file outside packages/domain/src/costing/ divides a value by a quantity.
     const offenders = (await ctx.sourceFiles(["packages", "apps"]))
@@ -6476,10 +6476,10 @@ describe("SAH-009 Three weighted-average formulas that cannot reconcile — 3B",
 
 - [ ] **Step 3: Write the five invalidation-and-replay files — 005 (append), 010, 054, 061, 062**
 
-`sah-005.test.ts` — **append**:
+`legacy-005.test.ts` — **append**:
 
 ```ts
-describe("SAH-005 CstChanged never set on INSERT, so back-dated documents were never recosted — 3B", () => {          // first proven by spec:242, spec:1220
+describe("LEGACY-005 CstChanged never set on INSERT, so back-dated documents were never recosted — 3B", () => {          // first proven by spec:242, spec:1220
   it("invalidation is STRUCTURAL — a row's own invalidated_at, never a flag set from three of four paths", async () => {
     const { db } = await ctx.inventory();
     const cols = await db.admin<{ column_name: string }[]>`
@@ -6499,10 +6499,10 @@ describe("SAH-005 CstChanged never set on INSERT, so back-dated documents were n
 });
 ```
 
-`sah-010.test.ts` — *`procCalcJobCosts` cannot compute per-job cost: the dimension was added to the SELECT list but not to the ordering or the group break.*
+`legacy-010.test.ts` — *`procCalcJobCosts` cannot compute per-job cost: the dimension was added to the SELECT list but not to the ordering or the group break.*
 
 ```ts
-describe("SAH-010 A costing dimension in the SELECT list but not in the sort or the group break — 3B", () => {          // first proven by spec:302, spec:1225
+describe("LEGACY-010 A costing dimension in the SELECT list but not in the sort or the group break — 3B", () => {          // first proven by spec:302, spec:1225
   it("the chronological key is all four columns, spelled out, in every costing ordering", async () => {
     const files = await ctx.sourceFiles(["packages/db/src/costing", "packages/domain/src/costing"]);
     const orderings = files.flatMap((f) => f.text.split("\n").filter((l) => /order by/i.test(l)));
@@ -6520,10 +6520,10 @@ describe("SAH-010 A costing dimension in the SELECT list but not in the sort or 
 });
 ```
 
-`sah-054.test.ts` — *A full recost aborts on the first historical below-cost sale, rolling back every material already processed.*
+`legacy-054.test.ts` — *A full recost aborts on the first historical below-cost sale, rolling back every material already processed.*
 
 ```ts
-describe("SAH-054 A full recost aborts on the first historical below-cost sale — 3B", () => {          // first proven by spec:674, spec:1368
+describe("LEGACY-054 A full recost aborts on the first historical below-cost sale — 3B", () => {          // first proven by spec:674, spec:1368
   it("the replay is many bounded transactions, and a below-cost historical sale does not abort it", async () => {
     const { db, s, item, warehouse, receipt, issueType } = await ctx.inventory();
     const jobs = recordingJobs();
@@ -6545,10 +6545,10 @@ describe("SAH-054 A full recost aborts on the first historical below-cost sale �
 });
 ```
 
-`sah-061.test.ts` — *`procUpdateMatCosts` resets every material's cost to its opening value, permanently.*
+`legacy-061.test.ts` — *`procUpdateMatCosts` resets every material's cost to its opening value, permanently.*
 
 ```ts
-describe("SAH-061 A repair that reset every cost to its opening value, permanently — 3B", () => {          // first proven by spec:721, spec:1210
+describe("LEGACY-061 A repair that reset every cost to its opening value, permanently — 3B", () => {          // first proven by spec:721, spec:1210
   it("the replay recomputes from the movements — there is no 'reset to opening' path at all", async () => {
     const files = await ctx.sourceFiles(["packages/db/src/costing"]);
     // No statement sets a layer's unit_cost from anything but the movement it derives from.
@@ -6561,10 +6561,10 @@ describe("SAH-061 A repair that reset every cost to its opening value, permanent
 });
 ```
 
-`sah-062.test.ts` — *`procCalcCosts` writes the wrong watermark document at every group break.*
+`legacy-062.test.ts` — *`procCalcCosts` writes the wrong watermark document at every group break.*
 
 ```ts
-describe("SAH-062 The watermark written at a group break pointed at another material's document — 3B", () => {          // first proven by spec:724
+describe("LEGACY-062 The watermark written at a group break pointed at another material's document — 3B", () => {          // first proven by spec:724
   it("there is no watermark column to point at the wrong row", async () => {
     const { db } = await ctx.inventory();
     const cols = await db.admin<{ column_name: string }[]>`
@@ -6580,10 +6580,10 @@ describe("SAH-062 The watermark written at a group break pointed at another mate
 
 - [ ] **Step 4: Write the seven aggregate-and-duplication files — 006, 015, 016, 017, 022, 060, 076**
 
-`sah-006.test.ts` — *Editing a bill line's material permanently desynchronises cost aggregates: `−old + new` keyed on the OLD key.*
+`legacy-006.test.ts` — *Editing a bill line's material permanently desynchronises cost aggregates: `−old + new` keyed on the OLD key.*
 
 ```ts
-describe("SAH-006 An edit keyed on the OLD key desynchronised two aggregates for ever — 3B", () => {          // first proven by spec:251, spec:1210
+describe("LEGACY-006 An edit keyed on the OLD key desynchronised two aggregates for ever — 3B", () => {          // first proven by spec:251, spec:1210
   it("there is no in-place aggregate maintenance to key wrongly — movements are append-only and signed", async () => {
     const { db } = await ctx.inventory();
     const [triggers] = await db.admin<{ n: number }[]>`
@@ -6603,10 +6603,10 @@ describe("SAH-006 An edit keyed on the OLD key desynchronised two aggregates for
 });
 ```
 
-`sah-015.test.ts` — *A date window computed with a predicate that can never be satisfied, driving a time-weighted average to NULL.*
+`legacy-015.test.ts` — *A date window computed with a predicate that can never be satisfied, driving a time-weighted average to NULL.*
 
 ```ts
-describe("SAH-015 A date window computed from a predicate that can never be satisfied — 3B", () => {          // first proven by spec:347, spec:2039
+describe("LEGACY-015 A date window computed from a predicate that can never be satisfied — 3B", () => {          // first proven by spec:347, spec:2039
   it("the as-of window is the ONE parameter, and it filters the same set the body sums", async () => {
     const { db, s, item, warehouse, receipt } = await ctx.inventory();
     const jobs = recordingJobs();
@@ -6619,10 +6619,10 @@ describe("SAH-015 A date window computed from a predicate that can never be sati
 });
 ```
 
-`sah-016.test.ts` — *`MatStatus` min/max prices ratchet permanently and are maintained only on INSERT.*
+`legacy-016.test.ts` — *`MatStatus` min/max prices ratchet permanently and are maintained only on INSERT.*
 
 ```ts
-describe("SAH-016 Min/max prices that ratchet permanently, maintained on INSERT only — 3B", () => {          // first proven by spec:354, spec:1210
+describe("LEGACY-016 Min/max prices that ratchet permanently, maintained on INSERT only — 3B", () => {          // first proven by spec:354, spec:1210
   it("no ratcheting extreme is stored anywhere in the costing tables", async () => {
     const { db } = await ctx.inventory();
     const cols = await db.admin<{ table_name: string; column_name: string }[]>`
@@ -6643,10 +6643,10 @@ describe("SAH-016 Min/max prices that ratchet permanently, maintained on INSERT 
 });
 ```
 
-`sah-017.test.ts` — *Order-delivery tracking double-adds bonus on edit and never reverses on re-pointing.* 3B's share is the open-quantity **projection** clause the card names (with 3C and 3D):
+`legacy-017.test.ts` — *Order-delivery tracking double-adds bonus on edit and never reverses on re-pointing.* 3B's share is the open-quantity **projection** clause the card names (with 3C and 3D):
 
 ```ts
-describe("SAH-017 Delivery tracking double-added on edit and never reversed on re-pointing — 3B", () => {          // first proven by spec:361, spec:1204
+describe("LEGACY-017 Delivery tracking double-added on edit and never reversed on re-pointing — 3B", () => {          // first proven by spec:361, spec:1204
   it("every quantity aggregate in this slice is a SUM over append-only rows, never an incremental += ", async () => {
     const files = await ctx.sourceFiles(["packages/db/src/costing"]);
     for (const f of files) {
@@ -6659,10 +6659,10 @@ describe("SAH-017 Delivery tracking double-added on edit and never reversed on r
 
 The `qty_remaining = qty_remaining ±` form is exactly what ADR 0038's restore pass avoids, and this assertion is why: the restore is `qty_in − Σ valid`, a total, so a re-run is idempotent. 3C and 3D append their `document_link` fulfilment-quantity blocks to this file.
 
-`sah-022.test.ts` — *A `SELECT … INTO` that ignores a key column and hard-fails on any multi-job opening balance.*
+`legacy-022.test.ts` — *A `SELECT … INTO` that ignores a key column and hard-fails on any multi-job opening balance.*
 
 ```ts
-describe("SAH-022 A singleton SELECT that omitted a key column and raised -811 — 3B", () => {          // first proven by spec:412
+describe("LEGACY-022 A singleton SELECT that omitted a key column and raised -811 — 3B", () => {          // first proven by spec:412
   it("every costing read is keyed on its full primary key, and two rows are two rows", async () => {
     const { db, s, item, warehouse } = await ctx.inventory();
     const second = await ctx.secondWarehouse(db, s);
@@ -6679,10 +6679,10 @@ describe("SAH-022 A singleton SELECT that omitted a key column and raised -811 �
 });
 ```
 
-`sah-060.test.ts` — *`procFixMatStatus` uses two different sort orders and drops columns it rebuilds.*
+`legacy-060.test.ts` — *`procFixMatStatus` uses two different sort orders and drops columns it rebuilds.*
 
 ```ts
-describe("SAH-060 A repair with two different sort orders that dropped columns it rebuilt — 3B", () => {          // first proven by spec:718, spec:1204
+describe("LEGACY-060 A repair with two different sort orders that dropped columns it rebuilt — 3B", () => {          // first proven by spec:718, spec:1204
   it("the rebuild writes every column of stock_valuation, and reading it twice gives one answer", async () => {
     const { db, s } = await ctx.inventory();
     const first = await ctx.rebuild(db, s, "2026-01-31");
@@ -6695,10 +6695,10 @@ describe("SAH-060 A repair with two different sort orders that dropped columns i
 });
 ```
 
-`sah-076.test.ts` — *9% of the corpus is duplicate or near-duplicate code; the 0.77-similar costing pair is the source of SAH-010.*
+`legacy-076.test.ts` — *9% of the corpus is duplicate or near-duplicate code; the 0.77-similar costing pair is the source of LEGACY-010.*
 
 ```ts
-describe("SAH-076 Duplicate and near-duplicate costing procedures — 3B", () => {          // first proven by spec:841, spec:1228
+describe("LEGACY-076 Duplicate and near-duplicate costing procedures — 3B", () => {          // first proven by spec:841, spec:1228
   it("costingEngine is the only export any consumer imports, and there is exactly one of it", async () => {
     const files = await ctx.sourceFiles(["packages", "apps"]);
     const definitions = files.filter((f) => /export const costingEngine\b/.test(f.text));
@@ -6871,12 +6871,12 @@ If `provisional-movements` reports a non-zero count on staging, a receipt exists
 - [ ] **Step 8: Commit**
 
 ```bash
-git add tests/regression/sah-004.test.ts tests/regression/sah-005.test.ts tests/regression/sah-006.test.ts \
-        tests/regression/sah-007.test.ts tests/regression/sah-008.test.ts tests/regression/sah-009.test.ts \
-        tests/regression/sah-010.test.ts tests/regression/sah-015.test.ts tests/regression/sah-016.test.ts \
-        tests/regression/sah-017.test.ts tests/regression/sah-022.test.ts tests/regression/sah-054.test.ts \
-        tests/regression/sah-060.test.ts tests/regression/sah-061.test.ts tests/regression/sah-062.test.ts \
-        tests/regression/sah-076.test.ts tests/regression/support/costing.ts \
+git add tests/regression/legacy-004.test.ts tests/regression/legacy-005.test.ts tests/regression/legacy-006.test.ts \
+        tests/regression/legacy-007.test.ts tests/regression/legacy-008.test.ts tests/regression/legacy-009.test.ts \
+        tests/regression/legacy-010.test.ts tests/regression/legacy-015.test.ts tests/regression/legacy-016.test.ts \
+        tests/regression/legacy-017.test.ts tests/regression/legacy-022.test.ts tests/regression/legacy-054.test.ts \
+        tests/regression/legacy-060.test.ts tests/regression/legacy-061.test.ts tests/regression/legacy-062.test.ts \
+        tests/regression/legacy-076.test.ts tests/regression/support/costing.ts \
         tests/invariants/support/post-inventory.ts packages/db/package.json scripts/reseed-verify.ts
 git commit -m "$(cat <<'EOF'
 test(regression): the fourteen 3B defect files and test 7's cost side [3B T13]
@@ -6885,7 +6885,7 @@ test(regression): the fourteen 3B defect files and test 7's cost side [3B T13]
 010, 015, 016, 017, 022, 054, 060, 061, 062 and 076, so it creates those
 files; 005 and 008 are 0B's and get an appended block.
 
-sah-009 carries acceptance test 7's cost side — an item bought twice, sold,
+legacy-009 carries acceptance test 7's cost side — an item bought twice, sold,
 gone negative through a second principal's inventory.negative_stock.override,
 and supplier-returned, whose valuation and whose profit-report cost are the
 same number to the cent. 3D appends the transfer leg and 7B the revenue half.
@@ -6894,19 +6894,19 @@ The helpers live in tests/regression/support/costing.ts, this slice's own
 module (amendment A21(a)) — §4.17.1 registers only
 sharedDb/ThinContext/thinRegression in 0B's file, and adding a dozen costing
 helpers to another slice's shared file is the merge hotspot §4.17 exists to
-prevent. costingContext takes the file's SAH number and seeds that file its own
+prevent. costingContext takes the file's LEGACY number and seeds that file its own
 tenant: these files assert absolute figures, and sharing one company makes
 several of them false in some file order.
 
-Each file is a plain describe titled "SAH-NNN <heading> — 3B", not a
+Each file is a plain describe titled "LEGACY-NNN <heading> — 3B", not a
 thinRegression call: 0B's wrapper invokes its body inside a single it(), which
 a two-case costing file cannot use, and 2A set the precedent when it appended
-to sah-013.
+to legacy-013.
 
-sah-017's assertion is the one worth reading twice: no statement in this slice
+legacy-017's assertion is the one worth reading twice: no statement in this slice
 writes `qty_remaining = qty_remaining ± delta`. Every aggregate is a computed
 total over append-only rows, which is what makes ADR 0038's restore pass
-idempotent and SAH-006's -old+new impossible to express.
+idempotent and LEGACY-006's -old+new impossible to express.
 
 Staging is re-seeded rather than back-filled: inventory_movement is immutable,
 so a provisional 3A value cannot be corrected in place, and §4.7.2 makes those
@@ -6926,15 +6926,15 @@ Reviewed against `writing-plans/SKILL.md`, the contracts §2 card for 3B, all of
 **Fixed while reviewing.**
 
 1. **Amendments A14–A23 were missing.** Tasks 6–13 needed ten names and behaviours the contracts document does not carry: the rule that a test-only code's *policy* is a `seedDocumentType` parameter (A14), `reverseDocument`'s `jobs?` (A15), the replay's branch grouping, closed-period carry-forward and `document_line.cost` rewrite (A16), the golden harness's per-case `policies.json` map and bigint handling (A17), the `inventory/valuation.ts` contracts module (A18), the **nine module exports §4.7.2 omits** — `openLayersFor` above all, which is the one open-layer definition 3C, 3D, 4B and 7B will each look for in the registry (A19), `COST_LAYER_CHECK`'s name and file (A20), the test tier's `costingContext`/`postOverriddenIssue` rows **and the third `dependency-rule` allowance** without which three DB-tier suites cannot import the shared helper and `lint:rules` fails from Task 7 onward (A21), the divisor being *refused* rather than *clamped* (A22), and `cost_consumption`'s three CHECKs and its composite `(tenant_id, company_id)` FK (A23). Each is now a table row landing before the task that needs it, and each is in `contract_additions`.
-2. **The File Structure's regression row was a placeholder** — "`sah-004.test.ts` … and the other thirteen created files" is exactly the kind of elision hazard 35 rejects. All fourteen are now enumerated with their defect and owning task, plus `sah-055` from Task 4.
-3. **Nine created and eleven modified files were absent from the File Structure** (`guards.test.ts`, `method.test.ts`, `cost-lines.test.ts`, `apply-movements.test.ts`, `cost-adjustment.ts` and its test, `cost-layer-check.ts`, the three `policies.json` files, `reseed-verify.ts`, `tests/regression/support/costing.ts`; and `reverse.ts`, `errors.ts`, `schema/company.ts`, `openapi.json`, `document.ts`, `ledger-balance.test.ts`, `support/regression.ts`, both `package.json`s, the two appended `sah-` files). Added.
+2. **The File Structure's regression row was a placeholder** — "`legacy-004.test.ts` … and the other thirteen created files" is exactly the kind of elision hazard 35 rejects. All fourteen are now enumerated with their defect and owning task, plus `legacy-055` from Task 4.
+3. **Nine created and eleven modified files were absent from the File Structure** (`guards.test.ts`, `method.test.ts`, `cost-lines.test.ts`, `apply-movements.test.ts`, `cost-adjustment.ts` and its test, `cost-layer-check.ts`, the three `policies.json` files, `reseed-verify.ts`, `tests/regression/support/costing.ts`; and `reverse.ts`, `errors.ts`, `schema/company.ts`, `openapi.json`, `document.ts`, `ledger-balance.test.ts`, `support/regression.ts`, both `package.json`s, the two appended `legacy-` files). Added.
 4. **`reverseDocument` would have fail-closed on an ordinary reversal.** The review caught this working through Task 7: `reverseDocument` posts the reversal document it creates, and a reversal dated before later movements of the same items satisfies Task 7's back-dating predicate exactly. Without the `jobs?` pass-through, every reversal of an inventory document after Phase 3 raises `ERR_INTERNAL`. That is amendment A15 and Task 7 Step 6.
 5. **The engine would have refused a free-of-charge line *and* an authorised negative-stock excursion.** Task 2's `costIssue` raises `ERR_COST_VALUE_MISSING` when there is no layer to borrow a currency from and no value on the movement — which is the shape of both an FOC line at zero stock and an `inventory.negative_stock.override` issue against no layers, the very path `allowShortfall` exists for. Task 7 note 3 therefore substitutes `Money.zero(baseCurrency)` for **every issue's** value, keyed on `effect` and not on `costing`, and Task 12's golden driver uses the identical rule so the fixture cannot diverge from the hook. Task 3's guards file carries the override-at-zero-layers case as its own assertion.
 6. **`openLayersFor` was nearly given a date filter.** Reading only layers at or before the posting key looks obviously right and is a defect: a back-dated issue would consume a layer a later posted issue has already emptied and die on `cost_layer_qty_remaining_check`. Task 7 note 2 states the post-now-replay-later rule and says why the filter is wrong.
-7. **Every regression file was routed through 0B's `thinRegression`, which cannot carry them.** The wrapper invokes its body *inside one `it`* (0b:5317–5326), takes `cites` as a `string`, and hands the body a `ThinContext` — so seventeen files would have failed at run time with a nested-`test` error, at compile time on the array, and on every `ctx.*` call. Task 4's `sah-055` plus Task 13's **fourteen new files and two appended blocks** — the one phrasing this plan now uses everywhere for that set — are all plain `describe` blocks titled as §3.7.3 requires, which is the shape 2A already used to append to 0B's files.
-8. **Every regression file shared one company, and several of their assertions are absolute.** `sah-006` expects a valuation of `undefined`, `sah-016` a unit cost of exactly `1.0000` — both false once `sah-004` has left stock on the shelf, in any file order, and `sah-005` deliberately leaves invalidated layers behind. `costingContext(sah)` now seeds each file its own `seedTenantV2` tenant on the shared container, which also gives each one the `fx_rounding_account_id` that `sharedDb()`'s Plan 0A seed lacks.
-9. **The override fixture would have been refused by 2B's own guard.** `app.assert_override_authorised` raises when the attributed principal is the document's creator, and `recordOverride` takes `actor_id` from `app.current_actor()` — so posting *as* the supervisor and attributing to them, which is the obvious shaping, cannot work, and neither can a second *actor* inside one transaction. The sequence is now written once, in Task 6's `postOverriddenIssue`, with the supervisor as the **attributed** principal and `s.human` as the poster; Task 11's exclusion case and Task 13's `sah-009` both call it.
-10. **`sah-009`'s tie-out was one tautology and one false assertion.** `openShortfallValue` was `Σ document_line.cost − Σ cost_consumption.value`, so the first assertion held over any data at all — including broken data — and the second (`valuation + Σ cost = Σ receipts`) is arithmetically false by exactly the shortfall: 360 + 1320 ≠ 1560. The shortfall is now derived from quantities and the unit cost they were consumed at, which makes assertion (1) real, and assertion (2) subtracts it. Every figure in the fixture is worked out in a comment beside the assertions.
+7. **Every regression file was routed through 0B's `thinRegression`, which cannot carry them.** The wrapper invokes its body *inside one `it`* (0b:5317–5326), takes `cites` as a `string`, and hands the body a `ThinContext` — so seventeen files would have failed at run time with a nested-`test` error, at compile time on the array, and on every `ctx.*` call. Task 4's `legacy-055` plus Task 13's **fourteen new files and two appended blocks** — the one phrasing this plan now uses everywhere for that set — are all plain `describe` blocks titled as §3.7.3 requires, which is the shape 2A already used to append to 0B's files.
+8. **Every regression file shared one company, and several of their assertions are absolute.** `legacy-006` expects a valuation of `undefined`, `legacy-016` a unit cost of exactly `1.0000` — both false once `legacy-004` has left stock on the shelf, in any file order, and `legacy-005` deliberately leaves invalidated layers behind. `costingContext(legacyDefect)` now seeds each file its own `seedTenantV2` tenant on the shared container, which also gives each one the `fx_rounding_account_id` that `sharedDb()`'s Plan 0A seed lacks.
+9. **The override fixture would have been refused by 2B's own guard.** `app.assert_override_authorised` raises when the attributed principal is the document's creator, and `recordOverride` takes `actor_id` from `app.current_actor()` — so posting *as* the supervisor and attributing to them, which is the obvious shaping, cannot work, and neither can a second *actor* inside one transaction. The sequence is now written once, in Task 6's `postOverriddenIssue`, with the supervisor as the **attributed** principal and `s.human` as the poster; Task 11's exclusion case and Task 13's `legacy-009` both call it.
+10. **`legacy-009`'s tie-out was one tautology and one false assertion.** `openShortfallValue` was `Σ document_line.cost − Σ cost_consumption.value`, so the first assertion held over any data at all — including broken data — and the second (`valuation + Σ cost = Σ receipts`) is arithmetically false by exactly the shortfall: 360 + 1320 ≠ 1560. The shortfall is now derived from quantities and the unit cost they were consumed at, which makes assertion (1) real, and assertion (2) subtracts it. Every figure in the fixture is worked out in a comment beside the assertions.
 11. **`scripts/reseed-verify.ts` was listed, committed and described, and no step wrote it.** It is now Task 13 Step 6 in full — four checks, four lines of output, `--tenant` and `--local`, exit 1 on any failure — with the `reseed:verify` script entry beside it.
 12. **Every `packages/db/test` file broke `dependency-rule`, and two of them could not have found their seed pack.** All eight suites imported `@dulja/db`, `@dulja/db/test`, `@dulja/db/seed` or `@dulja/contracts`; 0B pins `"packages/db": ["@dulja/domain"]` and matches the owner on the path prefix `packages/db/` with no `test/` exclusion (0b:5052, 0b:5091), so `bun run lint:rules` would have failed at **Task 1**, not Task 7, and every later "Expected: PASS" was false. They now import `../fixtures`, `../harness` and `../../src/**` as 1A and 3A do, and the permission catalogue is read from `app.permission` instead of imported — 1A documents that exact substitution (1a:5105) and reads it the same way (1a:5131–5132). Found with it: three bare pack paths (`"packages/db/seed/my/document-types"`) that resolve under `packages/db` because Vitest runs the package from there, now `fileURLToPath(new URL("../../seed/my…", import.meta.url))` as at 1a:5114. **And three places ran the replay with no `COST_ADJUSTMENT` row at all** — `costingContext.inventory()`, Task 11’s shortfall case and the worker suite (`startWorker()` applies migrations and pg-boss, never the seed packs, 0d:2350) — while `replay` resolves the adjustment accounts unconditionally the moment anything is in scope, so all three would have died on `ERR_NOT_FOUND` before any arithmetic. Each now loads the pack into its own tenant. The worker suite's two assertions also read `l.movementsReplayed` off a `CapturedLog`, whose shape is `{ level, fields, msg }` (0d:2340); they read `fields` now.
 
@@ -6966,7 +6966,7 @@ Reviewed against `writing-plans/SKILL.md`, the contracts §2 card for 3B, all of
 - **Hazard 14**: 0034–0036 and ADR 0037–0039, the ranges the card allocates; no `max(version)` assertion anywhere. The shortfall-netting proposal is recorded *inside* ADR 0038 note 7 for exactly this reason: taking 0040 would be taking 3C's number.
 - **§4.17.1's importer list**: this slice makes it three (`apps/worker/test/**`, `apps/api/test/**`, `packages/db/test/**`) through one named allowance and one tsconfig `include` — Task 7 Step 9, amendment A21(c). No `package.json` dependency is added in that direction, so the workspace graph turbo walks gains no cycle.
 - **Hazard 15**: root `tests/` uses the production `withTenant(sql, ctx, fn)`; `packages/db/test` uses the four-argument one. Task 6's helper takes the production form.
-- **Hazard 17**: test 7's "gone negative" (Task 13, `sah-009`) and Task 11's exclusion case are both produced only through `recordOverride` with a second **attributed** principal, in the one shape `app.assert_override_authorised` admits. No flag is toggled and no movement is written directly.
+- **Hazard 17**: test 7's "gone negative" (Task 13, `legacy-009`) and Task 11's exclusion case are both produced only through `recordOverride` with a second **attributed** principal, in the one shape `app.assert_override_authorised` admits. No flag is toggled and no movement is written directly.
 - **Hazard 20**: both job handlers run under `systemContext` and fan out through `eachTenant`.
 - **Hazard 21**: no `sql.unsafe` in this slice.
 - **Hazard 22**: every ledger, movement, layer and projection write is inside `packages/db/src/costing/**` or `packages/db/src/posting/**`. `stock_valuation` is not on `posting-only-tables`' list by §3.7.5's own text, and its `merge` sits in `costing/valuation.ts` regardless.
@@ -7010,7 +7010,7 @@ If either is absent, stop: the phase gate is not met and Task 1 Step 5 says so e
 **Order.** Strictly 1 → 13. The dependencies are real, not stylistic:
 
 - **1** creates the tables everything writes to. **2 → 3** build the engine; 3 needs 2's `costIssue` to exist before it can replace its FIFO branch.
-- **4** is OD-06 and is **droppable without renumbering** — if the owner rejects AVCO, only Task 4's default and `sah-055` move. Nothing else in the plan reads `costing_method` except through `snapshot.company.costingMethod`.
+- **4** is OD-06 and is **droppable without renumbering** — if the owner rejects AVCO, only Task 4's default and `legacy-055` move. Nothing else in the plan reads `costing_method` except through `snapshot.company.costingMethod`.
 - **5** must land before **6**, or Task 6's block fails with `ERR_MONEY_CURRENCY_MISMATCH` from `toBase`.
 - **6** must land before **7**, **9**, **10**, **11** and **13** — every one of them posts through `postInventoryDocument`.
 - **7** is the hinge: it deletes 2A's step-9b guard, so Task 6's red block goes green here and 2A's guard test is deleted in this commit. **8** must land before **9** (the replay resolves what 8 seeds).
@@ -7049,7 +7049,7 @@ bun run lint
 bun run lint:rules                                    # no-number-money, posting-only-tables, permission-catalogue, role-seed, error-codes
 ```
 
-**The three commits that will be the largest, and what to watch in each.** Task 7 touches twelve files, deletes a guard another slice wrote — read 2A's step-9b block and its test together before deleting either, and delete both — and carries the one edit outside this slice's own directories: Step 9's `dependency-rule` allowance, without which every later task's `bun run lint:rules` claim is false. Task 9 is one long function; write it in the order of its numbered comment banners and run the test after each banner rather than at the end. Task 13 touches eighteen files — **fourteen new regression files and two appended blocks**, plus `tests/regression/support/costing.ts` and `scripts/reseed-verify.ts` (the one-line `package.json` edit and the verify-only `post-inventory.ts` are not counted) — and its Step 1, `tests/regression/support/costing.ts`, is the shared surface every other file in the task imports; write it first, then `sah-004` alone against it, and only then the remaining thirteen new files and the two appended blocks. Its Step 6 (`scripts/reseed-verify.ts`) is independent of all of them and can be written first if you prefer a shorter first commit.
+**The three commits that will be the largest, and what to watch in each.** Task 7 touches twelve files, deletes a guard another slice wrote — read 2A's step-9b block and its test together before deleting either, and delete both — and carries the one edit outside this slice's own directories: Step 9's `dependency-rule` allowance, without which every later task's `bun run lint:rules` claim is false. Task 9 is one long function; write it in the order of its numbered comment banners and run the test after each banner rather than at the end. Task 13 touches eighteen files — **fourteen new regression files and two appended blocks**, plus `tests/regression/support/costing.ts` and `scripts/reseed-verify.ts` (the one-line `package.json` edit and the verify-only `post-inventory.ts` are not counted) — and its Step 1, `tests/regression/support/costing.ts`, is the shared surface every other file in the task imports; write it first, then `legacy-004` alone against it, and only then the remaining thirteen new files and the two appended blocks. Its Step 6 (`scripts/reseed-verify.ts`) is independent of all of them and can be written first if you prefer a shorter first commit.
 
 **If something is genuinely blocked**, the pattern is contracts §5 item 7: write an ADR **proposal** naming the conflict and stop. Do not implement a deviation. The four most likely blockers and their answers: `openLayersFor` returning a layer whose `line_no` is null means 3A's `inventory_movement` insert omitted it (fix 3A, not this plan); `projectionChecks()` returning an unsorted array means 1B's registry does not sort and amendment A10's alphabetical claim is wrong (fix the assertion, not the registry — hazard 7); a `document_line` BEFORE UPDATE guard appearing from a later slice would refuse Task 9's `cost` rewrite, which is 3A assumption 5 and the place to look; and the fourth is the one this slice owns and cannot make fire, so it is written out in full.
 
@@ -7057,7 +7057,7 @@ bun run lint:rules                                    # no-number-money, posting
 
 *It cannot fire inside this slice*, which is why no task tests it: every fixture here builds a receipt's value as an integer quantity times a 4-decimal `unitPrice`, so `round(value ÷ quantity, 4)` returns that price and `qty_in × unit_cost` is the movement value exactly. It first becomes reachable when a receipt's value stops being that product — **3C's landed cost, which extends a receipt's value after the fact, and 3D's `TRANSFER_RECEIPT`, whose value is the sum of the consumptions the issue leg made.**
 
-Three things that are **not** the fix, each of which hides the discrepancy somewhere worse. Do not round inside `valuationAsOf` — the compare would pass and `stock_valuation`, 3D's `inventory.valuation` report and 4B's `item_profitability` would then carry a figure no layer supports. Do not have the engine push the residue onto the last open layer — that makes a layer's `unit_cost` depend on the order in which it is read, which is SAH-009's shape. And do not add a `value` column to `cost_layer` in migration 0034: §4.7.3's block is frozen and a plan implements it verbatim (contracts:1261), so widening it is an amendment nobody has agreed and hazard 7 makes it a **proposal, not a task**.
+Three things that are **not** the fix, each of which hides the discrepancy somewhere worse. Do not round inside `valuationAsOf` — the compare would pass and `stock_valuation`, 3D's `inventory.valuation` report and 4B's `item_profitability` would then carry a figure no layer supports. Do not have the engine push the residue onto the last open layer — that makes a layer's `unit_cost` depend on the order in which it is read, which is LEGACY-009's shape. And do not add a `value` column to `cost_layer` in migration 0034: §4.7.3's block is frozen and a plan implements it verbatim (contracts:1261), so widening it is an amendment nobody has agreed and hazard 7 makes it a **proposal, not a task**.
 
 The proposal to write, if you are the one who meets it: `app.cost_layer` gains `value numeric(19,4) not null`, carrying the movement's exact value, with `unit_cost` kept as the derived read and every layer value read from `value × (qty_remaining ÷ qty_in)` rather than from `unit_cost`. It belongs as a **proposal block inside ADR 0039** — that ADR is already about `cost_layer` being the checked projection, and §3.9 gives this slice exactly 0037–0039 with all three spent, which is the same reason architect question 2 lives inside ADR 0038 note 7 rather than in an ADR of its own.
 

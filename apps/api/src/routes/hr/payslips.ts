@@ -42,7 +42,7 @@ const PAYSLIP_CODE = "hr.payslip";
  * posted payroll amounts, which test 32 puts behind that code. Every read is bound to the path's company.
  *
  * Composed onto 8B's `payroll-runs` module by `buildRoutes` — a sub-path of an existing module, so it adds no
- * `PROBES` key (hazard 31); the module's `permissions` gain `hr.filing.generate` (closing SAH-047's unrouted code).
+ * `PROBES` key (hazard 31); the module's `permissions` gain `hr.filing.generate` (closing LEGACY-047's unrouted code).
  */
 export function createPayslipRoutes(objectStore: ObjectStore): OpenAPIHono<AppEnv> {
   const routes = new OpenAPIHono<AppEnv>({

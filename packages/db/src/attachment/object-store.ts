@@ -7,7 +7,7 @@ export class ObjectKeyError extends Error {
   constructor(argument: "tenantId" | "attachmentId") {
     // The bad value is deliberately NOT echoed: it is attacker-controlled and this message reaches a log.
     super(
-      `${argument} must be a uuid — an object key is derived out of server-minted ids only (SAH-038)`,
+      `${argument} must be a uuid — an object key is derived out of server-minted ids only (LEGACY-038)`,
     );
     this.name = "ObjectKeyError";
   }
@@ -17,7 +17,7 @@ export class ObjectKeyError extends Error {
  * The ONE object-key derivation in the system. Both arguments are server-minted `uuidv7` values:
  * `tenant_id` comes from the session (`app.current_tenant()`), `attachmentId` is the row's primary key.
  * Nothing a client sends — a file name, a folder, a document reference — ever reaches this function,
- * which is the structural answer to SAH-038 (spec:545).
+ * which is the structural answer to LEGACY-038 (spec:545).
  */
 export function objectKeyFor(tenantId: string, attachmentId: string): string {
   if (!UUID.test(tenantId)) throw new ObjectKeyError("tenantId");

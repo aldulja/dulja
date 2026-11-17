@@ -4,10 +4,10 @@
 -- spec:1049  — a GOODS_RECEIPT receives against a PURCHASE_ORDER and prices its GRNI accrual from it.
 -- spec:2173  — the data layer is the control: the three rules below are triggers, not TypeScript, so they
 --              hold for the API, for a job and for a direct app_rw statement alike.
--- SAH-017    — the old system incremented a delivered-quantity counter in place: it double-added on edit and
+-- LEGACY-017    — the old system incremented a delivered-quantity counter in place: it double-added on edit and
 --              never reversed on re-pointing. Here the link is a row and the quantity is recomputed on read.
--- SAH-018    — fulfilled and returned quantity is a projection, never a stored column.
--- SAH-049    — an aggregate with no unique key duplicates under an upsert race. There is no aggregate row here
+-- LEGACY-018    — fulfilled and returned quantity is a projection, never a stored column.
+-- LEGACY-049    — an aggregate with no unique key duplicates under an upsert race. There is no aggregate row here
 --              at all; the two partial unique indexes below key the LINK, which is the only stored thing.
 -- Nothing in this migration writes a per-tenant row (hazard 10): FORCE ROW LEVEL SECURITY binds app_migrator
 -- and a migration has no tenant set, so every link row is its route's.
@@ -33,7 +33,7 @@ create table app.document_link (
   unique (tenant_id, id),
   -- Composite FKs: an FK check bypasses RLS, so a plain reference would let tenant A point at tenant B's row.
   foreign key (tenant_id, company_id)         references app.company(tenant_id, id),
-  -- Source side: NO ACTION. An order line that has been received against cannot be deleted (SAH-018 in the
+  -- Source side: NO ACTION. An order line that has been received against cannot be deleted (LEGACY-018 in the
   -- opposite direction — losing the order would strand the receipt), and an issued order cannot be deleted anyway.
   foreign key (tenant_id, source_document_id) references app.document(tenant_id, id),
   foreign key (tenant_id, source_line_id)     references app.document_line(tenant_id, id),
@@ -46,7 +46,7 @@ create table app.document_link (
 
 -- One link per (source line, target line, kind); and for header-only links, one per (source doc, target doc, kind).
 -- Two partial indexes rather than one constraint, because a UNIQUE constraint treats NULLs as distinct and would
--- admit unlimited duplicate header links (SAH-049's shape).
+-- admit unlimited duplicate header links (LEGACY-049's shape).
 create unique index document_link_line_pair_key
   on app.document_link (source_line_id, target_line_id, link_kind) where source_line_id is not null;
 create unique index document_link_header_pair_key
@@ -58,7 +58,7 @@ call app_meta.enable_tenant_rls('app.document_link');
 call app_meta.attach_audit('app.document_link');
 -- app_rw receives select, insert, update through default privileges (plan0A). No DELETE: §3.5.4 is closed.
 
--- ── 2. app.document_open_quantity — the derived view (SAH-017, SAH-018) ───────
+-- ── 2. app.document_open_quantity — the derived view (LEGACY-017, LEGACY-018) ───────
 -- security_invoker = true is MANDATORY. Without it the view executes with its owner's (app_migrator's)
 -- privileges and RLS on both base tables is evaluated for app_migrator, not for the caller — which would make
 -- this view a cross-tenant read of every order in the database. With it, tenant_isolation applies as normal.
@@ -87,7 +87,7 @@ select l.tenant_id,
 -- Plan 0A's `alter default privileges … grant select, insert, update on tables to app_rw` (plan0A:2564)
 -- applies to VIEWS too, so without this revoke app_rw would hold INSERT and UPDATE on the one figure this
 -- slice exists to keep derived. The view is not auto-updatable (it joins and aggregates), so the grants are
--- inert in practice — but SAH-017's claim is about the privilege surface, and Task 14 asserts the exact list.
+-- inert in practice — but LEGACY-017's claim is about the privilege surface, and Task 14 asserts the exact list.
 revoke insert, update on app.document_open_quantity from app_rw;
 
 -- ── 3. The over-fulfilment guard (the data layer is the control — spec:2173) ──
@@ -120,7 +120,7 @@ begin
     return new;                                               -- a header-only or amount-only link has no quantity to bound
   end if;
 
-  -- SAH-017's concurrency face, and it is NOT closed by the read below on its own. `withTenant` runs at READ
+  -- LEGACY-017's concurrency face, and it is NOT closed by the read below on its own. `withTenant` runs at READ
   -- COMMITTED (§4.2.2; 3a:68), so without this lock two transactions each linking 6 against a 10-unit order
   -- line both read v_linked = 0, both satisfy the test, and both commit — 12 linked against 10 ordered, with
   -- no bypass and no override event. This is verbatim the class 3A found in its own step-9 guard and fixed

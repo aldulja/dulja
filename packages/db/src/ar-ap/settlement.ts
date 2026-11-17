@@ -23,7 +23,7 @@ export interface SettlementInput {
   partyId: string;
   bankAccountId: string;
   currency: string;
-  /** The caller's rate, 8 dp, never looked up again (SAH-014). The base currency takes only `1.00000000`. */
+  /** The caller's rate, 8 dp, never looked up again (LEGACY-014). The base currency takes only `1.00000000`. */
   exchangeRate: string;
   /** 4-dp decimal string, POSITIVE. */
   amount: string;
@@ -60,9 +60,9 @@ const IDENTITY_RATE = "1.00000000";
  * policies post `line.total_incl_tax`, the figure `openBalance` and `partyBalance` read (Task 9).
  *
  * The draft pins `payment_term_id` through `resolvePartyTerm` — the one reader of `party.payment_term_id`
- * (SAH-013) — and writes `rate_source`: `unit` for the identity pair (the base currency at `1.00000000`),
+ * (LEGACY-013) — and writes `rate_source`: `unit` for the identity pair (the base currency at `1.00000000`),
  * `manual:<actor>` for any other rate the caller supplied, because a posted base figure whose rate has no
- * provenance is SAH-012 itself. The caller's rate is never replaced (SAH-014); a rate other than
+ * provenance is LEGACY-012 itself. The caller's rate is never replaced (LEGACY-014); a rate other than
  * `1.00000000` on the base currency is refused.
  *
  * When `allocations` is non-empty the document is issued, posted AND allocated on the caller's `tx`, so a
@@ -150,7 +150,7 @@ export async function draftSettlement(
   // the EARLY refusal; `postDocument` step 6c asks the same helper and is the control (code review 2, F7).
   const violation = await settlementControlViolation(tx, definition, party.id);
   if (violation !== null) throw codedError("ERR_VALIDATION_FAILED", violation);
-  // Pinned here, at draft, and never re-read (SAH-013) — through the ONE reader of the column (4A Task 1).
+  // Pinned here, at draft, and never re-read (LEGACY-013) — through the ONE reader of the column (4A Task 1).
   const paymentTermId = await resolvePartyTerm(tx, { partyId: party.id });
 
   // `document_line`'s account key is tenant-composite only, so the bank is bound to the company here.
@@ -182,7 +182,7 @@ export async function draftSettlement(
   const rateSource = identity ? "unit" : `manual:${ctx.actorId}`;
 
   // The caller's branch is taken as given and only checked — silently replacing a value the caller DID
-  // specify would be SAH-042's shape in reverse. The default applies only when none was sent.
+  // specify would be LEGACY-042's shape in reverse. The default applies only when none was sent.
   const [branch] =
     input.branchId === undefined
       ? await tx<{ id: string }[]>`

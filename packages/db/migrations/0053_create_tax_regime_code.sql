@@ -1,11 +1,11 @@
 -- 0053_create_tax_regime_code.sql
 -- Contracts §4.9.2 (tax_regime, tax_code) plus amendment A2 (tax_regime.source).
 --
--- SAH-020: procCalculateVATReturn and procCalculateGSTReturn read the SAME TaxCodes.Kind column with
+-- LEGACY-020: procCalculateVATReturn and procCalculateGSTReturn read the SAME TaxCodes.Kind column with
 -- incompatible meanings (1 = standard-rated output vs 1 = TX input) and nothing said which regime a code
 -- belonged to, so a VAT tenant running the GST return reported sales as purchases with no warning. Here
 -- every code carries regime_id NOT NULL, a regime is versioned and effective-dated, and a return names the
--- regime it was built for (0054). SAH-019: the rounding rule is a column ON THE CODE, applied by the one
+-- regime it was built for (0054). LEGACY-019: the rounding rule is a column ON THE CODE, applied by the one
 -- rounding function at persist time (spec:2228, ADR 0050) rather than configured in ten columns nothing reads.
 
 -- ── 1. tax_regime ─────────────────────────────────────────────────────────────────────────────────────
@@ -30,20 +30,20 @@ create table app.tax_regime (
 call app_meta.enable_tenant_rls('app.tax_regime');
 call app_meta.attach_audit('app.tax_regime');
 comment on column app.tax_regime.source is
-  'Provenance of this regime version: the publication or seed file its rates and boxes came from. SAH-020.';
+  'Provenance of this regime version: the publication or seed file its rates and boxes came from. LEGACY-020.';
 
 -- ── 2. tax_code ───────────────────────────────────────────────────────────────────────────────────────
 create table app.tax_code (
   id                 uuid primary key default uuidv7(),
   tenant_id          uuid not null references app.tenant(id),
   company_id         uuid not null,
-  regime_id          uuid not null,                                 -- SAH-020: the discriminator, never null
+  regime_id          uuid not null,                                 -- LEGACY-020: the discriminator, never null
   code               text not null,
   name_en            text not null,
   name_ar            text,
   rate               numeric(19,8) not null check (rate >= 0),      -- decimal fraction: 0.11000000 is 11%
   kind               text not null,
-  rounding_mode      text not null default 'HALF_AWAY_FROM_ZERO',   -- spec:2228, SAH-019
+  rounding_mode      text not null default 'HALF_AWAY_FROM_ZERO',   -- spec:2228, LEGACY-019
   output_account_id  uuid,                                          -- §4.15 2300; §4.4.1 tax_code.output_account
   input_account_id   uuid,                                          -- §4.15 1350; §4.4.1 tax_code.input_account
   effective_from     date not null,

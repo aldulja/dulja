@@ -103,7 +103,7 @@ export async function createSavedView(
 ): Promise<SavedViewRow> {
   await assertParameters(tx, input.companyId, input.reportDefinitionId, input.parameters);
   // owner_principal_id takes its column default `app.current_actor()`: the owner is the session's, never a
-  // payload field (§3.3's rule for attributed columns, SAH-044's lesson).
+  // payload field (§3.3's rule for attributed columns, LEGACY-044's lesson).
   const [raw] = await tx<RawView[]>`
     insert into app.saved_view as v
       (tenant_id, company_id, report_definition_id, name_en, name_ar, parameters, shared)

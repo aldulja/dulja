@@ -25,7 +25,7 @@ describe("posting-only-tables — contracts §3.7.5, the mechanical half of spec
       "packages/db/test/posting/post.test.ts",
       // A test that proves the integrity checker finds a corrupt ledger has to be able to write one.
       "apps/worker/test/ledger-integrity-check.test.ts",
-      "tests/regression/sah-002.test.ts",
+      "tests/regression/legacy-002.test.ts",
       "scripts/lint/rules/posting-only-tables.test.ts",
     ]) {
       expect(

@@ -37,5 +37,5 @@ on the verified regime simply matches the other entry. **Nothing is replaced** �
 No rate, box label, form name, threshold, deadline, endpoint, schema version or field name is written into
 `packages/domain/src/tax/**` or `packages/db/src/tax/**`. Rates and box layouts are **data** — a seed file
 and a `RegimeDefinition` — and a change to either is a reviewed seed PR, never a release (ADR 0050). That
-is SAH-020's fix, and it is the reason this record exists at all: the legacy system's GST return carried
+is LEGACY-020's fix, and it is the reason this record exists at all: the legacy system's GST return carried
 its rate as a literal inside a stored procedure, so the rate could not be reviewed, dated or reverted.

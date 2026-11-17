@@ -8,7 +8,7 @@ import { startApi, type StartedApi } from "../../support/app";
 /** A generated integer amount is in ten-thousandths; the wire wants a fixed-4-dp decimal string. */
 const cents = (value: number) => (value / 10_000).toFixed(4);
 
-describe("acceptance test 1 — the ledger invariant under fuzz (spec:2419, SAH-003)", () => {
+describe("acceptance test 1 — the ledger invariant under fuzz (spec:2419, LEGACY-003)", () => {
   let api: StartedApi;
   let a: Seed;
   let accounts: string[];
@@ -158,7 +158,7 @@ describe("acceptance test 4 — two tenants post to the same account and currenc
     await api.stop();
   });
 
-  it("each sees only its own balance, and neither loses an amount (SAH-001, SAH-035, SAH-049)", async () => {
+  it("each sees only its own balance, and neither loses an amount (LEGACY-001, LEGACY-035, LEGACY-049)", async () => {
     const draft = async (seed: Seed, amount: string): Promise<string> => {
       const id = await uuidv7(api.db.admin);
       await withTenant(

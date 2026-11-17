@@ -111,7 +111,7 @@ export const retryQuery = (failureCount: number, cause: unknown): boolean => {
   return failureCount < 3;
 };
 
-/** `en` is the key registry: the completeness checker and `tests/regression/sah-085.test.ts` hold
+/** `en` is the key registry: the completeness checker and `tests/regression/legacy-085.test.ts` hold
  *  `ar` to exactly the same key set, so a key present here is present in both. */
 const isTranslationKey = (key: string): key is TranslationKey => Object.hasOwn(CATALOGUES.en, key);
 

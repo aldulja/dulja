@@ -4,7 +4,7 @@ import { DateSchema, ListEnvelope, UuidSchema } from "../common";
 // 8D Task 8 — ⚠️ OD-13 answered BUILD on 2026-11-07 (contracts round 19, 8D A14): the wire shapes of spec:2085's
 // minimal leave register, served by `apps/api/src/routes/hr/leave.ts` under `/v1/companies/{companyId}/leave-records`.
 // No body carries a decider (`approvedBy`) or an `enteredBy`: both are stamped from the session actor by
-// `app.stamp_actor` (SAH-044), so every write body is `.strict()` and a caller naming one is refused, not ignored.
+// `app.stamp_actor` (LEGACY-044), so every write body is `.strict()` and a caller naming one is refused, not ignored.
 
 export const LeaveTypeCodeSchema = z.enum(["annual", "sick", "unpaid", "other"]);
 export const LeaveStatusSchema = z.enum(["requested", "approved", "rejected"]);
@@ -111,7 +111,7 @@ export const CreateLeaveRecordBody = z
   })
   .meta({ id: "CreateLeaveRecordBody" });
 
-/** `approvedBy` is NOT a member and never will be: the decider is the session actor (SAH-044). A rejection's
+/** `approvedBy` is NOT a member and never will be: the decider is the session actor (LEGACY-044). A rejection's
  *  `reason` replaces the request's; an approval keeps it. */
 export const LeaveDecisionBody = z
   .object({

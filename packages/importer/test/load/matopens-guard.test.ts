@@ -26,12 +26,12 @@ const corpusWith = (rows: readonly LegacyRow[], job = "MOPJOB"): LegacyCorpus =>
 };
 const readerOf = async (corpus: LegacyCorpus) => createReader(new FixtureLegacyDriver(corpus));
 
-describe("Part VII #7 / SAH-022 — MatOpens.Job, asked of the customer's data rather than assumed (9B T15)", () => {
+describe("Part VII #7 / LEGACY-022 — MatOpens.Job, asked of the customer's data rather than assumed (9B T15)", () => {
   it("names the one table and column the question is about", () => {
     expect(JOB_PARTITIONED_TABLES).toEqual([{ table: "MATOPENS", column: "MOPJOB" }]);
   });
 
-  it("returns null when every Job is 0 or NULL — SAH-022 is inert for this customer", async () => {
+  it("returns null when every Job is 0 or NULL — LEGACY-022 is inert for this customer", async () => {
     const reader = await readerOf(
       corpusWith([
         { MOPID: "1", MOPJOB: "0" },
@@ -43,7 +43,7 @@ describe("Part VII #7 / SAH-022 — MatOpens.Job, asked of the customer's data r
     expect(await assertNoJobPartition(reader)).toBeNull();
   });
 
-  it("reports the finding when any Job differs from 0 — SAH-022 is a hard failure for this customer", async () => {
+  it("reports the finding when any Job differs from 0 — LEGACY-022 is a hard failure for this customer", async () => {
     const reader = await readerOf(
       corpusWith([
         { MOPID: "1", MOPJOB: "0" },
@@ -88,7 +88,7 @@ describe("Part VII #7 / SAH-022 — MatOpens.Job, asked of the customer's data r
   });
 });
 
-describe("the `matopens-partitioned` corpus SAH-022's regression block loads", () => {
+describe("the `matopens-partitioned` corpus LEGACY-022's regression block loads", () => {
   it("is the committed `cut-over` corpus plus a MATOPENS table, and nothing else — so the two cannot drift apart", () => {
     const base = loadCorpus("cut-over");
     const partitioned = loadCorpus("matopens-partitioned");

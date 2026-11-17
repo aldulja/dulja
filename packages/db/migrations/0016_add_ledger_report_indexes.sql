@@ -1,4 +1,4 @@
--- ── 1. Report filter indexes (SAH-070: "index coverage is thin on exactly the columns reports
+-- ── 1. Report filter indexes (LEGACY-070: "index coverage is thin on exactly the columns reports
 --       filter by"; spec:766–784) ───────────────────────────────────────────────────────────────
 -- Plan 0A already indexed the ledger itself (ledger_entry_account_date_idx, ledger_entry_company_date_idx —
 -- migration 0001 §7). These three cover the readers this slice adds. `create index concurrently` is not

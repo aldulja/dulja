@@ -4,7 +4,7 @@ import { lintSchema } from "../src/lint-schema";
 import { draftDocument, seedTenantV2, type Seed } from "./fixtures";
 import { startDb, uuidv7, withTenant, type Db } from "./harness";
 
-describe("app.attachment — contracts §4.5.8, spec:1067, SAH-038", () => {
+describe("app.attachment — contracts §4.5.8, spec:1067, LEGACY-038", () => {
   let db: Db;
   let a: Seed;
   let b: Seed;
@@ -43,7 +43,7 @@ describe("app.attachment — contracts §4.5.8, spec:1067, SAH-038", () => {
     expect(row.byte_size).toBe("1024");
   });
 
-  it("refuses a second row with the same object_key — the key is globally unique (SAH-038)", async () => {
+  it("refuses a second row with the same object_key — the key is globally unique (LEGACY-038)", async () => {
     const docId = await draftDocument(db, a);
     const id = await uuidv7(db.admin);
     const other = await uuidv7(db.admin);

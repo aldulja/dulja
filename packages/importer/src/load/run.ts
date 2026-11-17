@@ -261,7 +261,7 @@ function assertContext(ctx: LoadContext): void {
  *
  * Per source row, in one `withTenant` transaction per page (ADR 0084):
  *  1. its `sourceKey` and the sha256 of exactly the columns its loader declared;
- *  2. a key already seen in THIS run is a duplicate in the source (SAH-049) — a second identical sighting is a skip
+ *  2. a key already seen in THIS run is a duplicate in the source (LEGACY-049) — a second identical sighting is a skip
  *     in the register, a different one refuses the run;
  *  3. a key an EARLIER run recorded (`findBatch`) is a silent skip with the same hash and refuses the run with a
  *     different one (`ERR_IMPORT_DUPLICATE_SOURCE_KEY`) — before `map` runs and before anything is written;
@@ -379,7 +379,7 @@ async function runLoader(
   const have = new Set((await source.driver.columns(loader.sourceTable)).map((c) => c.name));
   const readable = declared.filter((c) => have.has(c));
   // Every key this run has met for this loader, with its hash: a key and a sha256 per source row. A whole-table
-  // loader holds its rows in memory anyway (C13); for a paged one this is the price of SAH-049 being caught across
+  // loader holds its rows in memory anyway (C13); for a paged one this is the price of LEGACY-049 being caught across
   // page boundaries and in a dry run, which writes nothing a later page could read back.
   const seen = new Map<string, string>();
 
@@ -461,12 +461,12 @@ async function mapAndLoad(
         report.conflicts += 1;
         throw new LoadError(
           "ERR_IMPORT_DUPLICATE_SOURCE_KEY",
-          `${loader.sourceTable}/${key} appears twice in the source with different data; the loader's key does not identify a row (SAH-049)`,
+          `${loader.sourceTable}/${key} appears twice in the source with different data; the loader's key does not identify a row (LEGACY-049)`,
         );
       }
       skip(
         key,
-        "the source holds this key twice with identical data; it was loaded once (SAH-049)",
+        "the source holds this key twice with identical data; it was loaded once (LEGACY-049)",
       );
       continue;
     }

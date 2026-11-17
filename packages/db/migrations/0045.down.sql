@@ -78,7 +78,7 @@ begin
     end if;
   end if;
 
-  -- ── 2c. R2 authority at transition time (spec:2173). NULL branch never fails open (SAH-042, SAH-050). ─
+  -- ── 2c. R2 authority at transition time (spec:2173). NULL branch never fails open (LEGACY-042, LEGACY-050). ─
   if new.status = 'approved' then
     v_gate := coalesce(v_approve, v_post);          -- for approval.required = false types approve is null
   elsif new.status in ('posted', 'void') then

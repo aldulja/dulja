@@ -1,11 +1,11 @@
 # OD-17 — the live legacy database, the rehearsal, and the columns that become `verified`
 
-**Status: open.** Contracts §2.12, OD-17; spec:2409, 2469 ("Read access to the live Sahlisoft database; Firebird
+**Status: open.** Contracts §2.12, OD-17; spec:2409, 2469 ("Read access to the live legacy database; Firebird
 version"). §2.12's default: **none**. 9A's half (scope, profile, reconcile against the live source) is
 `docs/runbooks/legacy-extraction.md`; this record is 9B's half, plan 9B Task 14 (2026-11-14). It decides nothing and
 promotes nothing.
 
-**Owner provides:** a read-only ODBC DSN for the live (or freshly restored) Sahlisoft database, and the Firebird version
+**Owner provides:** a read-only ODBC DSN for the live (or freshly restored) legacy database, and the Firebird version
 if the engine does not report it (ADR 0081).
 
 **Until provided:** every 9B test runs against the committed synthetic corpus `packages/importer/test/corpus/cut-over`,

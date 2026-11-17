@@ -75,7 +75,7 @@ const ACCTOTALS_RULES: Readonly<Record<string, 1 | -1>> = {
 /**
  * What a 9A report moves the legacy trial balance by, debit-positive, or `null` when it moves it by nothing or says
  * nothing about money. Two of the six kinds carry a trial-balance figure:
- *   - `unbalanced_vouchers`: the vouchers' net imbalance (`summary.netImbalance`, debit − credit) — SAH-003;
+ *   - `unbalanced_vouchers`: the vouchers' net imbalance (`summary.netImbalance`, debit − credit) — LEGACY-003;
  *   - `aggregate_drift`: `ACCTOTALS`' stored totals less their `VOUITEMS` recomputation — Σ of
  *     `ACCTOTALS.DEBIT`'s signed `stored − recomputed` less the same for `ACCTOTALS.CREDIT`, a missing stored row
  *     counting as a stored zero. The other rules (`ACCOBJECTS`, `MAT*`) restate figures the trial balance does not read.
@@ -109,7 +109,7 @@ const plural = (count: string | number, one: string, many: string): string =>
 function sentence(report: ReconciliationReport, effect: Decimal): string {
   if (report.kind === "unbalanced_vouchers") {
     const unbalanced = report.summary["unbalanced"] ?? "0";
-    return `unbalanced_vouchers: ${unbalanced} of ${report.summary["vouchers"] ?? "0"} ${plural(report.summary["vouchers"] ?? "0", "voucher", "vouchers")} ${plural(unbalanced, "does", "do")} not balance, netting ${effect.toFixed(4)} (SAH-003) — posted to ${SUSPENSE_CODE}`;
+    return `unbalanced_vouchers: ${unbalanced} of ${report.summary["vouchers"] ?? "0"} ${plural(report.summary["vouchers"] ?? "0", "voucher", "vouchers")} ${plural(unbalanced, "does", "do")} not balance, netting ${effect.toFixed(4)} (LEGACY-003) — posted to ${SUSPENSE_CODE}`;
   }
   const accounts = new Set(
     report.rows
@@ -118,7 +118,7 @@ function sentence(report: ReconciliationReport, effect: Decimal): string {
       )
       .map((r) => String(r["key"])),
   ).size;
-  return `aggregate_drift: ACCTOTALS' stored totals less their VOUITEMS recomputation net ${effect.toFixed(4)} across ${accounts} ${plural(accounts, "account", "accounts")} (SAH-001) — posted to ${SUSPENSE_CODE}`;
+  return `aggregate_drift: ACCTOTALS' stored totals less their VOUITEMS recomputation net ${effect.toFixed(4)} across ${accounts} ${plural(accounts, "account", "accounts")} (LEGACY-001) — posted to ${SUSPENSE_CODE}`;
 }
 
 /**
@@ -152,7 +152,7 @@ export function explain(
 // ── reading the source ───────────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * A whole table, each key once — the load's own SAH-049 rule (ADR 0084): an identical second sighting of a key is read
+ * A whole table, each key once — the load's own LEGACY-049 rule (ADR 0084): an identical second sighting of a key is read
  * once, a different one refuses, because the load refused it too and a reconciliation that summed both would compare
  * against a figure nobody loaded.
  */
@@ -171,7 +171,7 @@ async function readWhole(
       if (seen && seen.text !== text)
         throw new LoadError(
           "ERR_IMPORT_DUPLICATE_SOURCE_KEY",
-          `${table}/${key} appears twice with different values (SAH-049); the load refuses it, so the reconciliation does too`,
+          `${table}/${key} appears twice with different values (LEGACY-049); the load refuses it, so the reconciliation does too`,
         );
       if (!seen) rows.set(key, { row, text });
     }
@@ -455,7 +455,7 @@ function controlSentence(
   const head = `supplied by the open-item load, one OPENING_BALANCE per open legacy ${entry.treatment === "ar_control" ? "receivable" : "payable"} (ADR 0085): the legacy BILLS total ${items.toString()}`;
   const drift = legacy.subtract(items);
   if (drift.isZero()) return `${head}, as the control does`;
-  return `${head} while the legacy control holds ${legacy.toString()} — the ${drift.toString()} between them is the legacy control's own drift against its open items (SAH-001), standing on ${SUSPENSE_CODE}`;
+  return `${head} while the legacy control holds ${legacy.toString()} — the ${drift.toString()} between them is the legacy control's own drift against its open items (LEGACY-001), standing on ${SUSPENSE_CODE}`;
 }
 
 function inventorySentence(

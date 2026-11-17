@@ -1,7 +1,7 @@
 # OD-24 — the Phase 7A report-designer and report-viewer screens (Plan 7A Task 15)
 
 **Status:** built on the **owner-authorized default baseline** (2026-11-06), with **legacy keyboard parity
-unproven**. No owner material was supplied: `docs/owner/od-24/7a/` does not exist, and there are no Sahlisoft
+unproven**. No owner material was supplied: `docs/owner/od-24/7a/` does not exist, and there are no legacy
 screenshots, no operator description and no legacy key map. On 2026-11-06 the owner directed: *"make sure phase 7
 is implemented entirely; if you have any question choose the best suggestion and complete the phase."* That follows
 the Phase 6 precedent (`docs/review/2026-10-07-phase-6-decisions.md`): a renewed instruction to complete the phase

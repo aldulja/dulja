@@ -10,10 +10,10 @@
 ## Context
 
 spec:1240 wants "an end-user report designer — text-defined, diffable, version-controlled". spec:1246 puts
-"Delphi-serialised report files" on the explicit do-NOT-carry-over list. SAH-077 is the defect they produce:
+"Delphi-serialised report files" on the explicit do-NOT-carry-over list. LEGACY-077 is the defect they produce:
 because report definitions lived as `MEMO` blobs inside customer databases, no static analysis could ever
 determine whether a stored procedure was live, so near-duplicates accumulated instead of being consolidated.
-SAH-069 is the other half: every report query was rebuilt, re-parsed and re-planned per call, concatenated
+LEGACY-069 is the other half: every report query was rebuilt, re-parsed and re-planned per call, concatenated
 into a fixed-size buffer, with ~54 sites interpolating `DATE` parameters as text.
 
 ## Decision
@@ -38,7 +38,7 @@ into a fixed-size buffer, with ~54 sites interpolating `DATE` parameters as text
 4. **The module is derived, never asserted twice.** §4.16.1's grammar puts the module in the code's first
    segment; the validator refuses a `module` that disagrees. Two segments, so a report code can never be
    mistaken for a three-segment permission code.
-5. **Every rejection names a JSON Pointer.** SAH-084's fix ("a human message naming the specific offending
+5. **Every rejection names a JSON Pointer.** LEGACY-084's fix ("a human message naming the specific offending
    entity") applied to configuration: `ReportDefinitionValidation.errors[]` entries are `{ path, message }`
    with `path` a JSON Pointer into the rejected document, sorted by path, and §4.2.4 already lets
    `ERR_VALIDATION_FAILED` carry that array to the wire.
@@ -56,7 +56,7 @@ into a fixed-size buffer, with ~54 sites interpolating `DATE` parameters as text
   layout), a merge hotspot 7B, 7C and 8D would each edit, and it would drag the ⚠️ conditionals into a
   compiled constant. `REPORT_CODE_PATTERN` plus the seed loader's file-name check is the whole enforcement the
   format needs.
-- **A SQL string in the definition, sandboxed by a parser.** This is SAH-036/037/069 with extra steps, and
+- **A SQL string in the definition, sandboxed by a parser.** This is LEGACY-036/037/069 with extra steps, and
   spec:97 forbids it outright.
 
 ## Consequences

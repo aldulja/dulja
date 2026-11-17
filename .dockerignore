@@ -8,7 +8,7 @@ docs
 **/*.test.ts
 # Defence in depth for infra/Dockerfile's runtime stage, whose COPY lines are the actual control: the DDL, the
 # CREATE ROLE script and the seed packs must never reach a serving container, which is withheld
-# DATABASE_URL_MIGRATOR for the same reason (§3.11, SAH-053). Out of the build context, a careless `COPY
+# DATABASE_URL_MIGRATOR for the same reason (§3.11, LEGACY-053). Out of the build context, a careless `COPY
 # packages` cannot put them back.
 packages/db/migrations
 packages/db/provision

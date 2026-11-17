@@ -3,7 +3,7 @@ import { SENTINEL_LOT_CODE, createLot, listLots, sentinelLotId } from "../../src
 import { seedItem, seedTenant, type Seed } from "../fixtures";
 import { startDb, withTenant, type Db } from "../harness";
 
-describe("app.lot and the per-item sentinel — migration 0029 (SAH-050, ADR 0034)", () => {
+describe("app.lot and the per-item sentinel — migration 0029 (LEGACY-050, ADR 0034)", () => {
   let db: Db;
   let a: Seed;
   let itemId: string;
@@ -34,7 +34,7 @@ describe("app.lot and the per-item sentinel — migration 0029 (SAH-050, ADR 003
     // migration with no tenant set sees zero rows and could never insert one (§3.4.8 — only app.permission
     // is migration data). The guarantee is the AFTER INSERT trigger, and this is where it is checked, inside
     // `withTenant` where there are rows to check. `stock_on_hand`'s primary key contains `lot_id`, so an
-    // item without a sentinel would fail the step-12 MERGE much later (SAH-050).
+    // item without a sentinel would fail the step-12 MERGE much later (LEGACY-050).
     const [gap] = await withTenant(
       db.rw,
       a.tenant,

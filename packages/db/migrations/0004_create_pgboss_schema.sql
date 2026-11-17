@@ -1,9 +1,9 @@
 -- 0004_create_pgboss_schema.sql — the job queue's home (contracts §4.2.6).
 -- spec §3.2.2: pg-boss is Postgres-backed "so a job is enqueued in the same transaction as the posting — the
--- guarantee SAH-005 lacked". pg-boss owns its own tables; app_rw may not create objects (spec §3.8, task 0.2), so
+-- guarantee LEGACY-005 lacked". pg-boss owns its own tables; app_rw may not create objects (spec §3.8, task 0.2), so
 -- this file creates the schema and its default privileges and `bun run --cwd apps/worker jobs:install` installs
 -- pg-boss's tables as app_migrator at deploy time — the same class of tooling as the migration runner, never
--- application code (spec §0.2 "no DDL from application code", SAH-053).
+-- application code (spec §0.2 "no DDL from application code", LEGACY-053).
 
 -- ── 1. the schema ─────────────────────────────────────────────────────────────
 create schema pgboss;

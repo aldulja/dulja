@@ -12,8 +12,8 @@ import { app } from "./tenant";
 
 /**
  * contracts §4.7.3 — the movement ledger (3A, migration 0031). Append-only and signed exactly as
- * `ledger_entry` is: + receipt, − issue, `value` mandatory (SAH-007), `lot_id` NOT NULL because
- * `stock_on_hand`'s primary key contains it (SAH-050, ADR 0034). Written only by
+ * `ledger_entry` is: + receipt, − issue, `value` mandatory (LEGACY-007), `lot_id` NOT NULL because
+ * `stock_on_hand`'s primary key contains it (LEGACY-050, ADR 0034). Written only by
  * `packages/db/src/costing/apply-movements.ts`, which `posting-only-tables` (§3.7.5) enforces.
  *
  * This mirror is the diff source for the next slice that alters the table (ADR-0002, contracts §3.4.9).
@@ -47,7 +47,7 @@ export const inventoryMovement = app.table(
   (table) => [
     unique("inventory_movement_document_id_movement_no_key").on(table.documentId, table.movementNo),
     unique("inventory_movement_tenant_id_id_key").on(table.tenantId, table.id),
-    // The total chronological key of spec:1225 and §4.3.5 (SAH-067). The two CHECK constraints
+    // The total chronological key of spec:1225 and §4.3.5 (LEGACY-067). The two CHECK constraints
     // (`inventory_movement_movement_no_check`, `inventory_movement_quantity_check`) stay in the
     // migration only, as `lot_expiry_after_manufacture_check` does for `app.lot`.
     index("inventory_movement_chrono_idx").on(
@@ -59,7 +59,7 @@ export const inventoryMovement = app.table(
       table.lineNo,
       table.movementNo,
     ),
-    // 7B, migration 0077 (SAH-070) — report-filter indexes the 7B EXPLAIN gate found unserved.
+    // 7B, migration 0077 (LEGACY-070) — report-filter indexes the 7B EXPLAIN gate found unserved.
     index("inventory_movement_company_date_idx").on(
       table.companyId,
       table.effectiveDate,

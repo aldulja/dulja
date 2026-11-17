@@ -114,7 +114,7 @@ describe("SchemeCalculator — three kinds, and not one rate in code (spec:2080,
     });
   });
 
-  it("banded_contribution REFUSES a base no band covers rather than returning zero (SAH-011)", () => {
+  it("banded_contribution REFUSES a base no band covers rather than returning zero (LEGACY-011)", () => {
     const gap: RateTable = {
       ...BANDED,
       table: { bands: [{ from: "1000", to: "5000", employee: "1.0000", employer: "2.0000" }] },
@@ -145,7 +145,7 @@ describe("SchemeCalculator — three kinds, and not one rate in code (spec:2080,
     });
   });
 
-  it("percentage_with_ceiling applies the TABLE's declared rounding mode, and the two modes DISAGREE here (SAH-019)", () => {
+  it("percentage_with_ceiling applies the TABLE's declared rounding mode, and the two modes DISAGREE here (LEGACY-019)", () => {
     // The rate is chosen so the product is exactly `0.33325` — a tie at the fourth decimal whose preceding
     // digit is EVEN. That is the only input shape on which the two modes differ, and a case where they agree
     // would pass even if the calculators ignored `rounding_mode` entirely.
@@ -183,7 +183,7 @@ describe("SchemeCalculator — three kinds, and not one rate in code (spec:2080,
     ).toEqual(Money.zero(MYR));
   });
 
-  it("progressive_schedule REFUSES a missing required profile field, naming it (SAH-011, test 33)", () => {
+  it("progressive_schedule REFUSES a missing required profile field, naming it (LEGACY-011, test 33)", () => {
     expect(() =>
       calculators.progressive_schedule.compute(
         PROGRESSIVE,

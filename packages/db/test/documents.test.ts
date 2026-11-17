@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { draftDocument, seedTenant, type Seed } from "./fixtures";
 import { startDb, type Db, uuidv7, withTenant } from "./harness";
 
-describe("documents, numbering tables, dimensions — spec §3.8 (SAH-013, 051)", () => {
+describe("documents, numbering tables, dimensions — spec §3.8 (LEGACY-013, 051)", () => {
   let db: Db;
   let a: Seed;
   let b: Seed;

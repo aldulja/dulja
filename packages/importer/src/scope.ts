@@ -23,7 +23,7 @@ export interface ScopeReport {
 }
 
 /**
- * The column a table's date range is taken from, in preference order. Sahlisoft names its business date `DATE`
+ * The column a table's date range is taken from, in preference order. The legacy system names its business date `DATE`
  * on documents and vouchers and `ENTRYDATE`/`PAYDATE` on a handful of others; a table with none of these gets a
  * null range rather than a guess. Part VII #2 wants the range on `Journal`, `BillItems` and `VouItems`, which
  * inherit theirs from their headers — so a null here is an answer, not a gap.

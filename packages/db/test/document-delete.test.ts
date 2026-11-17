@@ -51,7 +51,7 @@ const GAP_POLICY = {
 
 const ctx = (s: Seed) => ({ tenantId: s.tenant, actorId: s.human, requestId: "req-delete" });
 
-describe("draft-only deletion and app.series_gaps — spec:2049, 2222, 2224 (SAH-041, SAH-051)", () => {
+describe("draft-only deletion and app.series_gaps — spec:2049, 2222, 2224 (LEGACY-041, LEGACY-051)", () => {
   let db: Db;
   let a: Seed;
   let gapType: string; // a type whose policy numbers into series "GAP"

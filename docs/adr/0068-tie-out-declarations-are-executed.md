@@ -12,7 +12,7 @@ Phase 7's definition of done is _"A user clones and edits a report without a rel
 tie to the ledger"_ (spec:2293). The second clause is the one that fails silently. `ReportDefinition` already
 carries `tieOut: { kind; account?; projection? }` (contracts §4.11.1), described as "the tie-to-ledger test each
 core report declares" — but a declaration nothing executes is a comment, and the legacy system's own reporting
-failure (SAH-069, SAH-070, SAH-076) was a catalogue of queries nobody could reconcile against the ledger.
+failure (LEGACY-069, LEGACY-070, LEGACY-076) was a catalogue of queries nobody could reconcile against the ledger.
 Twenty-two definitions land in 7B and more in 7C and 8D. Written per report, bespoke tie-out tests would drift:
 some would tie against a hand-written aggregate, one would compare a report with itself, and some would be
 forgotten.
@@ -43,7 +43,7 @@ Four rules make the assertion mean something rather than pass vacuously:
 
 A `cost_layer` row's money is not a column: its `value` is the layer's stored receipt value (migration 0118).
 The harness values the residue as `round(value × qty_remaining / qty_in, 4)` — the term `valuationAsOf` sums —
-once, in one place, so no report definition performs arithmetic on a stored cost (SAH-009).
+once, in one place, so no report definition performs arithmetic on a stored cost (LEGACY-009).
 
 ## Consequences
 

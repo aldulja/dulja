@@ -87,7 +87,7 @@ export const itemLoader: Loader<LegacyRow, ItemTarget> = {
     const baseUnitId = await refs.byLegacyRef("unit_of_measure", unitKey);
     if (!baseUnitId)
       return {
-        skip: `material ${legacyKey} references unit ${unitKey}, which has no imported unit_of_measure; the item is an orphan (SAH-073)`,
+        skip: `material ${legacyKey} references unit ${unitKey}, which has no imported unit_of_measure; the item is an orphan (LEGACY-073)`,
       };
     const kind = flagOf(row, "MATISSERVICE", site) === true ? "service" : "product";
     return {

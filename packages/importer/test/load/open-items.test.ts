@@ -176,7 +176,7 @@ describe("open AR/AP items at cut-over (§5.1 #8; ADR 0085)", () => {
   });
 
   it("posts one OPENING_BALANCE per open legacy document, carrying its number as a string", async () => {
-    // Ordered by `number`, NOT by `legacy_ref`: the two corpus rows deliberately SHARE 'INV/2025/0417' — SAH-051's own
+    // Ordered by `number`, NOT by `legacy_ref`: the two corpus rows deliberately SHARE 'INV/2025/0417' — LEGACY-051's own
     // fact — so `document.number`, the posting service's gapless bigint, is the deterministic key. OB 1 is the trial
     // balance's opening (Task 5), which runs first.
     const docs = await openItems(s);
@@ -332,7 +332,7 @@ describe("open AR/AP items at cut-over (§5.1 #8; ADR 0085)", () => {
     expect(await openItems(s)).toHaveLength(2);
   });
 
-  it("skips an open item whose party never imported (§5.1 #3, SAH-073)", async () => {
+  it("skips an open item whose party never imported (§5.1 #3, LEGACY-073)", async () => {
     useCorpus(withBills([bill("77", "INV/2025/0999", "888", "500.0000", "1")]));
     try {
       const report = await runLoad(db.rw, await ctxFor(s));
@@ -342,7 +342,7 @@ describe("open AR/AP items at cut-over (§5.1 #8; ADR 0085)", () => {
           sourceTable: "BILLS",
           sourceKey: "77",
           reason:
-            "account 888 has no imported party; the open item INV/2025/0999 is an orphan (SAH-073)",
+            "account 888 has no imported party; the open item INV/2025/0999 is an orphan (LEGACY-073)",
         },
       ]);
       expect(await openItems(s)).toHaveLength(2);
@@ -405,7 +405,7 @@ describe("open AR/AP items at cut-over (§5.1 #8; ADR 0085)", () => {
     }
   });
 
-  it("refuses a legacy kind it cannot read, a NULL open amount (SAH-007) and a document after the cut-over date", async () => {
+  it("refuses a legacy kind it cannot read, a NULL open amount (LEGACY-007) and a document after the cut-over date", async () => {
     const own = await ownTenant("open-bad");
     useCorpus(withBills([bill("7201", "INV/2025/0600", "200", "10.0000", "3")]));
     try {

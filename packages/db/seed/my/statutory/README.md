@@ -9,7 +9,7 @@ document states no rate, threshold, ceiling or formula."_ A rate table enters th
 OD-23 delivers it: the current published tables with, per `packages/domain/payroll/rate-table.schema.json`,
 a `source` naming the authority, the publication, its URL and the date it was retrieved, and a
 `verification` block naming the accountant who signed it off. The seed pull request is the reviewed diff
-SAH-078 asks for.
+LEGACY-078 asks for.
 
 **`pay_component_scheme` has no rows here either.** "Basic salary is subject to EPF" is a statutory
 applicability claim, and this repository makes none. Those rows arrive in the same pull request as the

@@ -89,7 +89,7 @@ const CHECKS: Readonly<Record<string, string>> = {
 
 /**
  * Lifts the table's own constraint violations into coded errors with FIXED details — the driver's text
- * quotes the rejected value straight back (SAH-083). Anything else is rethrown untouched.
+ * quotes the rejected value straight back (LEGACY-083). Anything else is rethrown untouched.
  */
 function translate(error: unknown): never {
   const constraint = (error as { constraint_name?: unknown }).constraint_name;
@@ -195,7 +195,7 @@ export async function listPaymentTerms(
 }
 
 /**
- * The party's current term. Read at DRAFT time only; the document pins the id (§4.3.4, SAH-013).
+ * The party's current term. Read at DRAFT time only; the document pins the id (§4.3.4, LEGACY-013).
  *
  * **This is the only reader of `app.party.payment_term_id` in the slice** — `convertToInvoice` (Task 6) and
  * `draftSettlement` (Task 10) both call it instead of carrying an inline subquery, because two spellings of

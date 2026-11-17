@@ -7,7 +7,7 @@ import { loadCorpus } from "./support/corpus";
 
 const reader = () => createReader(new FixtureLegacyDriver(loadCorpus()));
 
-describe("reconcile('null_poison') — §5.1 #4, SAH-007 and SAH-011", () => {
+describe("reconcile('null_poison') — §5.1 #4, LEGACY-007 and LEGACY-011", () => {
   it("counts NULLs in every figure column that a report would silently render as zero", async () => {
     const report = await reconcile(await reader(), "null_poison");
     expect(report.kind).toBe("null_poison");

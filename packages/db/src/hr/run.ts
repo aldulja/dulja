@@ -414,7 +414,7 @@ async function writeLines(
     // `entered_by` is supplied NON-NULL exactly when `override_reason` is: `payroll_line_override_check` (0087)
     // requires both or neither, and `app.stamp_actor` replaces a supplied value with the session actor on INSERT
     // but leaves a NULL NULL — so omitting it would fail the CHECK on every override line a recalculation
-    // re-creates. The value is the session's actor and never a payload's (SAH-044).
+    // re-creates. The value is the session's actor and never a payload's (LEGACY-044).
     await tx`
       insert into app.payroll_line (document_line_id, tenant_id, company_id, employee_id, component_id,
                                     scheme_id, share, quantity, amount, rate_table_id, rate_table_version,

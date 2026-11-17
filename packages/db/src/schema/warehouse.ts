@@ -7,7 +7,7 @@ import { app } from "./tenant";
  * which is what makes 6C's Form A″ `branch_isolation` policy total. `kind` is closed to
  * `stock | in_transit` by `warehouse_kind_check`; the `in_transit` waypoint is 3D's two-step
  * transfer (spec:1053). `parent_id` makes the tree, and `app.warehouse_no_cycle()` — one recursive
- * CTE, in one function — is what keeps it acyclic (SAH-071).
+ * CTE, in one function — is what keeps it acyclic (LEGACY-071).
  *
  * This mirror is the diff source for the next slice that alters the table (ADR-0002, contracts §3.4.9).
  */

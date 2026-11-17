@@ -217,7 +217,7 @@ function safeFileName(name: string): string {
 }
 
 /**
- * §5.1 #9 (spec:2341) / SAH-077. Takes the **driver**, not the `LegacyReader`: §4.13.1 froze `LegacyReader`
+ * §5.1 #9 (spec:2341) / LEGACY-077. Takes the **driver**, not the `LegacyReader`: §4.13.1 froze `LegacyReader`
  * without a catalogue accessor, and this is the one report that needs a column's *declared type* — which
  * column is the blob is discovered, never assumed. Extending `LegacyReader` to suit one report would change a
  * surface 9B consumes; taking the driver changes nothing.

@@ -14,12 +14,12 @@ describe("checkCatalogues", () => {
     expect(v[0]).toMatchObject({ locale: "ar", key: "a.c", rule: "missing_key" });
   });
 
-  it("reports an empty translation (SAH-085: 122 empty entries shipped)", () => {
+  it("reports an empty translation (LEGACY-085: 122 empty entries shipped)", () => {
     const v = checkCatalogues({ en: { "a.b": "Hello" }, ar: { "a.b": "   " } });
     expect(rules(v)).toEqual(["empty_value"]);
   });
 
-  it("reports trailing whitespace (SAH-085: 232 entries)", () => {
+  it("reports trailing whitespace (LEGACY-085: 232 entries)", () => {
     const v = checkCatalogues({ en: { "a.b": "Hello " }, ar: { "a.b": "مرحبا" } });
     expect(v).toEqual([
       {
@@ -36,7 +36,7 @@ describe("checkCatalogues", () => {
     expect(rules(v)).toEqual(["source_language_fallback", "wrong_script"]);
   });
 
-  it("reports Arabic reaching an English value (SAH-085: 61 untranslated strings, two of them dialogs)", () => {
+  it("reports Arabic reaching an English value (LEGACY-085: 61 untranslated strings, two of them dialogs)", () => {
     const v = checkCatalogues({
       en: { "a.b": "هل تريد حفظ التعديلات ؟" },
       ar: { "a.b": "هل تريد حفظ التعديلات ؟" },
@@ -45,7 +45,7 @@ describe("checkCatalogues", () => {
     expect(v.some((x) => x.locale === "en" && x.rule === "wrong_script")).toBe(true);
   });
 
-  it('reports a raw component name shipped as UI text (SAH-085: "TBXToolbar3")', () => {
+  it('reports a raw component name shipped as UI text (LEGACY-085: "TBXToolbar3")', () => {
     const v = checkCatalogues({ en: { "a.b": "TBXToolbar3" }, ar: { "a.b": "TBXToolbar3" } });
     expect(rules(v)).toContain("component_name_leak");
   });

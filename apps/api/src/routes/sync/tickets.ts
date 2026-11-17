@@ -44,7 +44,7 @@ ticketRoutes.openapi(
   async (c) => {
     const batch = c.req.valid("json");
     const t = c.get("terminal");
-    // A till may only sell as ITSELF. The body's terminalId is data; the signature is identity (SAH-044).
+    // A till may only sell as ITSELF. The body's terminalId is data; the signature is identity (LEGACY-044).
     if (batch.terminalId !== t.terminalId) {
       throw new AppError(
         "ERR_VALIDATION_FAILED",

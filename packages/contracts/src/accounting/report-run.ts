@@ -59,7 +59,7 @@ export const ReportRunSchema = z.object({
   error: z.string().nullable(),
   createdAt: TimestampSchema,
   // `object_key` is deliberately NOT on the wire: it is a store path, and the content route is the only way to
-  // reach the bytes (SAH-038 — an artefact's storage identity is a side channel, as an attachment's is).
+  // reach the bytes (LEGACY-038 — an artefact's storage identity is a side channel, as an attachment's is).
 });
 
 /**

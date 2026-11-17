@@ -35,7 +35,7 @@ const ctxFor = async () => ({
   requestId: await uuidv7(db.admin),
 });
 
-/** A sha256 over every ledger_entry column that could be tampered with, in a fixed order (SAH-031, SAH-041).
+/** A sha256 over every ledger_entry column that could be tampered with, in a fixed order (LEGACY-031, LEGACY-041).
  *  `sha256(bytea)` is core PostgreSQL; `convert_to` is required because there is no implicit text → bytea. */
 const ledgerFingerprint = async (): Promise<string> =>
   withTenant(db.rw, await ctxFor(), async (tx) => {
@@ -86,7 +86,7 @@ afterAll(async () => {
   await db?.stop();
 });
 
-describe("acceptance test 39 — bank reconciliation (spec:2457; SAH-031, SAH-041, RC-2)", () => {
+describe("acceptance test 39 — bank reconciliation (spec:2457; LEGACY-031, LEGACY-041, RC-2)", () => {
   let before = "";
 
   it("1. a month's statement imports and adds up", async () => {
@@ -195,7 +195,7 @@ describe("acceptance test 39 — bank reconciliation (spec:2457; SAH-031, SAH-04
     expect(result.statement.equals(result.ledger)).toBe(true); // the DoD sentence
   });
 
-  it("4. matching NEVER altered a ledger entry — the fingerprint is byte-identical (SAH-031, SAH-041)", async () => {
+  it("4. matching NEVER altered a ledger entry — the fingerprint is byte-identical (LEGACY-031, LEGACY-041)", async () => {
     expect(await ledgerFingerprint()).toBe(before);
   });
 

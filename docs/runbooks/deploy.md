@@ -21,7 +21,7 @@ binding: `bun run --cwd apps/edge deploy --dry-run --env production` must show `
 
 1. **`bun run --cwd packages/db db:migrate`** as `app_migrator`. Forward-only (spec:2057). Every migration in the
    repository is expand-only where it touches a live table (§3.4.7), so the running old code tolerates the new
-   schema and there is no maintenance window (SAH-080, acceptance test 25).
+   schema and there is no maintenance window (LEGACY-080, acceptance test 25).
 2. **`bun run --cwd packages/db db:lint`** — zero violations, or stop. A schema that fails the linter must not
    reach a running environment.
 3. **`bun run --cwd packages/db provision:verify`** — the four posture lines of §5.0 row 0.2.

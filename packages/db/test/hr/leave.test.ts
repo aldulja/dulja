@@ -193,7 +193,7 @@ describe("migration 0096 — the leave register (⚠️ OD-13, spec:2085)", () =
     });
   });
 
-  it("the decider is stamped by the server: a supplied approved_by is overwritten (SAH-044)", async () => {
+  it("the decider is stamped by the server: a supplied approved_by is overwritten (LEGACY-044)", async () => {
     const id = await ask(officer, employeeId, "2026-06-01");
     await as(
       approver,

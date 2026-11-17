@@ -30,7 +30,7 @@ import type { StartedApi } from "../../apps/api/test/support/app";
 
 /**
  * Part VI test 18 (spec:2436) — "Negative stock is rejected by the data layer regardless of session flags,
- * user attributes, or write path. Overrides are explicit and audited." SAH-048.
+ * user attributes, or write path. Overrides are explicit and audited." LEGACY-048.
  *
  * The control is app.assert_stock_available, a BEFORE INSERT trigger on app.inventory_movement (migration
  * 0031). Nothing below reaches around it, because there is nothing to reach around: the check is not in a
@@ -332,7 +332,7 @@ describe("test 18 — stock availability is refused by the data layer, by every 
     expect(soh!.quantity).toBe("0.000000");
   });
 
-  it("a session flag changes nothing — there is no flag to set (SAH-048's four bypasses)", async () => {
+  it("a session flag changes nothing — there is no flag to set (LEGACY-048's four bypasses)", async () => {
     const id = await draftIssue("5.000000");
     await expect(
       withTenant(db.rw, ctx(), async (tx) => {
@@ -497,7 +497,7 @@ describe("test 18 — stock availability is refused by the data layer, by every 
   });
 
   // ── Code review 2 (Phase 4), finding S4: the override approves the stock lines it was recorded against ──
-  // spec:624 (SAH-048) "recording who overrode what". Until migration 0114 both consumers asked only whether
+  // spec:624 (LEGACY-048) "recording who overrode what". Until migration 0114 both consumers asked only whether
   // an override EXISTED on the document, so the creator could re-key the draft after the supervisor approved
   // it and post a shortfall nobody had seen. Each case below fails on e8df83b.
 
@@ -616,7 +616,7 @@ describe("test 18 — stock availability is refused by the data layer, by every 
     expect(await stockOnHand()).toBe(before);
   });
 
-  it("the digest is stamped by the database, never taken from the caller (S4, SAH-044)", async () => {
+  it("the digest is stamped by the database, never taken from the caller (S4, LEGACY-044)", async () => {
     const id = await draftIssue("1.000000");
     await withTenant(
       db.rw,

@@ -53,7 +53,7 @@ run.**
 Placed in `docs/owner/od-24/7b/` (7A's `docs/owner/od-24/7a/` items cover the list, viewer and designer
 themselves; these are only what 7B's catalogue adds):
 
-1. **Screenshots of the Sahlisoft report menu** — how a user finds one report among the few dozen in daily use,
+1. **Screenshots of the legacy report menu** — how a user finds one report among the few dozen in daily use,
    including any grouping, favourites or search.
 2. **A two-minute `description.md`** of how a clerk runs a report: the keys pressed, the parameters retyped every
    time, and which reports are run more than once a day.
@@ -81,7 +81,7 @@ When the material arrives, Task 13 does two things and no more:
 
 ## What this blocks, cumulatively
 
-Nothing in 7B: Plan 7B's definition of done ("every report's numbers tie to the ledger", the SAH-070 index gate,
+Nothing in 7B: Plan 7B's definition of done ("every report's numbers tie to the ledger", the LEGACY-070 index gate,
 the regression appends) has no screen clause, and the slice exits on its defaults. Task 14's slice-exit record
 carries the one-line outcome the plan prescribes: _"OD-24: no material; 7B shipped no screen, as designed."_ The
 gate stays open for 7C's export screen, which does need it. OD-24 still blocks eight whole screen tasks across

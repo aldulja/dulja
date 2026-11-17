@@ -312,7 +312,7 @@ describe("PURCHASE_INVOICE — §4.14, ADR 0044, spec:1049", () => {
   it("a USD SHIPMENT against MYR books: the invoice copies the rate, relieves 2150 in USD and base, and not the landed cost", async () => {
     // 3C's OD-05 default (spec:1023; `purchasing/foreign-currency-shipment.test.ts`): the accrual is held in
     // the SUPPLIER's currency, 1000.0000 USD, while the layer is base and carries the allocated freight. The
-    // invoice copies the shipment's rate and its provenance (SAH-012), so its 2150 debit is the same USD figure
+    // invoice copies the shipment's rate and its provenance (LEGACY-012), so its 2150 debit is the same USD figure
     // at the same base figure and the corridor closes in both. It invoices the goods accrual (`line.amount`),
     // never the landed cost the line's `cost` carries: the freight is the forwarder's, not this vendor's. The
     // settlement-rate difference is 4A Task 9's `fx_difference` and 4B's posting, not this invoice's.

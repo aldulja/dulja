@@ -73,7 +73,7 @@ function logicalOrder(clusters: Cluster[]): Cluster[] {
 /**
  * The one test-side PDF reader (contracts §4.17.1): the text of page 1 as LINES in reading order, each
  * line's runs joined with one space. `useSystemFonts` lets the Arabic faces resolve so the text layer is
- * real text rather than glyph ids — which is what test 23 and SAH-085 assert on.
+ * real text rather than glyph ids — which is what test 23 and LEGACY-085 assert on.
  *
  * Three facts ADR 0016 measured shape this function. `getDocument` detaches the array it is handed, so the
  * caller's bytes are copied first. pdfjs's `getTextContent()` reads no `/ActualText`, so a shaped Arabic

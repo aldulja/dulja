@@ -578,7 +578,7 @@ describe("A6 / A7 — credit exposure counts every committed sale, whatever its 
   });
 });
 
-describe("A8 — a payment term's days are fixed once a document is aged on them (SAH-013)", () => {
+describe("A8 — a payment term's days are fixed once a document is aged on them (LEGACY-013)", () => {
   it("due_days, discount_days and discount_pct are refused once a non-draft document pins the term; names and archiving are not", async () => {
     const term = await seedPaymentTerm(db, s, { code: "N45-R4A", dueDays: 45 });
     const p = await seedParty(db, s, {

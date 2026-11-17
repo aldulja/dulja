@@ -13,7 +13,7 @@ export interface ExportManifestTable {
   files: string[];
 }
 /** One attachment whose bytes are in the archive. Its object-store key is NOT here: a store key never
- *  reaches the wire (SAH-038, `NEVER_EXPORTED.attachment`); `path` is where the bytes are in the archive. */
+ *  reaches the wire (LEGACY-038, `NEVER_EXPORTED.attachment`); `path` is where the bytes are in the archive. */
 export interface ExportManifestAttachment {
   id: string;
   fileName: string;

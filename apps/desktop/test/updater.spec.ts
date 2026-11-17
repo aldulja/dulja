@@ -81,12 +81,12 @@ async function serveFeed(version: string): Promise<{
  *
  * A `finally` is not enough on its own: Playwright abandons a test body at `timeout` (120s here) and
  * at Ctrl-C without unwinding it, so the restore below can simply not happen. What leaks then is a
- * *valid* URL on a dead loopback port, which `sah-087` would go on grading and passing — a regression
+ * *valid* URL on a dead loopback port, which `legacy-087` would go on grading and passing — a regression
  * test quietly certifying an artefact this suite corrupted. So the baseline is written beside the file
  * first and consulted here on the next run: if what is on disk is exactly what a previous run
  * rewrote, that run died before restoring and the recorded original wins; anything else (a fresh
  * `dist`, a clean previous run) is legitimate and becomes the new baseline. The sidecar deliberately
- * carries no `.json`/`.yml` extension, so `sah-087`'s metadata walk does not pick it up.
+ * carries no `.json`/`.yml` extension, so `legacy-087`'s metadata walk does not pick it up.
  */
 async function readFeedBaseline(
   configPath: string,

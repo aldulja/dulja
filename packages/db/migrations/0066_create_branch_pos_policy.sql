@@ -21,7 +21,7 @@ create table app.branch_pos_policy (
   revision                 bigint not null default 0,               -- catalogue revision (§4.10.2)
   created_at               timestamptz not null default now(),
   -- Every default is the CLOSED position: a branch with no configuration authorises nothing, so a missing
-  -- row and a zeroed row refuse identically at sync apply (SAH-027 — an invariant is never "off by default").
+  -- row and a zeroed row refuse identically at sync apply (LEGACY-027 — an invariant is never "off by default").
   constraint branch_pos_policy_pct_range check (
     max_line_discount_pct between 0 and 1 and max_ticket_discount_pct between 0 and 1
     and max_price_override_pct between 0 and 1),

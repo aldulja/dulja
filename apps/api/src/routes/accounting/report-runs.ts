@@ -35,7 +35,7 @@ const exportGate = requirePermission(PERMISSION["accounting.report.export"], {
 
 const RunParams = z.object({ companyId: UuidSchema, runId: UuidSchema });
 
-/** `object_key` never reaches the wire; the content route is the only path to the bytes (SAH-038). */
+/** `object_key` never reaches the wire; the content route is the only path to the bytes (LEGACY-038). */
 function toDto(run: ReportRunRow) {
   return {
     id: run.id,

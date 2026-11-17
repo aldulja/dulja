@@ -11,7 +11,7 @@ import {
 } from "../../../../tests/invariants/support/pos";
 import { startApi, type StartedApi } from "../support/app";
 
-describe("terminalAuth — the canonical string has one definition (E4, SAH-046)", () => {
+describe("terminalAuth — the canonical string has one definition (E4, LEGACY-046)", () => {
   it("the middleware's export IS @dulja/sync's function, not a second spelling of it", () => {
     expect(canonicalSyncRequest).toBe(sharedCanonical);
   });

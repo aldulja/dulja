@@ -22,7 +22,7 @@ begin
     from app.document d join app.document_line l on l.document_id = d.id
    where l.id = coalesce(new.document_line_id, old.document_line_id);
   if s is not null and s <> 'draft' then
-    raise exception 'ERR_DOC_NOT_DRAFT: payroll line % belongs to a document that is %; a posted run is corrected by a supplementary run, never edited in place (spec:2081, SAH-041)',
+    raise exception 'ERR_DOC_NOT_DRAFT: payroll line % belongs to a document that is %; a posted run is corrected by a supplementary run, never edited in place (spec:2081, LEGACY-041)',
       coalesce(new.document_line_id, old.document_line_id), s
       using errcode = 'check_violation';
   end if;
@@ -58,7 +58,7 @@ begin
     -- effective_to is deliberately NOT in the list above and the message must not claim it is: a
     -- successor version has to be able to close its predecessor's open window, which is an UPDATE of
     -- effective_to on a verified row. Every other field is frozen, the verification itself included.
-    raise exception 'ERR_HR_SELF_VERIFY: rate table version % of scheme % is already verified; its definition, version, effective_from, source and verification are frozen (effective_to may still be closed by a successor). Load a NEW version rather than editing a signed one (SAH-041, spec:2080)',
+    raise exception 'ERR_HR_SELF_VERIFY: rate table version % of scheme % is already verified; its definition, version, effective_from, source and verification are frozen (effective_to may still be closed by a successor). Load a NEW version rather than editing a signed one (LEGACY-041, spec:2080)',
       old.version, old.scheme_id using errcode = 'check_violation';
   end if;
   return new;

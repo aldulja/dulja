@@ -110,7 +110,7 @@ async function accountIdOf(s: Seed, code: string): Promise<string> {
   return row!.id;
 }
 
-describe("app.landed_cost_allocation — migration 0038 (contracts §4.6.1; spec:1020, 1049; SAH-049)", () => {
+describe("app.landed_cost_allocation — migration 0038 (contracts §4.6.1; spec:1020, 1049; LEGACY-049)", () => {
   it("the schema linter reports zero violations after 0038", async () => {
     const violations: Violation[] = await lintSchema(db.admin);
     expect(violations).toEqual([]);

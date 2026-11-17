@@ -193,7 +193,7 @@ describe("migration 0082 — the effective-dated statutory profile (⚠️ OD-28
       table: "employee_statutory_profile",
       rule: "sensitive_gate",
       detail:
-        "no RESTRICTIVE policy named compensation_gate (spec:2076 — a permission gate is OR-ed away when permissive, SAH-033)",
+        "no RESTRICTIVE policy named compensation_gate (spec:2076 — a permission gate is OR-ed away when permissive, LEGACY-033)",
     });
     await db.admin`create policy compensation_gate on app.employee_statutory_profile as restrictive
       using (app.actor_has('hr.compensation.read', (select e.company_id from app.employee e where e.id = employee_id)))`;

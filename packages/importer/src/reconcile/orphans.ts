@@ -13,7 +13,7 @@ export interface OrphanRule {
   /** Sentinels the legacy schema uses for "not set". A `0` Job is not an orphan; it is an absent reference. */
   readonly ignoreValues: readonly string[];
   readonly note: string;
-  readonly sah: readonly string[];
+  readonly legacyDefects: readonly string[];
   /** 9B review, finding 8 — further spellings of the child's and the parent's columns, each side tried in order. */
   readonly spellings?: {
     readonly child?: readonly string[];
@@ -24,7 +24,7 @@ export interface OrphanRule {
 const UNSET = ["", "0"] as const;
 
 /**
- * §5.1 #3: "Expect orphaned references. `Job` 82% and `CostCentre` 81% unconstrained (SAH-073); the shipped
+ * §5.1 #3: "Expect orphaned references. `Job` 82% and `CostCentre` 81% unconstrained (LEGACY-073); the shipped
  * `fixes/fix-Jobs.sql` and `fix-finals.sql` prove orphans occur. **Report orphans; do not silently null them.**"
  * (spec:2333) Every rule is a relationship the dossier names; a rule whose tables are not in this database is
  * reported `source_absent` rather than passing.
@@ -37,8 +37,8 @@ export const ORPHAN_RULES: readonly OrphanRule[] = [
     parentTable: "JOBS",
     parentColumns: ["ID"],
     ignoreValues: [...UNSET],
-    note: "Job is 82% unconstrained across the shipped schema (SAH-073); the shipped fixes/fix-Jobs.sql exists because orphans occur.",
-    sah: ["SAH-073"],
+    note: "Job is 82% unconstrained across the shipped schema (LEGACY-073); the shipped fixes/fix-Jobs.sql exists because orphans occur.",
+    legacyDefects: ["LEGACY-073"],
   },
   {
     id: "VOUITEMS.COSTCENTRE",
@@ -47,8 +47,8 @@ export const ORPHAN_RULES: readonly OrphanRule[] = [
     parentTable: "COSTCENTRES",
     parentColumns: ["ID"],
     ignoreValues: [...UNSET],
-    note: "CostCentre is 81% unconstrained (SAH-073).",
-    sah: ["SAH-073"],
+    note: "CostCentre is 81% unconstrained (LEGACY-073).",
+    legacyDefects: ["LEGACY-073"],
   },
   {
     id: "VOUITEMS.ACCOUNT",
@@ -57,8 +57,8 @@ export const ORPHAN_RULES: readonly OrphanRule[] = [
     parentTable: "ACCOUNTS",
     parentColumns: ["ID"],
     ignoreValues: [...UNSET],
-    note: "Accounts are deletable with postings against them (SAH-021), so a line can outlive its account.",
-    sah: ["SAH-021", "SAH-073"],
+    note: "Accounts are deletable with postings against them (LEGACY-021), so a line can outlive its account.",
+    legacyDefects: ["LEGACY-021", "LEGACY-073"],
   },
   {
     id: "VOUITEMS.VOUCHER",
@@ -68,7 +68,7 @@ export const ORPHAN_RULES: readonly OrphanRule[] = [
     parentColumns: ["SITE", "ID"],
     ignoreValues: [],
     note: "A line whose header no longer exists is invisible to every report that starts from Vouchers.",
-    sah: ["SAH-073", "SAH-074"],
+    legacyDefects: ["LEGACY-073", "LEGACY-074"],
   },
   {
     id: "BILLITEMS.MATERIAL",
@@ -80,7 +80,7 @@ export const ORPHAN_RULES: readonly OrphanRule[] = [
     // 9B's spelling: BILLITEMS.BTMMAT holds the MATERIALS key, which 9B's loader reads as MATERIALS.MATID.
     spellings: [{ child: ["BTMMAT"], parent: ["MATID"] }],
     note: "A movement whose item no longer exists cannot be recosted by the 3B engine.",
-    sah: ["SAH-073"],
+    legacyDefects: ["LEGACY-073"],
   },
   {
     id: "BILLITEMS.WAREHOUSE",
@@ -92,7 +92,7 @@ export const ORPHAN_RULES: readonly OrphanRule[] = [
     // 9B's spelling: BILLITEMS.BTMWAR holds the WAREHOUSES key, which 9B's loader reads as WAREHOUSES.WARID.
     spellings: [{ child: ["BTMWAR"], parent: ["WARID"] }],
     note: "A movement with no warehouse cannot be placed in the opening stock position.",
-    sah: ["SAH-073"],
+    legacyDefects: ["LEGACY-073"],
   },
   {
     id: "BILLITEMS.BATCH",
@@ -102,7 +102,7 @@ export const ORPHAN_RULES: readonly OrphanRule[] = [
     parentColumns: ["ID"],
     ignoreValues: [...UNSET],
     note: "A lot reference with no lot loses the expiry position §5.1 asks 9B to import.",
-    sah: ["SAH-073"],
+    legacyDefects: ["LEGACY-073"],
   },
   {
     id: "BILLITEMS.BILL",
@@ -112,7 +112,7 @@ export const ORPHAN_RULES: readonly OrphanRule[] = [
     parentColumns: ["SITE", "ID"],
     ignoreValues: [],
     note: "As VOUITEMS.VOUCHER, on the inventory side.",
-    sah: ["SAH-073", "SAH-074"],
+    legacyDefects: ["LEGACY-073", "LEGACY-074"],
   },
   {
     id: "JOURNAL.ACCOUNT",
@@ -122,7 +122,7 @@ export const ORPHAN_RULES: readonly OrphanRule[] = [
     parentColumns: ["ID"],
     ignoreValues: [...UNSET],
     note: "Journal is the document-level movement row; an orphan here is a balance with no account.",
-    sah: ["SAH-021", "SAH-073"],
+    legacyDefects: ["LEGACY-021", "LEGACY-073"],
   },
 ];
 

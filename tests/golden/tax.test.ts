@@ -105,7 +105,7 @@ async function runGoldenCase(
   });
 }
 
-describe("acceptance test 26 — tax return determinism (spec:2444; SAH-020, 058, 059)", () => {
+describe("acceptance test 26 — tax return determinism (spec:2444; LEGACY-020, 058, 059)", () => {
   let db: Db;
   beforeAll(async () => {
     db = await startDb();
@@ -184,7 +184,7 @@ describe("test 26 clauses beyond the byte-compare", () => {
     expect(second.sha).toBe(first.sha);
     expect(second.by).toBe(first.by);
 
-    // A document in Q2 changes nothing about Q1. SAH-059's failure was the opposite: a truncated query
+    // A document in Q2 changes nothing about Q1. LEGACY-059's failure was the opposite: a truncated query
     // lost its period filter and the return reported every voucher ever posted.
     await postTaxedDocument(db, f, {
       typeCode: "SALES_INVOICE",
@@ -230,7 +230,7 @@ describe("test 26 clauses beyond the byte-compare", () => {
     // refuses a document whose lines span two regimes (T7), reaching the caller through
     // `computeDocumentTax` — "a refusal, not a wrong number" (spec:2444). If this document posted, its
     // two codes' figures would land in one return with two rates and nothing to say which was which,
-    // which is SAH-020's enum collision in its modern form.
+    // which is LEGACY-020's enum collision in its modern form.
     await expect(
       postTaxedDocument(db, f2, {
         typeCode: "SALES_INVOICE",
@@ -291,7 +291,7 @@ describe("test 26 clauses beyond the byte-compare", () => {
 
   it("the pack refuses a transaction whose regime is not the return's, naming the document and line", () => {
     // Pure, and it is the second half of clause 2: the guard that stops a foreign row being silently
-    // dropped (SAH-058's contradictory union half, in reverse). No database needed.
+    // dropped (LEGACY-058's contradictory union half, in reverse). No database needed.
     const regime = {
       id: "11111111-1111-7111-8111-111111111111",
       code: "SYNTH-MY-v1",
@@ -368,7 +368,7 @@ describe("test 26 clauses beyond the byte-compare", () => {
       ["P2", "55.0000"],
     ]);
     // Every box the definition declares is present, in definition order — a box the pack knows and the
-    // return omits is SAH-011's "filed with tax but no base" in its other direction.
+    // return omits is LEGACY-011's "filed with tax but no base" in its other direction.
     expect(boxes.map((b) => b.code)).toEqual(SYNTH_MY_V1.boxes.map((b) => b.code));
     expect(tie).toEqual([
       {
@@ -389,7 +389,7 @@ describe("test 26 clauses beyond the byte-compare", () => {
   }, 180_000);
 
   it("an empty period generates a return of zero boxes and ties out to 0.0000, never to null", async () => {
-    // SAH-011 at this boundary: `taxReturnTieOut`'s `coalesce(..., 0)` is what makes the assertion real
+    // LEGACY-011 at this boundary: `taxReturnTieOut`'s `coalesce(..., 0)` is what makes the assertion real
     // rather than vacuous. A null difference compares equal to nothing and passes no test.
     const f = await taxFixture(db, "t26-empty");
     const ctx = { tenantId: f.s.tenant, actorId: f.s.human, requestId: "t26-empty" };

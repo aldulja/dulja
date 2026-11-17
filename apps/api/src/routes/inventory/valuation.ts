@@ -23,7 +23,7 @@ import { INVENTORY_PERMISSION } from "./permissions";
  * An ORDINARY LIST module, deliberately NOT a `ReportCode`: `inventory.valuation` in §4.16.1 is 3D's report
  * code on 1B's `reports` module, and the two never collide because they are different modules on different
  * paths. 3D's report will read `valuationAsOf` — the same function these two routes read — rather than
- * re-derive anything, which is what makes SAH-009 unrepeatable.
+ * re-derive anything, which is what makes LEGACY-009 unrepeatable.
  *
  * Both routes are GETs. Nothing here writes, so no route declares `IdempotencyHeader`.
  */

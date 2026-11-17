@@ -3,10 +3,10 @@
 -- spec:1020  — "Imported goods carry freight, duty, clearance and handling that must be allocated across a
 --               shipment and into unit cost — otherwise every margin figure is wrong."
 -- spec:1049  — the import-shipment document carries freight, duty and clearance into landed cost per lot.
--- SAH-049    — an aggregate with no unique key duplicates under an upsert race and is then double-updated
+-- LEGACY-049    — an aggregate with no unique key duplicates under an upsert race and is then double-updated
 --               forever. `unique (cost_line_id, target_line_id)` is that key, and it is the ONLY replacement
 --               mechanism this table has: app_rw holds no DELETE (contracts §3.5.4 is closed).
--- SAH-017/018 — nothing derived is stored. There is no `weight` column: the basis is `method` plus the target
+-- LEGACY-017/018 — nothing derived is stored. There is no `weight` column: the basis is `method` plus the target
 --               line's own amount / quantity / custom_fields.weight_kg, and the trigger pins both lines to the
 --               same document so those columns cannot come from somewhere else.
 
@@ -27,7 +27,7 @@ create table app.landed_cost_allocation (
   created_at            timestamptz not null default now(),
   check (cost_line_id <> target_line_id),                                -- a line never allocates onto itself
   unique (tenant_id, id),
-  unique (cost_line_id, target_line_id),                                 -- the upsert key (SAH-049)
+  unique (cost_line_id, target_line_id),                                 -- the upsert key (LEGACY-049)
   -- Composite FKs: an FK check bypasses RLS, so a plain reference would let tenant A point at tenant B's row.
   foreign key (tenant_id, company_id)           references app.company(tenant_id, id),
   -- Every reference cascades from the DRAFT document: re-lining or deleting the draft releases the allocation,

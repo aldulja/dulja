@@ -63,7 +63,7 @@ describe("applyBatch (§4.10.4) — the server half of zero duplicates, zero los
       },
     );
 
-  it("a good ticket posts, and the terminal is the ACTOR while the cashier is ATTRIBUTED (SAH-044)", async () => {
+  it("a good ticket posts, and the terminal is the ACTOR while the cashier is ATTRIBUTED (LEGACY-044)", async () => {
     const ticket = buildTicket(f, { sku: "SKU-A", quantity: "2.000000", unitPrice: "50.0000" });
     const out = await apply([ticket]);
     expect(out.results[0]!.status, JSON.stringify(out.results)).toBe("accepted");
@@ -164,7 +164,7 @@ describe("applyBatch (§4.10.4) — the server half of zero duplicates, zero los
     expect(ev!.reason).toBe("void: mis-scan"); // "<subject>: <reason>" (§4.10.1)
   });
 
-  it("a tax figure the server does not agree with is REFUSED, not silently corrected (SAH-020)", async () => {
+  it("a tax figure the server does not agree with is REFUSED, not silently corrected (LEGACY-020)", async () => {
     const wrong = buildTicket(f, { sku: "SKU-A" });
     wrong.lines[0]!.taxAmount = { amount: "0.0000", currency: "MYR" };
     const out = await apply([wrong]);

@@ -49,7 +49,7 @@ const opening = (over: Partial<EmployeeYtdOpeningInput> = {}): EmployeeYtdOpenin
 });
 
 describe("upsertEmployeeYtdOpening (spec:2084; round 18 B14)", () => {
-  it("inserts on the natural key, stamps loaded_by from the session (SAH-044) and returns the row id", async () => {
+  it("inserts on the natural key, stamps loaded_by from the session (LEGACY-044) and returns the row id", async () => {
     const id = await asHuman((tx) => upsertEmployeeYtdOpening(tx, ctx(), opening()));
     const [row] = await db.admin<
       { gross: string; net: string; source: string; loaded_by: string; by_component: unknown }[]

@@ -10,11 +10,11 @@
 
 The Phase 2 definition of done (spec:2288) reads "issued numbers are unique and **gapless-provable**", and
 spec:2222 spells out the mechanism: "assigned at *issue*, per (series, period), unique-constrained,
-gapless-provable, with voided numbers explicitly recorded (SAH-051)". Uniqueness is already a constraint
+gapless-provable, with voided numbers explicitly recorded (LEGACY-051)". Uniqueness is already a constraint
 (`unique (company_id, series, fiscal_period_id, number)`, migration 0001). *Provable* is not: nothing in the
 schema answers "is there a number this series issued that no document and no void explains?"
 
-SAH-051 is the legacy numbering: a race on first use, no uniqueness constraint, and no way to demonstrate
+LEGACY-051 is the legacy numbering: a race on first use, no uniqueness constraint, and no way to demonstrate
 gaplessness. spec:2224 adds the other half — "No deletion of posted documents at any privilege level" — because
 a system that can delete an issued document can make any gap disappear.
 

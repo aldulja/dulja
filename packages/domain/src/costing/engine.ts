@@ -8,7 +8,7 @@ export type CostingMethod = "avco" | "fifo";
 
 /**
  * The minimum meaningful quantity — spec:1227's clamp, exported as ONE name so no call site retypes it.
- * SAH-008(b): the guard in the old system was `if (aCurrentQnt <> 0)`, which excludes only exact zero, and
+ * LEGACY-008(b): the guard in the old system was `if (aCurrentQnt <> 0)`, which excludes only exact zero, and
  * the smallest non-zero numeric(18,4) is 0.0001 — so a divisor could be 10,000x smaller than one unit and a
  * return of 5.0001 against 5.0000 on hand produced a stored unit cost of 500,020.00. Anything below this
  * value is not a denominator; it is a residue, and an issue against it is refused (amendment A22).
@@ -78,7 +78,7 @@ export interface CostingEngine {
    * oldest layers, AVCO a proportional quantity slice of all open layers (spec:1222; ADR 0039 amendment).
    * Throws `CostingError`: `ERR_COST_NEGATIVE` if a computed unit cost is negative, `ERR_STOCK_INSUFFICIENT`
    * if the open layers cannot cover the issue and `allowShortfall` is false or if the divisor would fall
-   * below `MIN_MEANINGFUL_QTY` (spec:1227), `ERR_COST_VALUE_MISSING` if a receipt carries no value (SAH-007).
+   * below `MIN_MEANINGFUL_QTY` (spec:1227), `ERR_COST_VALUE_MISSING` if a receipt carries no value (LEGACY-007).
    */
   cost(input: CostingInput): CostingOutput;
   /** Running average for display and valuation: Σ remainingLayerValue ÷ Σ qtyRemaining over open layers. */
@@ -132,14 +132,14 @@ function sumRemaining(layers: readonly Layer[]): Quantity {
 /**
  * `value ÷ quantity`, rounded HALF_AWAY_FROM_ZERO at MONEY_SCALE — the same mode and scale base conversion
  * uses (spec:1816), so a unit cost and a base amount round the same way in both directions of the sign.
- * Refuses a divisor below MIN_MEANINGFUL_QTY (spec:1227) and a negative result (SAH-008).
+ * Refuses a divisor below MIN_MEANINGFUL_QTY (spec:1227) and a negative result (LEGACY-008).
  */
 function unitCostOf(value: Money, quantity: Quantity, context: string): Money {
   const divisor = quantity.toDecimal();
   if (divisor.lessThan(MIN_MEANINGFUL_QTY.toDecimal())) {
     throw new CostingError(
       "ERR_STOCK_INSUFFICIENT",
-      `${context}: quantity ${quantity.toString()} is below the minimum meaningful quantity ${MIN_MEANINGFUL_QTY.toString()} — dividing by a residue is what produced SAH-008's stored unit cost of 500,020.00`,
+      `${context}: quantity ${quantity.toString()} is below the minimum meaningful quantity ${MIN_MEANINGFUL_QTY.toString()} — dividing by a residue is what produced LEGACY-008's stored unit cost of 500,020.00`,
     );
   }
   const unit = value.divide(divisor, "HALF_AWAY_FROM_ZERO");
@@ -193,10 +193,10 @@ function splitQuantity(need: Quantity, weights: readonly Quantity[]): Quantity[]
 /**
  * The contracts §4.3.5 chronological key, written out in full: (effective_date, posting_seq, line_no,
  * movement_no). The engine sorts its own input rather than trusting the caller's order, and that is
- * deliberate: SAH-005's whole defect was one path ordering by document **id** while the other ordered by
+ * deliberate: LEGACY-005's whole defect was one path ordering by document **id** while the other ordered by
  * **date**, so "the incremental mode" and "the batch replay" disagreed about what "the newest transaction"
  * meant. There is one ordering, in one function, and neither `applyMovements` nor `replay` can get it wrong.
- * spec:1225 — "the chronological key is explicit and total — never dependent on an index definition (SAH-067)".
+ * spec:1225 — "the chronological key is explicit and total — never dependent on an index definition (LEGACY-067)".
  */
 function byChronology(a: Layer, b: Layer): number {
   if (a.effectiveDate !== b.effectiveDate) return a.effectiveDate < b.effectiveDate ? -1 : 1;
@@ -218,7 +218,7 @@ function costReceipt(input: CostingInput): CostingOutput {
   if (movement.value === null) {
     throw new CostingError(
       "ERR_COST_VALUE_MISSING",
-      `${context} carries no value; value is a mandatory non-null attribute of every stock movement and is rejected at write time if absent (SAH-007, spec:1226)`,
+      `${context} carries no value; value is a mandatory non-null attribute of every stock movement and is rejected at write time if absent (LEGACY-007, spec:1226)`,
     );
   }
   if (movement.value.isNegative()) {
@@ -337,7 +337,7 @@ function costIssue(input: CostingInput): CostingOutput {
   if (short && !allowShortfall) {
     throw new CostingError(
       "ERR_STOCK_INSUFFICIENT",
-      `${context}: ${need.toString()} requested but only ${available.toString()} remains in the open cost layers of item ${movement.itemId} in warehouse ${movement.warehouseId} — refuse rather than absorb (SAH-008)`,
+      `${context}: ${need.toString()} requested but only ${available.toString()} remains in the open cost layers of item ${movement.itemId} in warehouse ${movement.warehouseId} — refuse rather than absorb (LEGACY-008)`,
     );
   }
   const covered = short ? available : need;
@@ -412,7 +412,7 @@ function costIssue(input: CostingInput): CostingOutput {
       }
       if (!left.isZero()) {
         // Unreachable: `covered` is min(need, available) and `available` is Σ over the same filtered set.
-        // It is here because SAH-055's carry-forward bug was exactly a loop that silently did not finish.
+        // It is here because LEGACY-055's carry-forward bug was exactly a loop that silently did not finish.
         throw new CostingError(
           "ERR_STOCK_INSUFFICIENT",
           `${context}: the FIFO walk ended with ${left.toString()} unconsumed over ${open.length} open layer(s)`,

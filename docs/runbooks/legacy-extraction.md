@@ -1,4 +1,4 @@
-# Runbook — extracting and profiling the legacy Sahlisoft database (Phase 9A)
+# Runbook — extracting and profiling the legacy database (Phase 9A)
 
 Plan 9A Task 14; ADRs 0081 (Firebird version and extraction method), 0082 (how statements are built) and 0083
 (artefacts and anonymisation) — all three **Proposed**. This runbook produces the evidence the owner needs to answer
@@ -9,7 +9,7 @@ Dulja** — that is 9B — and it only ever issues `select` against the legacy d
 
 | Item | Ledger | Why |
 |---|---|---|
-| A read-only ODBC DSN for the main Sahlisoft database | OD-17 | every command below |
+| A read-only ODBC DSN for the main legacy database | OD-17 | every command below |
 | The Firebird version, if the engine is older than 2.1 | OD-17 | `LegacyReader.firebirdVersion` is required and is never inferred (ADR 0081) |
 | A second DSN for the `mpos` database — **only if** historical POS data must migrate | OD-16 | `--mpos`; the default is to start the new POS clean |
 | The answers, once the artefacts are read | OD-16, OD-25, OD-27 | the tool reports evidence and decides nothing |
@@ -88,7 +88,7 @@ no upside.
    first**, and read `duplicate_aggregates` beside it: a duplicated key makes the stored figure wrong by exactly the
    excess. `employee_mapping` carries employee names in clear (ADR 0083); the console prints counts only.
 4. `templates` — every report definition out of `System.Reports` as a hashed file under `templates/` (§5.1 #9,
-   SAH-077), with `templates.csv` naming each one's group, owner and near-duplicates. Presence is not usage.
+   LEGACY-077), with `templates.csv` naming each one's group, owner and near-duplicates. Presence is not usage.
 5. `questions` — the OD-27 evidence for Part VII #6, #7, #8, #9 and #13. Five lines, each ending
    `verdict: owner (OD-27)`.
 

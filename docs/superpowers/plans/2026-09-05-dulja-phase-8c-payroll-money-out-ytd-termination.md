@@ -20,7 +20,7 @@ Bun 1.4 (install, scripts, the API entrypoint) · Node 24 LTS (runs Vitest) · T
 
 ## Spec
 
-`C:/Users/Edres101/Desktop/dulja/rebuild-spec.md` v1.2 — **§3.10.1** *Money out on Phase 4 machinery* (spec:2082), *Outputs* (spec:2083), *Year-to-date* (spec:2084), *Termination* (spec:2090); **§3.10.2 Identity: employee, principal, cashier** (spec:2097); §3.10.3 Posting (spec:2099–2101); §3.10.4 (spec:2105); §3.10.5 (spec:2109); **§3.7.5** the termination sentence and the cashier-identity paragraph (spec:1324); §3.9 (spec:2037–2063); §0.2 (spec:97–110); §4.2.2 **R1** (spec:2172), R2 (spec:2173), R4 (spec:2175), **R8** the system principal and the override rule (spec:2179); §4.3 the AR/AP bank-reconciliation row (spec:1043); §4.11 the report format rule (spec:2262–2267) and the secret inventory (spec:2273); Part V Phase 8 (spec:2294, 2301); Part VI tests **2** (spec:2420), **30** (spec:2448), **31** (spec:2449), **34** (spec:2452), **35** (spec:2453), **39** (spec:2457); §5.3 the Phase 8 owner rows (spec:2407, 2478); Part I **SAH-004** (spec:231), **SAH-011** (spec:311), **SAH-016** (spec:354), **SAH-019** (spec:381), **SAH-021** (spec:403), **SAH-044** (spec:593).
+`C:/Users/Edres101/Desktop/dulja/rebuild-spec.md` v1.2 — **§3.10.1** *Money out on Phase 4 machinery* (spec:2082), *Outputs* (spec:2083), *Year-to-date* (spec:2084), *Termination* (spec:2090); **§3.10.2 Identity: employee, principal, cashier** (spec:2097); §3.10.3 Posting (spec:2099–2101); §3.10.4 (spec:2105); §3.10.5 (spec:2109); **§3.7.5** the termination sentence and the cashier-identity paragraph (spec:1324); §3.9 (spec:2037–2063); §0.2 (spec:97–110); §4.2.2 **R1** (spec:2172), R2 (spec:2173), R4 (spec:2175), **R8** the system principal and the override rule (spec:2179); §4.3 the AR/AP bank-reconciliation row (spec:1043); §4.11 the report format rule (spec:2262–2267) and the secret inventory (spec:2273); Part V Phase 8 (spec:2294, 2301); Part VI tests **2** (spec:2420), **30** (spec:2448), **31** (spec:2449), **34** (spec:2452), **35** (spec:2453), **39** (spec:2457); §5.3 the Phase 8 owner rows (spec:2407, 2478); Part I **LEGACY-004** (spec:231), **LEGACY-011** (spec:311), **LEGACY-016** (spec:354), **LEGACY-019** (spec:381), **LEGACY-021** (spec:403), **LEGACY-044** (spec:593).
 
 ## Assumptions and contracts (from docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md)
 
@@ -30,7 +30,7 @@ Bun 1.4 (install, scripts, the API entrypoint) · Node 24 LTS (runs Vitest) · T
 - **Interfaces consumed:** §4.1 (the whole Plan 0A surface), §4.2.1 (`Money`, `currency`, `round`, `RoundingMode`, `MONEY_SCALE`, `toBase`, `UNIT_RATE`), §4.2.2 (`withTenant`, `TenantContext`, `systemContext`), §4.2.3 (`AppEnv`, `RequestContext`, `Logger`, the fixed middleware order), §4.2.4 (`Problem`, `ERRORS`, `AppError`, `fromDatabaseError`, `PostingError` — **this slice adds two `ERRORS` rows**: `ERR_PAYROLL_REMITTANCE_MISMATCH`, already allocated, and `ERR_HR_CASHIER_NOT_EMPLOYEE`, allocated by amendment B13), §4.2.5 (`PERMISSION`, `PERMISSIONS`, `PermissionDef`, `requirePermission`, `ROLES`, `INCOMPATIBLE_PAIRS`, `assertRouteGates`), **§4.2.6** (`JOBS` — this slice registers the handler for the one name it owns, `hr.employee_ytd.rebuild`; `JobPayload` gains that one key; the audit `table_name` sentinel paragraph — this slice registers one), §4.2.7 (`RouteModule`, `buildRoutes`, `PROBES`, `IsolationProbe`, `IdempotencyHeader`, `createApp`), §4.2.8 (the common schemas, the list envelope, the cursor codec, **the one list-filter convention — literal `filter[…]` keys, the Layer 2 default**), §4.2.9 (`idempotency`), §4.2.11 (`app.dimension_type` / `app.dimension_value`), §4.2.12 (`startApi`, `StartedApi`, `ApiRequest`), §4.2.13 (`readPackFile`, `SUB_PACKS`), §4.3.1 (`postDocument`, `loadSnapshot`, `resolvePolicy`, `transitionDocument`, `setEventContext`), **§4.3.2 (the fixed algorithm — this slice extends step 12 and the closed write list)**, §4.3.4 (`document_line`, `document.branch_id`), §4.3.5 (`posting_seq`), §4.3.6 (numbering at issue), §4.3.7 (the seed envelope), §4.4.1 (`posting-policy.schema.json` — consumed **unchanged**, same `$id`, same `"version": 1`), **§4.4.2 in full** (`DocumentSnapshot`, `LineSnapshot`, `PlannedLedgerLine`, and **sign normalisation A9**), §4.5.1 (legal transitions), §4.5.2 (`document_event`), §4.5.4 (`requireDocumentPermission`, `stageCode`, `POLICY_RESOLVED_CODES`, `DOCUMENT_STAGE_CODES`), §4.5.6 (Form A′ on `employee`, Form A on `pos_cashier` — consumed), §4.5.8 (`MODULE_READ_CODE` — consumed, **this slice adds no row**; 8B shipped `hr`), **§4.8.3 in full** (`Reconcilable`, `ReconcilableSource`, `registerReconcilableSource`), §4.6.1 (the register rows for `statutory_schedule`, `employee_ytd`, `employee_ytd_opening`, `pos_cashier`, `employee`), §4.6.2, §4.6.3, **§4.12 in full — especially §4.12.6 and §4.12.8**, §4.14 (document-type codes), §4.15 (account codes), §4.16.1–§4.16.2 (consulted: **this slice ships no report and no `DatasetId` member**), **§4.16.3** (`ProjectionCheck`, `registerProjectionCheck`, `projectionChecks`, `recordIntegrityIncident`), §4.17 (**no row is assigned to 8C**), §4.17.1, §4.18 (both rounds, plus 8A's and 8B's round-3 rows), §5 (all thirty-five hazards), §6.1 rows 2, 30, 31, 34, 35, 39, §6.2 rows spec:1043, 1058, 1059, 1061.
 - **Interfaces produced:** §4.6.1's `statutory_schedule`, `employee_ytd` and `employee_ytd_opening` rows; **§4.12.8 in full** (`app.employee_ytd`, the step-12 MERGE, the nightly rebuild-and-compare); §4.14's `PAYROLL_PAYMENT` and `EMPLOYEE_ADVANCE` rows with their envelopes and policies; §3.6.2's two codes `hr.payroll.pay` and `hr.advance.create`; §4.2.6's `hr.employee_ytd.rebuild` handler and its `JobPayload` key; §4.8.3's `payroll_batch` `ReconcilableSource`; §4.16.3's `EMPLOYEE_YTD_CHECK`; three §4.2.7 route modules with their three `PROBES` keys; three §4.2.8 contracts modules; and the §4.17.1 helper file `tests/invariants/support/payroll-money.ts`.
 - **Owner decisions:** **OD-28** (the ⚠️ schedule layouts of spec:2083, verified against the authorities) → **Task 13**, isolated; default **a generic CSV** with the column set named in that task, `statutory_schedule.attachment_id` pointing at it, and the authority layout swapped in as a template when verified. **OD-14** (spec:2093 — the money-out clause, *staff purchases at the till on salary deduction*) → **Task 14**, isolated; default **not built**. OD-14's other three clauses — HRD Corp or other levy, foreign workers, hourly/part-time staff — are **8B's Task 8** and are not re-opened here (§2.12 gates OD-14 at "8A/8B → one task each if yes"; the orchestrator's card also lists it for 8C, and the money-out clause is the only half that lands in this slice). **OD-23** is **split, and the split is not a re-opening**: its *rate-table* clause (current EPF/SOCSO/EIS/PCB tables and worked examples signed off by the accountant) is **8B's Task 12** and is not touched here, while its **two clauses this slice is the first consumer of** — the **employer registration number** per scheme and the **pay-period / pay-date convention** — land as **Task 15**, isolated. 8A's own OD-23 task says so in as many words: *"Nothing in 8A, 8B or 8C reads a registration number — the first consumer is 8C's statutory schedule and 8D's annual employer return"*, and the pay-date convention is what amendment **B7** fixes `employee_ytd.tax_year` on. Default: `statutory_scheme.employer_registration` is null and the schedule **names the scheme whose registration is missing** rather than printing an empty box; `tax_year` is the calendar year of `payroll_run.pay_date`. **OD-24** (screens) is not gated here — this slice ships no screen; its three route modules are API surface that 8D's reports and any later screen consume.
-- **Part VI tests owned / re-run:** owns **30** (payslip ties to the ledger — Task 8), **34** (termination closes everything — Task 11), **35** (YTD rebuild and recalculation — Task 9; the *recalculation* clause is 8B's Task 11 and is re-run here, the *verify ≠ load* clause is 8A's and is re-run here). **Re-runs:** **2** (deterministic projections, over `employee_ytd` — Task 9), **20** (catalogue resume, the *termination tombstone* half §6.1's row 20 assigns this slice — Task 11's clause 2, which pulls the cashier stream from the revision a synced till already holds rather than from `0n`), **31** (the `PAYROLL_PAYMENT` and `EMPLOYEE_ADVANCE` clauses of segregation of duties — Task 12), **39** (the payroll-batch clause of bank reconciliation — Task 12), **12**, **13** and **36** for this slice's three new tables, two codes and three route modules (Tasks 1, 2, 4, 6, 7). **§3.0.4 rows owned:** spec:**1058** (PAYROLL / PAYROLL_PAYMENT / remittances / EMPLOYEE_ADVANCE — 8B contributes PAYROLL) and spec:**1061** (Termination — 6C contributes the cashier and the tombstone); contributes to spec:1043 (Bank reconciliation, 4B's row) and spec:1059 (`employee_ytd`, 8D's row). **Regression files created / appended:** **creates none.** **Appends** a `— 8C` block to `tests/regression/sah-004.test.ts` and `sah-016.test.ts` (both created by **3B**), `sah-011.test.ts` (**1A**), `sah-019.test.ts` (**0D**), `sah-021.test.ts` and `sah-044.test.ts` (both **0B**) — never editing an earlier block (§3.7.3).
+- **Part VI tests owned / re-run:** owns **30** (payslip ties to the ledger — Task 8), **34** (termination closes everything — Task 11), **35** (YTD rebuild and recalculation — Task 9; the *recalculation* clause is 8B's Task 11 and is re-run here, the *verify ≠ load* clause is 8A's and is re-run here). **Re-runs:** **2** (deterministic projections, over `employee_ytd` — Task 9), **20** (catalogue resume, the *termination tombstone* half §6.1's row 20 assigns this slice — Task 11's clause 2, which pulls the cashier stream from the revision a synced till already holds rather than from `0n`), **31** (the `PAYROLL_PAYMENT` and `EMPLOYEE_ADVANCE` clauses of segregation of duties — Task 12), **39** (the payroll-batch clause of bank reconciliation — Task 12), **12**, **13** and **36** for this slice's three new tables, two codes and three route modules (Tasks 1, 2, 4, 6, 7). **§3.0.4 rows owned:** spec:**1058** (PAYROLL / PAYROLL_PAYMENT / remittances / EMPLOYEE_ADVANCE — 8B contributes PAYROLL) and spec:**1061** (Termination — 6C contributes the cashier and the tombstone); contributes to spec:1043 (Bank reconciliation, 4B's row) and spec:1059 (`employee_ytd`, 8D's row). **Regression files created / appended:** **creates none.** **Appends** a `— 8C` block to `tests/regression/legacy-004.test.ts` and `legacy-016.test.ts` (both created by **3B**), `legacy-011.test.ts` (**1A**), `legacy-019.test.ts` (**0D**), `legacy-021.test.ts` and `legacy-044.test.ts` (both **0B**) — never editing an earlier block (§3.7.3).
 - **Shared namespaces this slice writes into:** **Document-type codes (§4.14)** — exactly two, **`PAYROLL_PAYMENT`** (`module: "hr"`, series `PAYB`) and **`EMPLOYEE_ADVANCE`** (`module: "hr"`, series `ADV`), seeded as `packages/db/seed/my/document-types/PAYROLL_PAYMENT.json` and `EMPLOYEE_ADVANCE.json`. Consumed and never seeded here: **`PAYROLL`** (8B), **`PAYMENT`** (4A — the statutory remittance is an ordinary `PAYMENT`), `JOURNAL` (1A). **Account codes (§4.15) — none seeded.** Consumed, with their seeding slice: `2400` Salaries payable, `1400` Staff advances, `2411`–`2414` Statutory payable per scheme (**8B**); `1100` Bank, `2100` Trade payables, `5920` FX rounding (**0C**). Hazard 33's rule is discharged by **Task 5 Step 1**, which asserts every one of them resolves in the company before a policy names it. **Report codes (§4.16.1) — none**, and **`DatasetId` members (§4.16.2) — none**: `employee_ytd` and `statutory_schedule` are 8D's rows in the frozen union, and 7A creates `datasets.ts`. **`fixtures.ts` helpers (§4.17) — none**: §4.17 assigns 8C no row and hazard 9 forbids inventing one beside the register. **Shared test helpers (§4.17.1) — one new file**, `tests/invariants/support/payroll-money.ts` (amendment **B3**), **plus one new row on §4.17.1's cross-workspace allowance paragraph**: `packages/db/test/**` may import `tests/support/**` and `tests/invariants/support/**` (amendment **B15**), which ten suites in this slice do and which 3B and 8B already did without registering it.
 - **Never re-decide:** D1–D27 (spec:114–142); every name in the contracts document is frozen — a needed change goes to that document first.
 - **Contracts version:** 2026-09-07.
@@ -192,12 +192,12 @@ tests/
   invariants/money-out-sod.test.ts                NEW  T12 — re-runs of tests 31 and 39
   invariants/audit-chain.test.ts                  EDIT T9  — the pinned checked array
   invariants/projection-rebuild.test.ts           EDIT T9  — the pinned checked array
-  regression/sah-004.test.ts                      EDIT T9  (3B's file)
-  regression/sah-011.test.ts                      EDIT T8  (1A's file)
-  regression/sah-016.test.ts                      EDIT T9  (3B's file)
-  regression/sah-019.test.ts                      EDIT T8  (0D's file)
-  regression/sah-021.test.ts                      EDIT T11 (0B's file)
-  regression/sah-044.test.ts                      EDIT T10 (0B's file)
+  regression/legacy-004.test.ts                      EDIT T9  (3B's file)
+  regression/legacy-011.test.ts                      EDIT T8  (1A's file)
+  regression/legacy-016.test.ts                      EDIT T9  (3B's file)
+  regression/legacy-019.test.ts                      EDIT T8  (0D's file)
+  regression/legacy-021.test.ts                      EDIT T11 (0B's file)
+  regression/legacy-044.test.ts                      EDIT T10 (0B's file)
 
 scripts/lint/rules/posting-only-tables.ts         EDIT T2  — app.employee_ytd joins the table list
 scripts/lint/rules/dependency-rule.ts             EDIT T1  — amendment B15: packages/db/test/** may import tests/**
@@ -363,7 +363,7 @@ describe("app.statutory_schedule (§4.6.1, amendment B11; spec:2083)", () => {
     expect(IMMUTABLE.has("statutory_schedule")).toBe(false);
   });
 
-  it("stamps generated_by from the session and refuses a supplied value (SAH-044)", async () => {
+  it("stamps generated_by from the session and refuses a supplied value (LEGACY-044)", async () => {
     const schemeId = await seedStatutoryScheme(db, a, { code: "SYNTH" });
     const docId = await draftPayrollShell(a);
     const id = await uuidv7(db.admin);
@@ -575,7 +575,7 @@ begin
   end if;
 
   -- The money that LEFT the bank on that document: credits minus debits on the company's `1100` account.
-  -- coalesce, deliberately (SAH-011): a payment with no bank leg reads 0 and is refused by the comparison
+  -- coalesce, deliberately (LEGACY-011): a payment with no bank leg reads 0 and is refused by the comparison
   -- below, never NULL-propagated into a silent pass.
   select coalesce(sum(le.credit) - sum(le.debit), 0) into paid
     from app.ledger_entry le
@@ -1013,7 +1013,7 @@ call app_meta.attach_stamp('app.employee_ytd_opening', 'loaded_by');
 -- `account` line and its rule 7 debits it, and rule 7 exists precisely so a `supplementary` run can carry a
 -- NEGATIVE net for an over-payment being recovered (8b:1526–1528). `credit - debit` is therefore the
 -- projection arithmetic that makes a correction move `employee_ytd.net` DOWN, which is what ADR 0077's
--- decision 5 promises and what `sah-016`'s 8C block asserts.
+-- decision 5 promises and what `legacy-016`'s 8C block asserts.
 -- `gross`, `by_component` and `by_scheme` stay MAGNITUDES and can only grow: a `kind = 'payroll'` line
 -- carries no `debit`/`credit` at all in 8B's model, so there is no direction to read and no negative earning
 -- to represent. A correction that must reduce a gross figure is not expressible in 8B's frozen line shapes
@@ -1125,7 +1125,7 @@ create index employee_ytd_opening_company_year_idx on app.employee_ytd_opening (
 --
 -- `#>> '{}'` and not `->>`: `jsonb_each` yields the value as `jsonb`; `->>` extracts a FIELD of an object
 -- and is wrong here, while `#>> '{}'` is the documented way to render a scalar jsonb as text. Getting it
--- wrong returns NULL for every component and silently zeroes `by_component` — SAH-011 in a new place, which
+-- wrong returns NULL for every component and silently zeroes `by_component` — LEGACY-011 in a new place, which
 -- is why Task 3's fourth case asserts the string form and not only the total.
 -- **`stable`, not `immutable`, and the label is a claim rather than a preference.** Both helpers build
 -- their result with `to_char(numeric, text)`, which PostgreSQL marks STABLE (`provolatile = 's'`) because
@@ -2376,7 +2376,7 @@ describe("createPayrollPayment (spec:2082)", () => {
   // **ONE draft serves the first three cases, and that is a correctness requirement, not economy.**
   // `createPayrollPayment` excludes an employee already carried by *any* batch against this run that is not
   // void — a draft included, deliberately: an unposted batch is money about to leave, and two drafts for one
-  // payslip is exactly the double payment SAH-032 is about. So a second call in this `describe` would raise
+  // payslip is exactly the double payment LEGACY-032 is about. So a second call in this `describe` would raise
   // `ERR_VALIDATION_FAILED: every employee … is already paid` rather than draft anything, and three
   // independent `it`s would leave two of them red for a reason that has nothing to do with what they assert.
   // Case 5 below is what proves the exclusion, on purpose and last.
@@ -4073,7 +4073,7 @@ export async function generateStatutorySchedule(
 /**
  * Writes the CSV as an `app.attachment` with its sha256 (spec:2083 "attachment hash"), following 2C's
  * order exactly: the OBJECT first, then the row, so a row can never point at nothing. `objectKeyFor`
- * derives the key from the ids alone — a client path never reaches the store (SAH-038).
+ * derives the key from the ids alone — a client path never reaches the store (LEGACY-038).
  */
 async function attachCsv(
   tx: Sql, ctx: TenantContext, store: ObjectStore, companyId: string, result: StatutoryScheduleResult,
@@ -4685,7 +4685,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 **Files:**
 - Create: `packages/db/src/hr/remittance.ts`, `tests/invariants/payslip-ties-to-ledger.test.ts`
-- Modify: `packages/db/src/index.ts`, `tests/invariants/support/payroll-money.ts` (`postRemittance`), `tests/regression/sah-011.test.ts`, `tests/regression/sah-019.test.ts`
+- Modify: `packages/db/src/index.ts`, `tests/invariants/support/payroll-money.ts` (`postRemittance`), `tests/regression/legacy-011.test.ts`, `tests/regression/legacy-019.test.ts`
 - Test: `packages/db/test/hr/remittance.test.ts`
 
 **Interfaces:**
@@ -5174,22 +5174,22 @@ bun run lint:rules && bun run typecheck
 
 **One binding fact for all six `— 8C` regression blocks in this plan** (this task's two, Task 9's two, Task 10's and Task 11's). Each takes **only the `Db`** from its file's shared context and seeds its own tenant on it, so no earlier block's `Seed` is disturbed and no second Testcontainer is started: `const db = (await sharedDb()).db;` inside the block's own `beforeAll`. The `await` is deliberate and costs nothing if 0B's `sharedDb()` is synchronous — `await` on a non-promise returns it unchanged — so the line is correct either way and no block needs to know which.
 
-`tests/regression/sah-011.test.ts` (1A's file — *NULL arithmetic irreversibly nulls balances and tax boxes*) gains a `— 8C` block and no earlier block is edited:
+`tests/regression/legacy-011.test.ts` (1A's file — *NULL arithmetic irreversibly nulls balances and tax boxes*) gains a `— 8C` block and no earlier block is edited:
 
 ```ts
-// tests/regression/sah-011.test.ts — APPEND
+// tests/regression/legacy-011.test.ts — APPEND
 import { MemoryObjectStore, generateStatutorySchedule } from "@dulja/db";
 import { seedTenantV2, withTenant, type Db, type Seed } from "@dulja/db/test";
 import { sharedDb } from "../support/regression";
 import { moneyOutFixture, type MoneyOutFixture } from "../invariants/support/payroll-money";
 
-describe("SAH-011 NULL arithmetic irreversibly nulls balances and tax boxes — 8C", () => {
+describe("LEGACY-011 NULL arithmetic irreversibly nulls balances and tax boxes — 8C", () => {
   const REQUEST_ID = "00000000-0000-0000-0000-000000000000";
   let db: Db; let s: Seed; let f: MoneyOutFixture; let scheduleId: string; let total: string;
 
   beforeAll(async () => {
     db = (await sharedDb()).db;
-    s = await seedTenantV2(db, "SAH-011 8C");
+    s = await seedTenantV2(db, "LEGACY-011 8C");
     f = await moneyOutFixture(db, s);
     const [schedule] = await withTenant(db.rw, s.tenant, s.human, (tx) =>
       generateStatutorySchedule(tx,
@@ -5216,7 +5216,7 @@ describe("SAH-011 NULL arithmetic irreversibly nulls balances and tax boxes — 
   it("the remittance guard reads a payment with NO bank leg as 0.0000 and refuses it, never as NULL", async () => {
     // `coalesce(sum(le.credit) - sum(le.debit), 0)` in app.assert_remittance_matches_schedule: without the
     // coalesce, `sum` over an empty set is NULL, `paid <> total` evaluates to UNKNOWN, the `if` does not
-    // fire and the guard SILENTLY PASSES — a wrong remittance linked to a schedule for ever. SAH-011 in
+    // fire and the guard SILENTLY PASSES — a wrong remittance linked to a schedule for ever. LEGACY-011 in
     // one line of PL/pgSQL.
     //
     // The subject is the PAYROLL run itself: it is `posted`, it has ledger rows, and NOT ONE of them
@@ -5241,16 +5241,16 @@ describe("SAH-011 NULL arithmetic irreversibly nulls balances and tax boxes — 
 });
 ```
 
-`tests/regression/sah-019.test.ts` (0D's file — *Rounding is configured everywhere, applied nowhere*) gains a `— 8C` block:
+`tests/regression/legacy-019.test.ts` (0D's file — *Rounding is configured everywhere, applied nowhere*) gains a `— 8C` block:
 
 ```ts
-// tests/regression/sah-019.test.ts — APPEND
+// tests/regression/legacy-019.test.ts — APPEND
 import { MemoryObjectStore, generateStatutorySchedule, scheduleCsv } from "@dulja/db";
 import { seedTenantV2, withTenant, type Db, type Seed } from "@dulja/db/test";
 import { sharedDb } from "../support/regression";
 import { moneyOutFixture, type MoneyOutFixture } from "../invariants/support/payroll-money";
 
-describe("SAH-019 Rounding is configured everywhere, applied nowhere — 8C", () => {
+describe("LEGACY-019 Rounding is configured everywhere, applied nowhere — 8C", () => {
   const REQUEST_ID = "00000000-0000-0000-0000-000000000000";
   let db: Db; let s: Seed; let f: MoneyOutFixture;
   let schedule: Awaited<ReturnType<typeof generateStatutorySchedule>>[number];
@@ -5258,7 +5258,7 @@ describe("SAH-019 Rounding is configured everywhere, applied nowhere — 8C", ()
 
   beforeAll(async () => {
     db = (await sharedDb()).db;
-    s = await seedTenantV2(db, "SAH-019 8C");
+    s = await seedTenantV2(db, "LEGACY-019 8C");
     f = await moneyOutFixture(db, s);
     const [generated] = await withTenant(db.rw, s.tenant, s.human, (tx) =>
       generateStatutorySchedule(tx,
@@ -5301,7 +5301,7 @@ describe("SAH-019 Rounding is configured everywhere, applied nowhere — 8C", ()
       select to_char(coalesce(sum(le.base_credit) - sum(le.base_debit), 0), 'FM999999999999990.0000') as amount
         from app.ledger_entry le
        where le.document_id = ${f.payrollDocumentId} and le.account_id = ${payableAccountId}`;
-    // Not toBeCloseTo. Two figures that round differently are two figures, and the whole of SAH-019 is
+    // Not toBeCloseTo. Two figures that round differently are two figures, and the whole of LEGACY-019 is
     // that the system used to be satisfied by "close enough".
     expect(schedule.totalEmployee.add(schedule.totalEmployer).toString()).toBe(row!.amount);
   });
@@ -5314,7 +5314,7 @@ describe("SAH-019 Rounding is configured everywhere, applied nowhere — 8C", ()
 git add packages/db/src/hr/remittance.ts packages/db/src/index.ts \
         tests/invariants/support/payroll-money.ts tests/invariants/payslip-ties-to-ledger.test.ts \
         packages/db/test/hr/remittance.test.ts \
-        tests/regression/sah-011.test.ts tests/regression/sah-019.test.ts
+        tests/regression/legacy-011.test.ts tests/regression/legacy-019.test.ts
 git commit -m "feat(db): settle a statutory schedule with its remittance PAYMENT [8C T8]
 
 Acceptance test 30, all four clauses. The service names the entity; the 0091
@@ -5331,7 +5331,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 **Files:**
 - Create: `packages/db/src/integrity/employee-ytd.ts`, `packages/db/src/hr/opening.ts`, `apps/worker/src/handlers/employee-ytd-rebuild.ts`, `apps/worker/test/handlers/employee-ytd-rebuild.test.ts`, `packages/db/test/hr/employee-ytd-opening.test.ts`, `tests/invariants/employee-ytd-rebuild.test.ts`
-- Modify: `packages/db/src/integrity/index.ts`, `packages/db/src/index.ts`, `packages/db/src/jobs/payloads.ts`, `apps/worker/src/index.ts`, `tests/invariants/probes.ts`, `tests/invariants/audit-chain.test.ts`, `tests/invariants/projection-rebuild.test.ts`, `apps/worker/test/handlers/integrity-check.test.ts`, `tests/regression/sah-004.test.ts`, `tests/regression/sah-016.test.ts`
+- Modify: `packages/db/src/integrity/index.ts`, `packages/db/src/index.ts`, `packages/db/src/jobs/payloads.ts`, `apps/worker/src/index.ts`, `tests/invariants/probes.ts`, `tests/invariants/audit-chain.test.ts`, `tests/invariants/projection-rebuild.test.ts`, `apps/worker/test/handlers/integrity-check.test.ts`, `tests/regression/legacy-004.test.ts`, `tests/regression/legacy-016.test.ts`
 
 **Interfaces:**
 - Consumes: `ProjectionCheck` / `ProjectionMismatch` / `registerProjectionCheck` / `projectionChecks` / `runIntegrityCheck` / `IntegrityReport` (1B, §4.16.3), `app.employee_ytd_delta` (T2), `JobEnvelope` / `JobPayload` / `JobHandler` / `registerHandler` / `runJob` / `eachTenant` / `systemContext` / `JOB_PROBES` / `JobIsolationProbe` (§4.2.6), `startWorker` (§4.17.1, 0D), `moneyOutFixture` / `MoneyOutFixture` (T6), `postPayrollRun` (8B), `Money` / `currency` (§4.2.1).
@@ -5776,7 +5776,7 @@ describe("upsertEmployeeYtdOpening (spec:2084; amendment B14)", () => {
       select gross::text as gross, source, loaded_by from app.employee_ytd_opening where id = ${id}`;
     expect(row!.gross).toBe("500.0000");
     expect(row!.source).toBe("legacy:run-7");
-    expect(row!.loaded_by).toBe(s.human);            // stamped from the session (SAH-044)
+    expect(row!.loaded_by).toBe(s.human);            // stamped from the session (LEGACY-044)
   });
 
   it("a second load for the same (company, employee, year) UPDATES rather than duplicating", async () => {
@@ -5988,21 +5988,21 @@ describe("hr.employee_ytd.rebuild (spec:2084 / D14 — report, never repair)", (
 
 - [ ] **Step 8: Append the two regression blocks**
 
-`tests/regression/sah-004.test.ts` (3B's file — *cost advanced on INSERT only; no rebuild path exists*) gains a `— 8C` block. The defect's shape is "a derived figure that only ever moves forward and has no rebuild", and `employee_ytd` is the Phase 8 instance of it:
+`tests/regression/legacy-004.test.ts` (3B's file — *cost advanced on INSERT only; no rebuild path exists*) gains a `— 8C` block. The defect's shape is "a derived figure that only ever moves forward and has no rebuild", and `employee_ytd` is the Phase 8 instance of it:
 
 ```ts
-// tests/regression/sah-004.test.ts — APPEND
+// tests/regression/legacy-004.test.ts — APPEND
 import { checkEmployeeYtdProjection, projectionChecks } from "@dulja/db";
 import { seedTenantV2, withTenant, type Db, type Seed } from "@dulja/db/test";
 import { sharedDb } from "../support/regression";
 import { moneyOutFixture, type MoneyOutFixture } from "../invariants/support/payroll-money";
 
-describe("SAH-004 A derived figure advanced on INSERT only, with no rebuild path — 8C", () => {
+describe("LEGACY-004 A derived figure advanced on INSERT only, with no rebuild path — 8C", () => {
   let db: Db; let s: Seed; let f: MoneyOutFixture;
 
   beforeAll(async () => {
     db = (await sharedDb()).db;
-    s = await seedTenantV2(db, "SAH-004 8C");
+    s = await seedTenantV2(db, "LEGACY-004 8C");
     f = await moneyOutFixture(db, s);
   }, 240_000);
 
@@ -6028,23 +6028,23 @@ describe("SAH-004 A derived figure advanced on INSERT only, with no rebuild path
 });
 ```
 
-`tests/regression/sah-016.test.ts` (3B's file — *`MatStatus` min/max ratchet; INSERT-only maintenance*) gains a `— 8C` block. The legacy defect is a figure that **refuses to go back**; the fix is a signed delta that the MERGE adds:
+`tests/regression/legacy-016.test.ts` (3B's file — *`MatStatus` min/max ratchet; INSERT-only maintenance*) gains a `— 8C` block. The legacy defect is a figure that **refuses to go back**; the fix is a signed delta that the MERGE adds:
 
 ```ts
-// tests/regression/sah-016.test.ts — APPEND
+// tests/regression/legacy-016.test.ts — APPEND
 import { checkEmployeeYtdProjection, postDocument, transitionDocument } from "@dulja/db";
 import { seedTenantV2, uuidv7, withTenant, type Db, type Seed } from "@dulja/db/test";
 import { sharedDb } from "../support/regression";
 import { moneyOutFixture, type MoneyOutFixture } from "../invariants/support/payroll-money";
 
-describe("SAH-016 A maintained figure that only ratchets upward — 8C", () => {
+describe("LEGACY-016 A maintained figure that only ratchets upward — 8C", () => {
   const REQUEST_ID = "00000000-0000-0000-0000-000000000000";
   let db: Db; let s: Seed; let f: MoneyOutFixture;
   const ctx = (actor: string) => ({ tenantId: s.tenant, actorId: actor, requestId: REQUEST_ID });
 
   beforeAll(async () => {
     db = (await sharedDb()).db;
-    s = await seedTenantV2(db, "SAH-016 8C");
+    s = await seedTenantV2(db, "LEGACY-016 8C");
     f = await moneyOutFixture(db, s);
   }, 240_000);
 
@@ -6149,7 +6149,7 @@ describe("SAH-016 A maintained figure that only ratchets upward — 8C", () => {
 ```bash
 bun run --cwd packages/db test hr/employee-ytd-opening.test.ts hr/ytd-merge.test.ts
 bun run --cwd tests test invariants/employee-ytd-rebuild.test.ts invariants/projection-rebuild.test.ts invariants/audit-chain.test.ts
-bun run --cwd tests test regression/sah-004.test.ts regression/sah-016.test.ts
+bun run --cwd tests test regression/legacy-004.test.ts regression/legacy-016.test.ts
 bun run --cwd apps/worker test
 bun run lint && bun run lint:rules && bun run typecheck
 ```
@@ -6164,7 +6164,7 @@ git add packages/db/src/integrity/employee-ytd.ts packages/db/src/integrity/inde
         tests/invariants/employee-ytd-rebuild.test.ts tests/invariants/probes.ts \
         tests/invariants/audit-chain.test.ts tests/invariants/projection-rebuild.test.ts \
         packages/db/test/hr/employee-ytd-opening.test.ts \
-        tests/regression/sah-004.test.ts tests/regression/sah-016.test.ts
+        tests/regression/legacy-004.test.ts tests/regression/legacy-016.test.ts
 git commit -m "feat(worker): rebuild and compare employee_ytd nightly [8C T9]
 
 Acceptance test 35's rebuild clause and test 2's re-run over this projection.
@@ -6181,7 +6181,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 **Files:**
 - Create: `packages/db/migrations/0093_create_termination_trigger.sql`, `packages/db/migrations/0093.down.sql`, `docs/adr/0078-termination-is-a-trigger-and-cashiers-are-employees.md`
-- Modify: `tests/regression/sah-044.test.ts`
+- Modify: `tests/regression/legacy-044.test.ts`
 - Test: `packages/db/test/hr/termination.test.ts`
 
 **Interfaces:**
@@ -6447,23 +6447,23 @@ cannot be bypassed by anything that writes the row.
   payroll lines and the payslips remain for the statutory retention period (spec:2049).
 - A termination is auditable end to end without a second table: `app.audit_log` carries the `employee`,
   `pos_cashier` and `role_assignment` images with the **terminating** principal as `actor_id`, because the
-  trigger takes no actor parameter and could not accept a supplied one (SAH-044).
+  trigger takes no actor parameter and could not accept a supplied one (LEGACY-044).
 ```
 
-`tests/regression/sah-044.test.ts` (0B's file — *Session records are caller-controlled and attributable to the wrong user*) gains a `— 8C` block:
+`tests/regression/legacy-044.test.ts` (0B's file — *Session records are caller-controlled and attributable to the wrong user*) gains a `— 8C` block:
 
 ```ts
-// tests/regression/sah-044.test.ts — APPEND
+// tests/regression/legacy-044.test.ts — APPEND
 import { seedTenantV2, uuidv7, withTenant, type Db, type Seed } from "@dulja/db/test";
 import { grantCodes, seedCashier, seedEmployee } from "@dulja/db/test";
 import { sharedDb } from "../support/regression";
 
-describe("SAH-044 Session records are caller-controlled and attributable to the wrong user — 8C", () => {
+describe("LEGACY-044 Session records are caller-controlled and attributable to the wrong user — 8C", () => {
   let db: Db; let s: Seed; let employeeId: string; let principalId: string;
 
   beforeAll(async () => {
     db = (await sharedDb()).db;
-    s = await seedTenantV2(db, "SAH-044 8C");
+    s = await seedTenantV2(db, "LEGACY-044 8C");
     // The TERMINATING actor needs a role assignment or the UPDATE below matches zero rows and this whole
     // block passes vacuously — Global Constraint 21(b), the silent shape.
     await grantCodes(db, s, { codes: ["hr.employee.manage", "hr.employee.read"] });
@@ -6471,7 +6471,7 @@ describe("SAH-044 Session records are caller-controlled and attributable to the 
     principalId = await uuidv7(db.admin);
     await db.admin`
       insert into app.principal (id, tenant_id, kind, auth_subject, display_name)
-      values (${principalId}, ${s.tenant}, 'human', ${`test:${principalId}`}, 'SAH-044 staff')`;
+      values (${principalId}, ${s.tenant}, 'human', ${`test:${principalId}`}, 'LEGACY-044 staff')`;
     await db.admin`insert into app.membership (tenant_id, principal_id) values (${s.tenant}, ${principalId})`;
     employeeId = await seedEmployee(db, s, { employeeNumber: "S44-1", principalId });
     await seedCashier(db, s, { employeeId, branchId: s.hq, pin: "123456" });
@@ -6533,7 +6533,7 @@ describe("SAH-044 Session records are caller-controlled and attributable to the 
 ```bash
 bun run --cwd packages/db src/cli.ts up
 bun run --cwd packages/db test hr/termination.test.ts
-bun run --cwd tests test regression/sah-044.test.ts
+bun run --cwd tests test regression/legacy-044.test.ts
 bun run --cwd packages/db test schema-lint.test.ts privileges.test.ts
 bun run --cwd packages/db test privileges.test.ts -t "up → down → up"
 ```
@@ -6543,7 +6543,7 @@ bun run --cwd packages/db test privileges.test.ts -t "up → down → up"
 ```bash
 git add packages/db/migrations/0093_create_termination_trigger.sql packages/db/migrations/0093.down.sql \
         docs/adr/0078-termination-is-a-trigger-and-cashiers-are-employees.md \
-        packages/db/test/hr/termination.test.ts tests/regression/sah-044.test.ts
+        packages/db/test/hr/termination.test.ts tests/regression/legacy-044.test.ts
 git commit -m "feat(db): terminate an employee by trigger [8C T10]
 
 Revokes the cashier, expires every role assignment and refreshes the snapshot,
@@ -6560,7 +6560,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 **Files:**
 - Create: `packages/db/migrations/0094_create_cashier_is_employee_constraint.sql`, `packages/db/migrations/0094.down.sql`, `packages/db/test/hr/cashier-is-employee.test.ts`, `tests/invariants/termination-closes-everything.test.ts`
-- Modify: `tests/regression/sah-021.test.ts`
+- Modify: `tests/regression/legacy-021.test.ts`
 
 **Interfaces:**
 - Consumes: `app.pos_cashier` (6C), `app.employee` (6C/8A), `app.terminate_employee` (T10), `app.pos_cashier_sync` / `app.catalogue_tombstone` / `readCatalogue` / `currentCatalogueRevision` (6A/6C), `loadPayrollInputs` (8B), `seedEmployee` / `seedCashier` (6C), `moneyOutFixture` (T6), `postPayrollRun` (8B).
@@ -6838,7 +6838,7 @@ describe("acceptance test 34 — termination closes everything (spec:2452)", () 
 grep -n -A 10 "export interface Change" packages/sync/src/messages.ts
 ```
 
-- [ ] **Step 5: Add the `ERRORS` row, append `sah-021`, run, commit**
+- [ ] **Step 5: Add the `ERRORS` row, append `legacy-021`, run, commit**
 
 `packages/contracts/src/errors.ts` gains, in this commit:
 
@@ -6850,23 +6850,23 @@ grep -n -A 10 "export interface Change" packages/sync/src/messages.ts
   },
 ```
 
-`tests/regression/sah-021.test.ts` (0B's file — *Accounts can be deleted with posted entries; the ID generator then rewinds and reuses their IDs*) gains a `— 8C` block. The defect's shape is a **dangling reference that outlives its parent**, and the Phase 8 instance is a till credential outliving its employee:
+`tests/regression/legacy-021.test.ts` (0B's file — *Accounts can be deleted with posted entries; the ID generator then rewinds and reuses their IDs*) gains a `— 8C` block. The defect's shape is a **dangling reference that outlives its parent**, and the Phase 8 instance is a till credential outliving its employee:
 
 ```ts
-// tests/regression/sah-021.test.ts — APPEND
+// tests/regression/legacy-021.test.ts — APPEND
 import { seedTenantV2, uuidv7, withTenant, type Db, type Seed } from "@dulja/db/test";
 import { grantCodes, seedCashier, seedEmployee } from "@dulja/db/test";
 import { sharedDb } from "../support/regression";
 import { moneyOutFixture, type MoneyOutFixture } from "../invariants/support/payroll-money";
 
-describe("SAH-021 A reference that outlives its parent — 8C", () => {
+describe("LEGACY-021 A reference that outlives its parent — 8C", () => {
   let db: Db; let s: Seed; let f: MoneyOutFixture;
   let employeeId: string; let principalId: string;
   let cashiersBefore: number; let assignmentsBefore: number; let payrollLinesBefore: number;
 
   beforeAll(async () => {
     db = (await sharedDb()).db;
-    s = await seedTenantV2(db, "SAH-021 8C");
+    s = await seedTenantV2(db, "LEGACY-021 8C");
     await grantCodes(db, s, { codes: ["hr.employee.manage", "hr.employee.read"] });
     f = await moneyOutFixture(db, s);            // a posted run, so the employee has payroll_line rows
 
@@ -6881,7 +6881,7 @@ describe("SAH-021 A reference that outlives its parent — 8C", () => {
       principalId = await uuidv7(db.admin);
       await db.admin`
         insert into app.principal (id, tenant_id, kind, auth_subject, display_name)
-        values (${principalId}, ${s.tenant}, 'human', ${`test:${principalId}`}, 'SAH-021 staff')`;
+        values (${principalId}, ${s.tenant}, 'human', ${`test:${principalId}`}, 'LEGACY-021 staff')`;
       await db.admin`insert into app.membership (tenant_id, principal_id) values (${s.tenant}, ${principalId})`;
       await db.admin`update app.employee set principal_id = ${principalId} where id = ${employeeId}`;
     }
@@ -6949,12 +6949,12 @@ describe("SAH-021 A reference that outlives its parent — 8C", () => {
 ```bash
 bun run --cwd packages/db src/cli.ts up
 bun run --cwd packages/db test hr/cashier-is-employee.test.ts hr/termination.test.ts
-bun run --cwd tests test invariants/termination-closes-everything.test.ts regression/sah-021.test.ts
+bun run --cwd tests test invariants/termination-closes-everything.test.ts regression/legacy-021.test.ts
 bun run lint:rules && bun run --cwd packages/db test privileges.test.ts -t "up → down → up"
 git add packages/db/migrations/0094_create_cashier_is_employee_constraint.sql \
         packages/db/migrations/0094.down.sql packages/contracts/src/errors.ts \
         packages/db/test/hr/cashier-is-employee.test.ts \
-        tests/invariants/termination-closes-everything.test.ts tests/regression/sah-021.test.ts
+        tests/invariants/termination-closes-everything.test.ts tests/regression/legacy-021.test.ts
 git commit -m "feat(db): cashiers are employees, deferred to COMMIT [8C T11]
 
 Acceptance test 34, every clause the server owns. The constraint is DEFERRABLE
@@ -7366,7 +7366,7 @@ describe("acceptance test 39 — the payroll-batch clause (spec:2457)", () => {
     expect(r.unreconciled.filter((u) => u.kind === "payroll_batch")).toEqual([]);
   });
 
-  it("matching altered no ledger entry (spec:2457, SAH-031/041)", async () => {
+  it("matching altered no ledger entry (spec:2457, LEGACY-031/041)", async () => {
     const [row] = await db.admin<{ n: number }[]>`
       select count(*)::int as n from app.audit_log
        where table_name = 'ledger_entry' and action <> 'insert'`;
@@ -7427,7 +7427,7 @@ bun run --cwd packages/db test hr/schedule-layouts.test.ts -t "<SCHEME>"
 
 1. **One `packages/db/src/hr/schedule-layouts/<scheme>.ts` per verified scheme, and one row for it in `LAYOUTS`.** The registry file itself — `schedule-layouts/index.ts`, with `ScheduleLayout`, `EmployerIdentifiers` and `layoutFor(schemeCode): ScheduleLayout | null` — **ships in Step 3 of this task with an empty `LAYOUTS`**, so `layoutFor` returns `null` for every scheme today and the generic `scheduleCsv` stays the layout in force. It ships now rather than "if the owner answers" because Step 2's test imports `EmployerIdentifiers` statically and `layoutFor` dynamically; a module that does not exist is **TS2307** at `bun run typecheck`, which Global Constraint 17 forbids after every task and which would make this PR un-mergeable on its own. An empty registry is the honest shape of "no layout is verified yet", and **null falls back to `scheduleCsv`**, so a company with two verified schemes and two unverified ones works throughout.
 2. `generateStatutorySchedule` calls `layoutFor(scheme.code) ?? { render: scheduleCsv }`; **nothing else in Task 7 changes**, and the attachment's `mime_type` and `file_name` come from the layout. This wiring is deliberately **not** done in Step 3: with an empty registry it would be a branch nothing can take, and Task 7's own test asserts by regex that the shipped CSV carries no authority name — a test that would then be pinning an unexercised path.
-3. `EmployerIdentifiers` is read from **`app.statutory_scheme.employer_registration` alone** (8A's column, amendment A3, already shipped) — **no new column and no new table**. It is deliberately *not* read from `company_hr_setting.employer_registrations`: **8A's amendment A4 dropped that jsonb**, because spec:2088 says these identifiers are "relational company settings … **never a blob**" and a display copy with no rebuild path is SAH-078 in miniature. Task 15 is what surfaces the column and names the schemes still missing one.
+3. `EmployerIdentifiers` is read from **`app.statutory_scheme.employer_registration` alone** (8A's column, amendment A3, already shipped) — **no new column and no new table**. It is deliberately *not* read from `company_hr_setting.employer_registrations`: **8A's amendment A4 dropped that jsonb**, because spec:2088 says these identifiers are "relational company settings … **never a blob**" and a display copy with no rebuild path is LEGACY-078 in miniature. Task 15 is what surfaces the column and names the schemes still missing one.
 4. `docs/adr/0079-verified-statutory-schedule-layouts.md` records, per scheme, the publication, its URL and the date retrieved — the same three facts §4.12.3's `source` block demands of a rate table. **ADR 0079 is 8D's number.** If this task runs before 8D, it files the record in **ADR 0078's** consequences section instead and says so; it never borrows a number from another slice's range (hazard 14).
 5. **Nothing about `app.statutory_schedule` changes** — the row, its totals, its unique key and the remittance guard are all layout-independent. That separation is why this task is droppable.
 
@@ -8093,7 +8093,7 @@ Run against the spec, the 8C card and the writing-plans skill with fresh eyes. I
 | §3.0.4 rows **owned**: spec:1058 (PAYROLL_PAYMENT / remittances / EMPLOYEE_ADVANCE) and spec:1061 (Termination) | T5–T8 and T10–T11 |
 | §3.0.4 row **contributed to**: spec:1043 (Bank reconciliation — 4B's row) | **T12** — `PAYROLL_BATCH_SOURCE` registered against 4B's seam, and the payroll-batch clause of test 39 |
 | §3.0.4 row **contributed to**: spec:1059 (`employee_ytd` — 8D's row) | **T2** (the table, the opening table and the one delta function), **T3** (the step-12 MERGE and `ytdFromEmployeeYtd`), **T9** (the rebuild, the nightly job and the openings) |
-| Regression appends sah-004, 011, 016, 019, 021, 044 | T9, T8, T9, T8, T11, T10 |
+| Regression appends legacy-004, 011, 016, 019, 021, 044 | T9, T8, T9, T8, T11, T10 |
 | Owner gate **OD-28** (schedule layouts) | T13, isolated |
 | Owner gate **OD-14** (the money-out clause) | T14, isolated |
 | Owner gate **OD-23** (employer registrations; the pay-date convention) | T15, isolated — the two clauses 8A's own OD-23 task assigns to this slice as *"the first consumer"*; the rate-table half stays 8B's Task 12 |
@@ -8114,12 +8114,12 @@ Searched for `TBD`, `TODO`, `implement later`, `similar to Task`, `and so on`, `
 | T7 Step 5 — five routes behind a gate table | The whole module in full |
 | T7 Step 6 — the schedule route test | Seven cases in full, including hazard 2's regex at the wire |
 | T8 Step 5 — `remittance.test.ts` | Nine cases in full (3 + 4 + 2 across its three `describe`s) |
-| T8 Step 7 — the `sah-011` case with an empty body, and `sah-019` prose | Both blocks in full; the `sah-011` case now actually exercises the `coalesce` |
+| T8 Step 7 — the `legacy-011` case with an empty body, and `legacy-019` prose | Both blocks in full; the `legacy-011` case now actually exercises the `coalesce` |
 | T9 Step 5 — `opening.ts` and its suite | Both in full |
 | T9 Step 7 — the worker test | Six cases in full |
-| T9 Step 8 — `sah-004`, `sah-016` | Both in full, `sah-016` including the hand-drafted supplementary run that makes a negative net reachable |
-| T10 Step 4 — ADR 0078 and `sah-044` | Both in full |
-| T11 Step 5 — `sah-021` | In full |
+| T9 Step 8 — `legacy-004`, `legacy-016` | Both in full, `legacy-016` including the hand-drafted supplementary run that makes a negative net reachable |
+| T10 Step 4 — ADR 0078 and `legacy-044` | Both in full |
+| T11 Step 5 — `legacy-021` | In full |
 | T12 Steps 1 and 3 — two `/* … */` markers, `draftOf`, `hasOrigin` | The `importStatement` + `match` sequences in full; `draftOf` and `hasOrigin` defined in the files that use them |
 | T13 Step 1 — *"Create `docs/owner/statutory-layouts/README.md` naming the four schemes, the seven facts…"* | The README written out in full: the four schemes, the seven facts as a numbered list, the two files expected per scheme directory as a table, and what happens when one is filled |
 | T14 Step 1 — *"Create `docs/owner/od-14-staff-purchases.md` carrying the four sub-questions above…"* | The document written out in full: the four questions, the shipped default and what it does **not** give, the five-item change list with its two amendment prerequisites, the verification command, and an "Answer here" block the owner fills in |
@@ -8174,7 +8174,7 @@ The class is the same as §3a's and so is the lesson: every one of these compile
 | 12 | `join app.ledger_entry_dimension led on led.ledger_entry_id = le.id`, twice | The frozen column is **`entry_id`** (plan0A:2041–2050). The plan flagged the risk and told the implementer to grep for it, which is worse than either fixing it or leaving it: the answer was a §4.1 name available while the plan was being written | plan0A:2043 | T6 Step 6, T8 Step 1 — and the ⚠️ grep instruction and its handoff row deleted |
 | 13 | `nets.set(line.employeeId, line.amount)` and `Number(l.amount)` | `PayrollRunDetail.lines[].amount` is `{ amount, currency }` and 8B says so in a comment (8b:3857–3862). A `string` compared to an object fails `tsc`; `Number({…})` is `NaN` | 8b:3857 | T8 Step 1, three places |
 | 14 | `expect(r.schemeCode).toBe("SYNTH")`, `byScheme: { SYNTH: … }`, `expect(missing).toEqual(["SYNTH"])` | `payrollFixture` seeds its scheme as **`EPF`** (8b:4155); only the *rate table* is `SYNTH`. This plan states that fact correctly in two other places and then contradicted it in three assertions | 8b:4155, and T8's own `beforeAll` comment | T7 Step 1, T9 Step 1, T15 Step 1 — all three now read the code from the fixture |
-| 15 | `sum(l.amount) filter (where l.line_kind = 'account')` as `net` | `payroll_line.amount` is constrained `>= 0` (8b:506), so the delta could never be negative — contradicting ADR 0077 decision 5, `mergeEmployeeYtd`'s own doc comment and the `sah-016` block, and turning an over-payment **recovery** into an increase in YTD net | 8b:1526–1528 (rule 7 exists for exactly this) | T2 Step 3 — `sum(l.credit - l.debit)`, with the convention stated in the migration, the MERGE, ADR 0077 and Global Constraint 6 |
+| 15 | `sum(l.amount) filter (where l.line_kind = 'account')` as `net` | `payroll_line.amount` is constrained `>= 0` (8b:506), so the delta could never be negative — contradicting ADR 0077 decision 5, `mergeEmployeeYtd`'s own doc comment and the `legacy-016` block, and turning an over-payment **recovery** into an increase in YTD net | 8b:1526–1528 (rule 7 exists for exactly this) | T2 Step 3 — `sum(l.credit - l.debit)`, with the convention stated in the migration, the MERGE, ADR 0077 and Global Constraint 6 |
 | 16 | `select id, account_type::text as type from app.account` | `account_type` is the **enum type's** name; the column is `type` (plan0A:1492, and 1A's own inserts) | plan0A:1485–1502 | T5 Step 1 |
 | 17 | `create aggregate` without `grant execute`; `tx<Candidate>` and `tx<{…}>` without the array parameter | `postgres.js` types `sql<T extends readonly any[]>`, so a non-array `T` fails `bun run typecheck` (Global Constraint 17); and every other function this slice creates carries an explicit grant, so the two aggregates lacking one would fail as `app_rw` if Plan 0A revoked PUBLIC EXECUTE | the file's own neighbours | T2 Step 3 (section 5's two grants), T6 Step 6 (two generics) |
 
@@ -8190,7 +8190,7 @@ The class this time is **the import line and the column name**, not the query pl
 | 19 | `import { seedTenantV2, startDb, uuidv7, withTenant, type Db, type Seed } from "../harness";` | §4.1 puts `startDb`, `withTenant`, `uuidv7` and `Db` in `packages/db/test/harness.ts` and `Seed` / `seedTenant` / `seedTenantV2` in `packages/db/test/fixtures.ts`; only `packages/db/test/index.ts` re-exports both. Every other suite in this plan splits the two statements correctly, so this one file would have failed `tsc` alone | §4.1, §4.17's `seedTenantV2` row | T10 Step 1 |
 | 20 | `import { generateStatutorySchedule, settleStatutorySchedule } from "@dulja/db";` at the head of `tests/invariants/support/payroll-money.ts` | Both are created in **PR 6** and the file is created in **PR 5**, so PR 5 ends on **TS2305** and cannot merge on its own (Global Constraint 17). Neither name is used by any helper in the file, then or after T8 appends the fourth — the import was dead as well as early. The step immediately below it makes exactly this argument about `postRemittance`'s signature | the step's own `postRemittance` note | T6 Step 1 — one `@dulja/db` statement naming only what a body calls |
 | 21 | `order by created_at` and `created_at >= now() - interval '10 minutes'` against `app.audit_log`, in three queries | Plan 0A's `app.audit_log` is `(seq, tenant_id, actor_id, occurred_at, table_name, row_id, action, before, after, prev_hash, hash)` — there is no `created_at`, so all three raise `column "created_at" does not exist`. The worker suite's `sentinels()` helper is called by every case in it | plan0A:2260–2274; 0A's own reads at plan0A:2173, 2226 | T9 Step 7 (`order by seq` — the identity PK 0A orders by), T10 Step 4 (`occurred_at` in both filters) |
-| 22 | `table_name in ('employee', 'pos_cashier', 'role_assignment')` in the two `sah-044` cases | §3.5.3 marks `pos_cashier` **AUDIT_EXEMPT** ("Audit-exempt projection", §4.6.3), so no `pos_cashier` audit row ever exists and that third of each claim was vacuous. The second case, filtering on `('pos_cashier', 'role_assignment')`, would have passed its `not.toContain("delete")` on an **empty** result — the exact outcome it exists to rule out | §3.5.3's register row, §4.6.3's note | T10 Step 4 — `pos_cashier` dropped from both lists, the reason stated in the file, and a `rows.length > 0` guard added to the second |
+| 22 | `table_name in ('employee', 'pos_cashier', 'role_assignment')` in the two `legacy-044` cases | §3.5.3 marks `pos_cashier` **AUDIT_EXEMPT** ("Audit-exempt projection", §4.6.3), so no `pos_cashier` audit row ever exists and that third of each claim was vacuous. The second case, filtering on `('pos_cashier', 'role_assignment')`, would have passed its `not.toContain("delete")` on an **empty** result — the exact outcome it exists to rule out | §3.5.3's register row, §4.6.3's note | T10 Step 4 — `pos_cashier` dropped from both lists, the reason stated in the file, and a `rows.length > 0` guard added to the second |
 | 23 | `import type { AppEnv } from "../../env";` in all three new route modules | §4.2.3 declares `RequestContext` and `AppEnv` in `apps/api/src/context.ts`, and sixteen other plans — 8A, 8B and 8D among them — import it from `"../../context"`. There is no `apps/api/src/env.ts` | §4.2.3 | T6 Step 8 (two modules), T7 Step 5 |
 | 24 | `principalId: await principal("C-1")` in T11 case 1 | Task 10 Step 1 defined only `staffMember`, which created the principal inline; no `principal(number)` function existed anywhere, so an executor copying T10's helpers verbatim got `Cannot find name 'principal'`. §5's helper inventory listed `principal`, which is how the gap survived | §5's own list | T10 Step 1 — `principal` extracted, `staffMember` calls it — and T11 Step 1, which also gained the import/declaration preamble it had been missing entirely |
 | 25 | Task 13's suite imported `EmployerIdentifiers` and `layoutFor` from `../../src/hr/schedule-layouts`, a module no step created | The module was described under "*if* the owner answers", so PR 11 would have ended on **TS2307**, *"Cannot find module"* — blocker 20's class, one PR later | the task's own Step 2 code block | T13 Step 3, which now watches the TS2307, then writes `schedule-layouts/index.ts` **with an empty `LAYOUTS` registry** so `layoutFor` returns `null` for every scheme and `scheduleCsv` stays the layout in force |
@@ -8231,7 +8231,7 @@ Fifteen amendments, **B1–B15**, all in the "Contract amendments this plan disc
 
 ### 6. Two things a reviewer should push back on, stated rather than hidden
 
-- **`readMoneyOut` resolves the employee by joining `dimension_value.code` to `employee.employee_number`.** That is the join 8B's `EMPLOYEE` dimension trigger makes true (`code = employee_number`, §4.12.7) and it is the only path available, because the money-out lines carry no `payroll_line` row (amendment B9) and `document_line` has no `employee_id` column. It is a **string join on a business key**, which is exactly the shape SAH-021 warns about — but the value is unique per company (`employee.unique (company_id, employee_number)`) and neither side is ever reused or rewound. If a reviewer prefers a column, the change is `document_line.employee_id` with a composite FK, which is a **migration in a later slice's range and an amendment to §4.3.4**, not a change to make silently.
+- **`readMoneyOut` resolves the employee by joining `dimension_value.code` to `employee.employee_number`.** That is the join 8B's `EMPLOYEE` dimension trigger makes true (`code = employee_number`, §4.12.7) and it is the only path available, because the money-out lines carry no `payroll_line` row (amendment B9) and `document_line` has no `employee_id` column. It is a **string join on a business key**, which is exactly the shape LEGACY-021 warns about — but the value is unique per company (`employee.unique (company_id, employee_number)`) and neither side is ever reused or rewound. If a reviewer prefers a column, the change is `document_line.employee_id` with a composite FK, which is a **migration in a later slice's range and an amendment to §4.3.4**, not a change to make silently.
 - **The 0091 guard reads account code `1100` as a literal.** §4.15 registers it and 0C seeds it, so it resolves — but a tenant that renamed its bank account's *code* would make the guard read 0 and refuse every remittance. The alternative is a `company.bank_account_id` column, which does not exist and would be a §4.6 addition. The literal is deliberate, is the same literal the policies use, and is asserted to resolve by T5 Step 1.
 
 ---

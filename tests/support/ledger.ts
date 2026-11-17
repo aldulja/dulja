@@ -39,7 +39,7 @@ export async function postLines(
     n += 1;
     const rate = l.rate ?? "1";
     // 0008 made ledger_entry.currency a foreign key into app.currency, and a Line may name any code it
-    // likes (sah-012 posts in EUR). seedTenant supplies only the tenant's own MYR, so the helper that
+    // likes (legacy-012 posts in EUR). seedTenant supplies only the tenant's own MYR, so the helper that
     // assembles the posting supplies the rest — otherwise every suite wanting a foreign-currency line
     // would have to know to seed it first. Defaults on the column, like seedCurrency: this is a test
     // convenience, not a statement about what that currency's rounding policy should be.

@@ -110,7 +110,7 @@ export type OverrideCode =
  * The override door (contracts §4.5.3, R8 spec:2179). This is the ONE place in the codebase that inserts a
  * `document_event` row directly; `document_event_override_guard` is what makes that safe — it refuses the row
  * unless `attributed_to ?? actor_id` holds `code` at the document's branch and is neither the document's
- * `created_by` nor its `attributed_to` (SAH-027, SAH-048).
+ * `created_by` nor its `attributed_to` (LEGACY-027, LEGACY-048).
  *
  * Back office: `attributedTo` is omitted and the acting principal is the second principal. POS (6C): the
  * terminal acts and `attributedTo` is the supervisor whose PIN authorised it (spec:1324, hazard 19).

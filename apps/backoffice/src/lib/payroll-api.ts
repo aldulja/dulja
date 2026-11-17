@@ -22,7 +22,7 @@ export type PayrollRunStatus = z.infer<typeof PayrollRunSchema>["status"];
  * 8B Task 15's handwritten fetch layer over 8B's payroll-run routes (T10, T11) and 2B's GENERIC document transitions
  * — submit, approve and post have no payroll-specific route, so the screen reaches R1 and R2 exactly where every
  * other document does. Every body is parsed by the route's own strict contract before it leaves. The screen computes
- * no figure: every amount it shows is a line the run service wrote (a second payroll arithmetic would be SAH-009 in
+ * no figure: every amount it shows is a line the run service wrote (a second payroll arithmetic would be LEGACY-009 in
  * a browser).
  */
 /** 2C's attachment list's largest page (`AttachmentQuery.limit` max 1000). */

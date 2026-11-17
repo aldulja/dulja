@@ -26,7 +26,7 @@ only, and failed open:
   branch-restricted POS terminal's on-account sales are measured the same way.
 - **DBS-07 = INV-08, over-fulfilment** (0116's guard, its reinstated-claim twin, and `app.document_open_quantity`).
   An order line of 10 at HQ, fulfilled 10 from a draft at BRB by a company-wide user; a principal restricted to
-  HQ reads 10 open and links 10 more — 20 against 10, SAH-017's control bypassed.
+  HQ reads 10 open and links 10 more — 20 against 10, LEGACY-017's control bypassed.
 - **DBS-18, the "pinned" guards** (0045 §4a, §4b). A document at another branch did not pin the payment term's
   days or the party's control account. Not reachable through today's routes, which gate company-wide.
 
@@ -50,7 +50,7 @@ company, **whatever its branch restriction**, or the tenant's system principal �
 `app.actor_in_branch` without its branch clause. Anyone else gets `ERR_NOT_FOUND: company … is not visible`.
 
 **2. The guards keep their names, signatures and errors.** `party_open_balance` and `party_credit_exposure`
-stay invoker wrappers (they still read the party under the caller's RLS, and still raise SAH-042's
+stay invoker wrappers (they still read the party under the caller's RLS, and still raise LEGACY-042's
 `ERR_POLICY_REQUIRES_MISSING`), so `creditStatus()` and the trigger keep reading the same function and the
 credit screen shows the company-wide figure the control compares. The link guard keeps its advisory lock
 before the sum (the sum is now the lookup's). The view keeps its columns and `security_invoker`; which lines a

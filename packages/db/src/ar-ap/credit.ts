@@ -4,7 +4,7 @@ import type { Sql } from "postgres";
 /**
  * contracts §4.8.1 — a party's credit position as the control computes it. Every figure is in the COMPANY'S
  * BASE currency: `party.credit_limit` is one bare `numeric(19,4)` per party while a party may be invoiced in
- * several currencies, so a comparison in any other currency would be SAH-014 in a new place.
+ * several currencies, so a comparison in any other currency would be LEGACY-014 in a new place.
  */
 export interface CreditStatus {
   partyId: string;
@@ -27,7 +27,7 @@ export interface CreditStatus {
  * The read behind the credit screen and the route pre-flight. It calls `app.party_open_balance` and
  * `app.party_credit_exposure` — the SAME functions `app.assert_credit_available()` calls — so a screen can
  * never disagree with the control (spec:2173). Base currency throughout: one limit per party, several invoice
- * currencies (SAH-014).
+ * currencies (LEGACY-014).
  *
  * There is no `asOf`: the control measures a sale against everything posted and everything issued, whatever
  * its date (A6), so a dated figure here would be a second answer to the question the trigger asks.

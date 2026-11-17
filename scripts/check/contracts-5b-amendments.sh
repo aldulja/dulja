@@ -96,10 +96,10 @@ else
   echo "MISSING (repo): tests/golden/tax/ does not exist — 5A's corpus (§3.7.4), which Task 10 re-runs"
   fail=1
 fi
-if [ -f tests/regression/sah-020.test.ts ]; then
-  note "tests/regression/sah-020.test.ts exists — Task 10 APPENDS a '— 5B' block and edits no earlier block (§3.7.3)."
+if [ -f tests/regression/legacy-020.test.ts ]; then
+  note "tests/regression/legacy-020.test.ts exists — Task 10 APPENDS a '— 5B' block and edits no earlier block (§3.7.3)."
 else
-  echo "MISSING (repo): tests/regression/sah-020.test.ts — 5A creates it (§3.7.3); 5B only appends. Raise with 5A rather than creating it here."
+  echo "MISSING (repo): tests/regression/legacy-020.test.ts — 5A creates it (§3.7.3); 5B only appends. Raise with 5A rather than creating it here."
   fail=1
 fi
 

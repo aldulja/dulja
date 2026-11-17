@@ -37,7 +37,7 @@ specified and that workflows are not to be invented from the specification, and 
 **The owner request, verbatim from Step 1**, so it can be sent as-is:
 
 > **OD-24 (spec:2408).** Before we build the purchasing screens, please provide: **(a)** screenshots of the
-> three Sahlisoft screens your staff use today for raising a purchase order, receiving goods against one,
+> three legacy screens your staff use today for raising a purchase order, receiving goods against one,
 > and entering an import shipment's freight and duty; **(b)** a two-minute description, from whoever does
 > the job, of the order in which they type and what they tab between. Not a specification — the actual
 > sequence, including the parts that are annoying.

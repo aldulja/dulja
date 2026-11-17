@@ -985,7 +985,7 @@ describe("POST /v1/companies/{companyId}/documents/{documentId}/credit-note (4A 
     expect((await problemOf(res)).code).toBe("ERR_VALIDATION_FAILED");
   });
 
-  it("crediting more than the invoiced quantity is 422 ERR_DOC_LINK_OVER_FULFILLED (SAH-018)", async () => {
+  it("crediting more than the invoiced quantity is 422 ERR_DOC_LINK_OVER_FULFILLED (LEGACY-018)", async () => {
     const inv = await postedInvoice("1.000000", "9.0000", "2026-01-25");
     const res = await api.request({
       method: "POST",
@@ -1289,7 +1289,7 @@ describe("POST /v1/companies/{companyId}/documents/{documentId}/credit-note (4A 
 
 describe("PUT …/lines on a draft holding returns links (PR 11 review, round 2)", () => {
   it("a client-drafted PURCHASE_RETURN replaces its lines (200), and 0037's cascade drops its client-keyed returns link with them", async () => {
-    // 3C's PURCHASE_RETURN is drafted and linked by the CLIENT (sah-017.test.ts; contracts 4.3.1): no service
+    // 3C's PURCHASE_RETURN is drafted and linked by the CLIENT (legacy-017.test.ts; contracts 4.3.1): no service
     // derives it and no residue rule sums its links, so it is not the derived draft the 409 protects. Only a
     // credit note `creditNoteFrom` drafted — its header names `reverses_document_id`, which a draft through
     // POST …/documents never can — is frozen for `returns`.

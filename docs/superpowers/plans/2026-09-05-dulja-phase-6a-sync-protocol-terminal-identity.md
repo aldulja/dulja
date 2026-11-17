@@ -2,13 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship the **server half** of the Phase 6 definition of done — *"A till sells 8 hours offline and reconciles with **zero duplicates and zero lost tickets**"* — by building the four pieces §3.7.3 says the legacy parcel model never had. (1) **`packages/sync`**, the one wire contract both `apps/api` and `apps/pos` compile against, so the protocol is verifiable rather than an assumption two programs quietly share. (2) **A commit-ordered catalogue revision** — `revision bigint` assigned under the same per-tenant advisory lock the audit chain takes, tombstones for every deletion, and a cursor-driven `GET /v1/sync/catalogue` scoped to the terminal's branch, so an interrupted transfer resumes exactly (acceptance test **20**). (3) **Terminal identity that is not a user** — a one-time enrolment code, an Ed25519 device key registered at redemption, a signed `/v1/sync/*` call exchanged for a short-lived terminal JWT, and `revoked_at` as the whole revocation story (SAH-025, 026, 046). (4) **Up-sync apply** — one transaction, a savepoint per ticket, dedup on `client_ref`, per-ticket accept/reject, the cashier's authority **re-verified server-side** against the server's current assignments, supervisor overrides as `document_event` rows attributed to the supervisor and acted by the terminal, and every refusal landing in `app.needs_attention` rather than in the ledger or in silence (SAH-027, 044, 048, 051). The `POS_TICKET` document type posts through **exactly the same posting service** as a back-office invoice, and acceptance test **22** proves it by multiset comparison.
+**Goal:** Ship the **server half** of the Phase 6 definition of done — *"A till sells 8 hours offline and reconciles with **zero duplicates and zero lost tickets**"* — by building the four pieces §3.7.3 says the legacy parcel model never had. (1) **`packages/sync`**, the one wire contract both `apps/api` and `apps/pos` compile against, so the protocol is verifiable rather than an assumption two programs quietly share. (2) **A commit-ordered catalogue revision** — `revision bigint` assigned under the same per-tenant advisory lock the audit chain takes, tombstones for every deletion, and a cursor-driven `GET /v1/sync/catalogue` scoped to the terminal's branch, so an interrupted transfer resumes exactly (acceptance test **20**). (3) **Terminal identity that is not a user** — a one-time enrolment code, an Ed25519 device key registered at redemption, a signed `/v1/sync/*` call exchanged for a short-lived terminal JWT, and `revoked_at` as the whole revocation story (LEGACY-025, 026, 046). (4) **Up-sync apply** — one transaction, a savepoint per ticket, dedup on `client_ref`, per-ticket accept/reject, the cashier's authority **re-verified server-side** against the server's current assignments, supervisor overrides as `document_event` rows attributed to the supervisor and acted by the terminal, and every refusal landing in `app.needs_attention` rather than in the ledger or in silence (LEGACY-027, 044, 048, 051). The `POS_TICKET` document type posts through **exactly the same posting service** as a back-office invoice, and acceptance test **22** proves it by multiset comparison.
 
-**Architecture:** Four seams, and none of them is a second posting path. (1) **The wire contract is a package, not a convention.** `packages/sync` holds §4.10.1's message types and the cursor codec; `packages/contracts/src/sync/` holds their Zod twins, so OpenAPI is generated from the same shapes the till's TypeScript compiles against (spec:1318 — *"design the sync API as though an external client would use it"*). (2) **The revision is a database fact, not an application one.** `app.catalogue_revision()` is a BEFORE INSERT OR UPDATE trigger on every stream table; it takes `pg_advisory_xact_lock(hashtextextended('tenant-serial:' || tenant_id::text, 0))` — **the same key the audit chain takes** (§4.1, C1) so the two serialise per tenant and can never deadlock — then `nextval`s. Commit order therefore equals revision order, which is the entire correctness argument for a cursor (spec:1299). (3) **Identity is resolved before a tenant is known, through one new `app_auth`-owned door.** `app.resolve_enrolment` mirrors Plan 0A's `app.resolve_principal` exactly; terminal *authentication* needs no new function at all, because `app.resolve_principal('terminal:<id>')` already answers it. `terminalAuth` replaces `auth` on `/v1/sync/*` and sets `principalKind = "terminal"`; the acting principal for every ticket is therefore **the terminal**, and the cashier is `document.attributed_to` — data, never an actor (SAH-044, hazard 19). (4) **`applyBatch` writes documents and lines and then calls `postDocument`.** It computes nothing: tax is 5A's `computeDocumentTax`, cost is 3B's `applyMovements` inside step 9, ledger rows are 1A's `insertLedger`. Its own job is the savepoint, the dedup, the authority re-verification and the refusal path. `packages/db` may not import `@dulja/sync` or `@dulja/contracts` (§3.1), so `apply.ts` declares **db-local structural shapes** the sync package's types satisfy — the `ItemRef` / `PayComponentRef` pattern of §4.4.2, applied to a wire message.
+**Architecture:** Four seams, and none of them is a second posting path. (1) **The wire contract is a package, not a convention.** `packages/sync` holds §4.10.1's message types and the cursor codec; `packages/contracts/src/sync/` holds their Zod twins, so OpenAPI is generated from the same shapes the till's TypeScript compiles against (spec:1318 — *"design the sync API as though an external client would use it"*). (2) **The revision is a database fact, not an application one.** `app.catalogue_revision()` is a BEFORE INSERT OR UPDATE trigger on every stream table; it takes `pg_advisory_xact_lock(hashtextextended('tenant-serial:' || tenant_id::text, 0))` — **the same key the audit chain takes** (§4.1, C1) so the two serialise per tenant and can never deadlock — then `nextval`s. Commit order therefore equals revision order, which is the entire correctness argument for a cursor (spec:1299). (3) **Identity is resolved before a tenant is known, through one new `app_auth`-owned door.** `app.resolve_enrolment` mirrors Plan 0A's `app.resolve_principal` exactly; terminal *authentication* needs no new function at all, because `app.resolve_principal('terminal:<id>')` already answers it. `terminalAuth` replaces `auth` on `/v1/sync/*` and sets `principalKind = "terminal"`; the acting principal for every ticket is therefore **the terminal**, and the cashier is `document.attributed_to` — data, never an actor (LEGACY-044, hazard 19). (4) **`applyBatch` writes documents and lines and then calls `postDocument`.** It computes nothing: tax is 5A's `computeDocumentTax`, cost is 3B's `applyMovements` inside step 9, ledger rows are 1A's `insertLedger`. Its own job is the savepoint, the dedup, the authority re-verification and the refusal path. `packages/db` may not import `@dulja/sync` or `@dulja/contracts` (§3.1), so `apply.ts` declares **db-local structural shapes** the sync package's types satisfy — the `ItemRef` / `PayComponentRef` pattern of §4.4.2, applied to a wire message.
 
 **Tech Stack:** Bun 1.4 (install, scripts, the API entrypoint) · Node 24 LTS (runs Vitest) · TypeScript strict · PostgreSQL 18 (Testcontainers `postgres:18`) · `postgres` (postgres.js) tagged templates for every write and every read · Drizzle ORM mirrors for typed reads and as the migration diff source (ADR-0002) · Hono + `@hono/zod-openapi` · Zod · `jose` (already in `apps/api` from 0B's JWKS verifier) for the HS256 terminal JWT · Node's built-in `node:crypto` `verify`/`createHash` for Ed25519 and SHA-256 — no new cryptography dependency · `decimal.js` behind `@dulja/domain`'s `Money` · pg-boss through 0D's `JobClient` · Vitest + Testcontainers · oxlint + oxfmt · Turborepo. No package version appears in any source file — the lockfile owns versions (spec:104).
 
-**Spec:** `docs/spec/rebuild-spec.md` v1.2 — §0.2 the never/always lists (spec:97–108), §0.4 the glossary rows `User`/`Point` → `Principal` and `Parcel` → `SyncBatch` (spec:168–170), §3.7 in full (spec:1250–1360) and especially **§3.7.3** (spec:1286–1312) and **§3.7.5** (spec:1320–1337), §3.7.4 the external-client discipline (spec:1316–1318), §3.8 `app.pos_terminal` (spec:1889–1906), `app.document.client_ref` / `branch_id` / `attributed_to` (spec:1764–1768, 1773) and the numbering block (spec:1717–1745), §3.9 Identifiers, Time, Money, Naming, Deletion and Error codes (spec:2037–2053), §4.2.1 the `pos.*` and `admin.terminal.manage` codes and the `pos_terminal`, `cashier` and `branch_manager` rows (spec:2150, 2160–2164), §4.2.2 **R8** (spec:2179), §4.5 versioning and idempotency (spec:2199–2201, 2206), §4.11 the terminal-JWT signing key (spec:2273) and engineering practice (spec:2258–2266), §5.2 `packages/sync` (spec:2370), Part V the Phase 6 row (spec:2292) and the sequencing note (spec:2299), Part VI tests **17**, 19, **20**, **22**, 37 (spec:2435–2455), Part I **SAH-009** (spec:286), **SAH-025** (spec:435), **SAH-026** (spec:448), **SAH-027** (spec:460), **SAH-044** (spec:593), **SAH-046** (spec:603), **SAH-048** (spec:615), **SAH-051** (spec:647), **SAH-052** (spec:660).
+**Spec:** `docs/spec/rebuild-spec.md` v1.2 — §0.2 the never/always lists (spec:97–108), §0.4 the glossary rows `User`/`Point` → `Principal` and `Parcel` → `SyncBatch` (spec:168–170), §3.7 in full (spec:1250–1360) and especially **§3.7.3** (spec:1286–1312) and **§3.7.5** (spec:1320–1337), §3.7.4 the external-client discipline (spec:1316–1318), §3.8 `app.pos_terminal` (spec:1889–1906), `app.document.client_ref` / `branch_id` / `attributed_to` (spec:1764–1768, 1773) and the numbering block (spec:1717–1745), §3.9 Identifiers, Time, Money, Naming, Deletion and Error codes (spec:2037–2053), §4.2.1 the `pos.*` and `admin.terminal.manage` codes and the `pos_terminal`, `cashier` and `branch_manager` rows (spec:2150, 2160–2164), §4.2.2 **R8** (spec:2179), §4.5 versioning and idempotency (spec:2199–2201, 2206), §4.11 the terminal-JWT signing key (spec:2273) and engineering practice (spec:2258–2266), §5.2 `packages/sync` (spec:2370), Part V the Phase 6 row (spec:2292) and the sequencing note (spec:2299), Part VI tests **17**, 19, **20**, **22**, 37 (spec:2435–2455), Part I **LEGACY-009** (spec:286), **LEGACY-025** (spec:435), **LEGACY-026** (spec:448), **LEGACY-027** (spec:460), **LEGACY-044** (spec:593), **LEGACY-046** (spec:603), **LEGACY-048** (spec:615), **LEGACY-051** (spec:647), **LEGACY-052** (spec:660).
 
 ## Assumptions and contracts (from docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md)
 
@@ -25,8 +25,8 @@
   **ADR numbers:** 0054–0056, each written **as a proposal and asked before implementing** where it touches the sync protocol or the data model (spec:95): **0054** *Commit-ordered catalogue revisions and tombstones* (T2); **0055** *Terminal identity: Ed25519 device keys, one-time enrolment, and the short-lived terminal JWT* (T3, T6, T7); **0056** *Up-sync apply: savepoint per ticket, `client_ref` dedup, refuse-never-drop* (T11).
 - **Interfaces consumed:** §4.1 (the whole Plan 0A surface), §4.2.1 (`Money`, `Quantity`, `currency`, `toBase`, `round`, `RoundingMode`), §4.2.2 (`withTenant`, `TenantContext`, `systemContext`, `resolvePrincipal`, `createDb`), §4.2.3 (`AppEnv`, `RequestContext`, `Logger`, `ApiConfig`, **the fixed middleware order and its terminal-route branch**), §4.2.4 (`Problem`, `ERRORS`, `AppError`, `fromDatabaseError`, `PostingError`, and this slice's six allocated rows), §4.2.5 (`PERMISSION`, `PERMISSIONS`, `requirePermission`, **`ScopeSource { company: "terminal" }`**, `ROLES`, `INCOMPATIBLE_PAIRS`, `assertRouteGates`), §4.2.6 (`JOBS`, `JobPayload`, `JobEnvelope`, `JobClient`, `JobHandler`, `registerHandler`, `runJob`, `JOB_PROBES`), §4.2.7 (`RouteModule`, `buildRoutes`, `PROBES`, `IsolationProbe`, `TENANT_FREE`, `IdempotencyHeader`, `createApp`, `AppDeps`), §4.2.8 (the common schemas, the list envelope, the cursor codec, **the one list-filter convention — literal `filter[…]` keys, the Layer 2 default**), §4.2.9 (`idempotency`, `RECLAIM_AFTER_SECONDS`, and the two-layer rule: `POST /v1/sync/tickets` carries `Idempotency-Key` **and** dedups per ticket on `client_ref`), §4.2.12 (`startApi`, `ApiRequest`, `StartedApi`), §4.3.1 (`postDocument`, `issueDocument`, `loadSnapshot`, `resolvePolicy`, `recordOverride`, `OverrideCode`, `setEventContext`), §4.3.2 (the fixed algorithm — **steps 1, 2, 6, 7, 8, 9, 10, 11, 12, 13**), §4.3.4 (`document_line`, the 6A row of its additions, the `document` header additions and the 6A row), §4.3.5 (`posting_seq`), §4.3.6 (**numbering at issue, which this slice extends with the terminal suffix**), §4.3.7 (the seed envelope), §4.4.1 (`posting-policy.schema.json`, consumed **unchanged** — same `$id`, same `"version": 1`), §4.4.2 (`DocumentSnapshot`, `LineSnapshot`, `PlannedMovement`, **sign normalisation A9, which names 6A**), §4.5.1 (legal transitions), §4.5.3 (the override door and `app.principal_has`), §4.5.4 (`requireDocumentPermission`, `stageCode`), §4.5.6 (the five `branch_isolation` forms — **6C attaches them; this slice creates its tables branch-ready and attaches nothing**), §4.6.1 (the register rows for `catalogue_tombstone`, `terminal_enrolment`, `needs_attention`), §4.6.5 (the tender-line contract and the four tender accounts), §4.7.2 (`applyMovements`), §4.7.3 (`inventory_movement`, `stock_on_hand`), §4.9.1–§4.9.2 (5A's tax surface, consumed), §4.10 **in full**, §4.14 (document-type codes), §4.15 (account codes — **`1110`, `1120`, `2200` are this slice's three rows**), §4.16.1 (consulted: this slice ships **no** `ReportCode`; `pos.z_report` and `pos.sales_by_cashier` are 6D's), §4.16.2 (consulted: `needs_attention` is **7C's** `DatasetId` row, not this slice's), §4.17 (`seedTerminal` — this slice's one row), §4.17.1, §5 (all thirty-five hazards), §6.1 rows 17, 20, 22, §6.2 rows 1062 and 1064 (contributed, not owned).
 - **Interfaces produced:** §4.10.1 in full (`Stream`, `Cursor`, `Change`, `CataloguePage`, `TicketLine`, `TicketTender`, `TicketEvent`, `Ticket`, `ShiftOpenClose`, `TillEventMsg`, `TicketBatch`, `TicketResult`, `MessageResult`, `BatchResult`); §4.10.2 (`app.catalogue_revision_seq`, `app.catalogue_revision()`, `app.catalogue_tombstone`, `GET /v1/sync/catalogue`); §4.10.3 (`app.terminal_enrolment`, the two enrolment routes (`POST /v1/admin/terminals/enrolments` and `POST /v1/sync/enrol`), the signed-call scheme and the terminal JWT); §4.10.4 (`applyBatch`, `POST /v1/sync/tickets`, `app.needs_attention`); §4.10.5 (`SyncStore`, `SyncTransport`, `OutboxRow`, `SyncQueuedError`, `pullAll`, `drainOutbox`); §4.14's `POS_TICKET` row as a seed-pack envelope; §4.3.4's 6A rows; §3.6.2's eleven codes and §3.6.4's role rows for them; §4.2.4's six `ERR_SYNC_*` / `ERR_TERMINAL_*` rows; §4.15's `1110`, `1120`, `2200`; §4.17's `seedTerminal`; §4.2.6's `pos.sync.apply` payload and handler. Everything else is listed under **Contract additions** in the Self-Review and lands through **Task 0**.
-- **Owner decisions:** **OD-07** (serial numbers in scope? — spec:92, 1032, 1310, 2435) → **Task 14**, isolated, and **nothing else in this plan is gated on it**. Default written into every other task is §2.12's — **not built**: no `serial_unit` reference, no serial field on any message, no serial column anywhere. Task 14 adds acceptance test 17 (the two-terminal serial race) and the `sah-052` append, and is **dropped whole** if OD-07 = no, renumbering nothing. **OD-16** (must historical POS data migrate?) is **not** gated here — §2.7's card says so and 9B owns it. **OD-24** is not gated here either: this slice ships **no screen**.
-- **Part VI tests owned / re-run:** **owns 20** (catalogue resume — Task 9), **22** (one posting path — Task 13), and ⚠️ **17** (serial uniqueness under concurrency — Task 14, conditional on OD-07). **Re-runs:** **19** server half (Task 12 — a batch re-sent twice changes nothing; the till half is 6B's), **11** (auth bypass, the sync-header shapes — Task 7), **16** (numbering, the per-terminal series — **Task 4**, where `resolveSeries` lands, re-asserted end to end by Task 15's `sah-051` block), **18** (negative stock at sync apply — Task 11), **6** (costing edge cases on a POS return — Task 13), **1** (the ledger invariant through `postDocument` — Task 13), **12**, **13** and **36** (tenant isolation, audit completeness and the permission catalogue over this slice's three tables, eleven codes and five route modules — Tasks 2, 3, 5, 12 and 15). **§3.0.4 rows owned:** **none exclusively.** This slice contributes to spec:**1062** (POS selling — owned by 6B) and spec:**1064** (cashier authority offline — owned by 6C). **Regression files created / appended:** **creates `tests/regression/sah-046.test.ts`** — *"Site protection triggers are bypassable, and two different flags share one name"*, whose new-system sentence is *"operation mode … is typed, server-authenticated request metadata with one canonical name per concept, checked in one place"*, which is exactly what `terminalAuth` is; no earlier slice touches SAH-046. **Appends** a `— 6A` block to `tests/regression/sah-009.test.ts` (created by 3B), `sah-027.test.ts`, `sah-028.test.ts`, `sah-044.test.ts` (all created by 0B), `sah-048.test.ts` (created by 3A) and `sah-051.test.ts` (created by 0B). ⚠️ **Appends to `sah-052.test.ts` only under OD-07** — **3A creates it** (§3.7.3's named-creator rule) and 3A executes first (§6.3), so Task 14 appends and never creates.
+- **Owner decisions:** **OD-07** (serial numbers in scope? — spec:92, 1032, 1310, 2435) → **Task 14**, isolated, and **nothing else in this plan is gated on it**. Default written into every other task is §2.12's — **not built**: no `serial_unit` reference, no serial field on any message, no serial column anywhere. Task 14 adds acceptance test 17 (the two-terminal serial race) and the `legacy-052` append, and is **dropped whole** if OD-07 = no, renumbering nothing. **OD-16** (must historical POS data migrate?) is **not** gated here — §2.7's card says so and 9B owns it. **OD-24** is not gated here either: this slice ships **no screen**.
+- **Part VI tests owned / re-run:** **owns 20** (catalogue resume — Task 9), **22** (one posting path — Task 13), and ⚠️ **17** (serial uniqueness under concurrency — Task 14, conditional on OD-07). **Re-runs:** **19** server half (Task 12 — a batch re-sent twice changes nothing; the till half is 6B's), **11** (auth bypass, the sync-header shapes — Task 7), **16** (numbering, the per-terminal series — **Task 4**, where `resolveSeries` lands, re-asserted end to end by Task 15's `legacy-051` block), **18** (negative stock at sync apply — Task 11), **6** (costing edge cases on a POS return — Task 13), **1** (the ledger invariant through `postDocument` — Task 13), **12**, **13** and **36** (tenant isolation, audit completeness and the permission catalogue over this slice's three tables, eleven codes and five route modules — Tasks 2, 3, 5, 12 and 15). **§3.0.4 rows owned:** **none exclusively.** This slice contributes to spec:**1062** (POS selling — owned by 6B) and spec:**1064** (cashier authority offline — owned by 6C). **Regression files created / appended:** **creates `tests/regression/legacy-046.test.ts`** — *"Site protection triggers are bypassable, and two different flags share one name"*, whose new-system sentence is *"operation mode … is typed, server-authenticated request metadata with one canonical name per concept, checked in one place"*, which is exactly what `terminalAuth` is; no earlier slice touches LEGACY-046. **Appends** a `— 6A` block to `tests/regression/legacy-009.test.ts` (created by 3B), `legacy-027.test.ts`, `legacy-028.test.ts`, `legacy-044.test.ts` (all created by 0B), `legacy-048.test.ts` (created by 3A) and `legacy-051.test.ts` (created by 0B). ⚠️ **Appends to `legacy-052.test.ts` only under OD-07** — **3A creates it** (§3.7.3's named-creator rule) and 3A executes first (§6.3), so Task 14 appends and never creates.
 - **Shared namespaces this slice writes into:** **Document-type codes (§4.14)** — **`POS_TICKET` (`pos`, series `POS`), seeded** as `packages/db/seed/my/document-types/POS_TICKET.json`; plus **`POS_EQUIV_INVOICE` (`accounting`, series `PEI`) — test only**, registered by Task 0 exactly as 2A's `POLICY_TEST` and 3D's `COUNT_TEST` are, never a file under `packages/db/seed/my/document-types/`. **Account codes (§4.15) — three, all this slice's own rows: `1110` Cash in till (asset), `1120` Card clearing (asset), `2200` Store-credit liability (liability)**, shipped as `packages/db/seed/my/chart-of-accounts/6a-pos-tenders.json` and applied with `bun run seed --tenant <id> --only chart-of-accounts` in Task 5. Consumed and asserted-not-reseeded, each with its seeding slice: `1100` Bank (0C — the transfer tender), `1200` Trade receivables (0C — the account-sale customer leg), `1300` Inventory control / `4000` Sales / `5000` COGS / `5920` FX rounding (0C — reached through `item.*_account` and `company.fx_rounding_account_id`, never by literal), `2300` Output tax payable (**5A** — reached through `tax_code.output_account`). **`1130` Cash in transit and `5120` Till over/short are 6D's and are not seeded here.** **Report codes (§4.16.1) — none**, and `ReportCodeSchema` is not widened: hazard 4's minimal-set list gives Phase 6 exactly `pos.z_report` and `pos.sales_by_cashier`, both **6D's**. **`DatasetId` members (§4.16.2) — none:** `needs_attention` is a 7C row in the frozen union and 7A creates `datasets.ts`. **`fixtures.ts` helpers (§4.17) — exactly one, the row §4.17 assigns 6A: `seedTerminal(db, s, opts?: { code?; branchId?; devicePublicKey? }) → { terminalId: string; principalId: string }` (the third option is Task 0 amendment 24).** **Shared test helpers (§4.17.1) — one new file, registered by Task 0:** `tests/invariants/support/pos.ts` with `POS_PACK_ROOT`, `PosFixture`, `posFixture`, `enrolTerminal`, `EnrolledTerminal`, `signSyncRequest`, `syncRequest`, `buildTicket`, `BuildTicketOptions`, `uuidv7Sync`, `SHARED_SHIFT_ID`, `MemorySyncStore`.
 - **Seven `Seed`, fixture and register facts every test in this plan depends on, stated once because getting one wrong is a silent failure.** (1) **`Seed` has no `branch` member** — it is `{ tenant; system; human; company; period; closedPeriod; lockedPeriod; cash; sales; docType; policy; branchType; hq }` (§4.1), and `app.document.branch_id` is NOT NULL, so every `branchId:` in this plan is `<seed>.hq` unless a second value came from 0D's `seedBranch`. (2) **`seedTenant` grants `s.human` nothing** (§4.1, pinned) and 2B's R2 evaluates `policy.approval.post` *inside* the posting transaction, so **every posting test calls `grantCodes` first** — including the terminal, which needs `pos.sync.push` through the `pos_terminal` role. (3) **Plan 0A seeds exactly three fiscal periods and only 2026-01 is open**; every test that posts outside January calls 3B's `ensureOpenPeriods(db, s, 2026)` first. (4) **`app.document` has no `custom_fields` column** — only `document_line` does (§4.3.4). A tender line's `method` and `reference` live in `document_line.custom_fields`; `document.tax_inclusive` is a **column** (5A's 0054). (5) **`app_rw` holds DELETE on exactly five tables** (§3.5.4) and **2B is the only slice that ever extends that list** — nothing in this slice deletes a row: an enrolment is spent by `redeemed_at`, a terminal by `revoked_at`, a needs-attention row by `resolved_at`, a catalogue row by a tombstone. (6) **`PlannedMovement.quantity` is always non-negative and `effect` is the sole carrier of direction** (3A's rule, §4.4.2 A9's twin) — a POS **return** line carries a negative `document_line.quantity`, and `planMovements` therefore emits `receipt` at that quantity's **magnitude** from a policy that declares `effect: "issue"`. ⚠️ **Spell the magnitude `q.negate()` under `q.isNegative()`, never `q.abs()`: `Quantity` has `add`, `subtract`, `negate`, `multiply`, `convert`, `compare`, `isZero`, `isNegative`, `toDecimal`, `toString`, `toJSON` and NOTHING else (§4.2.1, 0D's frozen member list — only `Money` has `abs`).** 3A's prose says `quantity.abs()` and 3A's own implementation says `mv.effect === "issue" ? mv.quantity.negate() : mv.quantity` (phase-3a:5589); the implementation is the one that compiles. **No line of this slice reads `quantity.isNegative()` or `amount.isNegative()` to choose a direction** — reading it to take a magnitude is not choosing a direction. (7) **`app.pos_terminal` is a Plan 0A table** (migration 0001) — this slice adds one column to it and never re-creates it.
 - **Never re-decide:** D1–D27 (spec:114–142); every name in the contracts document is frozen — a needed change goes to that document first (that is what Task 0 is).
@@ -36,14 +36,14 @@
 
 Copied verbatim from the spec and the contracts document; every task's requirements implicitly include this section.
 
-1. **Never**, at any phase, for any reason (spec:97–104): write to a ledger or movement table outside the posting service; represent money as a float, anywhere, including in TypeScript; build SQL by string concatenation (SAH-036/037/069); issue DDL from application code (SAH-053); disable an invariant, constraint or trigger "temporarily" (SAH-027, 041, 053); gate an audit write on any flag (SAH-030); hard-code a package version into a source file — the lockfile owns versions.
+1. **Never**, at any phase, for any reason (spec:97–104): write to a ledger or movement table outside the posting service; represent money as a float, anywhere, including in TypeScript; build SQL by string concatenation (LEGACY-036/037/069); issue DDL from application code (LEGACY-053); disable an invariant, constraint or trigger "temporarily" (LEGACY-027, 041, 053); gate an audit write on any flag (LEGACY-030); hard-code a package version into a source file — the lockfile owns versions.
 2. **Always**, for every new table (spec:106): `tenant_id`, an RLS policy named exactly `tenant_isolation`, `created_at`, a migration with a hand-written down, and a test that a second tenant cannot see it. For every new endpoint: Zod schema, OpenAPI entry, idempotency on unsafe methods, and a tenant-isolation test. **This slice creates three tables** — `catalogue_tombstone`, `terminal_enrolment`, `needs_attention` — and every one carries the §3.3 binding form and a two-tenant test in the same task. **This slice ships no UI screen**, so the both-directions clause has nothing to bind.
 3. **`applyBatch` writes documents and lines and calls `postDocument`; it writes no ledger, movement, layer, projection or tax-transaction row** (hazard 22, §4.3.2's closed list). `packages/db/src/sync/apply.ts` contains no `insert into app.ledger_entry`, no `insert into app.inventory_movement`, no `merge into app.stock_on_hand`, and no `insert into app.tax_transaction`. The `posting-only-tables` lint (§3.7.5) is what proves it, and Task 15 asserts the rule's allow-list is unchanged by this slice.
 4. **`document_event` is written only by triggers and the override door** (hazard 24, §4.5.2–§4.5.3). `applyBatch` records a supervisor override through **2B's `recordOverride`** and never by an `insert into app.document_event` of its own.
-5. **The terminal acts, the cashier is attributed** (hazard 19, spec:1324, SAH-044). `document.created_by` and `document.posted_by` are the **terminal** principal, resolved from the signed call and set by `app.current_actor()` through the session — never from the payload. `document.attributed_to` is the cashier. `document_event.actor_id` on an override is the terminal; `document_event.attributed_to` is the supervisor. **No line of this slice passes a principal id from a request body into an actor column.**
+5. **The terminal acts, the cashier is attributed** (hazard 19, spec:1324, LEGACY-044). `document.created_by` and `document.posted_by` are the **terminal** principal, resolved from the signed call and set by `app.current_actor()` through the session — never from the payload. `document.attributed_to` is the cashier. `document_event.actor_id` on an override is the terminal; `document_event.attributed_to` is the supervisor. **No line of this slice passes a principal id from a request body into an actor column.**
 6. **`PlannedLedgerLine.amount` is never negative and `side` is the sole carrier of direction** (§4.4.2 A9), and **§4.4.2's ⚠️ names 6A explicitly**. A POS return, a discount and a negative tender are all magnitudes whose direction the policy chooses through a fixed `side` or `when: { "line.quantity_sign": … }`. **No line of this slice tests the sign of an amount or a quantity to decide a direction, an account or an effect.** `PlannedTaxLine.amount` stays signed and this slice never reads its sign either.
 7. **Every query, reads included, runs inside `withTenant`** (spec:2053). `db.` is a lint violation; only a `tx` obtained from `withTenant` may tag SQL. The one exception this slice adds is `packages/db/src/sync/identity.ts`, which calls two SECURITY DEFINER functions **before a tenant is known** — the same reason `packages/db/src/with-tenant.ts` is already on the `no-bare-db` allow-list — and Task 0 puts it there with its reason on the line. `sql.unsafe` has exactly three homes and none is in this slice (§3.3, hazard 21).
-8. **One migration per PR** (spec:2057); each file runs whole in one transaction; every statement carries a comment naming the SAH-/spec reference it serves; SQL keywords lowercase; section banners `-- ── N. title ───`; a hand-written `NNNN.down.sql` that drops only what the up added, in reverse dependency order (§3.4.5).
+8. **One migration per PR** (spec:2057); each file runs whole in one transaction; every statement carries a comment naming the LEGACY-/spec reference it serves; SQL keywords lowercase; section banners `-- ── N. title ───`; a hand-written `NNNN.down.sql` that drops only what the up added, in reverse dependency order (§3.4.5).
 9. **No enum label is added** (§3.4.4, hazard 11). Every new closed vocabulary in this slice is `text` + a named `check`: `catalogue_tombstone.stream`, `needs_attention.error_code` is free text (it holds an `ErrCode`, an open registry), and `document_line.kind`'s CHECK is **rewritten wholesale to the full six-label union** in 0061 exactly as §4.3.4 requires, because 8B's 0087 writes the identical list and either file may run first (spec:2301).
 10. **Deletion** (spec:2049): financial rows never; master data is `archived_at`. §3.5.4's pinned `app_rw` DELETE list is **unchanged** by this slice and Task 15 re-asserts it as an equality against `["document", "document_line", "idempotency_key", "role_assignment_branch", "role_permission"]`.
 11. **Error codes** are `ERR_<DOMAIN>_<REASON>` enumerated in `packages/contracts/src/errors.ts`, and a code no code raises fails the build (spec:2051). **This slice adds exactly the six rows §4.2.4 allocates it:** `ERR_SYNC_TICKET_REJECTED` (200, per-ticket), `ERR_SYNC_CURSOR_INVALID` (400), `ERR_SYNC_MESSAGE_UNSUPPORTED` (200, per-message), `ERR_TERMINAL_SIGNATURE_INVALID` (401), `ERR_TERMINAL_REVOKED` (403), `ERR_TERMINAL_ENROLMENT_INVALID` (400) — each added in the PR that raises it. **`ERR_POS_LIMIT_EXCEEDED` is 6C's** and is not added here. Everything else this slice raises is already shipped: `ERR_VALIDATION_FAILED`, `ERR_NOT_FOUND`, `ERR_RBAC_FORBIDDEN`, `ERR_RLS_DENIED`, `ERR_CONFLICT_UNIQUE`, `ERR_CONFLICT_REFERENCE`, `ERR_DOC_STATUS_ILLEGAL`, `ERR_DOC_NO_LINES`, `ERR_POLICY_REQUIRES_MISSING`, `ERR_PERIOD_NOT_OPEN`, `ERR_PERIOD_NOT_FOUND`, `ERR_STOCK_INSUFFICIENT`, `ERR_TAX_REGIME_MISMATCH`, `ERR_IDEMPOTENCY_KEY_MISSING`, `ERR_OVERRIDE_NOT_AUTHORISED`, `ERR_INTERNAL`. **This list is closed:** a token in any test of this slice that is not on it is either a typo or an unregistered code, and both fail the `error-codes` lint.
@@ -52,7 +52,7 @@ Copied verbatim from the spec and the contracts document; every task's requireme
 14. **The slice that seeds a policy seeds the accounts that policy names by code** (§4.15, hazard 33). `POS_TICKET`'s four tender rules resolve `{ code: "1110" }`, `{ code: "1120" }`, `{ code: "1100" }` and `{ code: "2200" }`. Three of the four are this slice's own rows; `1100` is **0C's**, and Task 5's fourth test case asserts it resolves rather than re-seeding it.
 15. **No real Malaysian statutory rate, threshold or figure appears anywhere in this slice, and no LHDN or MyInvois endpoint, field, schema version or deadline appears either** (hazards 1 and 2). Every tax figure in this plan comes from 5A's clearly-synthetic `SYNTH-MY-v1` regime through `taxFixture`; this slice states none of its own.
 16. **The Firebird version is unknown and no legacy assumption appears here** (hazard 3). This slice reads no legacy database and asserts nothing about `mpos`.
-17. **Jobs run as the tenant's system principal** (hazard 20) — **with one registered exception, and it is this slice's**: `pos.sync.apply` runs under a **terminal** context, because hazard 19 requires `posted_by` to be the terminal principal and a system-posted ticket would be SAH-044 in the opposite direction. Task 0 registers it; Task 12 implements it through `terminalContext`, which resolves the terminal's principal through `app.resolve_principal('terminal:<id>')` and never accepts a principal id from a payload.
+17. **Jobs run as the tenant's system principal** (hazard 20) — **with one registered exception, and it is this slice's**: `pos.sync.apply` runs under a **terminal** context, because hazard 19 requires `posted_by` to be the terminal principal and a system-posted ticket would be LEGACY-044 in the opposite direction. Task 0 registers it; Task 12 implements it through `terminalContext`, which resolves the terminal's principal through `app.resolve_principal('terminal:<id>')` and never accepts a principal id from a payload.
 18. **Commits** are conventional with the scope = workspace, subject `<type>(<scope>): <summary> [6A T<n>]`, and every commit message ends with the trailer `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>` (§3.8). `bun run lint`, `bun run lint:rules`, `bun run format:check`, `bun run typecheck` and `bun run test` at the repository root stay green after every task. **This slice does not rewrite `AGENTS.md`'s "Current phase" section** — §3.8 names 6D as Phase 6's closing slice.
 
 ---
@@ -180,14 +180,14 @@ tests/
 ├─ invariants/probes.ts                            MODIFY  5 PROBES + 1 JOB_PROBES                T6,T8,T12
 ├─ invariants/pos-one-posting-path.test.ts         NEW  acceptance test 22                            T13
 ├─ invariants/auth-bypass.test.ts                  MODIFY  the sync-header shapes (test 11)            T7
-├─ regression/sah-046.test.ts                      NEW  created by this slice                         T15
-├─ regression/sah-009.test.ts                      MODIFY  append a — 6A block                        T15
-├─ regression/sah-027.test.ts                      MODIFY  append a — 6A block                        T15
-├─ regression/sah-028.test.ts                      MODIFY  append a — 6A block                        T15
-├─ regression/sah-044.test.ts                      MODIFY  append a — 6A block                        T15
-├─ regression/sah-048.test.ts                      MODIFY  append a — 6A block                        T15
-├─ regression/sah-051.test.ts                      MODIFY  append a — 6A block                        T15
-└─ regression/sah-052.test.ts                      MODIFY (⚠️ OD-07 only) append a — 6A block         T14
+├─ regression/legacy-046.test.ts                      NEW  created by this slice                         T15
+├─ regression/legacy-009.test.ts                      MODIFY  append a — 6A block                        T15
+├─ regression/legacy-027.test.ts                      MODIFY  append a — 6A block                        T15
+├─ regression/legacy-028.test.ts                      MODIFY  append a — 6A block                        T15
+├─ regression/legacy-044.test.ts                      MODIFY  append a — 6A block                        T15
+├─ regression/legacy-048.test.ts                      MODIFY  append a — 6A block                        T15
+├─ regression/legacy-051.test.ts                      MODIFY  append a — 6A block                        T15
+└─ regression/legacy-052.test.ts                      MODIFY (⚠️ OD-07 only) append a — 6A block         T14
 
 docs/adr/0054-commit-ordered-catalogue-revisions.md          NEW                                       T2
 docs/adr/0055-terminal-identity-and-the-terminal-jwt.md      NEW                                       T3
@@ -424,7 +424,7 @@ EOF
 
 ### Task 1: `packages/sync` — the wire contract both applications compile against
 
-**Why first.** §5.2 puts the protocol in a package *"shared by api/ and pos/"* (spec:2370) precisely so the two ends cannot quietly share an assumption — SAH-046's *"two independent flags with the same name"* is what happens when they do. Everything later in this plan imports from here, and 6B's till imports the same file.
+**Why first.** §5.2 puts the protocol in a package *"shared by api/ and pos/"* (spec:2370) precisely so the two ends cannot quietly share an assumption — LEGACY-046's *"two independent flags with the same name"* is what happens when they do. Everything later in this plan imports from here, and 6B's till imports the same file.
 
 **Files**
 
@@ -609,7 +609,7 @@ export interface TicketEvent {
 export interface NewCustomer { id: string; code: string; nameEn: string; phone: string | null }
 
 export interface Ticket {
-  /** uuidv7 minted at the till = `document.client_ref` (spec:1302, SAH-051). */
+  /** uuidv7 minted at the till = `document.client_ref` (spec:1302, LEGACY-051). */
   clientRef: string;
   shiftId: string;
   cashierPrincipalId: string;
@@ -1192,7 +1192,7 @@ describe("migration 0060 — terminal enrolment and the needs-attention queue", 
       values (${a.tenant}, ${a.company}, ${a.hq}, ${sha256(code)}, 'Front Till', 'T1', now() + interval '1 hour')`);
 
     // A brand-new app_rw connection with NO set_config at all: exactly what the public /v1/sync/enrol
-    // route has when it arrives (SAH-026 — identity is never client-supplied context).
+    // route has when it arrives (LEGACY-026 — identity is never client-supplied context).
     const rows = await db.rw<{ enrolment_id: string; tenant_id: string; company_id: string; branch_id: string }[]>`
       select * from app.resolve_enrolment(${sha256(code)})`;
     expect(rows).toHaveLength(1);
@@ -1215,7 +1215,7 @@ describe("migration 0060 — terminal enrolment and the needs-attention queue", 
     expect(await db.rw`select * from app.resolve_enrolment(${sha256(stale)})`).toHaveLength(0);
   });
 
-  it("needs_attention.resolved_by is NULL at insert and stamped on resolve, never client-supplied (SAH-044)", async () => {
+  it("needs_attention.resolved_by is NULL at insert and stamped on resolve, never client-supplied (LEGACY-044)", async () => {
     const clientRef = await uuidv7(db.admin);
     const id = await withTenant(db.rw, a.tenant, a.human, async (tx) => {
       const [row] = await tx<{ id: string; resolved_by: string | null }[]>`
@@ -1259,7 +1259,7 @@ describe("migration 0060 — terminal enrolment and the needs-attention queue", 
 
 -- ── 1. one-time enrolment codes ───────────────────────────────────────────────────────────────────────
 -- Only the HASH is stored. The code is shown once, in the back office, and is a bearer secret exactly like a
--- password-reset link; storing it would make the enrolment table a credential store (SAH-025, SAH-028 — the
+-- password-reset link; storing it would make the enrolment table a credential store (LEGACY-025, LEGACY-028 — the
 -- PIN is the ONLY credential this application hashes, and this is not a credential, it is a one-shot ticket).
 -- The three columns §4.10.3's sketch did not carry — `code_hash bytea` (not `text`), `name`, `terminal_code`
 -- with its per-company UNIQUE — are Task 0 amendment 10, which restates the sketch to match this file.
@@ -1427,7 +1427,7 @@ export const needsAttention = app.table("needs_attention", {
 
 - [ ] **Step 4: Run the test.** `bun run --cwd packages/db test -- sync/enrolment`. **Expected:** 6 passed. Then `bun run --cwd packages/db test -- privileges` — **expected:** green, including the `app_rw cannot assume app_auth` case, which the new `grant/revoke create on schema app` pair must leave untouched (the migration revokes it in the same statement block, so `app_auth` ends with `USAGE` only, exactly as Plan 0A left it).
 
-- [ ] **Step 5: Write ADR 0055.** `docs/adr/0055-terminal-identity-and-the-terminal-jwt.md` — written **as a proposal and asked** (spec:95: this touches security and the sync protocol). Context: SAH-025 (`procQuickLogin` — an identity derived from stored credentials), SAH-026 (client-writable session context), SAH-046 (*"operation mode … one canonical name per concept, checked in one place"*). Decision, in five sentences the later tasks implement: a terminal owns a `principal` of kind `terminal` so it has a real audit identity; enrolment is a **one-time hashed code with an expiry**, redeemed once, and the device's Ed25519 public key is registered at redemption; every `/v1/sync/*` call is either signed by that key or carries a **short-lived** JWT minted from a signed call; the JWT is signed with `TERMINAL_JWT_SIGNING_KEY` (HS256, one secret, §3.11) because the verifier and the signer are the same service and an asymmetric key would add a rotation story for no third party; revocation is `pos_terminal.revoked_at` and needs no user change (spec:1322). Consequences: the signing key is a §3.11 secret that must exist in every environment; a clock skew beyond the window rejects a terminal, which is why the window is ±300 s and the error names the skew; and **a stolen terminal key sells until it is revoked** — the mitigation is that it can only ever act as that terminal, at that branch, holding `pos_terminal`'s two codes.
+- [ ] **Step 5: Write ADR 0055.** `docs/adr/0055-terminal-identity-and-the-terminal-jwt.md` — written **as a proposal and asked** (spec:95: this touches security and the sync protocol). Context: LEGACY-025 (`procQuickLogin` — an identity derived from stored credentials), LEGACY-026 (client-writable session context), LEGACY-046 (*"operation mode … one canonical name per concept, checked in one place"*). Decision, in five sentences the later tasks implement: a terminal owns a `principal` of kind `terminal` so it has a real audit identity; enrolment is a **one-time hashed code with an expiry**, redeemed once, and the device's Ed25519 public key is registered at redemption; every `/v1/sync/*` call is either signed by that key or carries a **short-lived** JWT minted from a signed call; the JWT is signed with `TERMINAL_JWT_SIGNING_KEY` (HS256, one secret, §3.11) because the verifier and the signer are the same service and an asymmetric key would add a rotation story for no third party; revocation is `pos_terminal.revoked_at` and needs no user change (spec:1322). Consequences: the signing key is a §3.11 secret that must exist in every environment; a clock skew beyond the window rejects a terminal, which is why the window is ±300 s and the error names the skew; and **a stolen terminal key sells until it is revoked** — the mitigation is that it can only ever act as that terminal, at that branch, holding `pos_terminal`'s two codes.
 
 - [ ] **Step 6: Commit.**
 
@@ -1440,7 +1440,7 @@ feat(db): migration 0060 — terminal_enrolment, needs_attention, app.resolve_en
 
 The enrolment code is stored as a hash and resolved through the second app_auth-owned
 SECURITY DEFINER door, so a till with no tenant, no principal and no session can present
-one without any client-supplied identity (SAH-025, SAH-026). A refused ticket lands in
+one without any client-supplied identity (LEGACY-025, LEGACY-026). A refused ticket lands in
 needs_attention with its whole payload (spec:1305) — never dropped.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
@@ -1581,7 +1581,7 @@ describe("migration 0061 — the POS columns and the per-terminal numbering suff
 -- · contracts §4.3.4 (the 6A row) · §4.14 (the POS-<terminal code> series, spec:1721).
 
 -- ── 1. the acting terminal on a document ──────────────────────────────────────────────────────────────
--- The terminal is ALREADY the acting principal through created_by/posted_by (SAH-044); this column records
+-- The terminal is ALREADY the acting principal through created_by/posted_by (LEGACY-044); this column records
 -- WHICH terminal, which is what the numbering suffix, the Z-report and the branch scoping all read.
 alter table app.document add column terminal_id uuid;
 alter table app.document add constraint document_terminal_fk
@@ -1920,7 +1920,7 @@ on conflict (code) do update
 --     `using (id = app.current_tenant())`, so the migrator enumerating it sees nothing.
 -- The operator, not this file, removes the grants per tenant first (a seed-tier act, under
 -- `set_config('app.tenant_id', …)`), and re-runs `bun run seed --tenant <id> --only roles` after
--- re-migrating. NEVER disable or drop the policy to make this file "work" — SAH-027, SAH-041, SAH-053.
+-- re-migrating. NEVER disable or drop the policy to make this file "work" — LEGACY-027, LEGACY-041, LEGACY-053.
 delete from app.permission where code in (
   'admin.terminal.manage','pos.sync.pull','pos.sync.push','pos.ticket.sell','pos.ticket.discount',
   'pos.ticket.return','pos.ticket.return_blind','pos.ticket.void','pos.ticket.override',
@@ -2186,7 +2186,7 @@ describe("terminal enrolment (§4.10.3, spec:1322)", () => {
     expect(((await second.json()) as Problem).code).toBe("ERR_TERMINAL_ENROLMENT_INVALID");
   });
 
-  it("an unknown code answers the SAME problem — a probe learns nothing (SAH-025)", async () => {
+  it("an unknown code answers the SAME problem — a probe learns nothing (LEGACY-025)", async () => {
     const res = await api.request({ method: "POST", path: "/v1/sync/enrol", body: { code: "A".repeat(32), devicePublicKey: spki() } });
     expect(res.status).toBe(400);
     const p = (await res.json()) as Problem;
@@ -2282,7 +2282,7 @@ export interface ResolvedEnrolment {
  * The pre-tenant door for a one-time enrolment code (contracts §4.1, migration 0060). `app.resolve_enrolment`
  * is SECURITY DEFINER and owned by `app_auth`, so this call needs no `set_config` — which is the whole point:
  * a till presenting a code has no tenant, no principal and no session, and inventing one from the request
- * would be SAH-026 rebuilt.
+ * would be LEGACY-026 rebuilt.
  */
 export async function resolveEnrolment(sql: Sql, codeHash: Buffer): Promise<ResolvedEnrolment[]> {
   return sql<ResolvedEnrolment[]>`
@@ -2416,7 +2416,7 @@ export async function redeemEnrolment(tx: Sql, enrolment: ResolvedEnrolment, dev
 }
 ```
 
-  Create `packages/db/src/sync/index.ts` — `export * from "./authority"; export * from "./identity"; export * from "./enrolment";` (`authority.ts` landed in T5 and this is the barrel that first exports it) — and add `export * from "./sync";` to `packages/db/src/index.ts`. **Nothing under `packages/db/src/seed/` is touched** — the seed is reachable only through `@dulja/db/seed` (§3.1, sah-039) and this is not seed code.
+  Create `packages/db/src/sync/index.ts` — `export * from "./authority"; export * from "./identity"; export * from "./enrolment";` (`authority.ts` landed in T5 and this is the barrel that first exports it) — and add `export * from "./sync";` to `packages/db/src/index.ts`. **Nothing under `packages/db/src/seed/` is touched** — the seed is reachable only through `@dulja/db/seed` (§3.1, legacy-039) and this is not seed code.
 
 - [ ] **Step 4: Write the two contracts modules and the two routes.**
 
@@ -2492,13 +2492,13 @@ enrolmentRoutes.openapi(
   async (c) => {
     const body = c.req.valid("json");
     // The raw pool, not `c.var.withTenant`: there is no tenant yet and inventing one from the request would
-    // be SAH-026 rebuilt. `db` is an `AppEnv["Variables"]` member set by createApp from AppDeps (Task 0
+    // be LEGACY-026 rebuilt. `db` is an `AppEnv["Variables"]` member set by createApp from AppDeps (Task 0
     // amendment 7), and this handler is one of exactly two call sites in the system.
     const db = c.get("db");
     // Step 1 runs with NO tenant: the SECURITY DEFINER door of migration 0060.
     const found = await resolveEnrolment(db, hashEnrolmentCode(body.code));
     if (found.length === 0) {
-      // The SAME problem for unknown, expired and spent. A probe learns only "that is not a code" (SAH-025).
+      // The SAME problem for unknown, expired and spent. A probe learns only "that is not a code" (LEGACY-025).
       throw new AppError("ERR_TERMINAL_ENROLMENT_INVALID", "that enrolment code is not valid");
     }
     const enrolment = found[0]!;
@@ -2570,7 +2570,7 @@ terminalRoutes.openapi(
   async (c) => {
     const { companyId } = c.req.valid("query");
     // Every column EXCEPT code_hash, named one by one. `EnrolmentSchema` has no `codeHash` member, so even if
-    // this became a `select *` the response would fail wire validation rather than leak the hash (SAH-025).
+    // this became a `select *` the response would fail wire validation rather than leak the hash (LEGACY-025).
     const items = await c.var.withTenant((tx) => tx<Record<string, unknown>[]>`
       select id, company_id as "companyId", branch_id as "branchId", name, terminal_code as "terminalCode",
              expires_at as "expiresAt", redeemed_at as "redeemedAt", terminal_id as "terminalId",
@@ -2716,7 +2716,7 @@ export const POS_PACK_ROOT = fileURLToPath(new URL("../../../packages/db/seed/my
 
 export interface EnrolledTerminal {
   terminalId: string;
-  /** The terminal's `app.principal.id` — the ACTING principal for every ticket it syncs (SAH-044). It is on
+  /** The terminal's `app.principal.id` — the ACTING principal for every ticket it syncs (LEGACY-044). It is on
    *  this object because `withTenant`'s `actorId` is a principal id, and passing `terminalId` there sets
    *  `app.actor_id` to a uuid that is not a principal: `document.created_by`'s FK then fails at the header
    *  insert, before the dedup read ever runs, and the failure names a constraint instead of the mistake. */
@@ -2765,7 +2765,7 @@ feat(api): terminal enrolment — one-time hashed code, Ed25519 key registration
 
 createTerminal is the ONE place a pos_terminal row and its terminal principal are created;
 seedTerminal calls it too, so a fixture terminal cannot differ from a real one. An unknown,
-expired and spent code all answer the identical problem — a probe learns nothing (SAH-025).
+expired and spent code all answer the identical problem — a probe learns nothing (LEGACY-025).
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 EOF
@@ -2805,7 +2805,7 @@ export interface TerminalIdentity {
   readonly branchId: string; readonly principalId: string; readonly code: string | null;
 }
 /** The signed-request canonical string (§4.10.3): `method\npath\ntimestamp\nsha256hex(body)`. Exported so the
- *  test signer and the verifier cannot disagree about what was signed — SAH-046's "one canonical name per
+ *  test signer and the verifier cannot disagree about what was signed — LEGACY-046's "one canonical name per
  *  concept, checked in one place", applied to a signature input. */
 export function canonicalSyncRequest(input: { method: string; path: string; timestamp: string; body: string }): string;
 export const TERMINAL_SKEW_SECONDS = 300;
@@ -2835,13 +2835,13 @@ import { enrolTerminal, signSyncRequest, type EnrolledTerminal } from "../../../
 import { startApi, type StartedApi } from "../../support/app";
 import type { Problem } from "@dulja/contracts";
 
-/** The signer is `signSyncRequest` from the shared fixture (§4.17.1, Step 6) and NOT a local copy: SAH-046's
+/** The signer is `signSyncRequest` from the shared fixture (§4.17.1, Step 6) and NOT a local copy: LEGACY-046's
  *  sentence is "one canonical name per concept, checked in one place", and a test file with its own signer is
  *  the second spelling that sentence forbids. `headersFor` below is a one-line alias for readability only. */
 const headersFor = (t: EnrolledTerminal, method: string, path: string, body?: unknown, at = new Date()) =>
   signSyncRequest(t, { method, path, body, at });
 
-describe("terminalAuth (§4.10.3) — the identity a client cannot write (SAH-026, SAH-046)", () => {
+describe("terminalAuth (§4.10.3) — the identity a client cannot write (LEGACY-026, LEGACY-046)", () => {
   let api: StartedApi; let s: Seed; let t: EnrolledTerminal;
   beforeAll(async () => {
     api = await startApi();
@@ -2892,7 +2892,7 @@ describe("terminalAuth (§4.10.3) — the identity a client cannot write (SAH-02
       const res = await pull(headers);
       if (label.startsWith("a forged")) {
         // A forged tenant/actor header is INERT, not an error: identity comes from the signature and the
-        // header is never read (SAH-026). The request succeeds AS THE TERMINAL, which is the proof.
+        // header is never read (LEGACY-026). The request succeeds AS THE TERMINAL, which is the proof.
         expect(res.status, label).toBe(200);
       } else {
         expect(res.status, label).toBe(401);
@@ -2915,7 +2915,7 @@ describe("terminalAuth (§4.10.3) — the identity a client cannot write (SAH-02
     expect(((await signed.json()) as Problem).code).toBe("ERR_TERMINAL_REVOKED");
 
     // The JWT is short-lived but not instantly expiring, so revocation MUST be re-checked per request against
-    // the row. A token that outlived its terminal is exactly SAH-027's "one variable disables every control".
+    // the row. A token that outlived its terminal is exactly LEGACY-027's "one variable disables every control".
     const withToken = await api.request({
       method: "GET", path: "/v1/sync/catalogue?limit=1", headers: { Authorization: `Bearer ${token}` },
     });
@@ -2929,7 +2929,7 @@ describe("terminalAuth (§4.10.3) — the identity a client cannot write (SAH-02
       headers: { Authorization: `Bearer ${api.signToken({ sub: `terminal:${other.terminalId}`, tid: s.tenant })}` },
     });
     // api.signToken uses the SUPABASE test key, not TERMINAL_JWT_SIGNING_KEY: a valid human token shape signed
-    // by the wrong key must not open a terminal door (SAH-025's "never derive an identity from elsewhere").
+    // by the wrong key must not open a terminal door (LEGACY-025's "never derive an identity from elsewhere").
     expect(forged.status).toBe(401);
   });
 });
@@ -3006,7 +3006,7 @@ export interface TerminalRow {
  * Resolves a terminal id to the context every later statement runs under. Two steps, and the order matters:
  * `app.resolve_principal` runs with NO tenant (it is the SECURITY DEFINER door), and only then can the
  * `pos_terminal` row be read under RLS as the terminal itself. Reading the row first, as a superuser or with
- * a guessed tenant, would be SAH-026 with extra steps.
+ * a guessed tenant, would be LEGACY-026 with extra steps.
  *
  * `revoked_at` is returned rather than thrown on, because the two callers answer differently: `terminalAuth`
  * raises `ERR_TERMINAL_REVOKED` (403), and the `pos.sync.apply` handler abandons the batch to needs-attention.
@@ -3066,7 +3066,7 @@ export const TERMINAL_JWT_TTL_SECONDS = 900;
 export const TERMINAL_TOKEN_HEADER = "X-Terminal-Token";
 const TERMINAL_JWT_ISSUER = "urn:dulja:terminal";
 
-/** The ONE canonical string, exported so signer and verifier cannot drift (SAH-046). */
+/** The ONE canonical string, exported so signer and verifier cannot drift (LEGACY-046). */
 export function canonicalSyncRequest(input: { method: string; path: string; timestamp: string; body: string }): string {
   return `${input.method.toUpperCase()}\n${input.path}\n${input.timestamp}\n${input.body}`;
 }
@@ -3145,7 +3145,7 @@ export function terminalAuth(deps: { db: Sql; signingKey: Uint8Array }): Middlew
       throw e;
     });
     // Re-checked on EVERY request, token path included: a JWT that outlived its terminal would be exactly the
-    // "one variable disables every control" of SAH-027, moved into a signed envelope.
+    // "one variable disables every control" of LEGACY-027, moved into a signed envelope.
     if (terminal.revokedAt !== null) throw new AppError("ERR_TERMINAL_REVOKED", `terminal ${terminalId} was revoked`);
 
     const identity: TerminalIdentity = {
@@ -3284,7 +3284,7 @@ export async function syncRequest(
 }
 ```
 
-  ⚠️ **`tests/invariants/support/pos.ts` now imports from `apps/api/src`, which the dependency rule must permit.** §4.17.1 already records that `apps/worker/test/**` and `apps/api/test/**` import from `tests/invariants/support/**` *"through named allowances on `scripts/lint/rules/dependency-rule.ts`, each carrying its reason on the line"*; this is the same seam in the other direction and takes the same treatment. Add the allowance with its reason: *"`tests/invariants/support/pos.ts` imports `canonicalSyncRequest` from `apps/api/src/middleware/terminal-auth` — the ONE canonical signature string (SAH-046). A copy in the test tier is the second spelling that defect is about."* **No `package.json` dependency is added**: `tests/` already resolves `apps/api` through its own `tsconfig.json` `include`, which 5A's `tests/invariants/support/tax.ts` established.
+  ⚠️ **`tests/invariants/support/pos.ts` now imports from `apps/api/src`, which the dependency rule must permit.** §4.17.1 already records that `apps/worker/test/**` and `apps/api/test/**` import from `tests/invariants/support/**` *"through named allowances on `scripts/lint/rules/dependency-rule.ts`, each carrying its reason on the line"*; this is the same seam in the other direction and takes the same treatment. Add the allowance with its reason: *"`tests/invariants/support/pos.ts` imports `canonicalSyncRequest` from `apps/api/src/middleware/terminal-auth` — the ONE canonical signature string (LEGACY-046). A copy in the test tier is the second spelling that defect is about."* **No `package.json` dependency is added**: `tests/` already resolves `apps/api` through its own `tsconfig.json` `include`, which 5A's `tests/invariants/support/tax.ts` established.
 
 - [ ] **Step 7: Append the sync shapes to the bypass suite (acceptance test 11's 6A re-run).** In `tests/invariants/auth-bypass.test.ts`, add a `describe("acceptance test 11 — sync headers — 6A", () => { … })` block with three cases 0B could not write because no terminal route existed: a `/v1/sync/*` call with a **valid human Supabase token** (401), the same call with a **forged `X-Tenant-Id` and `X-Actor-Id` beside a valid signature** (200 **as the terminal** — the headers are inert, which is the assertion), and a **signature over a different path replayed onto this one** (401). The route-level suite of Step 1 covers the rest; this block is what makes test 11's own file mention the sync surface.
 
@@ -3302,8 +3302,8 @@ feat(api): terminalAuth — Ed25519 signed calls, a 15-minute terminal JWT, revo
 
 Identity is the signature, never a header: a forged X-Tenant-Id beside a valid signature is
 INERT and the request runs as the terminal, which is the assertion test 11 now carries
-(SAH-026). Revocation is re-checked on every request including the token path, so a JWT can
-never outlive its terminal (SAH-027).
+(LEGACY-026). Revocation is re-checked on every request including the token path, so a JWT can
+never outlive its terminal (LEGACY-027).
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 EOF
@@ -4576,7 +4576,7 @@ export interface PosFixture {
   taxRates: Record<string, string>;
   /** The same four → the two figures a tax-INCLUSIVE line needs, so that `buildTicket` restates neither the
    *  rate nor the rounding rule: `divisor` is `(1 + rate)::text` computed by **Postgres**, whose numeric is
-   *  exact and needs no decimal library in a fixture, and `roundingMode` is the CODE's own — SAH-019's finding
+   *  exact and needs no decimal library in a fixture, and `roundingMode` is the CODE's own — LEGACY-019's finding
    *  is that the mode belongs to the code and not to the engine, and 5A's inclusive branch honours it. */
   taxInclusive: Record<string, { divisor: string; roundingMode: RoundingMode }>;
   cashierId: string;
@@ -4915,7 +4915,7 @@ describe("applyBatch (§4.10.4) — the server half of zero duplicates, zero los
         { terminalId: f.terminal.terminalId, batchId: uuidv7Sync(), tickets, shifts, tillEvents });
     });
 
-  it("a good ticket posts, and the terminal is the ACTOR while the cashier is ATTRIBUTED (SAH-044)", async () => {
+  it("a good ticket posts, and the terminal is the ACTOR while the cashier is ATTRIBUTED (LEGACY-044)", async () => {
     const ticket = buildTicket(f, { sku: "SKU-A", quantity: "2.000000", unitPrice: "50.0000" });
     const out = await apply([ticket]);
     expect(out.results[0]!.status).toBe("accepted");
@@ -4977,7 +4977,7 @@ describe("applyBatch (§4.10.4) — the server half of zero duplicates, zero los
     expect(ev!.reason).toBe("void: mis-scan");               // "<subject>: <reason>" (§4.10.1)
   });
 
-  it("a tax figure the server does not agree with is REFUSED, not silently corrected (SAH-020)", async () => {
+  it("a tax figure the server does not agree with is REFUSED, not silently corrected (LEGACY-020)", async () => {
     const wrong = buildTicket(f, { sku: "SKU-A" });
     wrong.lines[0]!.taxAmount = { amount: "0.0000", currency: "MYR" };
     const out = await apply([wrong]);
@@ -5114,7 +5114,7 @@ const TENDER_METHODS = new Set(["cash", "card", "transfer", "store_credit"]);
  * `computeDocumentTax`; cost is 3B's `applyMovements` inside `postDocument`'s step 9; numbering, the period,
  * the policy, the plan and the ledger are 1A's and 2A's, unchanged.
  *
- * **The terminal acts and the cashier is attributed** (hazard 19, SAH-044). `created_by` and `posted_by` come
+ * **The terminal acts and the cashier is attributed** (hazard 19, LEGACY-044). `created_by` and `posted_by` come
  * from the column default `app.current_actor()`, which is `ctx.actorId` — the terminal's principal, resolved
  * from the signed call. `attributed_to` is `cashierPrincipalId`, a data column. No line of this function
  * passes a principal id from the payload into an actor column.
@@ -5241,7 +5241,7 @@ async function applyTicket(
 
   // (h) Recompute tax and compare THROUGH Money. `computeDocumentTax` has already WRITTEN the server's
   //     figures, so a mismatch is a refusal and never a correction: a till whose catalogue is stale re-pulls
-  //     and re-prices, and no receipt is issued at a rate nobody chose (SAH-020's discipline at the till).
+  //     and re-prices, and no receipt is issued at a rate nobody chose (LEGACY-020's discipline at the till).
   const computed = await computeDocumentTax(sp, ctx, documentId);
   verifyTax(ticket, computed);
 
@@ -5341,7 +5341,7 @@ function validateShape(ticket: TicketInput, companyCurrency: string): void {
 
 /**
  * The codes this ticket's own content requires. Derived from the ticket and never from a field the till sets:
- * a payload that named its own permissions would be SAH-044 in the shape of an authorisation.
+ * a payload that named its own permissions would be LEGACY-044 in the shape of an authorisation.
  */
 function requiredCodes(ticket: TicketInput): PosPermissionCode[] {
   const codes: PosPermissionCode[] = [];
@@ -5450,7 +5450,7 @@ function verifyTax(ticket: TicketInput, computed: { lineNo: number; taxAmount: s
     if (!Money.of(server, ccy).equals(Money.of(wire.taxAmount.amount, ccy))) {
       throw new SyncError("ERR_VALIDATION_FAILED",
         `ticket ${ticket.clientRef} line ${wire.lineNo}: the till says tax ${wire.taxAmount.amount} and this server computes ${server}`
-        + `; re-pull the catalogue and re-price — the server does not overwrite a price the shop did not choose (SAH-020)`);
+        + `; re-pull the catalogue and re-price — the server does not overwrite a price the shop did not choose (LEGACY-020)`);
     }
   }
 }
@@ -5577,7 +5577,7 @@ export async function listNeedsAttention(
   p: { companyId: string; branchId?: string; open?: boolean; cursor?: { createdAt: string; id: string } | null; limit: number },
 ): Promise<NeedsAttentionRow[]> {
   // Every filter is a bound parameter with a null-guard in SQL — never a conditionally concatenated fragment
-  // (Global Constraint 1, SAH-036/037/069). `branchId is null` means "every branch this caller can see", and
+  // (Global Constraint 1, LEGACY-036/037/069). `branchId is null` means "every branch this caller can see", and
   // RLS plus 6C's branch_isolation are what decide that, not this function.
   return tx<NeedsAttentionRow[]>`
     select id, branch_id as "branchId", terminal_id as "terminalId", client_ref as "clientRef",
@@ -5597,7 +5597,7 @@ export async function listNeedsAttention(
 
 /**
  * Closes one row. `resolved_by` is **stamped by `app.stamp_actor` from the session** and is not a parameter:
- * the caller cannot name a resolver, which is SAH-044 for this table. Writing `app.current_actor()` in the
+ * the caller cannot name a resolver, which is LEGACY-044 for this table. Writing `app.current_actor()` in the
  * statement would be the same value by a second route, so the column is simply not in the SET list.
  */
 export async function resolveNeedsAttention(
@@ -5637,7 +5637,7 @@ export async function resolveNeedsAttention(
 
   ⚠️ **From 6D onwards `ERR_SYNC_MESSAGE_UNSUPPORTED` *is* answered request-level, still with `200` and now with a `Problem` body, and that pairing is deliberate rather than an oversight.** 6D's Task 6 deletes `refuseUnsupported` once `app.shift` and `app.till_event` exist, which removes this slice's last raiser of the code, so the same task adds its replacement — a `KNOWN_BATCH_KEYS` guard in `apps/api/src/routes/sync/tickets.ts` that `throw`s an `AppError("ERR_SYNC_MESSAGE_UNSUPPORTED")` for any batch key outside the known set — and an `AppError` does go through the error handler, which reads its status from this row. **The `200` is right for that raiser too and §4.2.4 is not amended here:** what the code reports is a **capability gap in the server, not a defect in the request** — the till cannot fix it by editing the batch, and the contract it must obey is the one the per-message code already carries, *keep the outbox row and re-send after the server is upgraded* (§4.10.1, refuse-never-drop). A `4xx` would say the opposite to an older till: that the request was bad and the row can be discarded, which is spec:1305's forbidden failure by another route. A request-level status for this code would therefore be a **§4.2.4 amendment, and this slice raises none** — 6D's Task 0 gate asserts contracts:1576's `200 (per-message)` row by literal, so changing it would fail that gate as well as this reasoning. `ERR_SYNC_TICKET_REJECTED` **is raised** — it is the named default of `classify()` in Step 2, the code for a failure the classifier cannot place — which is what keeps the `error-codes` lint green for it (§4.2.4: a code present in `ERRORS` with no occurrence in `apps/**`, `packages/**/src/**` or `packages/db/migrations/**` fails the build). An earlier draft added the row without a raiser, and `bun run lint:rules` would have gone red at this commit and stayed red.
 
-- [ ] **Step 5: Write ADR 0056.** Context: spec:1303–1305 and SAH-051. Decision: one transaction with a savepoint per ticket (not a transaction per ticket, which would lose the batch's atomicity against the catalogue read, and not one transaction for the batch, which would lose a good ticket to a bad neighbour); dedup on `client_ref` **read first and unique-constraint second**, because the read is the common case and the constraint is the race; `ERR_STOCK_INSUFFICIENT`, `ERR_OVERRIDE_NOT_AUTHORISED` and every posting error are **refusals into needs-attention**, never corrections; a tax disagreement is a refusal for the same reason; the **required permission codes are derived from the ticket's own content** (`requiredCodes`) and an override rescues exactly the three codes spec:2161 puts on a cashier's MAY-NOT list, with 2B's `assert_override_authorised` as the control and no check of `applyBatch`'s own; and the needs-attention row is an upsert that never clears a resolution. **`classify()` is written down in the ADR as a table**, because it is the function that decides whether a failure is a duplicate, a refusal or an unclassifiable refusal, and `ERR_SYNC_TICKET_REJECTED` is its named default rather than a code nothing raises. Consequences: a batch's tickets are applied in array order and a later ticket can be refused for stock a duplicate earlier in the same batch consumed — which is correct, and is why the till's outbox is ordered.
+- [ ] **Step 5: Write ADR 0056.** Context: spec:1303–1305 and LEGACY-051. Decision: one transaction with a savepoint per ticket (not a transaction per ticket, which would lose the batch's atomicity against the catalogue read, and not one transaction for the batch, which would lose a good ticket to a bad neighbour); dedup on `client_ref` **read first and unique-constraint second**, because the read is the common case and the constraint is the race; `ERR_STOCK_INSUFFICIENT`, `ERR_OVERRIDE_NOT_AUTHORISED` and every posting error are **refusals into needs-attention**, never corrections; a tax disagreement is a refusal for the same reason; the **required permission codes are derived from the ticket's own content** (`requiredCodes`) and an override rescues exactly the three codes spec:2161 puts on a cashier's MAY-NOT list, with 2B's `assert_override_authorised` as the control and no check of `applyBatch`'s own; and the needs-attention row is an upsert that never clears a resolution. **`classify()` is written down in the ADR as a table**, because it is the function that decides whether a failure is a duplicate, a refusal or an unclassifiable refusal, and `ERR_SYNC_TICKET_REJECTED` is its named default rather than a code nothing raises. Consequences: a batch's tickets are applied in array order and a later ticket can be refused for stock a duplicate earlier in the same batch consumed — which is correct, and is why the till's outbox is ordered.
 
 - [ ] **Step 6: Run and commit.** `bun run --cwd packages/db test -- sync/apply` — **expected:** 10 passed.
 
@@ -5648,9 +5648,9 @@ git add packages/db/src/sync/apply.ts packages/db/src/sync/needs-attention.ts pa
 git commit -m "$(cat <<'EOF'
 feat(db): applyBatch — savepoint per ticket, client_ref dedup, authority re-verified [6A T11]
 
-The terminal acts and the cashier is attributed (SAH-044). Authority is re-checked against
-app.principal_has and the override guard is 2B's trigger, not a check of our own (SAH-027,
-SAH-048). A refusal writes the WHOLE ticket to needs_attention and never reaches the ledger
+The terminal acts and the cashier is attributed (LEGACY-044). Authority is re-checked against
+app.principal_has and the override guard is 2B's trigger, not a check of our own (LEGACY-027,
+LEGACY-048). A refusal writes the WHOLE ticket to needs_attention and never reaches the ledger
 (spec:1305); a shift or till event before 6D is refused per message, never dropped.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
@@ -5933,7 +5933,7 @@ ticketRoutes.openapi(
   async (c) => {
     const batch = c.req.valid("json");
     const t = c.get("terminal");
-    // A till may only sell as ITSELF. The body's terminalId is data; the signature is identity (SAH-044).
+    // A till may only sell as ITSELF. The body's terminalId is data; the signature is identity (LEGACY-044).
     if (batch.terminalId !== t.terminalId) {
       throw new AppError("ERR_VALIDATION_FAILED", "the batch's terminalId is not the terminal that signed this request");
     }
@@ -6060,7 +6060,7 @@ needsAttentionRoutes.openapi(
     const { id } = c.req.valid("param");
     const { note } = c.req.valid("json");
     // `resolved_by` is NOT a parameter anywhere on this path: `resolveNeedsAttention` sets it from `ctx` and
-    // `app.stamp_actor` overwrites it from the session regardless (SAH-044). A caller cannot name a resolver.
+    // `app.stamp_actor` overwrites it from the session regardless (LEGACY-044). A caller cannot name a resolver.
     await c.var.withTenant((tx) => resolveNeedsAttention(tx, c.get("ctx"), id, note));
     return c.body(null, 204);
   },
@@ -6139,7 +6139,7 @@ registerHandler("pos.sync.apply", posSyncApply);
 /**
  * A revoked terminal's queued batch. Every ticket lands in the queue with a reason a branch manager can act
  * on, and NOTHING is posted: the terminal lost its authority between the 202 and the job's turn, and posting
- * anyway would be exactly the "one variable disables every control" of SAH-027 read backwards.
+ * anyway would be exactly the "one variable disables every control" of LEGACY-027 read backwards.
  *
  * Not a throw, deliberately: pg-boss would retry it three times and fail three times, and a manager would see
  * a failed job instead of nine actionable rows.
@@ -6251,7 +6251,7 @@ async function consumptionMultiset(api: StartedApi, documentId: string): Promise
   return rows.map((r) => JSON.stringify(r)).sort();
 }
 
-describe("acceptance test 22 — one posting path (spec:2440, SAH-009)", () => {
+describe("acceptance test 22 — one posting path (spec:2440, LEGACY-009)", () => {
   let api: StartedApi; let f: PosFixture;
   let ticketDocId: string; let invoiceDocId: string;
 
@@ -6358,7 +6358,7 @@ describe("acceptance test 22 — one posting path (spec:2440, SAH-009)", () => {
 
   `ticketEffectiveDate` is a two-line file-local helper deriving the same `date(soldAt at time zone company.timezone)` `applyBatch` uses, so the two documents land in one fiscal period and one `effective_date` — **without it the projection differs on `effective_date` and `fiscal_period_id` and the test fails for the wrong reason.** Run `bun run --cwd tests test -- pos-one-posting-path`. **Expected failure before Task 12 lands:** 404 on the sync route; **after it lands**, run it and expect 6 passed.
 
-- [ ] **Step 2: If the multisets differ, read the diff before changing anything.** The three differences that are *expected and must not be papered over*, each with the fix that is legitimate: (a) **`effective_date`/`fiscal_period_id`** — the helper above is wrong; fix the helper, never the projection. (b) **A missing tax leg on one side** — the two `document.tax_inclusive` flags disagree; fix the `update` in the fixture, never the policy. (c) **A `5920` FX-rounding line on one side only** — the two documents' `Money` arithmetic produced different residues, which means one of them was built with a different `unitPrice` or `quantity`; fix the fixture. **A difference in `account_id` is a real finding** and means the two policies genuinely resolve different accounts — stop and report it, because that is exactly the SAH-009 class of defect this test exists to catch.
+- [ ] **Step 2: If the multisets differ, read the diff before changing anything.** The three differences that are *expected and must not be papered over*, each with the fix that is legitimate: (a) **`effective_date`/`fiscal_period_id`** — the helper above is wrong; fix the helper, never the projection. (b) **A missing tax leg on one side** — the two `document.tax_inclusive` flags disagree; fix the `update` in the fixture, never the policy. (c) **A `5920` FX-rounding line on one side only** — the two documents' `Money` arithmetic produced different residues, which means one of them was built with a different `unitPrice` or `quantity`; fix the fixture. **A difference in `account_id` is a real finding** and means the two policies genuinely resolve different accounts — stop and report it, because that is exactly the LEGACY-009 class of defect this test exists to catch.
 
 - [ ] **Step 3: Commit.**
 
@@ -6383,18 +6383,18 @@ EOF
 
 > **This whole task is dropped if OD-07 = no, and nothing else in this plan changes.** No other task references a serial, no message carries one, no column exists for one. §2.12's default is **not built**, and that is what every other task assumes.
 
-**What was asked (OD-07).** *"Serial numbers in scope?"* — spec:92, 1032, 1310, 2435. §3.0.3 expects **not**, for a food distributor. The decision gates two slices: 3A builds `app.serial_unit` and creates `tests/regression/sah-052.test.ts`; **6A proves the race** — acceptance test 17, *"Two terminals scan the same serial simultaneously; exactly one sale succeeds"* (spec:2435).
+**What was asked (OD-07).** *"Serial numbers in scope?"* — spec:92, 1032, 1310, 2435. §3.0.3 expects **not**, for a food distributor. The decision gates two slices: 3A builds `app.serial_unit` and creates `tests/regression/legacy-052.test.ts`; **6A proves the race** — acceptance test 17, *"Two terminals scan the same serial simultaneously; exactly one sale succeeds"* (spec:2435).
 
 **What is assumed instead, and where the assumption lives.** Every other task treats a ticket line as `(item, lot, quantity)` and nothing more. `TicketLine` has no `serial` member; `applyBatch` has no serial branch; the `POS_TICKET` policy has no serial rule. §3.7.3 says why in the spec's own words: *"a till cannot safely allocate a unique serial while offline"* (spec:1310), and the two ways out it names — reserve serial blocks per till in advance, or restrict serialised sales to online mode — are **design decisions the owner has not made**, not implementation details a plan may choose.
 
-**What changes when the answer arrives.** Exactly this task, and it runs only after **3A's** serial task has merged (§6.3 puts 3A before 6A, so `app.serial_unit` and `sah-052.test.ts` both already exist).
+**What changes when the answer arrives.** Exactly this task, and it runs only after **3A's** serial task has merged (§6.3 puts 3A before 6A, so `app.serial_unit` and `legacy-052.test.ts` both already exist).
 
 **Files** (created only under OD-07 = yes)
 
 - `packages/sync/src/messages.ts` — MODIFY (`TicketLine.serials?: string[]`)
 - `packages/db/src/sync/apply.ts` — MODIFY (one branch)
 - `tests/invariants/pos-serial-race.test.ts` — NEW (acceptance test 17)
-- `tests/regression/sah-052.test.ts` — MODIFY (append a `— 6A` block; **3A created it**)
+- `tests/regression/legacy-052.test.ts` — MODIFY (append a `— 6A` block; **3A created it**)
 
 **Steps**
 
@@ -6406,18 +6406,18 @@ EOF
 
 - [ ] **Step 4: Write acceptance test 17.** `tests/invariants/pos-serial-race.test.ts` — **two real connections, interleaved** (§3.7.1: *"Concurrency tests interleave two real connections — `db.rw` opened twice with `max: 1` each"*). Enrol two terminals at one branch; build two tickets, each selling the same serial of the same item; open two `withTenant` transactions; insert both serial rows; commit both. **Assert:** exactly one `accepted` and one `rejected`; the rejected one's code is `ERR_CONFLICT_UNIQUE`; `select count(*) from app.serial_unit where serial = $1 and status = 'sold'` is **1**; and the rejected ticket is in `needs_attention`. Assert the failure is at the **data layer**, not in TypeScript, by re-running the same insert pair directly on two `app_rw` connections with no application code between them.
 
-- [ ] **Step 5: Append to `tests/regression/sah-052.test.ts`.** A `describe("SAH-052 Serial numbers can be sold twice — 6A", …)` block whose single `it` is the two-terminal race above, reduced to the data layer. **3A created the file** (§3.7.3's named-creator rule) and this block is appended after 3A's; **no earlier block is edited**.
+- [ ] **Step 5: Append to `tests/regression/legacy-052.test.ts`.** A `describe("LEGACY-052 Serial numbers can be sold twice — 6A", …)` block whose single `it` is the two-terminal race above, reduced to the data layer. **3A created the file** (§3.7.3's named-creator rule) and this block is appended after 3A's; **no earlier block is edited**.
 
 - [ ] **Step 6: Commit.**
 
 ```bash
 git add packages/sync/src/messages.ts packages/contracts/src/sync/ticket.ts packages/db/src/sync/apply.ts \
-        tests/invariants/pos-serial-race.test.ts tests/regression/sah-052.test.ts
+        tests/invariants/pos-serial-race.test.ts tests/regression/legacy-052.test.ts
 git commit -m "$(cat <<'EOF'
 feat(sync): OD-07 — serials on a ticket line and acceptance test 17 [6A T14]
 
 Two terminals scanning one serial: exactly one sale succeeds, and the arbiter is 3A's
-partial unique index, not application code (SAH-052). Online mode only, per OD-07's
+partial unique index, not application code (LEGACY-052). Online mode only, per OD-07's
 recorded answer; reserved blocks per till would be a different design and a different task.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
@@ -6431,8 +6431,8 @@ EOF
 
 **Files**
 
-- `tests/regression/sah-046.test.ts` — NEW (this slice creates it)
-- `tests/regression/sah-009.test.ts`, `sah-027.test.ts`, `sah-028.test.ts`, `sah-044.test.ts`, `sah-048.test.ts`, `sah-051.test.ts` — MODIFY (append one `— 6A` block each; **no earlier block is edited**, §3.7.3)
+- `tests/regression/legacy-046.test.ts` — NEW (this slice creates it)
+- `tests/regression/legacy-009.test.ts`, `legacy-027.test.ts`, `legacy-028.test.ts`, `legacy-044.test.ts`, `legacy-048.test.ts`, `legacy-051.test.ts` — MODIFY (append one `— 6A` block each; **no earlier block is edited**, §3.7.3)
 - `packages/db/test/privileges.test.ts` — MODIFY (assert the DELETE list is unchanged)
 
 **Interfaces**
@@ -6442,10 +6442,10 @@ EOF
 
 **Steps**
 
-- [ ] **Step 1: Create `tests/regression/sah-046.test.ts` — this slice's own defect.** SAH-046 (spec:603) is *"Site protection triggers are bypassable, and two different flags share one name"*, and its new-system sentence is *"operation mode (user action / replication apply / maintenance) is **typed, server-authenticated request metadata with one canonical name per concept, checked in one place**"*. `terminalAuth` is that sentence made executable, so the file is 6A's to create. Three `it`s, through `fullRegression`:
+- [ ] **Step 1: Create `tests/regression/legacy-046.test.ts` — this slice's own defect.** LEGACY-046 (spec:603) is *"Site protection triggers are bypassable, and two different flags share one name"*, and its new-system sentence is *"operation mode (user action / replication apply / maintenance) is **typed, server-authenticated request metadata with one canonical name per concept, checked in one place**"*. `terminalAuth` is that sentence made executable, so the file is 6A's to create. Three `it`s, through `fullRegression`:
 
 ```ts
-// tests/regression/sah-046.test.ts
+// tests/regression/legacy-046.test.ts
 import { expect } from "vitest";
 import { ROUTES } from "@dulja/api";
 import { sourceFiles } from "../support/source";
@@ -6453,13 +6453,13 @@ import { fullRegression } from "../support/api";
 import { buildTicket, posFixture, signSyncRequest, syncRequest, uuidv7Sync, type PosFixture } from "../invariants/support/pos";
 
 fullRegression(
-  "SAH-046",
+  "LEGACY-046",
   "Site protection triggers are bypassable, and two different flags share one name",
   ["spec:603", "contracts §4.10.3", "6A T7"],
   (ctx) => {
     let f: PosFixture;
     // `fullRegression` owns the shared API; this file's corpus is one POS company on it.
-    beforeAll(async () => { f = await posFixture(ctx.api, "SAH046"); }, 240_000);
+    beforeAll(async () => { f = await posFixture(ctx.api, "LEGACY046"); }, 240_000);
 
     it("one canonical name per concept — a grep can prove it", () => {
       // 0B's `sourceFiles(roots?)` returns `SourceFile[]` — `{ path, text, lines }`, `path` repo-relative and
@@ -6470,7 +6470,7 @@ fullRegression(
       // The legacy defect was two INDEPENDENT flags named `Silent` in two namespaces, each disabling a
       // different half of a control. The fix is not "a better flag": it is that one concept has one spelling
       // and one definition, and that a second one cannot appear without this assertion failing.
-      // `path` is already repo-relative, so the compare is exact — 0B's own `sah-036` compares `f.path` the
+      // `path` is already repo-relative, so the compare is exact — 0B's own `legacy-036` compares `f.path` the
       // same way — and a second definition anywhere under apps/ or packages/ makes the array longer.
       expect(defines(/export function canonicalSyncRequest\b/).map((s) => s.path))
         .toEqual(["apps/api/src/middleware/terminal-auth.ts"]);
@@ -6486,7 +6486,7 @@ fullRegression(
     it("server-authenticated, not client-declared: forged identity headers are INERT", async () => {
       // (a) The id says terminal A; the signature is terminal B's key. 401, and no ambiguity about which one
       //     the server believed — it believed neither.
-      const other = await posFixture(ctx.api, "SAH046-B");
+      const other = await posFixture(ctx.api, "LEGACY046-B");
       const mixed = signSyncRequest(other.terminal, { method: "GET", path: "/v1/sync/catalogue" });
       const forgedId = await ctx.api.request({
         method: "GET", path: "/v1/sync/catalogue?limit=1",
@@ -6538,12 +6538,12 @@ fullRegression(
 
   | File | Created by | The 6A block asserts |
   |---|---|---|
-  | `sah-009` | 3B | **One costing answer across the POS path.** The `cost_consumption` multiset of a `POS_TICKET` equals that of the equivalent invoice (Task 13's fourth case, reduced): *the* SAH-009 claim — two paths, one formula — now including the till. |
-  | `sah-027` | 0B | **No flag disables a control.** A `POST /v1/sync/tickets` carrying `{"internal": true}`, `{"skipChecks": true}` and `{"__proto__": {"actorId": …}}` alongside a valid batch posts exactly the same ledger rows as one without them, and a ticket that would fail `assert_stock_available` still fails with those keys present. |
-  | `sah-028` | 0B | **The PIN is the only credential this application hashes.** No file under `packages/db/src/sync/**` or `apps/api/src/**/sync*` calls `argon2`, `bcrypt` or `scrypt`; the enrolment code is a **sha256 of a one-shot ticket**, not a password, and is stored hashed and compared by lookup, never by string equality. |
-  | `sah-044` | 0B | **The actor is the session, never a payload.** A batch whose ticket names `cashierPrincipalId` equal to a principal in **another tenant** is rejected, and on an accepted ticket `document.created_by = document.posted_by = <the terminal's principal> ≠ document.attributed_to`. |
-  | `sah-048` | 3A | **Negative stock at sync apply.** A ticket for more than the layers hold is `ERR_STOCK_INSUFFICIENT` regardless of session settings, and it becomes possible **only** through an `inventory.negative_stock.override` `document_event` recorded by a second principal — never through a flag, a header or a policy edit (F-6). |
-  | `sah-051` | 0B | **Numbering at the till.** Two terminals' first tickets in one period both succeed and take **number 1 of two different series** (`POS-KL01` and `POS-KL02`), and re-sending either batch consumes no number. The legacy defect was a race on first use with no uniqueness constraint; the fix is `unique (company_id, series, fiscal_period_id, number)` plus the advisory lock, and the per-terminal series is what keeps two tills from contending at all. |
+  | `legacy-009` | 3B | **One costing answer across the POS path.** The `cost_consumption` multiset of a `POS_TICKET` equals that of the equivalent invoice (Task 13's fourth case, reduced): *the* LEGACY-009 claim — two paths, one formula — now including the till. |
+  | `legacy-027` | 0B | **No flag disables a control.** A `POST /v1/sync/tickets` carrying `{"internal": true}`, `{"skipChecks": true}` and `{"__proto__": {"actorId": …}}` alongside a valid batch posts exactly the same ledger rows as one without them, and a ticket that would fail `assert_stock_available` still fails with those keys present. |
+  | `legacy-028` | 0B | **The PIN is the only credential this application hashes.** No file under `packages/db/src/sync/**` or `apps/api/src/**/sync*` calls `argon2`, `bcrypt` or `scrypt`; the enrolment code is a **sha256 of a one-shot ticket**, not a password, and is stored hashed and compared by lookup, never by string equality. |
+  | `legacy-044` | 0B | **The actor is the session, never a payload.** A batch whose ticket names `cashierPrincipalId` equal to a principal in **another tenant** is rejected, and on an accepted ticket `document.created_by = document.posted_by = <the terminal's principal> ≠ document.attributed_to`. |
+  | `legacy-048` | 3A | **Negative stock at sync apply.** A ticket for more than the layers hold is `ERR_STOCK_INSUFFICIENT` regardless of session settings, and it becomes possible **only** through an `inventory.negative_stock.override` `document_event` recorded by a second principal — never through a flag, a header or a policy edit (F-6). |
+  | `legacy-051` | 0B | **Numbering at the till.** Two terminals' first tickets in one period both succeed and take **number 1 of two different series** (`POS-KL01` and `POS-KL02`), and re-sending either batch consumes no number. The legacy defect was a race on first use with no uniqueness constraint; the fix is `unique (company_id, series, fiscal_period_id, number)` plus the advisory lock, and the per-terminal series is what keeps two tills from contending at all. |
 
 - [ ] **Step 3: Pin the DELETE list.** In `packages/db/test/privileges.test.ts`, assert the equality §3.5.4 fixes, unchanged by this slice:
 
@@ -6575,12 +6575,12 @@ bun run --cwd packages/contracts openapi:generate && git diff --exit-code packag
 ```bash
 git add tests/regression packages/db/test/privileges.test.ts
 git commit -m "$(cat <<'EOF'
-test(regression): sah-046 created; 009/027/028/044/048/051 gain a 6A block [6A T15]
+test(regression): legacy-046 created; 009/027/028/044/048/051 gain a 6A block [6A T15]
 
-SAH-046's new-system sentence — "operation mode is typed, server-authenticated request
+LEGACY-046's new-system sentence — "operation mode is typed, server-authenticated request
 metadata with one canonical name per concept, checked in one place" — is terminalAuth, so
 6A is the file's creator. A forged X-Tenant-Id beside a valid signature is INERT, which is
-the assertion that closes SAH-026 and SAH-044 for the sync surface.
+the assertion that closes LEGACY-026 and LEGACY-044 for the sync surface.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 EOF
@@ -6638,11 +6638,11 @@ All twenty-four land through **Task 0**, before any task writes the literal. Gro
 ### Eight things a reviewer should push back on
 
 1. **`resolveSeries` edits a Phase 1 file.** `packages/db/src/posting/issue.ts` is 1A's, and this slice changes two lines of `issueDocument`. The alternative — a single `POS` series shared by every till — is simpler and would touch nothing, at the cost of §6.1 row 16's per-terminal-series re-run and of every till in a company contending for one `document_series` row during a 200-ticket batch. **A reviewer who thinks the frozen file matters more than the contention should say so now**, because reversing it after Task 12 means re-writing three tests and one §4.14 row.
-2. **The tax mismatch is a rejection, not a correction.** A till whose catalogue is one revision stale has every ticket refused until it re-pulls. The comparison is `Money.equals`, not string equality — step 9g says so explicitly, because a scale-formatting difference decided by string comparison would refuse *every* ticket and read as a protocol bug rather than a pricing one. That is deliberate — SAH-020's discipline, "a refusal, not a wrong number" — but it is the clause most likely to be experienced as harsh in a shop with a flaky link. The softer design (accept, store the server's figure, raise a needs-attention row) is one branch away and is written down here so the choice is visible rather than discovered.
+2. **The tax mismatch is a rejection, not a correction.** A till whose catalogue is one revision stale has every ticket refused until it re-pulls. The comparison is `Money.equals`, not string equality — step 9g says so explicitly, because a scale-formatting difference decided by string comparison would refuse *every* ticket and read as a protocol bug rather than a pricing one. That is deliberate — LEGACY-020's discipline, "a refusal, not a wrong number" — but it is the clause most likely to be experienced as harsh in a shop with a flaky link. The softer design (accept, store the server's figure, raise a needs-attention row) is one branch away and is written down here so the choice is visible rather than discovered.
 3. **`applyBatch` takes a per-terminal advisory lock for the whole transaction.** A 200-ticket batch therefore blocks that terminal's other batch for as long as it runs. That is the intent — the alternative is the `client_ref` unique-violation race, which is *correct* but noisy — but a reviewer who expects two concurrent batches from one till should know they will serialise.
 4. **The `POS_TICKET` policy has no promotion, no line discount rule and no loyalty leg.** Promotions and offers are priced **at the till** (spec:1345–1348, 6B) and reach the server as an already-discounted `line.amount`; loyalty is **OD-03** and 6B's task. If a reviewer expects the server to re-price, that is a different design and a different slice.
 5. **`readCatalogue`'s two 6C branches are a second query, not two `union all` legs.** Task 8 Step 2 says why (a `where false` does not stop PostgreSQL parsing a missing relation, so the guard has to be a statement that is never sent), but the consequence is that the merge-and-sort happens in TypeScript for those two streams until 6C folds them in, and that 6A dictates two function signatures to 6C. It is correct and it is slower, and 6C's first task is named as the place it stops being either.
-6. **`requiredCodes` derives the cashier's required permissions from the ticket's own content.** A non-zero line discount asks for `pos.ticket.discount`; an event whose `subject` is `"void"` asks for `pos.ticket.void`; a return without a `returnsClientRef` asks for `pos.ticket.return_blind`. That is what makes those three catalogue codes evaluated rather than decorative, and it is also the only reading of spec:2161 that does not require the till to declare its own authority — which would be SAH-044 in the shape of an authorisation. **The alternative a reviewer might expect is that `pos.ticket.void` gates a separate void *route*.** It does not, because a POS void at the till reaches the server as a ticket with an override event and there is no second door; 6D's till-event path may add one, and if it does, the code is already catalogued and already evaluated here.
+6. **`requiredCodes` derives the cashier's required permissions from the ticket's own content.** A non-zero line discount asks for `pos.ticket.discount`; an event whose `subject` is `"void"` asks for `pos.ticket.void`; a return without a `returnsClientRef` asks for `pos.ticket.return_blind`. That is what makes those three catalogue codes evaluated rather than decorative, and it is also the only reading of spec:2161 that does not require the till to declare its own authority — which would be LEGACY-044 in the shape of an authorisation. **The alternative a reviewer might expect is that `pos.ticket.void` gates a separate void *route*.** It does not, because a POS void at the till reaches the server as a ticket with an override event and there is no second door; 6D's till-event path may add one, and if it does, the code is already catalogued and already evaluated here.
 7. **`AppEnv["Variables"]` gains `db`, and two handlers read a `Variables` member directly.** (`jobs` is 3B's round-3 row; this slice consumes it and adds no second declaration.) Every other handler in the system uses `c.var.withTenant` and must keep doing so — the `no-bare-db` lint is what enforces it, and these two are route handlers, not `packages/db` files, so the lint does not see them. The check that keeps this honest is a grep, not a rule: `c.get("db")` appears once (the public enrolment redemption, which has no tenant) and `c.get("jobs")` once (the over-size batch enqueue). **A reviewer who would rather see a route factory should say so now**, because the reason they were rejected is narrow — `ROUTES` is derived from `buildRoutes({ authAdmin: new StubAuthAdmin() })` at module scope, where constructing a real `Sql` would put a database connection on the import graph of the OpenAPI generator and the catalogue lint.
 8. **The needs-attention row never re-opens.** A ticket that was resolved and then failed again keeps its resolution stamp and shows a fresh error, because `app.stamp_actor` makes `resolved_by` immutable once set and the table's CHECK ties it to `resolved_at`. The honest alternative is an attempt-history child table, which is more machinery than this queue has earned; ADR 0056 records the choice.
 
@@ -6688,7 +6688,7 @@ bun run lint && bun run lint:rules && bun run format:check && bun run typecheck 
 | acceptance test 22 | `bun run --cwd tests test -- pos-one-posting-path` | identical ledger, dimension and cost-consumption multisets; different types, series, actors and policies |
 | acceptance test 17 ⚠️ | `bun run --cwd tests test -- pos-serial-race` | **only under OD-07 = yes** |
 
-**What the next slice needs from this one.** **6C** consumes `readCatalogue` — it must ship `app.pos_cashier_sync(p_company_id uuid, p_branch_id uuid, p_since bigint)` and `app.branch_pos_policy_sync(p_company_id uuid, p_branch_id uuid, p_since bigint)`, both `returns table (id uuid, revision bigint, row jsonb)`, and then delete the `extra` block and fold the two streams into the `union all` — `applyBatch` (adding the `branch_pos_policy` limit check and `ERR_POS_LIMIT_EXCEEDED`, and lifting the `attendance` refusal), migration 0068's Form A/B attachments for this slice's three tables, `seedTerminal`, and the whole of `tests/invariants/support/pos.ts`. **6C** also extends **`packages/db/test/sync/catalogue-revision.test.ts`**: its two closed lists (`STREAM_TABLES_AT_6A`, asserted against `information_schema.columns` and against `pg_trigger`) gain `branch_pos_policy` and `pos_cashier` in the same PR as 0065/0066, because §4.10.2 names eight stream tables and 6A can only create six. The lists are deliberately exact rather than containment checks: a containment check would let a stream table ship with no `catalogue_revision` trigger and stay green, which is the missed-deletion failure acceptance test 20 exists to catch. **6D** replaces `applyBatch`'s `ERR_SYNC_MESSAGE_UNSUPPORTED` refusal for `shifts` and `tillEvents` with real inserts **and re-runs this slice's `sync/apply` batch test unchanged** as the proof that nothing else moved. ⚠️ **That deletion takes `refuseUnsupported` away, and with it this slice's last raiser of the code**, which the `error-codes` lint (§4.2.4, spec:2051) would go red on; **6D therefore owns the replacement raiser** — its Task 6 Step 6 `KNOWN_BATCH_KEYS` guard in `apps/api/src/routes/sync/tickets.ts` — and must not delete the `ERRORS` row instead. That guard answers **`200` with a `Problem` body**, which is §4.2.4's row for this code read literally: **the row stays as written and 6A raises no amendment against it** — Task 11 Step 4 records why a `4xx` would be wrong for a capability gap the till must re-send through rather than discard. **`document.shift_id` is 0061's column, not 0070's** (Task 0 amendment 6, 6D's amendment A2): 6D adds the index `document_shift_idx` and the `assertShiftKnown` guard, and adds no column and no foreign key. It also inserts one open `app.shift` row at `SHARED_SHIFT_ID` (its amendment A6), which is why that constant and `uuidv7Sync` are exported from `tests/invariants/support/pos.ts` rather than file-local. **6B** implements `SyncStore` over SQLite and runs this slice's `pullAll` and `drainOutbox` against it; `MemorySyncStore` in `tests/invariants/support/pos.ts` is the behaviour it must match. ⚠️ **6B also edits this slice's `tests/regression/sah-046.test.ts` in place** (its amendment A2 moves `canonicalSyncRequest` into `packages/sync/src/signing.ts`, so the two assertions that name the middleware as the declaring file stop being true) — **that edit is welcome and this plan does not pre-empt it, but it must be written with `s.path` and `s.text`.** 6B's Task 0 Step 5 carries its replacement lines spelled `s.fileName` / `s.getFullText()`, reading an earlier draft of this file; the shipped file uses 0B's `SourceFile { path, text, lines }` members throughout (Task 15 Step 1), those are the only members that exist, and a replacement keeping the ts-morph spelling would fail `bun run typecheck` at 6B's own Task 0.
+**What the next slice needs from this one.** **6C** consumes `readCatalogue` — it must ship `app.pos_cashier_sync(p_company_id uuid, p_branch_id uuid, p_since bigint)` and `app.branch_pos_policy_sync(p_company_id uuid, p_branch_id uuid, p_since bigint)`, both `returns table (id uuid, revision bigint, row jsonb)`, and then delete the `extra` block and fold the two streams into the `union all` — `applyBatch` (adding the `branch_pos_policy` limit check and `ERR_POS_LIMIT_EXCEEDED`, and lifting the `attendance` refusal), migration 0068's Form A/B attachments for this slice's three tables, `seedTerminal`, and the whole of `tests/invariants/support/pos.ts`. **6C** also extends **`packages/db/test/sync/catalogue-revision.test.ts`**: its two closed lists (`STREAM_TABLES_AT_6A`, asserted against `information_schema.columns` and against `pg_trigger`) gain `branch_pos_policy` and `pos_cashier` in the same PR as 0065/0066, because §4.10.2 names eight stream tables and 6A can only create six. The lists are deliberately exact rather than containment checks: a containment check would let a stream table ship with no `catalogue_revision` trigger and stay green, which is the missed-deletion failure acceptance test 20 exists to catch. **6D** replaces `applyBatch`'s `ERR_SYNC_MESSAGE_UNSUPPORTED` refusal for `shifts` and `tillEvents` with real inserts **and re-runs this slice's `sync/apply` batch test unchanged** as the proof that nothing else moved. ⚠️ **That deletion takes `refuseUnsupported` away, and with it this slice's last raiser of the code**, which the `error-codes` lint (§4.2.4, spec:2051) would go red on; **6D therefore owns the replacement raiser** — its Task 6 Step 6 `KNOWN_BATCH_KEYS` guard in `apps/api/src/routes/sync/tickets.ts` — and must not delete the `ERRORS` row instead. That guard answers **`200` with a `Problem` body**, which is §4.2.4's row for this code read literally: **the row stays as written and 6A raises no amendment against it** — Task 11 Step 4 records why a `4xx` would be wrong for a capability gap the till must re-send through rather than discard. **`document.shift_id` is 0061's column, not 0070's** (Task 0 amendment 6, 6D's amendment A2): 6D adds the index `document_shift_idx` and the `assertShiftKnown` guard, and adds no column and no foreign key. It also inserts one open `app.shift` row at `SHARED_SHIFT_ID` (its amendment A6), which is why that constant and `uuidv7Sync` are exported from `tests/invariants/support/pos.ts` rather than file-local. **6B** implements `SyncStore` over SQLite and runs this slice's `pullAll` and `drainOutbox` against it; `MemorySyncStore` in `tests/invariants/support/pos.ts` is the behaviour it must match. ⚠️ **6B also edits this slice's `tests/regression/legacy-046.test.ts` in place** (its amendment A2 moves `canonicalSyncRequest` into `packages/sync/src/signing.ts`, so the two assertions that name the middleware as the declaring file stop being true) — **that edit is welcome and this plan does not pre-empt it, but it must be written with `s.path` and `s.text`.** 6B's Task 0 Step 5 carries its replacement lines spelled `s.fileName` / `s.getFullText()`, reading an earlier draft of this file; the shipped file uses 0B's `SourceFile { path, text, lines }` members throughout (Task 15 Step 1), those are the only members that exist, and a replacement keeping the ts-morph spelling would fail `bun run typecheck` at 6B's own Task 0.
 
 **Push is the owner's call**, not part of any task's definition of done (plan0A:2927). Open the PR series — one per migration, one per remaining task — with the T15 Step 4 output pasted into each body.
 

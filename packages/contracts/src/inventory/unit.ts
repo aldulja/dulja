@@ -24,12 +24,12 @@ export const UnitQuery = ListQuery;
 export const UnitList = ListEnvelope(UnitSchema);
 
 /**
- * "1 <unit> = numerator / denominator base units" (SAH-066). Both parts are `bigint` in SQL and cross this
+ * "1 <unit> = numerator / denominator base units" (LEGACY-066). Both parts are `bigint` in SQL and cross this
  * boundary as digit STRINGS — never `number`, which loses precision above 2^53 and is what `no-number-money`
  * forbids for a rate (assumption 13).
  *
  * The two regexes are what make `denominator: "0"` a 400 with a JSON Pointer rather than a 500 raised by
- * `unit_conversion_denominator_check` — SAH-063 answered at the wire as well as in the schema. Negatives are
+ * `unit_conversion_denominator_check` — LEGACY-063 answered at the wire as well as in the schema. Negatives are
  * meaningless for a package factor, so neither part admits a sign.
  */
 export const UnitConversionSchema = z.object({

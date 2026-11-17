@@ -65,7 +65,7 @@ Acceptance test 23's 4A re-run is also blocked (`tests/e2e/ar-ap.spec.ts`, both 
 
 For **each** of the four screens:
 
-1. **A screenshot** of the Sahlisoft screen the staff use for that job today.
+1. **A screenshot** of the legacy screen the staff use for that job today.
 2. **A two-minute description**, from the person who actually does the job, of their real sequence: what they
    type first, what they never touch, which field they tab to most, which keys they press. Not a
    specification; the real sequence, including the parts that are annoying.
@@ -162,7 +162,7 @@ for is slower on it than on the system it replaced.
 ## The owner request, ready to send
 
 > **OD-24 (spec:2408), invoices, receipts and payments.** Before we build these screens, please provide:
-> **(a)** screenshots of the four Sahlisoft screens your staff use today: the invoice list, the invoice
+> **(a)** screenshots of the four legacy screens your staff use today: the invoice list, the invoice
 > itself, the receipt/payment voucher, and wherever a receipt is matched against invoices. **(b)** A
 > **two-minute description** of each, from whoever does the job, of the order they type in and what they tab
 > between. Include how a supplier payment gets its second signature today.

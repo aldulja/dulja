@@ -23,7 +23,7 @@ export type LegacyPredicate =
 /**
  * SQL three-valued logic, reproduced exactly: any comparison whose operand is NULL is unknown, and unknown is
  * not true. Getting this wrong in the fixture driver would make a reconciliation test pass on rows the live
- * database excludes — which is the whole class of defect this slice exists to find (SAH-011).
+ * database excludes — which is the whole class of defect this slice exists to find (LEGACY-011).
  *
  * Comparisons are over the text form, which is what every value is once the renderer has cast it (ADR 0082):
  * exact for equality and for ISO dates, and for ordering only where the corpus keeps codes equal-width. The

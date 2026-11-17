@@ -18,7 +18,7 @@ describe("reconcile('orphans') — §5.1 #3, 'report orphans; do not silently nu
       occurrences: 1,
       parentTable: "JOBS",
       status: "orphan",
-      note: "Job is 82% unconstrained across the shipped schema (SAH-073); the shipped fixes/fix-Jobs.sql exists because orphans occur.",
+      note: "Job is 82% unconstrained across the shipped schema (LEGACY-073); the shipped fixes/fix-Jobs.sql exists because orphans occur.",
     });
   });
 

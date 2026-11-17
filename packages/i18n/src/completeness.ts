@@ -29,14 +29,14 @@ const LATIN_WORD = /[A-Za-z]{2,}/;
  * `pos.shortcuts` and two 6C staff hints shipped that way (2026-10-23).
  */
 const NON_WESTERN_DIGIT = /[\u0660-\u0669\u06F0-\u06F9]/;
-/** A raw identifier shipped as UI text — the "TBXToolbar3" shape of SAH-085. */
+/** A raw identifier shipped as UI text — the "TBXToolbar3" shape of LEGACY-085. */
 const COMPONENT_NAME = /^[A-Z][A-Za-z]*\d+$/;
 
 const exempt = (key: string): boolean => EXEMPT_PREFIXES.some((p) => key.startsWith(p));
 
 /**
  * The mechanical half of spec:2061 — "Both catalogues must be complete before merge — no empty
- * `msgstr`, no source-language fallbacks in the other language (SAH-085)". Every rule below names a
+ * `msgstr`, no source-language fallbacks in the other language (LEGACY-085)". Every rule below names a
  * concrete failure the legacy build shipped.
  */
 export function checkCatalogues(

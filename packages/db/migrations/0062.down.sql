@@ -13,7 +13,7 @@
 --     `using (id = app.current_tenant())`, so the migrator enumerating it sees nothing.
 -- The operator, not this file, removes the grants per tenant first (a seed-tier act, under
 -- `set_config('app.tenant_id', …)`), and re-runs `bun run seed --tenant <id> --only roles` after
--- re-migrating. NEVER disable or drop the policy to make this file "work" — SAH-027, SAH-041, SAH-053.
+-- re-migrating. NEVER disable or drop the policy to make this file "work" — LEGACY-027, LEGACY-041, LEGACY-053.
 delete from app.permission where code in (
   'admin.terminal.manage','pos.sync.pull','pos.sync.push','pos.ticket.sell','pos.ticket.discount',
   'pos.ticket.return','pos.ticket.return_blind','pos.ticket.void','pos.ticket.override',

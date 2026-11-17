@@ -9,7 +9,7 @@ import {
 const TENANT = "01927f3a-0000-7000-8000-000000000001";
 const ATTACHMENT = "01927f3a-0000-7000-8000-0000000000aa";
 
-describe("objectKeyFor — SAH-038: the key is derived, never supplied", () => {
+describe("objectKeyFor — LEGACY-038: the key is derived, never supplied", () => {
   it("is exactly '<tenant_id>/<attachment_id>'", () => {
     expect(objectKeyFor(TENANT, ATTACHMENT)).toBe(`${TENANT}/${ATTACHMENT}`);
   });

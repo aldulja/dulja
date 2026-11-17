@@ -91,7 +91,7 @@ describe("app.document_event — contracts §4.5.2/§4.5.3, spec:1782–1787, R8
     expect(idx.map((i) => i.indexname)).toContain("document_event_document_idx");
   });
 
-  it("stamps actor_id from the session and refuses a payload actor (spec:1370, SAH-044)", async () => {
+  it("stamps actor_id from the session and refuses a payload actor (spec:1370, LEGACY-044)", async () => {
     const doc = await draftDocument(db, a);
     const other = await secondPrincipal(a, "impostor");
     const [row] = await withTenant(

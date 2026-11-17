@@ -4,13 +4,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Prove the whole Phase 5 definition of done — *"The return is generated, validated and reconciled end-to-end against a golden fixture"* — by shipping the four pieces SAH-020 says the legacy system never had. (1) A **pure tax engine** in `packages/domain/src/tax/`: versioned regimes with rate-effective-date tables, every tax code declaring its regime, inclusive and exclusive bases, one rounding function with a mode declared **per tax code**, and a wrong-regime refusal that raises `ERR_TAX_REGIME_MISMATCH` instead of producing a wrong number. (2) The four tables §4.9.2 pins — `app.tax_regime`, `app.tax_code`, the append-only `app.tax_transaction` written **only** by the posting service at step 11, and `app.tax_return` — plus `document_line.tax_code_id` and the `document.tax_inclusive` header field. (3) The **Malaysia jurisdiction pack** as seed data under `packages/db/seed/my/tax/`, applied by a new `--only tax` loader, linking its codes to the two account codes this slice seeds (`2300` output tax payable, `1350` input tax receivable) — with **no published Malaysian rate, code name, box name or threshold anywhere in it**: the shipped regime is the clearly-synthetic `SYNTH-MY-v1`, and the verified one arrives through **OD-15** as a reviewed seed PR under ADR 0049. (4) **Return generation from `tax_transaction` and nothing else**, byte-identical across runs against `tests/golden/tax/`, with the generated boxes tying to `account_balance` on `2300` and `1350` to the cent — acceptance test **26**.
+**Goal:** Prove the whole Phase 5 definition of done — *"The return is generated, validated and reconciled end-to-end against a golden fixture"* — by shipping the four pieces LEGACY-020 says the legacy system never had. (1) A **pure tax engine** in `packages/domain/src/tax/`: versioned regimes with rate-effective-date tables, every tax code declaring its regime, inclusive and exclusive bases, one rounding function with a mode declared **per tax code**, and a wrong-regime refusal that raises `ERR_TAX_REGIME_MISMATCH` instead of producing a wrong number. (2) The four tables §4.9.2 pins — `app.tax_regime`, `app.tax_code`, the append-only `app.tax_transaction` written **only** by the posting service at step 11, and `app.tax_return` — plus `document_line.tax_code_id` and the `document.tax_inclusive` header field. (3) The **Malaysia jurisdiction pack** as seed data under `packages/db/seed/my/tax/`, applied by a new `--only tax` loader, linking its codes to the two account codes this slice seeds (`2300` output tax payable, `1350` input tax receivable) — with **no published Malaysian rate, code name, box name or threshold anywhere in it**: the shipped regime is the clearly-synthetic `SYNTH-MY-v1`, and the verified one arrives through **OD-15** as a reviewed seed PR under ADR 0049. (4) **Return generation from `tax_transaction` and nothing else**, byte-identical across runs against `tests/golden/tax/`, with the generated boxes tying to `account_balance` on `2300` and `1350` to the cent — acceptance test **26**.
 
-**Architecture:** Three seams, and none of them is a new posting path. (1) **The engine is pure and the jurisdiction pack is data-shaped.** `packages/domain/src/tax/` imports `decimal.js` through `@dulja/domain`'s own money module and nothing else — no database, no clock, no network — which is what makes `tests/golden/tax/` byte-comparable (spec:2264) and what makes SAH-020 unrepeatable: there is one rate source (`app.tax_code`, seeded from a reviewed file), one rounding call (`Money.multiply` with the code's declared `RoundingMode`), and one regime discriminator that every code carries. `malaysiaPack` holds **regime definitions keyed `(code, version)`** carrying their box layout; `buildReturn` matches the database's `TaxRegime` row to a definition by that pair and refuses an unknown pair — a regime the pack does not know *is* a mismatch. (2) **Tax is computed at persist time, once** (spec:2228). `packages/db/src/tax/compute.ts` runs inside 1A's `PUT …/documents/{documentId}/lines` and `POST …/documents` handlers, resolves each line's code, calls the pure engine and writes `document_line.tax_amount` / `total_incl_tax`. The evaluator then reads those stored columns — 2A already ships `each_tax` grouping and `PostingPlan.taxLines` in full — so draft and post can never disagree, provided `compute.ts` resolves `policy.tax.inclusive` with the **same one-line rule** the evaluator uses. (3) **`app.tax_transaction` has exactly one writer**: `packages/db/src/posting/tax.ts`, called from `post.ts` at step 11, inserting `plan.taxLines` with their **signed** magnitudes (A9's one exception) and their base twins from `toBase`. Returns read that table and never a document. **This slice adds two route modules** (`tax-codes`, `tax-returns`) and therefore exactly two `PROBES` keys.
+**Architecture:** Three seams, and none of them is a new posting path. (1) **The engine is pure and the jurisdiction pack is data-shaped.** `packages/domain/src/tax/` imports `decimal.js` through `@dulja/domain`'s own money module and nothing else — no database, no clock, no network — which is what makes `tests/golden/tax/` byte-comparable (spec:2264) and what makes LEGACY-020 unrepeatable: there is one rate source (`app.tax_code`, seeded from a reviewed file), one rounding call (`Money.multiply` with the code's declared `RoundingMode`), and one regime discriminator that every code carries. `malaysiaPack` holds **regime definitions keyed `(code, version)`** carrying their box layout; `buildReturn` matches the database's `TaxRegime` row to a definition by that pair and refuses an unknown pair — a regime the pack does not know *is* a mismatch. (2) **Tax is computed at persist time, once** (spec:2228). `packages/db/src/tax/compute.ts` runs inside 1A's `PUT …/documents/{documentId}/lines` and `POST …/documents` handlers, resolves each line's code, calls the pure engine and writes `document_line.tax_amount` / `total_incl_tax`. The evaluator then reads those stored columns — 2A already ships `each_tax` grouping and `PostingPlan.taxLines` in full — so draft and post can never disagree, provided `compute.ts` resolves `policy.tax.inclusive` with the **same one-line rule** the evaluator uses. (3) **`app.tax_transaction` has exactly one writer**: `packages/db/src/posting/tax.ts`, called from `post.ts` at step 11, inserting `plan.taxLines` with their **signed** magnitudes (A9's one exception) and their base twins from `toBase`. Returns read that table and never a document. **This slice adds two route modules** (`tax-codes`, `tax-returns`) and therefore exactly two `PROBES` keys.
 
 **Tech Stack:** Bun 1.4 (install, scripts, the API entrypoint) · Node 24 LTS (runs Vitest) · TypeScript strict · PostgreSQL 18 (Testcontainers `postgres:18`) · `postgres` (postgres.js) tagged templates for every write and every read · Drizzle ORM mirrors for typed reads and as the migration diff source (ADR-0002) · Hono + `@hono/zod-openapi` · Zod · `decimal.js` behind `@dulja/domain`'s `Money` · Ajv (already in `packages/domain` from 1A) for the two new pack schemas · React 19 + `@dulja/ui` + i18next (the OD-24 screen) · Vitest + Testcontainers · Playwright (the both-directions re-run of test 23) · oxlint + oxfmt · Turborepo. No package version appears in any source file — the lockfile owns versions (spec:104).
 
-**Spec:** `docs/spec/rebuild-spec.md` v1.2 — §0.2 the never/always lists (spec:97–108), §3.0.3 the **Malaysian tax + e-invoicing** row (spec:1027), §3.3 the entity map's `TaxTransaction ── TaxReturn (pluggable jurisdiction packs)` line (spec:1199), §3.5 country seed-data packs (spec:1242), §3.8 the posting-policy `tax` block and the `each_tax` line of the worked example (spec:2017, 2022), §3.9 Enumerations, Money, Time, Deletion and Error codes (spec:2037–2053), §4.2.1 `accounting.tax.manage` / `accounting.tax.file` and the `accountant` row (spec:2147, 2157), §4.7 the tax-engine and rounding bullets (spec:2227–2228) and the e-invoicing bullet's ⚠️ (spec:2225–2226), §4.11 engineering practice and golden-file tests (spec:2258–2267), §5.0 bootstrap step 5 (spec:2001), §5.2 `packages/domain` and `tests/golden/` (spec:2352–2389), §5.3 the "Phase 5" owner row (spec:2405), Part V the Phase 5 row (spec:2291), Part VI test **26** (spec:2444), Part VII **#3** (spec:2463), Part I **SAH-011** (spec:311 — the VAT half), **SAH-019** (spec:381), **SAH-020** (spec:388), **SAH-058** (spec:708), **SAH-059** (spec:713).
+**Spec:** `docs/spec/rebuild-spec.md` v1.2 — §0.2 the never/always lists (spec:97–108), §3.0.3 the **Malaysian tax + e-invoicing** row (spec:1027), §3.3 the entity map's `TaxTransaction ── TaxReturn (pluggable jurisdiction packs)` line (spec:1199), §3.5 country seed-data packs (spec:1242), §3.8 the posting-policy `tax` block and the `each_tax` line of the worked example (spec:2017, 2022), §3.9 Enumerations, Money, Time, Deletion and Error codes (spec:2037–2053), §4.2.1 `accounting.tax.manage` / `accounting.tax.file` and the `accountant` row (spec:2147, 2157), §4.7 the tax-engine and rounding bullets (spec:2227–2228) and the e-invoicing bullet's ⚠️ (spec:2225–2226), §4.11 engineering practice and golden-file tests (spec:2258–2267), §5.0 bootstrap step 5 (spec:2001), §5.2 `packages/domain` and `tests/golden/` (spec:2352–2389), §5.3 the "Phase 5" owner row (spec:2405), Part V the Phase 5 row (spec:2291), Part VI test **26** (spec:2444), Part VII **#3** (spec:2463), Part I **LEGACY-011** (spec:311 — the VAT half), **LEGACY-019** (spec:381), **LEGACY-020** (spec:388), **LEGACY-058** (spec:708), **LEGACY-059** (spec:713).
 
 ## Assumptions and contracts (from docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md)
 
@@ -28,7 +28,7 @@
 - **Interfaces consumed:** §4.1 (the whole Plan 0A surface), §4.2.1 (`Money`, `currency`, `round`, `RoundingMode`, `toBase`, `MONEY_SCALE`, `RATE_SCALE`), §4.2.2 (`withTenant`, `TenantContext`, `systemContext`, `createDb`), §4.2.3 (`AppEnv`, `RequestContext`, `Logger`, the middleware order), §4.2.4 (`Problem`, `ERRORS`, `AppError`, `fromDatabaseError`, `PostingError` — and `ERR_TAX_REGIME_MISMATCH`, this slice's one registry row), §4.2.5 (`PERMISSION`, `requirePermission`, `ScopeSource`, `ROLES`, `INCOMPATIBLE_PAIRS`, `assertRouteGates`), §4.2.7 (`RouteModule`, `buildRoutes`, `IdempotencyHeader`, `createApp`, `PROBES`, `TENANT_FREE`), §4.2.8 (the common schemas, the list envelope, the cursor codec, **the one list-filter convention — literal `filter[…]` keys, the Layer 2 default**), §4.2.9 (`idempotency`, `RECLAIM_AFTER_SECONDS`), §4.2.12 (`startApi`, `ApiRequest`, `StartedApi`), §4.2.13 (`PackLoader`, `LoaderContext`, `readPackFile`, `assertPackShape`, `SubPack`, `SUB_PACKS`, `PHASE_0_SUB_PACK_DIRECTORIES`, the four exit codes), §4.3.1 (`postDocument`, `loadSnapshot`, `resolvePolicy`, `PostResult`), §4.3.2 (the fixed algorithm — **steps 6, 8, 10, 11, 12**), §4.3.4 (`document_line` and its 5A row, the `document` header additions and its 5A row), §4.3.5 (`posting_seq`), §4.3.7 (the seed envelope, `loadDocumentTypes`, the two-numbers-one-word paragraph), §4.4.1 (`posting-policy.schema.json` — consumed **unchanged**, same `$id`, same `"version": 1`; the `tax` block, `each_tax`, `tax_code.output_account` / `tax_code.input_account`, `amountRef` `tax.amount`), §4.4.2 (`evaluatePolicy`, `DocumentSnapshot`, `LineSnapshot`, `TaxCodeRef`, `PlannedTaxLine`, **sign normalisation A9 and its one exception**), §4.5.1 (legal transitions), §4.5.4 (`requireDocumentPermission`), §4.6.1 (the register rows for `tax_regime`, `tax_code`, `tax_transaction`, `tax_return`), §4.9.1 and §4.9.2 **in full**, §4.9.3 (only for the `hash` sentence Task 5's canonicaliser must satisfy), §4.14 (document-type codes — consumed, none added), §4.15 (account codes — **`2300` and `1350` are this slice's two rows**), §4.16.1 (consulted to establish that `accounting.tax_return_view` is **7C's** and this slice ships no `ReportCode`), §4.16.2 (`tax_transaction` is already in 7A's ≤ 0058 `DatasetId` set — this slice adds no member and never edits that file), §4.17 (`seedTaxCode` — this slice's one row), §4.17.1, §5 (all thirty-five hazards), §6.1 row 26, §6.2 row 1046.
 - **Interfaces produced:** §4.9.1 in full (`TaxRegime`, `TaxCodeDef`, `TaxLineInput`, `TaxLineResult`, `TaxEngine`, `ReturnBox`, `JurisdictionPack`, `malaysiaPack`, and the `TaxTransactionRow` §4 leaves open as 5A's own); §4.9.2 in full (`app.tax_regime`, `app.tax_code`, `app.tax_transaction`, `app.tax_return`); §4.3.4's 5A rows (`document_line.tax_code_id` FK in 0055, `document.tax_inclusive` in 0054); §3.6.2's one code `accounting.tax.manage`; §4.2.4's `ERR_TAX_REGIME_MISMATCH`; §4.15's `2300` and `1350`; §4.17's `seedTaxCode`; §4.2.13's `tax` sub-pack loader. Everything else is listed under **Contract additions** in the Self-Review and lands through **Task 0**.
 - **Owner decisions:** **OD-15** (LHDN MyInvois credentials and the current requirement set — spec:92, 982, 2226, 2405, 2467; Part VII #3) → **Task 10**, isolated, and **nothing else in this plan is gated on it**. §2.6's card scopes 5A's half precisely: *"'current requirement set' for the **return** format is verified from the authority's own documentation before the return task"*. The default written into every other task is §2.12's — **abstract interface only** — realised here as the synthetic `SYNTH-MY-v1` regime definition, which is a complete, testable jurisdiction pack that names no published figure. Task 10 adds the verified definition beside it and changes no signature. **OD-24** (screenshots + a two-minute operator description before any screen) → **Task 12**, isolated; default: the screen task is blocked, the slice is not.
-- **Part VI tests owned / re-run:** **owns 26** (tax return determinism — Task 9; 5B re-runs it with e-invoicing hooks on). **Re-runs:** **15** (new document type, zero code — Task 8 flips the `tax` block of four *configured* types through a seed PR and no TypeScript change), **12**, **13** and **36** (tenant isolation, audit completeness and the permission catalogue over this slice's four tables, one code and two route modules — Tasks 1, 2, 4, 8 and 11), **27** (no SQL text across the API — Task 11), **1** and **2** are untouched by this slice and are not re-run. **§3.0.4 rows owned:** spec:**1046** Tax — the "Malaysia pack, returns" half; 5B completes the "e-invoicing hooks" clause. **Regression files created / appended:** **creates** `tests/regression/sah-020.test.ts`, `sah-058.test.ts`, `sah-059.test.ts` (Task 11 — none of the three is in 0B's Plan 0A-proven or structural list, and no earlier slice touches them). **Appends** a `— 5A` block to `tests/regression/sah-011.test.ts` (the VAT-box half) and `sah-019.test.ts` (rounding per tax code); both are 0B's thin files and this slice never edits an earlier block.
+- **Part VI tests owned / re-run:** **owns 26** (tax return determinism — Task 9; 5B re-runs it with e-invoicing hooks on). **Re-runs:** **15** (new document type, zero code — Task 8 flips the `tax` block of four *configured* types through a seed PR and no TypeScript change), **12**, **13** and **36** (tenant isolation, audit completeness and the permission catalogue over this slice's four tables, one code and two route modules — Tasks 1, 2, 4, 8 and 11), **27** (no SQL text across the API — Task 11), **1** and **2** are untouched by this slice and are not re-run. **§3.0.4 rows owned:** spec:**1046** Tax — the "Malaysia pack, returns" half; 5B completes the "e-invoicing hooks" clause. **Regression files created / appended:** **creates** `tests/regression/legacy-020.test.ts`, `legacy-058.test.ts`, `legacy-059.test.ts` (Task 11 — none of the three is in 0B's Plan 0A-proven or structural list, and no earlier slice touches them). **Appends** a `— 5A` block to `tests/regression/legacy-011.test.ts` (the VAT-box half) and `legacy-019.test.ts` (rounding per tax code); both are 0B's thin files and this slice never edits an earlier block.
 - **Shared namespaces this slice writes into:** **document-type codes (§4.14) — none, and no test-only code either.** Every type this slice's tests configure is a **4A envelope read off disk** through 4B's `seedTypeFromPack`, and Task 8's four upserts change the `policy` member of files 4A already shipped, at `policyVersion: 2`. **Account codes (§4.15) — two, both this slice's own rows: `2300` Output tax payable (liability) and `1350` Input tax receivable (asset)**, shipped as `packages/db/seed/my/chart-of-accounts/5a-tax.json` and applied with `bun run seed --tenant <id> --only chart-of-accounts` in Task 4. Consumed and asserted-not-reseeded, each with its seeding slice: `1000` Cash (0C), `1100` Bank (0C), `1200` trade receivables (0C), `1300` Inventory control (0C), `2100` trade payables (0C), `4000` Sales (0C), `5000` COGS (0C), `5900` Other operating expense (0C), `5920` FX rounding (0C), `2150` GRNI (**3C**), `1250` goods delivered not invoiced (**3D**). **Report codes (§4.16.1) — none.** `accounting.tax_return_view` is **7C's** row and this slice does not ship it: the *filed return* is a `tax_return` row served by this slice's own route module, and hazard 4's minimal-set list (spec:2300) names no Phase 5 report. `ReportCodeSchema` is therefore **not** widened here. **`DatasetId` members (§4.16.2) — none:** 7A creates `datasets.ts` with `tax_transaction` already in its ≤ 0058 set. **`fixtures.ts` helpers (§4.17) — exactly one, the row §4.17 assigns 5A: `seedTaxCode(db, s, opts?: { code?; rate?; kind?; regimeId? }) → { taxCodeId: string; regimeId: string }`, creating the regime on first call.** **Shared test helpers (§4.17.1) — one new file and one recorded additive edit to another slice's, both registered in Task 0:** `tests/invariants/support/tax.ts` with `TAX_PACK_ROOT`, `seedTaxPack`, `TaxFixture`, `taxFixture`, `TaxedLine` and `postTaxedDocument` — **six exports** (amendment A9); and **4B's `tests/invariants/support/ar-ap.ts`, whose `PostFromPackOptions` gains `taxInclusive?: boolean` and `computeTax?: boolean`** and whose `postFromPack` body gains one block — additive, optional, defaulted `false`, no signature changed, amendment **A13a**, made in Task 7.
 - **Six `Seed`, fixture and register facts every test in this plan depends on, stated once because getting one wrong is a silent failure.** (1) **`Seed` has no `branch` member** — it is `{ tenant; system; human; company; period; closedPeriod; lockedPeriod; cash; sales; docType; policy; branchType; hq }` (§4.1), and `app.document.branch_id` is NOT NULL, so every `branchId:` in this plan is `<seed>.hq` unless a second value came from `seedBranch`. (2) **`seedTenant` grants `s.human` nothing** (§4.1, pinned) and 2B's R2 evaluates `policy.approval.post` *inside* the posting transaction, so **every posting test calls `grantCodes` first**. (3) **`seedTenantV2` creates `1000 Cash`, `4000 Sales` and `5920 FX rounding` and nothing else** — every other account this slice's tests touch, `2300` and `1350` included, is created in the test through 1A's `seedAccount(db, s, { code, nameEn, type })`. (4) **Plan 0A seeds exactly three fiscal periods and only 2026-01 is open** (`s.period` open, `s.closedPeriod` 2026-02 **closed**, `s.lockedPeriod` 2026-03 **locked**); every test that posts outside January calls **3B's `ensureOpenPeriods(db, s, 2026)`** first. (5) **`app.document` has no `custom_fields` column** — only `document_line` does (§4.3.4), and `DocumentSnapshot.header.customFields` is assembled by `loadSnapshot` from `app.custom_field_value` (§4.2.11). This slice writes no header custom field: `tax_inclusive` is a **column** (0054), which is why 4A's policies can name it as `"header.tax_inclusive"`. (6) **`app_rw` holds DELETE on exactly five tables** (§3.5.4) and **2B is the only slice that ever extends that list** — so nothing in this slice deletes a row: `tax_code` is archived with `archived_at`, `tax_transaction` is immutable, and a regenerated `tax_return` is an UPDATE of the same row.
 - **Never re-decide:** D1–D27 (spec:114–142); every name in the contracts document is frozen — a needed change goes to that document first (that is what Task 0 is).
@@ -38,14 +38,14 @@
 
 Copied verbatim from the spec and the contracts document; every task's requirements implicitly include this section.
 
-1. **Never**, at any phase, for any reason (spec:97–104): write to a ledger or movement table outside the posting service; represent money as a float, anywhere, including in TypeScript; build SQL by string concatenation (SAH-036/037/069); issue DDL from application code (SAH-053); disable an invariant, constraint or trigger "temporarily" (SAH-027, 041, 053); gate an audit write on any flag (SAH-030); hard-code a package version into a source file — the lockfile owns versions.
+1. **Never**, at any phase, for any reason (spec:97–104): write to a ledger or movement table outside the posting service; represent money as a float, anywhere, including in TypeScript; build SQL by string concatenation (LEGACY-036/037/069); issue DDL from application code (LEGACY-053); disable an invariant, constraint or trigger "temporarily" (LEGACY-027, 041, 053); gate an audit write on any flag (LEGACY-030); hard-code a package version into a source file — the lockfile owns versions.
 2. **Always**, for every new table (spec:106): `tenant_id`, an RLS policy named exactly `tenant_isolation`, `created_at`, a migration with a hand-written down, and a test that a second tenant cannot see it. For every new endpoint: Zod schema, OpenAPI entry, idempotency on unsafe methods, and a tenant-isolation test. For every UI screen: verified in both text directions before merge. **This slice creates four tables** and every one carries the §3.3 binding form and a two-tenant test in the same task.
 3. **`app.tax_transaction` is on the `posting-only-tables` list 1A shipped** (§3.7.5 names it explicitly), so an `insert`, `update`, `delete` or `merge` naming it is legal **only** in `packages/db/src/posting/**`, `packages/db/src/costing/**`, `packages/db/test/**` and `scripts/lint/rules/**`. `packages/db/src/tax/returns.ts` **reads** it and never writes it; `packages/db/src/posting/tax.ts` is its one writer. **This is the mechanical half of hazard 22 and this slice is the first to be bound by that particular table name.**
 4. **Money** is `numeric(19,4)` in Postgres and the opaque `Money` type in `@dulja/domain` in TypeScript; **a tax rate is `numeric(19,8)` in Postgres and an 8-dp decimal string in TypeScript, never a `number`** (`no-number-money` matches `/rate|tax/i`, §3.7.5). Every wire amount is `{ amount, currency }`; every date `YYYY-MM-DD`. Every tie-out in this slice sums through `Money.add` or SQL `sum(...)::text` — never `Number()`, never `.toFixed()`.
-5. **One rounding function, one mode, declared per tax code** (spec:2228, SAH-019). Tax is `Money.multiply(rate, code.roundingMode)` and nothing else; there is no local `round`, no `Math.round`, and no second rounding of an already-rounded figure. `toBase` stays `HALF_AWAY_FROM_ZERO` at scale 4 (hazard 23) and is the only place a rate applies to a base amount.
+5. **One rounding function, one mode, declared per tax code** (spec:2228, LEGACY-019). Tax is `Money.multiply(rate, code.roundingMode)` and nothing else; there is no local `round`, no `Math.round`, and no second rounding of an already-rounded figure. `toBase` stays `HALF_AWAY_FROM_ZERO` at scale 4 (hazard 23) and is the only place a rate applies to a base amount.
 6. **`PlannedLedgerLine.amount` is never negative and `side` is the sole carrier of direction** (§4.4.2 A9) — **and `PlannedTaxLine.amount` is the one registered exception and stays signed.** This slice is named in A9's ⚠️ warning list. **No line of this slice tests `amount.isNegative()` — or any sign — to choose a ledger direction, an account or a box.** The two places a **signed magnitude flows through** are declared in the Self-Review, both over `tax_transaction.tax`, and in both of them a credit note's negative tax is a *subtraction* with no sign logic at all.
 7. **Every query, reads included, runs inside `withTenant`** (spec:2053). `db.` is a lint violation; only a `tx` obtained from `withTenant` may tag SQL. `sql.unsafe` has exactly three homes and none is in this slice (§3.3, hazard 21).
-8. **One migration per PR** (spec:2057); each file runs whole in one transaction; every statement carries a comment naming the SAH-/spec reference it serves; SQL keywords lowercase; section banners `-- ── N. title ───`; a hand-written `NNNN.down.sql` that drops only what the up added, in reverse dependency order (§3.4.5).
+8. **One migration per PR** (spec:2057); each file runs whole in one transaction; every statement carries a comment naming the LEGACY-/spec reference it serves; SQL keywords lowercase; section banners `-- ── N. title ───`; a hand-written `NNNN.down.sql` that drops only what the up added, in reverse dependency order (§3.4.5).
 9. **No enum label is added** (§3.4.4, hazard 11); every new closed vocabulary in this slice is `text` + a named `check` — `tax_code.kind`, `tax_code.rounding_mode`, `tax_return.status`.
 10. **Deletion** (spec:2049): financial rows never; master data is `archived_at`. §3.5.4's pinned `app_rw` DELETE list is **unchanged** by this slice and Task 11 re-asserts it as an equality.
 11. **Error codes** are `ERR_<DOMAIN>_<REASON>` enumerated in `packages/contracts/src/errors.ts`, and a code no code raises fails the build (spec:2051). **This slice adds exactly one row to `ERRORS`: `ERR_TAX_REGIME_MISMATCH` (422), allocated by §4.2.4 to 5A, added in the PR that raises it (Task 5).** Everything else it raises is already shipped: `ERR_VALIDATION_FAILED`, `ERR_NOT_FOUND`, `ERR_RBAC_FORBIDDEN`, `ERR_RLS_DENIED`, `ERR_CONFLICT_UNIQUE`, `ERR_CONFLICT_REFERENCE`, `ERR_DOC_STATUS_ILLEGAL`, `ERR_POLICY_REQUIRES_MISSING`, `ERR_PERIOD_NOT_OPEN`, `ERR_TABLE_IMMUTABLE`, `ERR_ACTOR_IMMUTABLE`, `ERR_INTERNAL`. **This list is closed: a token in any test of this slice that is not on it is either a typo or an unregistered code, and both fail the `error-codes` lint.**
@@ -210,11 +210,11 @@ tests/
 │  ├─ tax/synth-my-quarter/{input,expected}.json              NEW   (no policies.json — A10)  T9
 │  └─ tax/synth-my-inclusive/{input,expected}.json            NEW                             T9
 ├─ regression/
-│  ├─ sah-020.test.ts                NEW   created by this slice                            T11
-│  ├─ sah-058.test.ts                NEW   created by this slice                            T11
-│  ├─ sah-059.test.ts                NEW   created by this slice                            T11
-│  ├─ sah-011.test.ts                EDIT  append a `— 5A` block                            T11
-│  └─ sah-019.test.ts                EDIT  append a `— 5A` block                            T11
+│  ├─ legacy-020.test.ts                NEW   created by this slice                            T11
+│  ├─ legacy-058.test.ts                NEW   created by this slice                            T11
+│  ├─ legacy-059.test.ts                NEW   created by this slice                            T11
+│  ├─ legacy-011.test.ts                EDIT  append a `— 5A` block                            T11
+│  └─ legacy-019.test.ts                EDIT  append a `— 5A` block                            T11
 └─ e2e/tax-return.spec.ts            NEW   ⚠️ OD-24 — dropped with T12                      T12
 ```
 
@@ -240,7 +240,7 @@ The project folder is read-only to this plan's writer except this file, so the a
 | # | § | Amendment | Blocks |
 |---|---|---|---|
 | **A1** | 2.6, 3.4.2 | The 5A card's expected migration name **`0054_create_tax_transaction_return.sql` becomes `0054_create_tax_transaction_return_and_document_tax_inclusive.sql`**. §4.3.4 already assigns `document.tax_inclusive` to 0054 and §3.4.2's round-2 rule binds the card's short name to the longer one the contents require (2A's `0018_…` and 2B's `0023_…` are the two recorded instances; this is the third). | **T2** |
-| **A2** | 4.9.2 | **`app.tax_regime` gains one column: `source text not null`** — where the regime's rates and box layout came from, in the form `'<publication or file> <date>'`, exactly as `exchange_rate.source` (§4.2.10) and `statutory_rate_table.source` (§4.6.1) already record provenance. SAH-020's root cause is a rate with no provenance and no regime discriminator; the discriminator is already in §4.9.2 and this is the other half. **No column is added to `tax_code`** — §4.9.2's `tax_code` ships exactly as pinned. ADR 0050 proposes it. | **T1** |
+| **A2** | 4.9.2 | **`app.tax_regime` gains one column: `source text not null`** — where the regime's rates and box layout came from, in the form `'<publication or file> <date>'`, exactly as `exchange_rate.source` (§4.2.10) and `statutory_rate_table.source` (§4.6.1) already record provenance. LEGACY-020's root cause is a rate with no provenance and no regime discriminator; the discriminator is already in §4.9.2 and this is the other half. **No column is added to `tax_code`** — §4.9.2's `tax_code` ships exactly as pinned. ADR 0050 proposes it. | **T1** |
 | **A3** | 4.9.1 | **`JurisdictionPack.regimes` is `readonly RegimeDefinition[]`, not `TaxRegime[]`.** `TaxRegime.id` is a per-tenant uuid and `malaysiaPack` is a pure module-level const, so it cannot hold database rows. A `RegimeDefinition` is `{ code; version; jurisdiction; boxes: ReturnBoxDef[] }` and `buildReturn` matches the **passed** `TaxRegime` row to a definition by `(code, version)`, refusing an unknown pair with `ERR_TAX_REGIME_MISMATCH` — a regime the pack does not know *is* a mismatch. The `compute`, `buildReturn` and `validateReturn` signatures are otherwise §4.9.1 verbatim. | **T6** |
 | **A4** | 4.2.4, 4.3.8 | **`PostingErrorCode` gains `"ERR_TAX_REGIME_MISMATCH"`** — a tenth member. §4.3.8 has listed the code among the posting service's errors since the registry was written, but 1A's union (phase-1a:2051) has nine members and no plan has widened it; `packages/db/src/posting/**` cannot import `AppError` (§3.1), so the code must be in the union or `postDocument` cannot raise it. **4B hit the identical gap with `ERR_RATE_NOT_FOUND` and widened it the same way** (its third-pass item 4). No cast, no second error class, and `ERRORS` gains its own row in T5. | **T5, T7** |
 | **A5** | 4.9.1 | **`TaxTransactionRow` is declared** — §4 leaves it open as one of the five bodies 5A owns outright, and this fixes its shape so `buildReturn`'s input type is not written twice: `{ documentId; documentTypeCode; lineNo; taxCodeId; taxCode: string; regimeId: string; kind: TaxCodeDef["kind"]; rate: string; base: Money; tax: Money; baseBase: Money; taxBase: Money; effectiveDate: string; postingSeq: string }`. It is declared **in `packages/domain/src/tax/jurisdiction.ts`** — a pure shape a pure `buildReturn` consumes — and `packages/db/src/tax/returns.ts` builds it from the §4.9.2 row. | **T6, T8** |
@@ -369,7 +369,7 @@ EOF
 
 ### Task 1: Migration 0053 — `app.tax_regime` and `app.tax_code`
 
-**PR 1 of 4.** The two master tables of §4.9.2, with A2's one added column. `tax_regime` is the discriminator SAH-020's GST/VAT enum collision lacked: two procedures read `TaxCodes.Kind` with incompatible meanings and nothing said which regime a code belonged to. Here every code carries `regime_id` NOT NULL, and a return names its regime.
+**PR 1 of 4.** The two master tables of §4.9.2, with A2's one added column. `tax_regime` is the discriminator LEGACY-020's GST/VAT enum collision lacked: two procedures read `TaxCodes.Kind` with incompatible meanings and nothing said which regime a code belonged to. Here every code carries `regime_id` NOT NULL, and a return names its regime.
 
 This task also ships the one `fixtures.ts` helper §4.17 assigns 5A. **It is one of exactly two tasks that touch `fixtures.ts`** — the other is **T3**, which adds amendment A12's single `taxCodeId` member to 3C's `DraftLine` and its column to `draftTypedDocument`'s insert, in the same PR as the foreign key. Neither task edits anything the other wrote and no third task opens the file (hazard 9).
 
@@ -425,7 +425,7 @@ beforeAll(async () => {
 }, 180_000);
 afterAll(async () => { await db?.stop(); });
 
-describe("migration 0053 — tax_regime and tax_code (§4.9.2, SAH-020)", () => {
+describe("migration 0053 — tax_regime and tax_code (§4.9.2, LEGACY-020)", () => {
   it("applies as version 53 and lintSchema reports zero violations", async () => {
     expect(await listApplied(db.migrator)).toContain(53);
     expect(await lintSchema(db.admin)).toEqual([]);
@@ -443,7 +443,7 @@ describe("migration 0053 — tax_regime and tax_code (§4.9.2, SAH-020)", () => 
     expect(cols.find((c) => c.column_name === "jurisdiction")!.data_type).toBe("character");
   });
 
-  it("a code cannot exist without a regime — regime_id is NOT NULL (SAH-020's missing discriminator)", async () => {
+  it("a code cannot exist without a regime — regime_id is NOT NULL (LEGACY-020's missing discriminator)", async () => {
     const [c] = await db.admin<{ is_nullable: string }[]>`
       select is_nullable from information_schema.columns
        where table_schema = 'app' and table_name = 'tax_code' and column_name = 'regime_id'`;
@@ -464,7 +464,7 @@ describe("migration 0053 — tax_regime and tax_code (§4.9.2, SAH-020)", () => 
     expect(enums.map((e) => e.typname)).toEqual(["account_type", "document_status", "period_status", "principal_kind"]);
   });
 
-  it("a rate is numeric(19,8) and cannot be negative (SAH-019's NULL/overflow class)", async () => {
+  it("a rate is numeric(19,8) and cannot be negative (LEGACY-019's NULL/overflow class)", async () => {
     const [r] = await db.admin<{ numeric_precision: number; numeric_scale: number; is_nullable: string }[]>`
       select numeric_precision, numeric_scale, is_nullable from information_schema.columns
        where table_schema = 'app' and table_name = 'tax_code' and column_name = 'rate'`;
@@ -566,11 +566,11 @@ TypeError: seedTaxCode is not a function
 -- 0053_create_tax_regime_code.sql
 -- Contracts §4.9.2 (tax_regime, tax_code) plus amendment A2 (tax_regime.source).
 --
--- SAH-020: procCalculateVATReturn and procCalculateGSTReturn read the SAME TaxCodes.Kind column with
+-- LEGACY-020: procCalculateVATReturn and procCalculateGSTReturn read the SAME TaxCodes.Kind column with
 -- incompatible meanings (1 = standard-rated output vs 1 = TX input) and nothing said which regime a code
 -- belonged to, so a VAT tenant running the GST return reported sales as purchases with no warning. Here
 -- every code carries regime_id NOT NULL, a regime is versioned and effective-dated, and a return names the
--- regime it was built for (0054). SAH-019: the rounding rule is a column ON THE CODE, applied by the one
+-- regime it was built for (0054). LEGACY-019: the rounding rule is a column ON THE CODE, applied by the one
 -- rounding function at persist time (spec:2228, ADR 0050) rather than configured in ten columns nothing reads.
 
 -- ── 1. tax_regime ─────────────────────────────────────────────────────────────────────────────────────
@@ -595,20 +595,20 @@ create table app.tax_regime (
 call app_meta.enable_tenant_rls('app.tax_regime');
 call app_meta.attach_audit('app.tax_regime');
 comment on column app.tax_regime.source is
-  'Provenance of this regime version: the publication or seed file its rates and boxes came from. SAH-020.';
+  'Provenance of this regime version: the publication or seed file its rates and boxes came from. LEGACY-020.';
 
 -- ── 2. tax_code ───────────────────────────────────────────────────────────────────────────────────────
 create table app.tax_code (
   id                 uuid primary key default uuidv7(),
   tenant_id          uuid not null references app.tenant(id),
   company_id         uuid not null,
-  regime_id          uuid not null,                                 -- SAH-020: the discriminator, never null
+  regime_id          uuid not null,                                 -- LEGACY-020: the discriminator, never null
   code               text not null,
   name_en            text not null,
   name_ar            text,
   rate               numeric(19,8) not null check (rate >= 0),      -- decimal fraction: 0.11000000 is 11%
   kind               text not null,
-  rounding_mode      text not null default 'HALF_AWAY_FROM_ZERO',   -- spec:2228, SAH-019
+  rounding_mode      text not null default 'HALF_AWAY_FROM_ZERO',   -- spec:2228, LEGACY-019
   output_account_id  uuid,                                          -- §4.15 2300; §4.4.1 tax_code.output_account
   input_account_id   uuid,                                          -- §4.15 1350; §4.4.1 tax_code.input_account
   effective_from     date not null,
@@ -760,7 +760,7 @@ export async function seedTaxCode(
 
 - [ ] **Step 6: Write ADR 0050 as a proposal**
 
-`docs/adr/0050-tax-computation-at-persist-time.md` — status `proposed`, and **it blocks its own tasks' merge, not the plan** (spec:95). Context: SAH-019 (ten rounding columns, zero references, one wrong function) and SAH-020 (a rate hardcoded in a procedure, no provenance). Decision, in four sentences: a rate lives only in `app.tax_code`, seeded from a reviewed file; each code declares its own `rounding_mode` and tax is `Money.multiply(rate, mode)` and nothing else; the figure is computed **when the lines are saved** and stored on `document_line.tax_amount` / `total_incl_tax`, so the evaluator, the ledger and the return all read one number; and `tax_regime.source` records where the rates came from, so a filed return can be traced to a publication. Consequences: a rate change is a seed PR, never a release (spec:2229 says payroll follows this discipline, so it must exist here first); recomputation of an already-issued document is impossible because `document_line` is only writable while the document is a draft (2B's `document_line_delete_draft_only` and the status triggers); and T5's and T7's steps extend this file's Consequences rather than writing a second ADR.
+`docs/adr/0050-tax-computation-at-persist-time.md` — status `proposed`, and **it blocks its own tasks' merge, not the plan** (spec:95). Context: LEGACY-019 (ten rounding columns, zero references, one wrong function) and LEGACY-020 (a rate hardcoded in a procedure, no provenance). Decision, in four sentences: a rate lives only in `app.tax_code`, seeded from a reviewed file; each code declares its own `rounding_mode` and tax is `Money.multiply(rate, mode)` and nothing else; the figure is computed **when the lines are saved** and stored on `document_line.tax_amount` / `total_incl_tax`, so the evaluator, the ledger and the return all read one number; and `tax_regime.source` records where the rates came from, so a filed return can be traced to a publication. Consequences: a rate change is a seed PR, never a release (spec:2229 says payroll follows this discipline, so it must exist here first); recomputation of an already-issued document is impossible because `document_line` is only writable while the document is a draft (2B's `document_line_delete_draft_only` and the status triggers); and T5's and T7's steps extend this file's Consequences rather than writing a second ADR.
 
 - [ ] **Step 7: Run the test and see it pass, then commit**
 
@@ -777,8 +777,8 @@ git commit -m "$(cat <<'EOF'
 feat(db): add tax_regime and tax_code [5A T1]
 
 Contracts §4.9.2 plus amendment A2 (tax_regime.source). Every code carries regime_id
-NOT NULL — the discriminator SAH-020's two return procedures did not have — and its own
-rounding_mode, which SAH-019 configured in ten columns and never applied. fixtures.ts
+NOT NULL — the discriminator LEGACY-020's two return procedures did not have — and its own
+rounding_mode, which LEGACY-019 configured in ten columns and never applied. fixtures.ts
 gains seedTaxCode, the one §4.17 helper this slice owns.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
@@ -862,7 +862,7 @@ describe("migration 0054 — tax_transaction, tax_return, document.tax_inclusive
     expect(AUDIT_EXEMPT.has("tax_regime")).toBe(false);
   });
 
-  it("all four monetary columns are NOT NULL — a return can never carry tax without base (SAH-011)", async () => {
+  it("all four monetary columns are NOT NULL — a return can never carry tax without base (LEGACY-011)", async () => {
     const cols = await db.admin<{ column_name: string; is_nullable: string; numeric_scale: number }[]>`
       select column_name, is_nullable, numeric_scale from information_schema.columns
        where table_schema = 'app' and table_name = 'tax_transaction'
@@ -927,7 +927,7 @@ describe("migration 0054 — tax_transaction, tax_return, document.tax_inclusive
     const [drafted] = await db.admin<{ generated_by: string | null }[]>`
       select generated_by from app.tax_return where id = ${id}`;
     expect(drafted!.generated_by).toBeNull();
-    // The NULL → value transition: a supplied value is REPLACED with the session actor, never trusted (SAH-044).
+    // The NULL → value transition: a supplied value is REPLACED with the session actor, never trusted (LEGACY-044).
     await withTenant(db.rw, a.tenant, a.human, (tx) => tx`
       update app.tax_return set status = 'generated', payload = '{}', payload_sha256 = sha256(''::bytea),
                                 generated_by = ${b.human} where id = ${id}`);
@@ -1007,10 +1007,10 @@ AssertionError: expected [] to have a length of 4 but got +0
 -- Contracts §4.9.2 (tax_transaction, tax_return) and §4.3.4's 5A row (document.tax_inclusive).
 -- The file name states all three because §3.4.2 requires it (amendment A1; 2A's 0018_… is the precedent).
 --
--- SAH-011 (VAT half): procCalculateVATReturn accumulated without coalesce, so ONE bill line with a NULL
+-- LEGACY-011 (VAT half): procCalculateVATReturn accumulated without coalesce, so ONE bill line with a NULL
 -- base nulled Output_Total for the whole period while Output_Tax still reported a figure — a return filed
 -- with tax and no base. Here all four monetary columns are NOT NULL with no default, so a tax without a
--- base is not representable. SAH-059: the return reads THIS table with both period bounds always bound
+-- base is not representable. LEGACY-059: the return reads THIS table with both period bounds always bound
 -- (packages/db/src/tax/returns.ts), never a concatenated query that can lose its date filter.
 
 -- ── 1. tax_transaction — one row per posted tax line, written ONLY by the posting service at step 11 ───
@@ -1041,7 +1041,7 @@ create table app.tax_transaction (
 );
 call app_meta.enable_tenant_rls('app.tax_transaction');
 -- No attach_audit: AUDIT_EXEMPT (§3.5.3). The table is append-only, so an audit copy is a second copy of
--- the same rows; correction is a reversing document, which writes its own negative rows (SAH-041).
+-- the same rows; correction is a reversing document, which writes its own negative rows (LEGACY-041).
 create trigger tax_transaction_immutable before update or delete on app.tax_transaction
   for each row execute function app.forbid_change();
 revoke update, delete on app.tax_transaction from app_rw;
@@ -1053,7 +1053,7 @@ create table app.tax_return (
   id              uuid primary key default uuidv7(),
   tenant_id       uuid not null references app.tenant(id),
   company_id      uuid not null,
-  regime_id       uuid not null,                                -- SAH-020: a return NAMES its regime
+  regime_id       uuid not null,                                -- LEGACY-020: a return NAMES its regime
   period_start    date not null,
   period_end      date not null check (period_end >= period_start),
   status          text not null default 'draft',
@@ -1065,12 +1065,12 @@ create table app.tax_return (
   -- PostgreSQL refuses the DDL outright: "number of referencing and referenced columns for foreign key
   -- disagree". §3.5.1's composite rule is about tenant-SCOPED parents; a global parent is the exception
   -- every earlier slice already takes.
-  generated_by    uuid references app.principal(id),             -- NULL until generated; stamped then (SAH-044)
+  generated_by    uuid references app.principal(id),             -- NULL until generated; stamped then (LEGACY-044)
   filed_at        timestamptz,                                   -- written by 5B under accounting.tax.file
   attachment_id   uuid,                                          -- 5B or the print path; NULL in 5A
   created_at      timestamptz not null default now(),
   constraint tax_return_status_check check (status in ('draft', 'generated', 'filed')),
-  -- A generated return has both halves or neither: the SAH-011 shape applied to the return row itself.
+  -- A generated return has both halves or neither: the LEGACY-011 shape applied to the return row itself.
   constraint tax_return_payload_pair_check
     check ((payload is null) = (payload_sha256 is null)),
   constraint tax_return_generated_has_payload_check
@@ -1231,7 +1231,7 @@ git add packages/db/migrations/0054_create_tax_transaction_return_and_document_t
 git commit -m "$(cat <<'EOF'
 feat(db): add tax_transaction, tax_return and document.tax_inclusive [5A T2]
 
-§4.9.2 verbatim. All four monetary columns NOT NULL with no default, so SAH-011's
+§4.9.2 verbatim. All four monetary columns NOT NULL with no default, so LEGACY-011's
 "a return filed with tax but no base" is not representable. tax_transaction joins
 AUDIT_EXEMPT and IMMUTABLE — §3.5.3's exact state, and the only lint-schema edit in
 this slice. generated_by is nullable with no default and stamped on the NULL -> value
@@ -1454,7 +1454,7 @@ and on the returned schema, beside the `SignedAmount` members 2B added:
   taxCodeId: UuidSchema.nullable(),
 ```
 
-**`taxAmount` and `totalInclTax` are *not* added to `DocumentLineInput`.** They are already on `DocumentLineSchema` (2A) as returned figures, and accepting them would mean the client could state a tax the server did not compute — SAH-020's "the actual per-transaction tax is commented out" in the opposite direction. Task 7 is what fills them.
+**`taxAmount` and `totalInclTax` are *not* added to `DocumentLineInput`.** They are already on `DocumentLineSchema` (2A) as returned figures, and accepting them would mean the client could state a tax the server did not compute — LEGACY-020's "the actual per-transaction tax is commented out" in the opposite direction. Task 7 is what fills them.
 
 - [ ] **Step 5: Extend 3C's `DraftLine` and `draftTypedDocument` (amendment A12)**
 
@@ -1831,13 +1831,13 @@ EOF
 
 ### Task 5: The pure tax engine — `packages/domain/src/tax/`
 
-**No migration.** §4.9.1's `TaxRegime`, `TaxCodeDef`, `TaxLineInput`, `TaxLineResult` and `TaxEngine`, verbatim, plus the one canonicaliser §4.9.3's `hash` sentence needs. This module imports `decimal.js` through `@dulja/domain`'s own money module and **nothing else** — no database, no clock, no network, no `Date.now()` — which is what makes Task 9's fixture byte-comparable and what makes SAH-019 and SAH-020 unrepeatable: one rate source, one rounding call, one regime discriminator.
+**No migration.** §4.9.1's `TaxRegime`, `TaxCodeDef`, `TaxLineInput`, `TaxLineResult` and `TaxEngine`, verbatim, plus the one canonicaliser §4.9.3's `hash` sentence needs. This module imports `decimal.js` through `@dulja/domain`'s own money module and **nothing else** — no database, no clock, no network, no `Date.now()` — which is what makes Task 9's fixture byte-comparable and what makes LEGACY-019 and LEGACY-020 unrepeatable: one rate source, one rounding call, one regime discriminator.
 
 **Three decisions this task fixes, each of which the legacy system got wrong.**
 
-- **Rounding is `Money.multiply(rate, code.roundingMode)` and nothing else.** SAH-019's `RoundTo.sql` was asymmetric across sign (+6 → 10, −6 → −5, "leaving a permanent 5-unit imbalance per rounded credit note"), returned NULL on a NULL base, and overflowed its integer. `Money.multiply` takes an explicit `RoundingMode` (§4.2.1), is symmetric by construction, and cannot see a null.
+- **Rounding is `Money.multiply(rate, code.roundingMode)` and nothing else.** LEGACY-019's `RoundTo.sql` was asymmetric across sign (+6 → 10, −6 → −5, "leaving a permanent 5-unit imbalance per rounded credit note"), returned NULL on a NULL base, and overflowed its integer. `Money.multiply` takes an explicit `RoundingMode` (§4.2.1), is symmetric by construction, and cannot see a null.
 - **Inclusive extraction is `amount − amount / (1 + rate)`, computed once, with the code's mode.** The base is derived from the entered figure and the tax is the remainder, so `base + tax === amount` exactly — asserted below. Computing the tax first and subtracting would leave a residue on every line.
-- **A wrong-regime code is a refusal, not a wrong number.** `compute` refuses a `TaxLineInput` whose `taxCode.regimeId` is not the passed regime's `id`, or whose own `[effectiveFrom, effectiveTo]` falls **outside** the regime's window — starting after the regime **ended**, or lapsing before it began — with `ERR_TAX_REGIME_MISMATCH` naming the line and both codes. **The regime's upper bound is open when `effectiveTo` is null**, which is what lets one live regime carry successive rates as successive codes (spec:2227's rate-effective-date tables, and 0053's `unique (company_id, code, effective_from)`). That is spec:2444's clause and SAH-020's fix in one function.
+- **A wrong-regime code is a refusal, not a wrong number.** `compute` refuses a `TaxLineInput` whose `taxCode.regimeId` is not the passed regime's `id`, or whose own `[effectiveFrom, effectiveTo]` falls **outside** the regime's window — starting after the regime **ended**, or lapsing before it began — with `ERR_TAX_REGIME_MISMATCH` naming the line and both codes. **The regime's upper bound is open when `effectiveTo` is null**, which is what lets one live regime carry successive rates as successive codes (spec:2227's rate-effective-date tables, and 0053's `unique (company_id, code, effective_from)`). That is spec:2444's clause and LEGACY-020's fix in one function.
 
 **Files:**
 - Create: `packages/domain/src/tax/engine.ts`, `packages/domain/src/tax/canonical.ts`, `packages/domain/src/tax/index.ts`
@@ -1922,7 +1922,7 @@ describe("taxEngine.compute (§4.9.1, spec:2227-2228)", () => {
     expect(r!.tax.toString()).toBe("33.0000");
   });
 
-  it("the rounding MODE is the code's, not the engine's — SAH-019's whole finding", () => {
+  it("the rounding MODE is the code's, not the engine's — LEGACY-019's whole finding", () => {
     // 100.05 x 0.045 = 4.50225. HALF_AWAY_FROM_ZERO -> 4.5023 (fourth dp); TOWARD_ZERO -> 4.5022.
     const away = taxEngine.compute(REGIME, [{ lineNo: 1, amount: m("100.0500"),
       taxCode: code({ rate: "0.04500000", roundingMode: "HALF_AWAY_FROM_ZERO" }), inclusive: false }]);
@@ -1932,7 +1932,7 @@ describe("taxEngine.compute (§4.9.1, spec:2227-2228)", () => {
     expect(toward[0]!.tax.toString()).toBe("4.5022");
   });
 
-  it("rounding is SYMMETRIC across sign — SAH-019's +6 -> 10 / -6 -> -5 asymmetry cannot recur", () => {
+  it("rounding is SYMMETRIC across sign — LEGACY-019's +6 -> 10 / -6 -> -5 asymmetry cannot recur", () => {
     const pos = taxEngine.compute(REGIME, [{ lineNo: 1, amount: m("100.0500"),
       taxCode: code({ rate: "0.04500000" }), inclusive: false }]);
     const neg = taxEngine.compute(REGIME, [{ lineNo: 1, amount: m("-100.0500"),
@@ -1966,7 +1966,7 @@ describe("taxEngine.compute (§4.9.1, spec:2227-2228)", () => {
     expect(r!.tax.toString()).toBe("0.0000");
   });
 
-  it("a code from another regime is REFUSED, not silently applied (SAH-020, spec:2444)", () => {
+  it("a code from another regime is REFUSED, not silently applied (LEGACY-020, spec:2444)", () => {
     const foreign = code({ id: "c-9", regimeId: "r-OTHER", code: "SYN-OTHER" });
     try {
       taxEngine.compute(REGIME, [{ lineNo: 4, amount: m("1.0000"), taxCode: foreign, inclusive: false }]);
@@ -1974,7 +1974,7 @@ describe("taxEngine.compute (§4.9.1, spec:2227-2228)", () => {
     } catch (e) {
       expect(e).toBeInstanceOf(TaxError);
       expect((e as TaxError).code).toBe("ERR_TAX_REGIME_MISMATCH");
-      // The message names the LINE and BOTH regimes — SAH-020's failure was silence.
+      // The message names the LINE and BOTH regimes — LEGACY-020's failure was silence.
       expect((e as TaxError).detail)
         .toBe('line 4: tax code SYN-OTHER belongs to regime r-OTHER, not to SYNTH-MY-v1 v1 (r-1)');
     }
@@ -1996,7 +1996,7 @@ describe("taxEngine.compute (§4.9.1, spec:2227-2228)", () => {
     // `SYNTH-MY-v1` has `effectiveTo: null`, and a live regime runs indefinitely. A second rate arrives as
     // a new code at a new `effective_from` INSIDE that window — the `unique (company_id, code,
     // effective_from)` shape of 0053 — and refusing it would make every rate change a new REGIME, which is
-    // the thing SAH-020's hardcoded literal was the alternative to. T11 Step 1 posts exactly this case.
+    // the thing LEGACY-020's hardcoded literal was the alternative to. T11 Step 1 posts exactly this case.
     const later = code({ code: "SYN-OUT-STD-2", effectiveFrom: "2026-07-01", rate: "0.20000000" });
     const [r] = taxEngine.compute(REGIME, [{ lineNo: 1, amount: m("1000.0000"), taxCode: later, inclusive: false }]);
     expect(r!.tax.toString()).toBe("200.0000");
@@ -2128,7 +2128,7 @@ export interface TaxCodeDef {
   readonly regimeId: string;
   readonly code: string;
   /** Decimal fraction at RATE_SCALE (8 dp): "0.11000000" is eleven per cent. A STRING, never a number —
-   *  `no-number-money` (§3.7.5) matches /rate|tax/i and a float rate is SAH-019's arithmetic. */
+   *  `no-number-money` (§3.7.5) matches /rate|tax/i and a float rate is LEGACY-019's arithmetic. */
   readonly rate: string;
   readonly kind: "output" | "input" | "exempt" | "zero" | "out_of_scope";
   readonly roundingMode: RoundingMode;
@@ -2156,7 +2156,7 @@ export interface TaxEngine {
   /** Pure. Applies each code's rate with its own declared rounding mode (spec:2228) and refuses a code whose
    *  regime is not the document's regime, or whose effective range falls outside the regime's window —
    *  which has an OPEN upper bound while `regime.effectiveTo` is null, so successive rates inside one live
-   *  regime are accepted and only a code past a CLOSED regime's end is refused (SAH-020, spec:2227). */
+   *  regime are accepted and only a code past a CLOSED regime's end is refused (LEGACY-020, spec:2227). */
   compute(regime: TaxRegime, lines: TaxLineInput[]): TaxLineResult[];
 }
 
@@ -2215,7 +2215,7 @@ function assertRegime(regime: TaxRegime, line: TaxLineInput): void {
  * leave a residue on every line, which is what makes an inclusive invoice fail to balance.
  *
  * `Money.multiply` / `Money.divide` require an explicit `RoundingMode` (§4.2.1) and are symmetric across
- * sign, so SAH-019's `+6 -> 10 / -6 -> -5` asymmetry cannot recur and a negative credit-note line produces
+ * sign, so LEGACY-019's `+6 -> 10 / -6 -> -5` asymmetry cannot recur and a negative credit-note line produces
  * exactly the negated figures of its positive twin.
  */
 export const taxEngine: TaxEngine = {
@@ -2361,8 +2361,8 @@ git add packages/domain/src/tax/ packages/domain/src/index.ts packages/domain/te
 git commit -m "$(cat <<'EOF'
 feat(domain): add the pure tax engine and the one canonicaliser [5A T5]
 
-§4.9.1 verbatim. One rounding call with the CODE's declared mode (SAH-019), one regime
-discriminator that refuses a foreign code instead of applying it (SAH-020), and an
+§4.9.1 verbatim. One rounding call with the CODE's declared mode (LEGACY-019), one regime
+discriminator that refuses a foreign code instead of applying it (LEGACY-020), and an
 inclusive extraction whose base + tax equals the entered amount exactly -- asserted over
 10^4 rates. canonicalJson is the byte-identity test 26 needs and the hash input §4.9.3
 gives 5B. PostingErrorCode gains ERR_TAX_REGIME_MISMATCH (amendment A4).
@@ -2537,7 +2537,7 @@ describe("malaysiaPack (§4.9.1, amendment A3)", () => {
     expect(boxes.find((b) => b.code === "S2")!.amount.toString()).toBe("51.7000");
   });
 
-  it("a box with no matching transaction is present and ZERO, never absent (SAH-011's shape)", () => {
+  it("a box with no matching transaction is present and ZERO, never absent (LEGACY-011's shape)", () => {
     const { boxes } = malaysiaPack.buildReturn({
       regime: REGIME, periodStart: "2026-01-01", periodEnd: "2026-03-31", transactions: [],
     });
@@ -2567,14 +2567,14 @@ describe("malaysiaPack (§4.9.1, amendment A3)", () => {
     expect(fwd.payload).toBe(rev.payload);
   });
 
-  it("a transaction outside the period is REFUSED, not silently included (SAH-059)", () => {
+  it("a transaction outside the period is REFUSED, not silently included (LEGACY-059)", () => {
     expect(() => malaysiaPack.buildReturn({
       regime: REGIME, periodStart: "2026-01-01", periodEnd: "2026-03-31",
       transactions: [txn({ effectiveDate: "2026-04-01" })],
     })).toThrow(/ERR_TAX_REGIME_MISMATCH: document d-1 line 1 is dated 2026-04-01, outside 2026-01-01\.\.2026-03-31/);
   });
 
-  it("a transaction of another regime is REFUSED (SAH-020, spec:2444's clause)", () => {
+  it("a transaction of another regime is REFUSED (LEGACY-020, spec:2444's clause)", () => {
     expect(() => malaysiaPack.buildReturn({
       regime: REGIME, periodStart: "2026-01-01", periodEnd: "2026-03-31",
       transactions: [txn({ regimeId: "r-OTHER" })],
@@ -2736,7 +2736,7 @@ export interface ReturnBox { readonly code: string; readonly label: string; read
 
 /** A box's RULE lives in the DEFINITION, not in code: which code kinds feed it, which measure it sums, and
  *  optionally which specific codes. `codes` omitted means "every code of those kinds". A box whose rule is
- *  in TypeScript is SAH-020's hardcoded 0.06 in a different coat. */
+ *  in TypeScript is LEGACY-020's hardcoded 0.06 in a different coat. */
 export interface ReturnBoxDef {
   readonly code: string;
   readonly label: string;
@@ -2780,10 +2780,10 @@ const AMOUNT_4DP = /^-?\d+\.\d{4}$/;
  * public surface (§4.9.1 names `malaysiaPack`), and a second jurisdiction (GCC, deferred by D21) would call
  * this with its own definitions rather than writing a second summing loop.
  *
- * **The three refusals, all of them SAH-020 or SAH-059:** a regime the pack does not define; a transaction
+ * **The three refusals, all of them LEGACY-020 or LEGACY-059:** a regime the pack does not define; a transaction
  * carrying another regime's id; a transaction dated outside the requested period. Every one is a
  * `TaxError("ERR_TAX_REGIME_MISMATCH")` naming the document and line — never a filtered-out row, because a
- * silently dropped transaction is exactly the "valid query with the period filter missing" of SAH-059 in
+ * silently dropped transaction is exactly the "valid query with the period filter missing" of LEGACY-059 in
  * reverse, and the caller's own SQL is what bounds the period (§4.9.2's index).
  */
 export function buildReturnFrom(
@@ -3155,7 +3155,7 @@ export function taxFileNames(regimeCode: string): { regime: string; codes: strin
  * re-run, which is what "changes nothing" means (spec:2002). `on conflict … do nothing` returns no row on a
  * hit, so counting `returning id` results is exact. **`do nothing`, not `do update`:** §3.4.8 reserves
  * `do update` for `posting_policy` alone, and a changed rate is a NEW regime version or a new
- * `effective_from` — never an edit of a row a filed return already points at (SAH-020, ADR 0050).
+ * `effective_from` — never an edit of a row a filed return already points at (LEGACY-020, ADR 0050).
  *
  * **A missing account fails loudly.** `chart-of-accounts` runs earlier in application order, so an absent
  * `2300` is the PACK's problem and not the tenant's; letting it pass would leave `output_account_id` null
@@ -3329,7 +3329,7 @@ EOF
 
 **No migration.** The task that joins the pure engine to the posting service, in three pieces that must land together or the ledger and the return disagree.
 
-1. **`computeDocumentTax`** — the persist-time computation spec:2228 demands ("applied server-side at persist time"). It runs inside 1A's document handlers, resolves each line's code, calls `taxEngine.compute`, and writes `document_line.tax_amount` and `total_incl_tax`. **`tax_amount` and `total_incl_tax` are never accepted from the wire** (Task 3's note): a client-stated tax is SAH-020's "the actual per-transaction tax is commented out" in the opposite direction.
+1. **`computeDocumentTax`** — the persist-time computation spec:2228 demands ("applied server-side at persist time"). It runs inside 1A's document handlers, resolves each line's code, calls `taxEngine.compute`, and writes `document_line.tax_amount` and `total_incl_tax`. **`tax_amount` and `total_incl_tax` are never accepted from the wire** (Task 3's note): a client-stated tax is LEGACY-020's "the actual per-transaction tax is commented out" in the opposite direction.
 2. **`loadSnapshot`'s two 5A fills** — `refs.taxCodes` and `header.taxInclusive`, the two §4.3.1 names as waiting on this slice. `TaxCodeDef` is a field-for-field superset of §4.4.2's `TaxCodeRef` and therefore satisfies it **structurally**: the rows go straight into `refs.taxCodes` keyed by **id**, and nothing converts between the two shapes (§4.4.2's closing note).
 3. **`insertTaxTransactions`** — the one writer of `app.tax_transaction`, called from `post.ts` at step 11 from `plan.taxLines`, whose `amount` is **signed** (A9's registered exception).
 
@@ -3628,7 +3628,7 @@ describe("computeDocumentTax (spec:2228, ADR 0050)", () => {
     expect(second).toEqual(first);
   });
 
-  it("a line with no tax code is zeroed, not skipped — SAH-011's NULL arithmetic cannot start", async () => {
+  it("a line with no tax code is zeroed, not skipped — LEGACY-011's NULL arithmetic cannot start", async () => {
     const { documentId } = await draftTypedDocument(db, f.s, {
       documentTypeId: f.types["SALES_INVOICE"]!, series: "TMP", effectiveDate: "2026-01-15", partyId: f.customerId,
       lines: [{ lineNo: 1, kind: "account", accountId: f.accounts["4000"]!, amount: "100.0000" }],
@@ -3647,7 +3647,7 @@ describe("computeDocumentTax (spec:2228, ADR 0050)", () => {
     expect(w.map((l) => l.totalInclTax)).toEqual(["70.0000", "80.0000"]);
   });
 
-  it("two codes of DIFFERENT regimes on one document is a refusal (SAH-020)", async () => {
+  it("two codes of DIFFERENT regimes on one document is a refusal (LEGACY-020)", async () => {
     const second = await prodWithTenant(db.rw, ctx(), async (tx) => {
       const [r] = await tx<{ id: string }[]>`
         insert into app.tax_regime (tenant_id, company_id, code, jurisdiction, version, effective_from,
@@ -3685,7 +3685,7 @@ describe("computeDocumentTax (spec:2228, ADR 0050)", () => {
       tx`update app.tax_code set archived_at = null where id = ${f.codes["SYN-OUT-STD"]}`);
   });
 
-  it("a non-draft document refuses recomputation (spec:2049, SAH-041)", async () => {
+  it("a non-draft document refuses recomputation (spec:2049, LEGACY-041)", async () => {
     const { documentId } = await postTaxedDocument(db, f, {
       typeCode: "SALES_INVOICE", effectiveDate: "2026-01-20",
       lines: [{ lineNo: 1, amount: "100.0000", taxCode: "SYN-OUT-STD" }],
@@ -3776,7 +3776,7 @@ describe("postDocument step 11 — app.tax_transaction (§4.3.2, §4.9.2)", () =
 
   it("an EXEMPT line writes a row with tax = 0; a CODE-LESS line writes no row at all", async () => {
     // The distinction matters to the return: an exempt supply is reported in box S3, so it must be a row
-    // with a zero tax; a line with no code is not a taxable event and must not appear at all. SAH-058's
+    // with a zero tax; a line with no code is not a taxable event and must not appear at all. LEGACY-058's
     // failure was the inverse — an uncoded voucher line was invisible to the reconciliation AND excluded
     // from the return, so nothing could tell the two apart.
     const { documentId: exempt } = await postTaxedDocument(db, f, {
@@ -3797,7 +3797,7 @@ describe("postDocument step 11 — app.tax_transaction (§4.3.2, §4.9.2)", () =
     expect(p!.n).toBe(0);
   });
 
-  it("posting twice is impossible, so a tax transaction cannot be duplicated (SAH-041 + the unique key)", async () => {
+  it("posting twice is impossible, so a tax transaction cannot be duplicated (LEGACY-041 + the unique key)", async () => {
     const { documentId } = await postTaxedDocument(db, f, {
       typeCode: "SALES_INVOICE", effectiveDate: "2026-01-22",
       lines: [{ lineNo: 1, amount: "100.0000", taxCode: "SYN-OUT-STD" }],
@@ -3895,7 +3895,7 @@ export async function loadTaxCodeRefs(
 /**
  * The regime every tax code on one document belongs to, or `null` when no line carries a code.
  *
- * **A document whose lines span two regimes is refused.** SAH-020's failure was that nothing said which
+ * **A document whose lines span two regimes is refused.** LEGACY-020's failure was that nothing said which
  * regime a code belonged to, so a VAT tenant ran the GST return and reported sales as purchases; a document
  * mixing two regimes would put half its transactions in one return and half in another, with both returns
  * looking complete. The refusal names both regimes.
@@ -4030,7 +4030,7 @@ export interface ComputedTaxLine {
  * spec:2228 requires rounding "applied server-side at persist time", and ADR 0050 fixes this as the one
  * call site: the evaluator, the ledger and the return then all read one number. `tax_amount` and
  * `total_incl_tax` are never accepted from the wire (§4.2.8's `DocumentLineInput`), so a client cannot
- * state a tax the server did not compute — SAH-020's commented-out per-transaction tax, inverted.
+ * state a tax the server did not compute — LEGACY-020's commented-out per-transaction tax, inverted.
  *
  * Idempotent: it derives everything from `amount` and `total_incl_tax`, taking the ENTERED figure for an
  * inclusive line from `total_incl_tax` once one has been written, so a second call cannot tax a tax.
@@ -4045,7 +4045,7 @@ export async function computeDocumentTax(
   if (!header) throw new PostingError("ERR_NOT_FOUND", `document ${documentId} is not visible`);
   if (header.status !== "draft") {
     throw new PostingError("ERR_DOC_STATUS_ILLEGAL",
-      `document ${documentId} is ${header.status}, not draft — a posted document is corrected by reversal (SAH-041)`);
+      `document ${documentId} is ${header.status}, not draft — a posted document is corrected by reversal (LEGACY-041)`);
   }
 
   const { definition } = await resolvePolicy(tx, header.document_type_id, header.effective_date);
@@ -4108,7 +4108,7 @@ export async function computeDocumentTax(
                taxAmount: r.tax.toString(), totalInclTax: total.toString() });
   }
   for (const l of untaxed) {
-    // A code-less line is ZEROED, never left alone: SAH-011's whole finding is that one un-populated
+    // A code-less line is ZEROED, never left alone: LEGACY-011's whole finding is that one un-populated
     // monetary column nulls a whole period's box. `0.0000` is a figure; a stale one is not.
     await tx`
       update app.document_line set tax_amount = 0, total_incl_tax = ${l.amount} where id = ${l.id}`;
@@ -4194,7 +4194,7 @@ export async function insertTaxTransactions(
 
 **The import is `../tax/codes`, not `../tax` (the barrel).** `packages/db/src/tax/index.ts` re-exports `compute.ts`, and `compute.ts` imports `../posting/index` for `resolvePolicy`; going through the barrel would make `posting/index → posting/tax → tax/index → tax/compute → posting/index` a cycle. Reaching the one module directly keeps the graph `posting/tax → tax/codes → posting/errors`, which terminates. Both files are inside `packages/db/src`, so `dependency-rule` (§3.1) sees one tier and says nothing either way.
 
-**`tenant_id` is `app.current_tenant()` and never a parameter.** `DocumentSnapshot.header` carries no `tenantId` (§4.4.2), the session already has one because every statement runs inside `withTenant`, and a tenant id a caller could supply is SAH-044's class of defect. This is exactly what 1A's `insertLedger` does for the same column, and the RLS `with check` predicate would refuse anything else anyway.
+**`tenant_id` is `app.current_tenant()` and never a parameter.** `DocumentSnapshot.header` carries no `tenantId` (§4.4.2), the session already has one because every statement runs inside `withTenant`, and a tenant id a caller could supply is LEGACY-044's class of defect. This is exactly what 1A's `insertLedger` does for the same column, and the RLS `with check` predicate would refuse anything else anyway.
 
 `packages/db/src/posting/post.ts` — **one call, at the site Task 0's gate located**, after the `ledger_entry` insert (step 10) and before the `account_balance` MERGE (step 12):
 
@@ -4366,7 +4366,7 @@ beforeAll(async () => {
     partyId: f.vendorId,
     lines: [{ lineNo: 1, kind: "account", accountId: f.accounts["5900"], amount: "800.0000",
               taxCode: "SYN-IN-STD" }] });
-  // …and one OUTSIDE the quarter, which must not appear in any box (SAH-059).
+  // …and one OUTSIDE the quarter, which must not appear in any box (LEGACY-059).
   await postTaxedDocument(db, f, { typeCode: "SALES_INVOICE", effectiveDate: "2026-04-02",
     lines: [{ lineNo: 1, amount: "9999.0000", taxCode: "SYN-OUT-STD" }] });
   const row = await prodWithTenant(db.rw, ctx(), (tx) =>
@@ -4388,7 +4388,7 @@ describe("tax returns (§4.9.2, the Phase 5 DoD)", () => {
     ).rejects.toThrow(/tax_return_company_id_regime_id_period_start_key/);
   });
 
-  it("generate fills every box from tax_transaction, excluding the out-of-period document (SAH-059)", async () => {
+  it("generate fills every box from tax_transaction, excluding the out-of-period document (LEGACY-059)", async () => {
     const { row, boxes } = await prodWithTenant(db.rw, ctx(), (tx) => generateTaxReturn(tx, ctx(), returnId));
     expect(row.status).toBe("generated");
     expect(row.generatedBy).toBe(f.s.human);
@@ -4552,7 +4552,7 @@ export async function listTaxReturns(
   return rows.map(toRow);
 }
 
-/** The transactions of one return's period and regime. **Both period bounds are always bound** — SAH-059's
+/** The transactions of one return's period and regime. **Both period bounds are always bound** — LEGACY-059's
  *  failure was a concatenated query that silently lost its date filter and reported every voucher ever
  *  posted; this is a tagged template and the bounds are parameters, so losing one is not expressible. */
 async function transactionsFor(tx: Sql, row: TaxReturnRow): Promise<TaxTransactionRow[]> {
@@ -4737,7 +4737,7 @@ export async function taxReturnTieOut(tx: Sql, taxReturnId: string): Promise<Tax
          and a.code       = ${w.accountCode}
          and p.starts_on >= ${row.periodStart}
          and p.ends_on   <= ${row.periodEnd}`;
-    // `coalesce(..., 0)` is deliberate and is SAH-011's fix at this boundary: an account with no balance
+    // `coalesce(..., 0)` is deliberate and is LEGACY-011's fix at this boundary: an account with no balance
     // row must read 0.0000, never null, or the difference would be null and the DoD assertion vacuous.
     const ledger = Money.of(led!.base!, ccy);
     out.push({
@@ -5394,7 +5394,7 @@ EOF
 
 **No migration.** The task that turns everything Tasks 1–8 built into the one sentence §2.6 assigns this slice: *"The return is generated, validated and reconciled end-to-end against a golden fixture"*, and the Part VI row it owns:
 
-> **26. Tax return determinism.** *A golden fixture of documents produces a byte-identical return across runs; a tax code from the wrong regime causes a refusal, not a wrong number.* (spec:2444; SAH-020, 058, 059)
+> **26. Tax return determinism.** *A golden fixture of documents produces a byte-identical return across runs; a tax code from the wrong regime causes a refusal, not a wrong number.* (spec:2444; LEGACY-020, 058, 059)
 
 **Why this harness goes through the database, when 3B's costing harness does not.** 3B's golden driver is pure — it calls `evaluatePolicy` over a `DocumentSnapshot[]` and never opens a connection, which is why its cases carry a `policies.json`. This one cannot be: the DoD's third verb is **reconciled**, `taxReturnTieOut` reads `app.account_balance`, and `account_balance` exists only after `postDocument` has run inside a transaction. So the fixture is symbolic input driven through the real stack — `taxFixture` → `postTaxedDocument` → `createTaxReturn` → `generateTaxReturn` → `taxReturnTieOut` — and the byte-compare is over the **output**. That is amendment A10, and it is also why a `policies.json` would be wrong here: `taxFixture` reads the four 4A envelopes off disk through `seedTypeFromPack`, and a second copy of those policies in the fixture directory is two spellings of one thing (hazard 9).
 
@@ -5405,7 +5405,7 @@ EOF
 | `synth-my-quarter` | Five documents across 2026 Q1: a standard-rated sale, a credit note, a standard-rated purchase, a zero-rated sale and an exempt sale. All **tax-exclusive**. | Every box of `SYNTH-MY-v1` is fed by at least one transaction; both control accounts tie out; a credit note **reduces** the output box rather than adding to it. |
 | `synth-my-inclusive` | The same five documents, the same dates, the same parties — entered **tax-inclusive** at their gross figures (`1110.0000`, `-222.0000`, `555.0000`, `300.0000`, `150.0000`). | The inclusive extraction reaches the identical boxes. Its `payload` and `payloadSha256` are **byte-identical to the first case's**, which is a stronger statement than "each case is stable across runs": it says the two entry conventions are one computation. |
 
-**The credit note carries negated magnitudes, and that is 4A's rule, not this task's convention.** phase-4a:3845 is explicit — *"a credit note's policy carries **the same `side`s as its invoice**, and the negation of the line magnitudes is what turns them into credits. Getting this backwards … produces a type that posts correctly when created by hand and **backwards** when created by `reverseDocument`"*. So `SALES_CREDIT_NOTE`'s line in this fixture is `amount: "-200.0000"`; `computeDocumentTax` derives `tax_amount = -22.0000` from it through the engine's symmetric rounding (SAH-019); §4.4.2 A9 flips the `each_tax` credit into a **debit** of `2300` at `22.0000`; and `PlannedTaxLine.amount` — A9's one registered exception — stays **`-22.0000`**, which is exactly the figure box `S2` needs. **If a reviewer changes that line to `200.0000`, `S2` reads `132.0000`, the ledger still reads `88.0000`, and the tie-out fails by `44.0000`.** The failure is loud, which is the point of writing the tie-out into the fixture rather than only the boxes.
+**The credit note carries negated magnitudes, and that is 4A's rule, not this task's convention.** phase-4a:3845 is explicit — *"a credit note's policy carries **the same `side`s as its invoice**, and the negation of the line magnitudes is what turns them into credits. Getting this backwards … produces a type that posts correctly when created by hand and **backwards** when created by `reverseDocument`"*. So `SALES_CREDIT_NOTE`'s line in this fixture is `amount: "-200.0000"`; `computeDocumentTax` derives `tax_amount = -22.0000` from it through the engine's symmetric rounding (LEGACY-019); §4.4.2 A9 flips the `each_tax` credit into a **debit** of `2300` at `22.0000`; and `PlannedTaxLine.amount` — A9's one registered exception — stays **`-22.0000`**, which is exactly the figure box `S2` needs. **If a reviewer changes that line to `200.0000`, `S2` reads `132.0000`, the ledger still reads `88.0000`, and the tie-out fails by `44.0000`.** The failure is loud, which is the point of writing the tie-out into the fixture rather than only the boxes.
 
 **Files:**
 - Create: `tests/golden/tax.test.ts`
@@ -5518,7 +5518,7 @@ async function runGoldenCase(db: Db, name: string, input: GoldenCase): Promise<T
   });
 }
 
-describe("acceptance test 26 — tax return determinism (spec:2444; SAH-020, 058, 059)", () => {
+describe("acceptance test 26 — tax return determinism (spec:2444; LEGACY-020, 058, 059)", () => {
   let db: Db;
   beforeAll(async () => { db = await startDb(); }, 180_000);
   afterAll(async () => { await db.stop(); });
@@ -5804,7 +5804,7 @@ describe("test 26 clauses beyond the byte-compare", () => {
       expect(second.sha).toBe(first.sha);
       expect(second.by).toBe(first.by);
 
-      // A document in Q2 changes nothing about Q1. SAH-059's failure was the opposite: a truncated query
+      // A document in Q2 changes nothing about Q1. LEGACY-059's failure was the opposite: a truncated query
       // lost its period filter and the return reported every voucher ever posted.
       await postTaxedDocument(db, f, {
         typeCode: "SALES_INVOICE", effectiveDate: "2026-04-05", taxInclusive: false,
@@ -5839,7 +5839,7 @@ describe("test 26 clauses beyond the byte-compare", () => {
       // refuses a document whose lines span two regimes (T7), reaching the caller through
       // `computeDocumentTax` — "a refusal, not a wrong number" (spec:2444). If this document posted, its
       // two codes' figures would land in one return with two rates and nothing to say which was which,
-      // which is SAH-020's enum collision in its modern form.
+      // which is LEGACY-020's enum collision in its modern form.
       await expect(postTaxedDocument(db, f2, {
         typeCode: "SALES_INVOICE", effectiveDate: "2026-01-20", taxInclusive: false,
         lines: [
@@ -5878,7 +5878,7 @@ describe("test 26 clauses beyond the byte-compare", () => {
 
   it("the pack refuses a transaction whose regime is not the return's, naming the document and line", () => {
     // Pure, and it is the second half of clause 2: the guard that stops a foreign row being silently
-    // dropped (SAH-058's contradictory union half, in reverse). No database needed.
+    // dropped (LEGACY-058's contradictory union half, in reverse). No database needed.
     const regime = { id: "11111111-1111-7111-8111-111111111111", code: "SYNTH-MY-v1",
                      jurisdiction: "MY" as const, version: 1,
                      effectiveFrom: "2026-01-01", effectiveTo: null };
@@ -5923,7 +5923,7 @@ describe("test 26 clauses beyond the byte-compare", () => {
       ["S1", "800.0000"], ["S2", "88.0000"], ["S3", "450.0000"], ["P1", "500.0000"], ["P2", "55.0000"],
     ]);
     // Every box the definition declares is present, in definition order — a box the pack knows and the
-    // return omits is SAH-011's "filed with tax but no base" in its other direction.
+    // return omits is LEGACY-011's "filed with tax but no base" in its other direction.
     expect(boxes.map((b) => b.code)).toEqual(SYNTH_MY_V1.boxes.map((b) => b.code));
     expect(tie).toEqual([
       { accountCode: "1350", boxCodes: ["P2"], boxBase: "55.0000", ledgerBase: "55.0000", difference: "0.0000" },
@@ -5932,7 +5932,7 @@ describe("test 26 clauses beyond the byte-compare", () => {
   }, 180_000);
 
   it("an empty period generates a return of zero boxes and ties out to 0.0000, never to null", async () => {
-    // SAH-011 at this boundary: `taxReturnTieOut`'s `coalesce(..., 0)` is what makes the assertion real
+    // LEGACY-011 at this boundary: `taxReturnTieOut`'s `coalesce(..., 0)` is what makes the assertion real
     // rather than vacuous. A null difference compares equal to nothing and passes no test.
     const f = await taxFixture(db, "t26-empty");
     const ctx = { tenantId: f.s.tenant, actorId: f.s.human, requestId: "t26-empty" };
@@ -5985,7 +5985,7 @@ rather than two that happen to agree. The DoD's three verbs are three assertions
 generated (the sha is stable across regenerations and across a later period's document),
 validated (validateReturn re-reads the payload and the payload IS canonical), reconciled
 (2300 and 1350 tie to account_balance at 0.0000, and an empty period ties to 0.0000 and
-not to null -- SAH-011 at this boundary). The credit note carries negated magnitudes per
+not to null -- LEGACY-011 at this boundary). The credit note carries negated magnitudes per
 4A's rule, so its tax is -22.0000 and the output box falls to 88.0000.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
@@ -6069,7 +6069,7 @@ on the verified regime simply matches the other entry. **Nothing is replaced** �
 No rate, box label, form name, threshold, deadline, endpoint, schema version or field name is written into
 `packages/domain/src/tax/**` or `packages/db/src/tax/**`. Rates and box layouts are **data** — a seed file
 and a `RegimeDefinition` — and a change to either is a reviewed seed PR, never a release (ADR 0050). That
-is SAH-020's fix, and it is the reason this record exists at all: the legacy system's GST return carried
+is LEGACY-020's fix, and it is the reason this record exists at all: the legacy system's GST return carried
 its rate as a literal inside a stored procedure, so the rate could not be reviewed, dated or reverted.
 ```
 
@@ -6096,7 +6096,7 @@ statutory figure anywhere in this repository, and hazard 2 forbids any detail of
 publication until that publication has been read.
 
 Part VII #3 and spec:2467 are explicit that the current requirement set is fetched from the authority and
-never reconstructed from this specification or from a model's training data. SAH-020 is the defect this
+never reconstructed from this specification or from a model's training data. LEGACY-020 is the defect this
 guards against in its concrete form: the legacy system's GST return multiplied by a rate literal inside a
 stored procedure, with no regime discriminator, no effective date and no provenance — so nobody could say
 which rate had been applied to which period, or revert one.
@@ -6184,7 +6184,7 @@ describe("OD-15 — every shipped regime is either synthetic or backed by an acc
 
   it("no Malaysian tax figure is hard-coded in the tax engine or the tax services", () => {
     // The mechanical half of hazard 1 for this slice's own source. A rate lives in `app.tax_code`, seeded
-    // from a reviewed file; a decimal literal that looks like a rate in either directory is SAH-020.
+    // from a reviewed file; a decimal literal that looks like a rate in either directory is LEGACY-020.
     const suspects = sourceFiles(["packages/domain/src/tax", "packages/db/src/tax"])
       .flatMap((f) => f.lines.flatMap((line, i) =>
         /(^|[^\w.])0\.[0-9]{1,8}\b/.test(line) && !line.trimStart().startsWith("*")
@@ -6274,21 +6274,21 @@ EOF
 
 **No migration, no production code.** The task that closes the Part I defects §2.6 assigns this slice and re-runs the acceptance tests the card lists as re-runs. **If any step here needs a production edit, the edit belongs in the task that shipped the thing** — this task only asserts.
 
-**§3.7.3's ownership rule, applied.** This slice is the **first in execution order** to touch SAH-020, 058 and 059, so it **creates** those three files with `describe("SAH-NNN <Part I heading> — 5A", …)`. SAH-011 and SAH-019 are 0B's thin files (both are on the Plan 0A-proven list), so this slice **appends** a `— 5A` block to each and **never edits an earlier block**. No suffixed file name (`sah-020-tax.test.ts`) is created; that is forbidden outright.
+**§3.7.3's ownership rule, applied.** This slice is the **first in execution order** to touch LEGACY-020, 058 and 059, so it **creates** those three files with `describe("LEGACY-NNN <Part I heading> — 5A", …)`. LEGACY-011 and LEGACY-019 are 0B's thin files (both are on the Plan 0A-proven list), so this slice **appends** a `— 5A` block to each and **never edits an earlier block**. No suffixed file name (`legacy-020-tax.test.ts`) is created; that is forbidden outright.
 
 **The five defects, in one sentence each, because a regression file whose author did not read the defect asserts the wrong thing.**
 
 | Defect | Part I | The failure, verbatim in substance | This slice's block |
 |---|---|---|---|
-| **SAH-011** · C | spec:311 | `procCalculateVATReturn` accumulates without `coalesce`, so one NULL line total nulls `Output_Total` for the whole period while `Output_Tax` still reports a figure — **"a return is filed with tax but no base"**. | every monetary column of `tax_transaction` is `not null`; an untaxed line is written `0.0000` and never left stale; an empty period ties out to `0.0000` and not to null. |
-| **SAH-019** · H | spec:381 | Ten rounding columns configured across `Currencies` and `TaxCodes` with **zero references**; `RoundTo.sql` is never called and is wrong — asymmetric across sign (`+6 → 10`, `−6 → −5`), NULL-propagating, integer-overflowing. | the mode is declared per code **and applied**: two codes differing only in `rounding_mode` give different tax over one base; `+X` and `−X` give exactly opposite tax; there is no second rounding function in either tax directory. |
-| **SAH-020** · H | spec:388 | `procCalculateGSTReturn` multiplies by a `0.06` literal, uses an ambiguous date literal, and shares an enum whose meaning differs by context. | the rate is a `tax_code` row and changing the seed changes the return with no code change; every code declares its regime and an out-of-window code refuses; `kind` is `text` + a named CHECK owned by this table and by nothing else. |
-| **SAH-058** · M | spec:708 | The two halves of `procGetTaxItems`' union filter differently, so an **uncoded manual journal is invisible to the reconciliation and excluded from the return**. | one selection path for both directions: an uncoded line on a sale, on a purchase and on a JOURNAL each produce zero `tax_transaction` rows, and all three documents still post with their ledger entries intact. |
-| **SAH-059** · H | spec:713 | A `varchar(1000)` query buffer overflows; a truncation at a clause boundary yields **"a valid query with the period filter missing"** and the return silently reports every voucher ever posted. | both period bounds are bound parameters of a tagged template — losing one is not expressible; a Q2 document does not move a Q1 return; an out-of-window row is a refusal, not a silently dropped row. |
+| **LEGACY-011** · C | spec:311 | `procCalculateVATReturn` accumulates without `coalesce`, so one NULL line total nulls `Output_Total` for the whole period while `Output_Tax` still reports a figure — **"a return is filed with tax but no base"**. | every monetary column of `tax_transaction` is `not null`; an untaxed line is written `0.0000` and never left stale; an empty period ties out to `0.0000` and not to null. |
+| **LEGACY-019** · H | spec:381 | Ten rounding columns configured across `Currencies` and `TaxCodes` with **zero references**; `RoundTo.sql` is never called and is wrong — asymmetric across sign (`+6 → 10`, `−6 → −5`), NULL-propagating, integer-overflowing. | the mode is declared per code **and applied**: two codes differing only in `rounding_mode` give different tax over one base; `+X` and `−X` give exactly opposite tax; there is no second rounding function in either tax directory. |
+| **LEGACY-020** · H | spec:388 | `procCalculateGSTReturn` multiplies by a `0.06` literal, uses an ambiguous date literal, and shares an enum whose meaning differs by context. | the rate is a `tax_code` row and changing the seed changes the return with no code change; every code declares its regime and an out-of-window code refuses; `kind` is `text` + a named CHECK owned by this table and by nothing else. |
+| **LEGACY-058** · M | spec:708 | The two halves of `procGetTaxItems`' union filter differently, so an **uncoded manual journal is invisible to the reconciliation and excluded from the return**. | one selection path for both directions: an uncoded line on a sale, on a purchase and on a JOURNAL each produce zero `tax_transaction` rows, and all three documents still post with their ledger entries intact. |
+| **LEGACY-059** · H | spec:713 | A `varchar(1000)` query buffer overflows; a truncation at a clause boundary yields **"a valid query with the period filter missing"** and the return silently reports every voucher ever posted. | both period bounds are bound parameters of a tagged template — losing one is not expressible; a Q2 document does not move a Q1 return; an out-of-window row is a refusal, not a silently dropped row. |
 
 **Files:**
-- Create: `tests/regression/sah-020.test.ts`, `tests/regression/sah-058.test.ts`, `tests/regression/sah-059.test.ts`
-- Modify: `tests/regression/sah-011.test.ts`, `tests/regression/sah-019.test.ts` (append one `describe` each)
+- Create: `tests/regression/legacy-020.test.ts`, `tests/regression/legacy-058.test.ts`, `tests/regression/legacy-059.test.ts`
+- Modify: `tests/regression/legacy-011.test.ts`, `tests/regression/legacy-019.test.ts` (append one `describe` each)
 - Create: `tests/invariants/phase-5a-pinned.test.ts`
 
 **Interfaces**
@@ -6296,11 +6296,11 @@ EOF
 - Consumes: `startDb`, `Db`, `Seed`, `lintSchema`, `AUDIT_EXEMPT`, `IMMUTABLE` (§4.1); the production `withTenant` (§4.2.2 — hazard 15: root `tests/` use the production one); `taxFixture`, `postTaxedDocument`, `seedTaxPack` (T7); `taxEngine`, `TaxError`, `malaysiaPack`, `producesNoTax`, `Money`, `currency`, `round` (T5, §4.2.1); `createTaxReturn`, `generateTaxReturn`, `taxReturnTieOut` (T8); `computeDocumentTax` (T7); `PERMISSIONS`, `PERMISSION` (§4.2.5); `ROLES` (0D); `sourceFiles`, `repoFile`, `REPO_ROOT` (§4.2.12); `seedTenantV2`, `seedAccount` (1A); `grantCodes` (2B).
 - Produces: **nothing.** Five regression blocks and one pinned-list file. `tests/invariants/phase-5a-pinned.test.ts` exports no symbol — it is a set of equalities.
 
-- [ ] **Step 1: Create `tests/regression/sah-020.test.ts`**
+- [ ] **Step 1: Create `tests/regression/legacy-020.test.ts`**
 
 ```ts
-// tests/regression/sah-020.test.ts
-// SAH-020 (H) — The GST return hardcodes a rate, uses an ambiguous date literal, and shares an enum with
+// tests/regression/legacy-020.test.ts
+// LEGACY-020 (H) — The GST return hardcodes a rate, uses an ambiguous date literal, and shares an enum with
 // an incompatible meaning (spec:388). Created by slice 5A, the first slice in execution order to touch it.
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
 import { withTenant } from "@dulja/db";
@@ -6309,7 +6309,7 @@ import { startDb, type Db } from "@dulja/db/test";
 import { sourceFiles } from "@dulja/db/test";
 import { postTaxedDocument, taxFixture } from "../invariants/support/tax";
 
-describe("SAH-020 The GST return hardcodes a rate, uses an ambiguous date literal, and shares an enum — 5A",
+describe("LEGACY-020 The GST return hardcodes a rate, uses an ambiguous date literal, and shares an enum — 5A",
   () => {
   let db: Db;
   beforeAll(async () => { db = await startDb(); }, 180_000);
@@ -6317,8 +6317,8 @@ describe("SAH-020 The GST return hardcodes a rate, uses an ambiguous date litera
 
   it("the rate is a row, not a literal: changing the seeded rate changes the return with no code change",
     async () => {
-      const f = await taxFixture(db, "sah020-rate");
-      const ctx = { tenantId: f.s.tenant, actorId: f.s.human, requestId: "sah020" };
+      const f = await taxFixture(db, "legacy020-rate");
+      const ctx = { tenantId: f.s.tenant, actorId: f.s.human, requestId: "legacy020" };
       await postTaxedDocument(db, f, {
         typeCode: "SALES_INVOICE", effectiveDate: "2026-01-10", taxInclusive: false,
         lines: [{ lineNo: 1, accountId: f.accounts["4000"]!, amount: "1000.0000", taxCode: "SYN-OUT-STD" }],
@@ -6370,7 +6370,7 @@ describe("SAH-020 The GST return hardcodes a rate, uses an ambiguous date litera
   it("no decimal literal that could be a rate exists in the tax engine or the tax services", () => {
     // The mechanical statement of the defect's first clause. Task 10's provenance guard makes the same
     // assertion over the same directories from `packages/db`'s own suite; both are cheap, and this is the
-    // one a reader looking up SAH-020 will find.
+    // one a reader looking up LEGACY-020 will find.
     const hits = sourceFiles(["packages/domain/src/tax", "packages/db/src/tax"])
       .flatMap((f) => f.lines.flatMap((line, i) =>
         /(^|[^\w.])0\.[0-9]{1,8}\b/.test(line) && !line.trimStart().startsWith("*")
@@ -6379,8 +6379,8 @@ describe("SAH-020 The GST return hardcodes a rate, uses an ambiguous date litera
   });
 
   it("every tax code declares its regime, and a code outside its effective window refuses", async () => {
-    const f = await taxFixture(db, "sah020-window");
-    const ctx = { tenantId: f.s.tenant, actorId: f.s.human, requestId: "sah020-w" };
+    const f = await taxFixture(db, "legacy020-window");
+    const ctx = { tenantId: f.s.tenant, actorId: f.s.human, requestId: "legacy020-w" };
     const nulls = await withTenant(db.rw, ctx, (tx) => tx<{ n: number }[]>`
       select count(*)::int as n from app.tax_code
        where company_id = ${f.s.company} and regime_id is null`);
@@ -6400,8 +6400,8 @@ describe("SAH-020 The GST return hardcodes a rate, uses an ambiguous date litera
   }, 180_000);
 
   it("`kind` is a text CHECK owned by this table, not an enum shared with another meaning", async () => {
-    const f = await taxFixture(db, "sah020-enum");
-    const ctx = { tenantId: f.s.tenant, actorId: f.s.human, requestId: "sah020-e" };
+    const f = await taxFixture(db, "legacy020-enum");
+    const ctx = { tenantId: f.s.tenant, actorId: f.s.human, requestId: "legacy020-e" };
     const [{ constraints, enums }] = await withTenant(db.rw, ctx, (tx) =>
       tx<{ constraints: number; enums: number }[]>`
         select (select count(*)::int from pg_constraint
@@ -6414,11 +6414,11 @@ describe("SAH-020 The GST return hardcodes a rate, uses an ambiguous date litera
 });
 ```
 
-- [ ] **Step 2: Create `tests/regression/sah-058.test.ts`**
+- [ ] **Step 2: Create `tests/regression/legacy-058.test.ts`**
 
 ```ts
-// tests/regression/sah-058.test.ts
-// SAH-058 (M) — `procGetTaxItems` applies contradictory filters to the two halves of its union
+// tests/regression/legacy-058.test.ts
+// LEGACY-058 (M) — `procGetTaxItems` applies contradictory filters to the two halves of its union
 // (spec:708). The failure: an uncoded manual journal is invisible to the reconciliation AND excluded
 // from the return. Created by slice 5A.
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
@@ -6428,14 +6428,14 @@ import { startDb, type Db } from "@dulja/db/test";
 import { postJournal } from "@dulja/db";                       // 1B's helper — the "manual voucher" half
 import { postTaxedDocument, taxFixture } from "../invariants/support/tax";
 
-describe("SAH-058 procGetTaxItems applies contradictory filters to the two halves of its union — 5A", () => {
+describe("LEGACY-058 procGetTaxItems applies contradictory filters to the two halves of its union — 5A", () => {
   let db: Db;
   beforeAll(async () => { db = await startDb(); }, 180_000);
   afterAll(async () => { await db.stop(); });
 
   it("an uncoded line behaves identically on a sale, on a purchase and on a manual journal", async () => {
-    const f = await taxFixture(db, "sah058");
-    const ctx = { tenantId: f.s.tenant, actorId: f.s.human, requestId: "sah058" };
+    const f = await taxFixture(db, "legacy058");
+    const ctx = { tenantId: f.s.tenant, actorId: f.s.human, requestId: "legacy058" };
 
     // One sale and one purchase, each with a CODED line and an UNCODED line. In the legacy system the
     // bill half and the voucher half of the union disagreed about what `uncoded` even meant, and the
@@ -6482,7 +6482,7 @@ describe("SAH-058 procGetTaxItems applies contradictory filters to the two halve
        where document_id in (${sale.documentId}, ${purchase.documentId}, ${journal.documentId})`);
     expect(entries[0]!.n).toBeGreaterThanOrEqual(8);
 
-    // And the uncoded lines were ZEROED, not left stale — T7's rule, and SAH-011's neighbour.
+    // And the uncoded lines were ZEROED, not left stale — T7's rule, and LEGACY-011's neighbour.
     const zeroed = await withTenant(db.rw, ctx, (tx) => tx<{ tax_amount: string; total: string }[]>`
       select tax_amount::text, total_incl_tax::text as total from app.document_line
        where document_id = ${sale.documentId} and line_no = 2`);
@@ -6491,8 +6491,8 @@ describe("SAH-058 procGetTaxItems applies contradictory filters to the two halve
 
   it("the uncoded value reaches the return through no box, and the coded value through exactly one",
     async () => {
-      const f = await taxFixture(db, "sah058-boxes");
-      const ctx = { tenantId: f.s.tenant, actorId: f.s.human, requestId: "sah058-b" };
+      const f = await taxFixture(db, "legacy058-boxes");
+      const ctx = { tenantId: f.s.tenant, actorId: f.s.human, requestId: "legacy058-b" };
       await postTaxedDocument(db, f, {
         typeCode: "SALES_INVOICE", effectiveDate: "2026-01-10", taxInclusive: false,
         lines: [
@@ -6516,11 +6516,11 @@ describe("SAH-058 procGetTaxItems applies contradictory filters to the two halve
 
 ⚠️ **`postJournal` is 1B's export and its option names are 1B's.** If the signature above does not match `packages/db/src/reports/`'s helper as 1B shipped it, correct **this** call — never add a journal helper here (hazard 9, §4.18). The assertion does not depend on the helper's shape, only on there being a posted JOURNAL.
 
-- [ ] **Step 3: Create `tests/regression/sah-059.test.ts`**
+- [ ] **Step 3: Create `tests/regression/legacy-059.test.ts`**
 
 ```ts
-// tests/regression/sah-059.test.ts
-// SAH-059 (H) — `procGetTaxItems` overflows its declared buffer on a normal VAT return (spec:713).
+// tests/regression/legacy-059.test.ts
+// LEGACY-059 (H) — `procGetTaxItems` overflows its declared buffer on a normal VAT return (spec:713).
 // The failure: truncation at a clause boundary yields "a valid query with the period filter missing", and
 // the return silently reports every voucher ever posted. Created by slice 5A.
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
@@ -6530,14 +6530,14 @@ import { malaysiaPack, Money, currency } from "@dulja/domain";
 import { sourceFiles, startDb, type Db } from "@dulja/db/test";
 import { postTaxedDocument, taxFixture } from "../invariants/support/tax";
 
-describe("SAH-059 procGetTaxItems overflows its declared buffer on a normal VAT return — 5A", () => {
+describe("LEGACY-059 procGetTaxItems overflows its declared buffer on a normal VAT return — 5A", () => {
   let db: Db;
   beforeAll(async () => { db = await startDb(); }, 180_000);
   afterAll(async () => { await db.stop(); });
 
   it("a return is bounded by its period even when later periods hold much larger figures", async () => {
-    const f = await taxFixture(db, "sah059");
-    const ctx = { tenantId: f.s.tenant, actorId: f.s.human, requestId: "sah059" };
+    const f = await taxFixture(db, "legacy059");
+    const ctx = { tenantId: f.s.tenant, actorId: f.s.human, requestId: "legacy059" };
     await postTaxedDocument(db, f, {
       typeCode: "SALES_INVOICE", effectiveDate: "2026-01-10", taxInclusive: false,
       lines: [{ lineNo: 1, accountId: f.accounts["4000"]!, amount: "1000.0000", taxCode: "SYN-OUT-STD" }],
@@ -6593,11 +6593,11 @@ describe("SAH-059 procGetTaxItems overflows its declared buffer on a normal VAT 
 
 - [ ] **Step 4: Append the two `— 5A` blocks**
 
-`tests/regression/sah-011.test.ts` gains one `describe` at the end of the file. **Nothing above it is touched** (§3.7.3).
+`tests/regression/legacy-011.test.ts` gains one `describe` at the end of the file. **Nothing above it is touched** (§3.7.3).
 
 ```ts
 // ── appended by slice 5A ─────────────────────────────────────────────────────────────────────────────
-describe("SAH-011 NULL arithmetic irreversibly nulls balances and tax boxes — 5A (the VAT-box half)", () => {
+describe("LEGACY-011 NULL arithmetic irreversibly nulls balances and tax boxes — 5A (the VAT-box half)", () => {
   let db: Db;
   beforeAll(async () => { db = await startDb(); }, 180_000);
   afterAll(async () => { await db.stop(); });
@@ -6621,8 +6621,8 @@ describe("SAH-011 NULL arithmetic irreversibly nulls balances and tax boxes — 
 
   it("an uncoded line is written 0.0000 rather than left stale, and an empty period ties out to 0.0000",
     async () => {
-      const f = await taxFixture(db, "sah011-5a");
-      const ctx = { tenantId: f.s.tenant, actorId: f.s.human, requestId: "sah011-5a" };
+      const f = await taxFixture(db, "legacy011-5a");
+      const ctx = { tenantId: f.s.tenant, actorId: f.s.human, requestId: "legacy011-5a" };
       const doc = await postTaxedDocument(db, f, {
         typeCode: "SALES_INVOICE", effectiveDate: "2026-01-10", taxInclusive: false,
         lines: [{ lineNo: 1, accountId: f.accounts["4000"]!, amount: "400.0000", taxCode: null }],
@@ -6648,13 +6648,13 @@ describe("SAH-011 NULL arithmetic irreversibly nulls balances and tax boxes — 
 });
 ```
 
-**The imports both appended blocks need**, added to the top of each file beside whatever 0B already imports there — never replacing an existing line: `sah-011.test.ts` gains `withTenant` from `@dulja/db`, `createTaxReturn` / `generateTaxReturn` / `taxReturnTieOut` from `@dulja/db`, `startDb` and `type Db` from `@dulja/db/test`, and `postTaxedDocument` / `taxFixture` from `../invariants/support/tax`; `sah-019.test.ts` gains `taxEngine`, `Money`, `currency` and `type RoundingMode` from `@dulja/domain` and `sourceFiles` from `@dulja/db/test`. **`SYSTEM_CTX`** in the first block is the file-local `{ tenantId: <a seeded tenant>, actorId: <its system principal>, requestId: "sah011-5a-ddl" }` — the DDL case reads `information_schema` and needs *a* tenant session, not a particular one; if 0B's file already declares such a constant, use it rather than adding a second.
+**The imports both appended blocks need**, added to the top of each file beside whatever 0B already imports there — never replacing an existing line: `legacy-011.test.ts` gains `withTenant` from `@dulja/db`, `createTaxReturn` / `generateTaxReturn` / `taxReturnTieOut` from `@dulja/db`, `startDb` and `type Db` from `@dulja/db/test`, and `postTaxedDocument` / `taxFixture` from `../invariants/support/tax`; `legacy-019.test.ts` gains `taxEngine`, `Money`, `currency` and `type RoundingMode` from `@dulja/domain` and `sourceFiles` from `@dulja/db/test`. **`SYSTEM_CTX`** in the first block is the file-local `{ tenantId: <a seeded tenant>, actorId: <its system principal>, requestId: "legacy011-5a-ddl" }` — the DDL case reads `information_schema` and needs *a* tenant session, not a particular one; if 0B's file already declares such a constant, use it rather than adding a second.
 
-`tests/regression/sah-019.test.ts` gains:
+`tests/regression/legacy-019.test.ts` gains:
 
 ```ts
 // ── appended by slice 5A ─────────────────────────────────────────────────────────────────────────────
-describe("SAH-019 Rounding is configured everywhere, applied nowhere, and the function is wrong — 5A", () => {
+describe("LEGACY-019 Rounding is configured everywhere, applied nowhere, and the function is wrong — 5A", () => {
   const ccy = currency("MYR");
   const codeAt = (mode: RoundingMode) => ({
     id: "88888888-8888-7888-8888-888888888888", regimeId: "99999999-9999-7999-8999-999999999999",
@@ -6841,13 +6841,13 @@ describe("slice 5A — the pinned lists and the re-run matrix", () => {
 });
 ```
 
-**The file's remaining imports**, beside the ones written above: `readFileSync` and `readdirSync` from `node:fs`, `join` from `node:path`, `sourceFiles` and `repoFile` from `@dulja/db/test`, `createTaxReturn` from `@dulja/db`, and `taxFixture` from `./support/tax`. **`SYSTEM_CTX`** here is the same file-local shape as in the sah-011 block — a seeded tenant's system principal, declared once at the top of this file, because `information_schema` and `pg_constraint` reads still need a tenant session (every query runs inside `withTenant`, spec:2053).
+**The file's remaining imports**, beside the ones written above: `readFileSync` and `readdirSync` from `node:fs`, `join` from `node:path`, `sourceFiles` and `repoFile` from `@dulja/db/test`, `createTaxReturn` from `@dulja/db`, and `taxFixture` from `./support/tax`. **`SYSTEM_CTX`** here is the same file-local shape as in the legacy-011 block — a seeded tenant's system principal, declared once at the top of this file, because `information_schema` and `pg_constraint` reads still need a tenant session (every query runs inside `withTenant`, spec:2053).
 
 - [ ] **Step 6: Run everything, and commit**
 
 ```bash
-bun run --cwd tests test -- regression/sah-011 regression/sah-019 regression/sah-020 \
-                            regression/sah-058 regression/sah-059 invariants/phase-5a-pinned \
+bun run --cwd tests test -- regression/legacy-011 regression/legacy-019 regression/legacy-020 \
+                            regression/legacy-058 regression/legacy-059 invariants/phase-5a-pinned \
   && bun run --cwd tests test -- invariants/tenant-isolation invariants/audit-chain \
   && bun run --cwd packages/db test \
   && bun run lint && bun run lint:rules && bun run format:check && bun run typecheck
@@ -6856,11 +6856,11 @@ bun run --cwd tests test -- regression/sah-011 regression/sah-019 regression/sah
 **All five regression files green, both appended blocks green, and the pinned file green.** A failure in `phase-5a-pinned` is never fixed in that file — it means a list moved, and the fix is in the task that moved it.
 
 ```bash
-git add tests/regression/sah-020.test.ts tests/regression/sah-058.test.ts \
-        tests/regression/sah-059.test.ts tests/regression/sah-011.test.ts \
-        tests/regression/sah-019.test.ts tests/invariants/phase-5a-pinned.test.ts
+git add tests/regression/legacy-020.test.ts tests/regression/legacy-058.test.ts \
+        tests/regression/legacy-059.test.ts tests/regression/legacy-011.test.ts \
+        tests/regression/legacy-019.test.ts tests/invariants/phase-5a-pinned.test.ts
 git commit -m "$(cat <<'EOF'
-test(regression): close SAH-020, 058 and 059 and pin 5A's lists [5A T11]
+test(regression): close LEGACY-020, 058 and 059 and pin 5A's lists [5A T11]
 
 Three files created and two appended, each asserting the defect's actual failure rather
 than its heading: a rate that is a row and not a literal (020), one selection rule for
@@ -7086,7 +7086,7 @@ function TaxReturnsScreen() {
 
   // `difference` decides the row's tone and NOTHING else: the screen reports, the API refuses. A tie-out
   // row is never hidden and the section is never collapsible — a non-zero difference scrolled past is the
-  // whole class of failure SAH-011 and SAH-059 are.
+  // whole class of failure LEGACY-011 and LEGACY-059 are.
   const tieRows = useMemo(() => (detail?.tieOut ?? []).map((r: TieOutRow) => ({
     key: r.accountCode, account: r.accountCode, boxes: r.boxCodes.join(", "),
     box: <MoneyText value={{ amount: r.boxBase, currency: detail!.currency }} />,
@@ -7210,7 +7210,7 @@ feat(backoffice): add the tax-return screen behind OD-24 [5A T12]
 
 One column, because the operator's whole job is "do these figures agree with my working":
 the boxes and the two-row reconciliation are read together and the tie-out is never
-collapsible -- a non-zero difference scrolled past is the failure SAH-011 and SAH-059 are.
+collapsible -- a non-zero difference scrolled past is the failure LEGACY-011 and LEGACY-059 are.
 Ctrl+G generates and Ctrl+S does not, because generating writes a payload and stamps
 generated_by. No file action: generated -> filed is 5B's under accounting.tax.file, and a
 button the API refuses is worse than a missing one. Filters go through 4B's filterQuery,
@@ -7277,7 +7277,7 @@ EOF
 
 - `packages/domain/src/tax/engine.ts` — `TaxRegime`, `TaxCodeDef`, `TaxLineInput`, `TaxLineResult`, `TaxEngine` (all five §4.9.1 verbatim), plus **`taxEngine`** (the const the interface had no name for), **`TaxError`** (the engine's one error class — `packages/domain` may not import `AppError`, §3.1) and **`producesNoTax`** (the `exempt`/`zero`/`out_of_scope` predicate the return's box rules need; two spellings of it would put one sale in two boxes).
 - `packages/domain/src/tax/canonical.ts` — **`canonicalJson`**, the one canonicaliser; §4.9.3's `hash: sha256 of the canonical payload` is this function, so 5B imports it rather than writing a second.
-- `packages/domain/src/tax/jurisdiction.ts` — `ReturnBox`, `JurisdictionPack` (§4.9.1), plus **`ReturnBoxDef`** (a box's rule as data rather than as TypeScript — a box whose rule is in code is SAH-020's literal in a different coat), **`RegimeDefinition`** (amendment A3) and **`TaxTransactionRow`** (amendment A5 — §4 left the shape open as 5A's own), and the module-internal **`buildReturnFrom`** / **`validateReturnAgainst`** that a second jurisdiction would call with its own definitions.
+- `packages/domain/src/tax/jurisdiction.ts` — `ReturnBox`, `JurisdictionPack` (§4.9.1), plus **`ReturnBoxDef`** (a box's rule as data rather than as TypeScript — a box whose rule is in code is LEGACY-020's literal in a different coat), **`RegimeDefinition`** (amendment A3) and **`TaxTransactionRow`** (amendment A5 — §4 left the shape open as 5A's own), and the module-internal **`buildReturnFrom`** / **`validateReturnAgainst`** that a second jurisdiction would call with its own definitions.
 - `packages/domain/src/tax/malaysia.ts` — **`SYNTH_MY_V1`**, **`MALAYSIA_REGIMES`**, `malaysiaPack` (§4.9.1), and behind OD-15 **`MY_VERIFIED_V1`** (T10, dropped with that task).
 - `packages/domain/tax-pack.schema.json` — **`urn:dulja:tax-pack:1`**, the seed envelope; its `rate` pattern `^\d+\.\d{8}$` is what stops `"11"` or `"11%"` becoming an 1100 % tax, and its `$defs/regimeCode` pattern `^[A-Z][A-Za-z0-9-]{1,31}$` is the one `CreateTaxReturnBody.regimeCode` repeats — an all-caps pattern would reject `SYNTH-MY-v1`, the only regime that ships.
 - `packages/domain/src/tax/pack-schema.ts` — **`validateTaxPack`** and **`TaxPackValidation`**, the Ajv wiring for that schema, in the shape 1A gave `validateDocumentTypeSeed` (phase-1a:1760-1762) so `taxLoader`'s `SeedError` and the CLI's exit code are unchanged.
@@ -7305,7 +7305,7 @@ EOF
 1. **The `each_tax` group's account resolution order (amendment A11).** Three of the five golden documents post only if a zero-amount `each_tax` group is dropped **before** its `accountRef` is resolved. 2A's written body does exactly that (phase-2a:1843–1855) and A11 only records it — but this plan read 2A's *plan*, not the merged file. **Re-check the merged `packages/domain/src/posting/evaluate.ts` before Task 7.** If the two lines have been reordered, the finding is in `evaluate.ts` and the fix is there under §4.18 — not a fourth account code here, and not an `accountCode` on `SYN-OUT-ZERO` (the loader and `tax_code_account_for_kind_check` would both ignore it).
 2. **4A's `SALES_INVOICE` AR leg.** T8 Step 6 assumes 4A debits `party.receivable_account` with `line.total_incl_tax` (spec:2009–2028's worked example). If 4A debited `line.amount`, the invoice will not balance once tax exists and the fix is one word **in 4A's file**, recorded in T8's commit body rather than worked around here.
 3. **Whether 4B's `postFromPack` still has the shape T7 Step 1's diff is written against.** This plan reads 4B's *plan* — `PostFromPackOptions.code`, the internally-derived `packApproval`, the `{ documentId, result }` return and the `rateSource` `UPDATE` the `taxInclusive` one is modelled on (phase-4b:1859, 1943, 1955) — and adds two members to that interface **under amendment A13a**. **Re-read the merged `tests/invariants/support/ar-ap.ts` before Task 7.** If a member was renamed, correct *this* plan's mapping in `postTaxedDocument`; never write a third posting helper (§4.18, hazard 9). The same applies to the order of the new block: `taxInclusive`'s `UPDATE` must precede `computeTax`, and `computeTax` must precede the first `transitionDocument`, or the `synth-my-inclusive` golden case computes exclusive tax on a gross figure.
-4. **1B's `postJournal` signature.** T11's sah-058 block calls it to post the "manual voucher" half of the defect. The assertion does not depend on the helper's shape, only on there being a posted JOURNAL — correct the call, never add a journal helper here.
+4. **1B's `postJournal` signature.** T11's legacy-058 block calls it to post the "manual voucher" half of the defect. The assertion does not depend on the helper's shape, only on there being a posted JOURNAL — correct the call, never add a journal helper here.
 5. **Whether `CreateDocumentBody` accepts lines at create.** Task 0's first informational probe answers it and it decides whether T7 Step 8 hooks `computeDocumentTax` in one handler or two. A document created with lines and never re-saved would otherwise carry `tax_amount = 0` into the ledger, and every box would be short by that document.
 6. **`filterQuery`'s home once 4B is merged.** T12 imports it from `apps/backoffice/src/lib/ar-ap-api.ts` and adds one `export` keyword. If 4B renamed it, or if `ar-ap-api.ts` was dropped with 4B's own OD-24 task, **the composer must be moved to a shared module and both screens import it** — two definitions of §4.2.8's grammar in one application is hazard 9, and it is the executor's stop-and-raise before `tax-api.ts` is written.
 
@@ -7331,7 +7331,7 @@ EOF
 - **The golden `payloadSha256` differing from `df0b4de2ec7fc20f1f1fb045447792279cdbc12d2fa7ae7446d0034ee6cdc438`.** Never edit the sha. Diff the generated `payload` against T9 Step 5's block; the byte that moved names the fault — a label typo in `SYNTH_MY_V1`, a box out of definition order, a `currency` that is not the company's `base_currency`, or a figure that came out wrong.
 - **A non-zero `difference` in the tie-out.** Read the credit note first (Self-Review item 1): a positive `tax_transaction.tax` on a `SALES_CREDIT_NOTE` produces exactly this, and the amount of the difference is twice the credit note's tax. If the credit note is right, the next suspect is `taxReturnTieOut`'s orientation — it must come from `app.account.type` and never from a per-account map.
 - **`posting-only-tables` firing on `packages/db/src/tax/returns.ts`.** That file **reads** `app.tax_transaction`; the rule matches `insert`, `update`, `delete` and `merge` only. If it fires on a `select`, the rule's pattern has drifted and *that* is the finding. Never add a suppression, and never move the read into `posting/`.
-- **Any proposal to let a client send `tax_amount` or `total_incl_tax`.** spec:2228 requires the computation at persist time and SAH-020's root cause is a tax figure nobody could recompute. A client-stated tax is the same defect facing the other way.
+- **Any proposal to let a client send `tax_amount` or `total_incl_tax`.** spec:2228 requires the computation at persist time and LEGACY-020's root cause is a tax figure nobody could recompute. A client-stated tax is the same defect facing the other way.
 - **Any proposal to give `tax_code` a `source` column beside `tax_regime`'s.** §4.9.2 pins `tax_code` exactly and amendment A2 adds `source` to `tax_regime` **only** — one provenance record per regime, which is the unit a publication actually covers. A column here is a contracts amendment first.
 - **Any proposal to compute the return from `ledger_entry` "because it is the same number".** It is not: the ledger's tax leg is a per-document sum in base, and a return needs the per-code, per-kind split with its own base measure. Reading the ledger would also make the tie-out compare a figure to itself, which is the one thing it must never do.
 - **Any proposal to regenerate a `filed` return.** T8 refuses it and 5B depends on that refusal: a filed return's payload is what was transmitted, and a correction is a new period's return.
@@ -7342,7 +7342,7 @@ EOF
 
 - **`canonicalJson` is the hash function.** §4.9.3's `EInvoiceDocument.hash` is "sha256 of the canonical payload"; that canonicaliser exists, is pure, and is exported from `@dulja/domain`. **5B imports it.** A second canonicaliser gives one document two hashes, and the authority will have seen the other one.
 - **`app.tax_transaction` is the only source a return may read**, and `postDocument` step 11 is its only writer. 5B's transmission log keys on `document_id` and never re-derives a tax figure; 7C's `accounting.tax_return_view` reads `tax_transaction` (already in 7A's ≤ 0058 `DatasetId` set, so 7A adds no member).
-- **A regime is added, never replaced.** `JurisdictionPack.regimes` holds definitions keyed `(code, version)` (A3), tenants are matched to one by that pair, and a filed return stays readable because nothing is removed. **OD-15's arrival is a seed PR plus one appended const** — that is the shape 8A/8B's statutory tables must copy, and it is the same shape for the same reason (SAH-020, SAH-078).
+- **A regime is added, never replaced.** `JurisdictionPack.regimes` holds definitions keyed `(code, version)` (A3), tenants are matched to one by that pair, and a filed return stays readable because nothing is removed. **OD-15's arrival is a seed PR plus one appended const** — that is the shape 8A/8B's statutory tables must copy, and it is the same shape for the same reason (LEGACY-020, LEGACY-078).
 - **`resolveInclusive` is the one rule.** Anything that computes a tax-inclusive base — a POS ticket at 6A, a payroll benefit at 8B — calls it or repeats its single line, and if it repeats it, the two will disagree the first time §4.4.1's `tax.inclusive` grows a third form.
 - **`accounting.tax.manage` is seeded and granted to `accountant`; `accounting.tax.file` is not seeded at all.** 5B seeds it in the PR that raises it, with the `accountant` grant, exactly as this slice did — the F-21 rule, and `permission-catalogue` fails the build until the reference exists in `apps/**`.
 - **The four AR/AP policies are at `policyVersion: 2` with a `tax` block.** A fifth revenue-bearing type — 6A's `POS_TICKET` — adds its own `each_tax` leg the same way, as a seed file and not one line of TypeScript, and that is the test 15 re-run **6A** owns.

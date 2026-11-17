@@ -88,7 +88,7 @@ export const NEVER_EXPORTED: Readonly<Record<string, readonly string[]>> = {
   company: ["einvoice_client_id", "einvoice_credential_ref"],
   // secret: the till's raw request body, verbatim — the facts a resolution needs are the other columns.
   needs_attention: ["payload"],
-  // secret: SAH-038 — an object-store key never reaches the wire. An attachment's bytes travel under the
+  // secret: LEGACY-038 — an object-store key never reaches the wire. An attachment's bytes travel under the
   // archive's attachments/ directory; a report run's artefact is regenerable from its definition.
   attachment: ["object_key"],
   // …and plumbing: `started_at` and `attempts` are the render worker's lease and fencing token (Phase 7 review,
@@ -326,7 +326,7 @@ export const EXPORT_TABLES: readonly ExportTable[] = [
       "is_group",
       "currency",
       "archived_at",
-      // 9B's 0101 (contracts §4.13.3): the source system's own identifier is part of the books (SAH-051).
+      // 9B's 0101 (contracts §4.13.3): the source system's own identifier is part of the books (LEGACY-051).
       "legacy_ref",
       "created_at",
     ],
@@ -520,7 +520,7 @@ export const EXPORT_TABLES: readonly ExportTable[] = [
       "payment_term_id",
       "price_list_id",
       "archived_at",
-      // 9B's 0101 (contracts §4.13.3): the source system's own identifier is part of the books (SAH-051).
+      // 9B's 0101 (contracts §4.13.3): the source system's own identifier is part of the books (LEGACY-051).
       "legacy_ref",
       "created_at",
     ],
@@ -564,7 +564,7 @@ export const EXPORT_TABLES: readonly ExportTable[] = [
       "track_lots",
       "shelf_life_days",
       "archived_at",
-      // 9B's 0101 (contracts §4.13.3): the source system's own identifier is part of the books (SAH-051).
+      // 9B's 0101 (contracts §4.13.3): the source system's own identifier is part of the books (LEGACY-051).
       "legacy_ref",
       "created_at",
     ],
@@ -633,7 +633,7 @@ export const EXPORT_TABLES: readonly ExportTable[] = [
       "expires_on",
       "manufactured_on",
       "archived_at",
-      // 9B's 0101 (contracts §4.13.3): the source system's own identifier is part of the books (SAH-051).
+      // 9B's 0101 (contracts §4.13.3): the source system's own identifier is part of the books (LEGACY-051).
       "legacy_ref",
       "created_at",
     ],
@@ -767,7 +767,7 @@ export const EXPORT_TABLES: readonly ExportTable[] = [
       "posted_at",
       "posting_seq",
       "notes",
-      // 9B's 0101 (contracts §4.13.3): the source system's own identifier is part of the books (SAH-051).
+      // 9B's 0101 (contracts §4.13.3): the source system's own identifier is part of the books (LEGACY-051).
       "legacy_ref",
       "created_at",
     ],
@@ -1349,7 +1349,7 @@ export const EXPORT_TABLES: readonly ExportTable[] = [
       "archived_at",
       // 8D's 0098 (contracts round 19, 8D A2): an operational date of the same class as hired_on, so it leaves too.
       "contract_ends_on",
-      // 9B's 0101 (contracts §4.13.3): the source system's own identifier is part of the books (SAH-051).
+      // 9B's 0101 (contracts §4.13.3): the source system's own identifier is part of the books (LEGACY-051).
       "legacy_ref",
       "created_at",
     ],

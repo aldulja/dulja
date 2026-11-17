@@ -79,7 +79,7 @@ the system until its slice has reasoned about it. `NEVER_EXPORTED` holds two kin
 - **secrets**, whatever the registry says: `principal.auth_subject`, `pos_cashier.pin_hash`,
   `pos_terminal.device_public_key`, `company.einvoice_client_id` and `einvoice_credential_ref`,
   `needs_attention.payload` (the till's raw request body), `attachment.object_key` and
-  `report_run.object_key` (SAH-038: a store key never reaches the wire), `audit_log.before`/`after`, and
+  `report_run.object_key` (LEGACY-038: a store key never reaches the wire), `audit_log.before`/`after`, and
   the whole of `terminal_enrolment` and `idempotency_key`;
 - **plumbing** that is not a business record and would make two exports of one set of books differ:
   `terminal_request_guard`, `catalogue_tombstone`, `cost_booking`, `export_job` itself, `report_run.started_at`
@@ -153,7 +153,7 @@ hex — and the document says so.
   (or `lot_attachments`, for a lot's) cover it, and every attachment left out is named in
   `manifest.attachmentsOmitted` with one of three reasons — `module_not_readable`, `object_missing`, or
   `digest_mismatch` when the stored bytes no longer hash to the SHA-256 the row recorded, so the archive
-  never ships bytes under a digest they do not have. The manifest carries no object-store key (SAH-038).
+  never ships bytes under a digest they do not have. The manifest carries no object-store key (LEGACY-038).
 - **Amendment (Phase 7 review, 2026-11-06, Proposed).** `runExport` no longer runs inside the caller's
   transaction. It takes a read runner (`ExportReadTransaction`, the caller's `withTenant` bound to its
   principal) and opens ONE short transaction for the rows — the gates, `schema.json`, every included table

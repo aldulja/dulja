@@ -13,7 +13,7 @@ export interface ResolvedEnrolment {
  * The pre-tenant door for a one-time enrolment code (contracts §4.1, migration 0060). `app.resolve_enrolment`
  * is SECURITY DEFINER and owned by `app_auth`, so this call needs no `set_config` — which is the whole point:
  * a till presenting a code has no tenant, no principal and no session, and inventing one from the request
- * would be SAH-026 rebuilt.
+ * would be LEGACY-026 rebuilt.
  */
 export async function resolveEnrolment(sql: Sql, codeHash: Buffer): Promise<ResolvedEnrolment[]> {
   return sql<ResolvedEnrolment[]>`

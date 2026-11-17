@@ -82,7 +82,7 @@ ledgerRoutes.openapi(
     const { cursor, limit, accountId, fiscalPeriodId, documentId, from, to } = c.req.valid("query");
     const after = cursor ? decodeCursor(cursor) : null;
     // Every filter is a declared field bound as a parameter — no field name reaches SQL as text (test 27).
-    // The index this uses is 0001's ledger_entry (company_id, account_id, effective_date) — SAH-070.
+    // The index this uses is 0001's ledger_entry (company_id, account_id, effective_date) — LEGACY-070.
     const rows = await c.var.withTenant(
       (tx) => tx<Row[]>`
       select id, document_id, line_no, account_id, debit::text as debit, credit::text as credit, currency,

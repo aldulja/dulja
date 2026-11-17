@@ -272,7 +272,7 @@ export const STOCK_ISSUE_COST_POLICY = {
   // Its OWN type, like every §4.14 pack type: `reverseDocument` negates the line magnitudes and 3D's
   // `orientLeg` (ADR 0042) flips a negative-quantity leg to the opposite effect, so the reversal of an issue
   // is already a receipt. Naming STOCK_RECEIPT_TEST here — 3B's original fixture — flipped it twice, and a
-  // reversed receipt put its goods back IN a second time (sah-004 saw 300 on hand after 100 + 100 − 100).
+  // reversed receipt put its goods back IN a second time (legacy-004 saw 300 on hand after 100 + 100 − 100).
   reversal: { allowed: true, producesType: "STOCK_ISSUE_TEST" },
   approval: { required: false, approve: null, post: "accounting.journal.post" },
   fxRoundingAccount: { from: "company.fx_rounding_account_id" },

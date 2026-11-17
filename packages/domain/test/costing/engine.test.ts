@@ -100,7 +100,7 @@ function receipt(
   };
 }
 
-describe("costingEngine — the ONE implementation (spec:1228; SAH-009)", () => {
+describe("costingEngine — the ONE implementation (spec:1228; LEGACY-009)", () => {
   it("a receipt creates one layer at value ÷ quantity and consumes nothing", () => {
     const out = costingEngine.cost(receipt("100.000000", "1000.0000"));
     expect(out.value.toString()).toBe("1000.0000");
@@ -193,7 +193,7 @@ describe("costingEngine — the ONE implementation (spec:1228; SAH-009)", () => 
     // The oldest layer holds one micro-unit beside two of a hundred. 1.000000 split by weight gives it
     // 1_000_000 × 1 ÷ 200_000_001 = 0 micro-units, so it must receive neither a consumption row nor an
     // allocation weight — Σ consumption value has to equal out.value exactly, or COST_LAYER_CHECK's sibling
-    // invariant and sah-009's tie-out both drift by the difference.
+    // invariant and legacy-009's tie-out both drift by the difference.
     const layers = [
       layer({
         id: "TINY",
@@ -257,7 +257,7 @@ describe("costingEngine — the ONE implementation (spec:1228; SAH-009)", () => 
     expect(MIN_MEANINGFUL_QTY.toString()).toBe("0.000001");
   });
 
-  it("a receipt with no value is refused — value is mandatory on every movement (SAH-007)", () => {
+  it("a receipt with no value is refused — value is mandatory on every movement (LEGACY-007)", () => {
     expect(() => costingEngine.cost(receipt("10.000000", null))).toThrow(
       /ERR_COST_VALUE_MISSING.*carries no value/s,
     );
@@ -275,7 +275,7 @@ describe("costingEngine — the ONE implementation (spec:1228; SAH-009)", () => 
   });
 });
 
-describe("costingEngine — FIFO shares the layer model (spec:1214, SAH-055)", () => {
+describe("costingEngine — FIFO shares the layer model (spec:1214, LEGACY-055)", () => {
   const layers = () => [
     layer({
       id: "L2",
@@ -326,7 +326,7 @@ describe("costingEngine — FIFO shares the layer model (spec:1214, SAH-055)", (
     expect(avco.consumptions[0]!.unitCost.toString()).toBe("15.0000");
   });
 
-  it("the FIFO carry-forward is total — every layer touched, none skipped, and the quantities close (SAH-055)", () => {
+  it("the FIFO carry-forward is total — every layer touched, none skipped, and the quantities close (LEGACY-055)", () => {
     // procMatStorage's `if ((Material is not null) or (Material <> aMat))` reset the carry-forward on every
     // row, so the FIFO walk never happened. This asserts the opposite: the walk visits layers in order until
     // the need is met and Σ consumed = the issue exactly.
@@ -364,7 +364,7 @@ describe("costingEngine — FIFO shares the layer model (spec:1214, SAH-055)", (
     expect(out.value.toString()).toBe("12.0000"); // 3×1 + 3×2 + 1×3
   });
 
-  it("two layers with the same date and sequence are ordered by (line_no, movement_no) — the key is total (SAH-067)", () => {
+  it("two layers with the same date and sequence are ordered by (line_no, movement_no) — the key is total (LEGACY-067)", () => {
     const sameKey = [
       layer({
         id: "SECOND",

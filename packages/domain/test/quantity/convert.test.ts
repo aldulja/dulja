@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { applyConversion, IDENTITY_CONVERSION, Quantity, rational } from "../../src";
 
-describe("applyConversion — exact rational unit conversion (spec:2043, SAH-066)", () => {
+describe("applyConversion — exact rational unit conversion (spec:2043, LEGACY-066)", () => {
   it("1 carton of 12 pieces is 12 base units", () => {
     expect(applyConversion(Quantity.of("1.000000"), rational(12n, 1n)).toString()).toBe(
       "12.000000",
@@ -36,7 +36,7 @@ describe("applyConversion — exact rational unit conversion (spec:2043, SAH-066
     // 3 × 1/2000000 = 0.0000015, another tie. This case pins the ORDER as well as the mode: multiply by the
     // numerator, THEN divide by the denominator, then round once — the order 0D's `convert` uses and the
     // order the SQL trigger uses (`unit_quantity * num / den`). Collapsing the rational to a Decimal first,
-    // which is what `Quantity.multiply(rational, mode)` does, is the per-step rounding shape SAH-066 is.
+    // which is what `Quantity.multiply(rational, mode)` does, is the per-step rounding shape LEGACY-066 is.
     expect(applyConversion(Quantity.of("3.000000"), tie).toString()).toBe("0.000002");
   });
 
@@ -53,7 +53,7 @@ describe("applyConversion — exact rational unit conversion (spec:2043, SAH-066
     expect(negative.toString()).toBe(positive.negate().toString());
   });
 
-  it("a zero denominator is refused by rational() before it reaches here (SAH-063)", () => {
+  it("a zero denominator is refused by rational() before it reaches here (LEGACY-063)", () => {
     expect(() => rational(12n, 0n)).toThrow(/ERR_RATIONAL_ZERO_DENOMINATOR/);
   });
 });

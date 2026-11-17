@@ -180,7 +180,7 @@ the same pattern as the cash rounding above: optional evidence that the server p
     needs-attention refusal like any other, and its detail ends with `promotion evidence not honoured — line N:
     <reason>`.
   - The server never re-prices. A promotion edited, shortened or removed between the sale and the sync makes
-    the claim unprovable, as a stale tax rate does (SAH-020), and the manager resolves it like any other
+    the claim unprovable, as a stale tax rate does (LEGACY-020), and the manager resolves it like any other
     refusal.
 
 - **Report** (2026-10-23, the same best-practice direction; this replaces the open question first recorded

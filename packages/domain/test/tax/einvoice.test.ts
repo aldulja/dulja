@@ -94,7 +94,7 @@ describe("canonicalJson — the one deterministic serialiser (spec:2264, test 26
     expect(canonicalJson({ number: 42n })).toBe('{"number":"42"}');
   });
 
-  it("REFUSES a non-integer number — money is a string on this path (Global Constraint 4, SAH-019)", () => {
+  it("REFUSES a non-integer number — money is a string on this path (Global Constraint 4, LEGACY-019)", () => {
     expect(() => canonicalJson({ amount: 10.5 })).toThrow(CanonicalJsonError);
     expect(() => canonicalJson({ amount: 10.5 })).toThrow(/non-integer number at \/amount/);
   });

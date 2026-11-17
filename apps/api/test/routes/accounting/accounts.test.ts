@@ -4,7 +4,7 @@ import { withTenant } from "@dulja/db";
 import { seedTenantV2, uuidv7, type Seed } from "@dulja/db/test";
 import { startApi, type StartedApi } from "../../support/app";
 
-describe("/v1/companies/{companyId}/accounts — spec:1673, SAH-021, SAH-071", () => {
+describe("/v1/companies/{companyId}/accounts — spec:1673, LEGACY-021, LEGACY-071", () => {
   let api: StartedApi;
   let a: Seed;
   let b: Seed;
@@ -82,7 +82,7 @@ describe("/v1/companies/{companyId}/accounts — spec:1673, SAH-021, SAH-071", (
     expect(((await res.json()) as Problem).code).toBe("ERR_CONFLICT_UNIQUE");
   });
 
-  it("archives rather than deletes, and an archived account is excluded from the default list (SAH-021)", async () => {
+  it("archives rather than deletes, and an archived account is excluded from the default list (LEGACY-021)", async () => {
     const created = (await (
       await api.request({
         method: "POST",
@@ -155,7 +155,7 @@ describe("/v1/companies/{companyId}/accounts — spec:1673, SAH-021, SAH-071", (
     expect(row!.parent_id).not.toBe(otherAccount);
   });
 
-  it("returns the tree in one recursive CTE with depth and path (SAH-071)", async () => {
+  it("returns the tree in one recursive CTE with depth and path (LEGACY-071)", async () => {
     const res = await api.request({
       method: "GET",
       path: `/v1/companies/${a.company}/accounts/tree`,

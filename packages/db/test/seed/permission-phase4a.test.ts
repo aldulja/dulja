@@ -263,7 +263,7 @@ describe("slice 4A's catalogue, its role grants and the accounts it consumes (co
 
     // The SAME join, unfiltered by code, answers every accounting code in one statement — which is what
     // "over the full catalogue" means, and it must agree with roles.ts code by code. This is spec:2432, and
-    // exactly what SAH-034/047 made impossible.
+    // exactly what LEGACY-034/047 made impossible.
     const answers = await withTenant(
       db.rw,
       s.tenant,

@@ -11,7 +11,7 @@ export const POS_PACK_ROOT = fileURLToPath(
 
 export interface EnrolledTerminal {
   terminalId: string;
-  /** The terminal's `app.principal.id` — the ACTING principal for every ticket it syncs (SAH-044). It is on
+  /** The terminal's `app.principal.id` — the ACTING principal for every ticket it syncs (LEGACY-044). It is on
    *  this object because `withTenant`'s `actorId` is a principal id, and passing `terminalId` there sets
    *  `app.actor_id` to a uuid that is not a principal: `document.created_by`'s FK then fails at the header
    *  insert, before the dedup read ever runs, and the failure names a constraint instead of the mistake. */
@@ -161,7 +161,7 @@ export interface PosFixture {
   taxRates: Record<string, string>;
   /** The same four → the two figures a tax-INCLUSIVE line needs, so that `buildTicket` restates neither the
    *  rate nor the rounding rule: `divisor` is `(1 + rate)::text` computed by **Postgres**, whose numeric is
-   *  exact and needs no decimal library in a fixture, and `roundingMode` is the CODE's own — SAH-019's finding
+   *  exact and needs no decimal library in a fixture, and `roundingMode` is the CODE's own — LEGACY-019's finding
    *  is that the mode belongs to the code and not to the engine, and 5A's inclusive branch honours it. */
   taxInclusive: Record<string, { divisor: string; roundingMode: RoundingMode }>;
   cashierId: string;

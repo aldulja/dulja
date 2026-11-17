@@ -4,7 +4,7 @@
 -- scheme, on app.statutory_scheme.employer_registration (migration 0084, amendment A3). spec:2088:
 -- "relational company settings supplied by the owner -- never a blob (§4.1)". §4.6.1's
 -- `employer_registrations jsonb` "display copy" is deliberately NOT built (amendment A4): a second
--- store with no rebuild path is SAH-078 in miniature, and one join reads them all.
+-- store with no rebuild path is LEGACY-078 in miniature, and one join reads them all.
 -- No row is seeded: until the owner confirms (OD-23) a company has none, and a reader takes the
 -- §2.12 default (`calendar_days`, no pay day).
 

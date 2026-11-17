@@ -102,7 +102,7 @@ export async function listRateTables(tx: Sql, schemeId: string): Promise<RateTab
   return rows.map(toTable);
 }
 
-/** Only a VERIFIED table covering `on` (spec:2080, SAH-020). 8B's RateTableRef is built from this, and 8B's
+/** Only a VERIFIED table covering `on` (spec:2080, LEGACY-020). 8B's RateTableRef is built from this, and 8B's
  *  unverified-table refusal is what it raises when this returns null — 8B does not re-check `verified_at`. */
 export async function rateTableOn(
   tx: Sql,
@@ -121,7 +121,7 @@ export async function rateTableOn(
   return row === undefined ? null : toTable(row);
 }
 
-/** Stores a table UNVERIFIED; `loaded_by` is stamped from the session (SAH-044). The caller has already validated
+/** Stores a table UNVERIFIED; `loaded_by` is stamped from the session (LEGACY-044). The caller has already validated
  *  `definition` against the rate-table schema — this function writes a row and decides nothing about its shape. */
 export async function loadRateTable(
   tx: Sql,
@@ -155,7 +155,7 @@ export class RateTableNotVerifiableError extends Error {
 }
 
 /** `verified_by` is written as `app.current_actor()`, and `stamp_verified_by` would overwrite any other value with the
- *  same one (SAH-044). The trigger compares the session's actor to `OLD.loaded_by` and raises ERR_HR_SELF_VERIFY when
+ *  same one (LEGACY-044). The trigger compares the session's actor to `OLD.loaded_by` and raises ERR_HR_SELF_VERIFY when
  *  they match; `where verified_at is null` makes a second verification a refusal the caller is told about rather than a
  *  silent success. */
 export async function verifyRateTable(tx: Sql, rateTableId: string): Promise<void> {

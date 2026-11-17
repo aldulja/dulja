@@ -164,7 +164,7 @@ export class OdbcLegacyDriver implements LegacyDriver {
     return columns;
   }
 
-  /** The primary key's columns in position order; an empty array for the 42 tables that have none (SAH-074). */
+  /** The primary key's columns in position order; an empty array for the 42 tables that have none (LEGACY-074). */
   async keyColumns(table: string): Promise<string[]> {
     const cached = this.keys.get(table);
     if (cached) return cached;
@@ -253,7 +253,7 @@ function text(value: unknown): string | null {
 /**
  * Every value the renderer cast to varchar must arrive as a string. If a `number` or a `Date` reaches here the
  * cast was lost, and a monetary figure is one float-rounding away from being wrong — refuse rather than continue
- * (spec:99; SAH-012). A blob (`CAST_WIDTH.blob` is null, so it is not cast) arrives as bytes and crosses the seam
+ * (spec:99; LEGACY-012). A blob (`CAST_WIDTH.blob` is null, so it is not cast) arrives as bytes and crosses the seam
  * as **base64**: a text decode would corrupt every byte above 0x7F, which for a serialised report object is most
  * of them (plan 9A correction C2, applied where the code is first written).
  */

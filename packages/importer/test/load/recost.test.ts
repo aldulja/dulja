@@ -178,10 +178,10 @@ describe("replayLegacyMovements — §5.1 #6, through 3B's one costing engine", 
     expect(out.negatives).toEqual([]);
   });
 
-  it("refuses a receipt with no value rather than costing it at zero (SAH-011)", () => {
+  it("refuses a receipt with no value rather than costing it at zero (LEGACY-011)", () => {
     expect(() => replayLegacyMovements([m({ value: null })], "avco", MYR)).toThrow(
       // A string, not a regex literal: `dependency-rule`'s token scanner stalls on `#6` after an escaped `\/` in one.
-      "ERR_VALIDATION_FAILED: legacy receipt 10/1 on 2025-06-01 has no value; a receipt with no cost is never costed at zero (SAH-011, §5.1 #6)",
+      "ERR_VALIDATION_FAILED: legacy receipt 10/1 on 2025-06-01 has no value; a receipt with no cost is never costed at zero (LEGACY-011, §5.1 #6)",
     );
   });
 

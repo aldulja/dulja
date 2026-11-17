@@ -8,7 +8,7 @@ import { app } from "./tenant";
  * `landed_cost_allocation_draft_only` trigger rather than here.
  *
  * There is deliberately NO `weight` column: the basis of a share is `method` plus the target line's own
- * `amount`, `quantity` or `custom_fields.weight_kg` (SAH-017, SAH-018).
+ * `amount`, `quantity` or `custom_fields.weight_kg` (LEGACY-017, LEGACY-018).
  *
  * This mirror is the diff source for the next slice that alters the table (ADR-0002, contracts §3.4.9).
  */

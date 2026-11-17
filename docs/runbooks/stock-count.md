@@ -112,7 +112,7 @@ exists to produce.
 A sheet on which every line matches plans **no movement and no ledger entry**, and the posting service
 refuses a document whose plan has zero ledger lines (`ERR_DOC_NO_LINES`, contracts §4.3.2 step 6). So a
 fully matching sheet is **issued and then voided** with the reason `count matched`: it keeps its number,
-the void records why the number never posted (SAH-051), and the document and its event log remain the
+the void records why the number never posted (LEGACY-051), and the document and its event log remain the
 evidence that on this date this warehouse was counted and found correct. Do not re-run the count looking
 for a variance.
 

@@ -158,7 +158,7 @@ async function assertTransferLeg(
  * ultimate destination goes into the `final_warehouse_id` document custom field: Task 8's receipt reads it
  * to know where the goods finally belong, and one uuid does not earn a column (§4.2.11).
  *
- * `document_line.lot_id` may be null — `applyMovements` resolves the item's `NONE` sentinel (SAH-050). A
+ * `document_line.lot_id` may be null — `applyMovements` resolves the item's `NONE` sentinel (LEGACY-050). A
  * lot-tracked item's caller passes the lot it physically loaded; FEFO is a picking decision that belongs to
  * whatever drafts the line, exactly as it does for a delivery.
  */
@@ -380,7 +380,7 @@ export async function draftTransferReceipt(
   // it links the open quantity, never NULL); a void receipt, or a reversed one whose chain nets, releases it
   // (0116's `document_open_quantity`, the link guard's own rule). Read at READ COMMITTED after the lock, so a
   // concurrent receipt that committed while the lock was waited on is seen.
-  // Through 3C's `openQuantity`, the one reader of the view (SAH-017's "open quantity defined once").
+  // Through 3C's `openQuantity`, the one reader of the view (LEGACY-017's "open quantity defined once").
   const openOf = new Map(
     (await openQuantity(tx, input.transferDocumentId)).map((r) => [
       r.documentLineId,

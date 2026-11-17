@@ -47,7 +47,7 @@ ways in `tests/invariants/report-catalogue-pins.test.ts`.
 **No real statutory figure is anywhere in the tree** (hazard 1). Every payroll figure a test asserts comes from the
 synthetic `SYNTH` table (`packages/db/seed/test/statutory/SYNTH/v1.json`); the real-scheme directories
 (`packages/db/seed/my/statutory/{EPF,SOCSO,EIS,PCB}/`) are empty and `packages/db/test/payroll/synth-guard.test.ts`
-and the sah-020 blocks fail on a rate in code.
+and the legacy-020 blocks fail on a rate in code.
 
 ## Phase 8's definition of done (spec:2294)
 
@@ -70,7 +70,7 @@ and the sah-020 blocks fail on a rate in code.
 
 | Scope item (spec:2294) | Evidence | Strength and limits |
 |---|---|---|
-| Employee master and sensitive data | 8A T1–T4; `packages/db/test/hr/{employee-extend,sensitive}.test.ts`, `apps/api/test/routes/hr/sensitive.test.ts`; test 32 `tests/invariants/hr-sensitive-side-channels.test.ts` (API, OpenAPI, export and the permit list) and sah-033's 8A and 8D blocks | Executed. The key ring rotates (8D T7, ADR 0080); the deployed key and its version are OD-20's to bind. |
+| Employee master and sensitive data | 8A T1–T4; `packages/db/test/hr/{employee-extend,sensitive}.test.ts`, `apps/api/test/routes/hr/sensitive.test.ts`; test 32 `tests/invariants/hr-sensitive-side-channels.test.ts` (API, OpenAPI, export and the permit list) and legacy-033's 8A and 8D blocks | Executed. The key ring rotates (8D T7, ADR 0080); the deployed key and its version are OD-20's to bind. |
 | Effective-dated compensation and pay components | 8A T5–T7; `packages/db/test/hr/{statutory-profile,compensation}.test.ts`; ADR 0072 (closed, never edited) | Executed. A mid-period raise is paid at the line in force at period end (below). |
 | Statutory schemes as versioned, verified rate tables | 8A T8–T10; `packages/db/test/hr/{statutory,statutory-loader}.test.ts`, `packages/domain/test/payroll/`; ADR 0073 | Executed **over SYNTH only**. No real scheme table exists; the real directories are empty (OD-23, hazard 1). |
 | PAYROLL / PAYROLL_PAYMENT / EMPLOYEE_ADVANCE and statutory remittances | 8B T4, 8C T5–T8; `packages/db/test/hr/{money-out-types,money-out,remittance}.test.ts`, the three route tests | Executed. A posted batch or advance cannot be reversed (an approval-required type, the recorded `reverseDocument` limit). |
@@ -90,17 +90,17 @@ and the sah-020 blocks fail on a rate in code.
 | **30** payslip ties to the ledger | `tests/invariants/payslip-ties-to-ledger.test.ts`; `hr.payroll_register` / `hr.payable_reconciliation` tie-outs | 8C, 8D |
 | **31** SoD (money out), **10**, **39** (payroll batch) | `tests/invariants/money-out-sod.test.ts` | 8C |
 | **31** the leave clause (R4) | `packages/db/test/hr/leave.test.ts`, `apps/api/test/routes/hr/leave.test.ts` | 8D |
-| **32** no sensitive side channel | `tests/invariants/hr-sensitive-side-channels.test.ts` (API, export, permit list); the report clause in `hr-definitions.test.ts` and sah-033's 8D block | 8A, 8D |
+| **32** no sensitive side channel | `tests/invariants/hr-sensitive-side-channels.test.ts` (API, export, permit list); the report clause in `hr-definitions.test.ts` and legacy-033's 8D block | 8A, 8D |
 | **33** golden payroll | `tests/golden/payroll.test.ts` (`GOLDEN_WRITE=1` only, reviewed figure by figure); payslips identical at the text layer in `payslips.test.ts` | 8B, 8D |
 | **34** termination closes everything (**20** re-run) | `tests/invariants/termination-closes-everything.test.ts` | 8C |
 | **35** YTD rebuild and recalculation (**2** re-run) | `tests/invariants/employee-ytd-rebuild.test.ts`; `packages/db/test/payroll/recalculation.test.ts` | 8B, 8C |
-| **23** RTL/LTR parity | `payslips.test.ts` (the PDF); `apps/backoffice/test/{hr,payroll,hr-8d}.test.tsx`; `tests/e2e/{hr,payroll,payslips,leave}.spec.ts` (each in EN/LTR and AR/RTL); sah-085's 8D block | 8A, 8B, 8D |
+| **23** RTL/LTR parity | `payslips.test.ts` (the PDF); `apps/backoffice/test/{hr,payroll,hr-8d}.test.tsx`; `tests/e2e/{hr,payroll,payslips,leave}.spec.ts` (each in EN/LTR and AR/RTL); legacy-085's 8D block | 8A, 8B, 8D |
 | **12 / 13** isolation and audit | `tests/invariants/tenant-isolation.test.ts` (eight new `PROBES` keys), `job-isolation.test.ts` (three new `JOB_PROBES`), `audit-chain` | all |
 
-Regression blocks appended (no SAH file created; `tests/regression/` still holds 83): **8A** sah-029, 030, 033, 044, 045,
-078; **8B** sah-003, 009, 011, 013, 019, 020, 031, 032, 042; **8C** sah-004, 011, 016, 019, 021, 044; **8D** sah-011
-(the payslip and reconciliation output), sah-020 (no rate in an 8D source or definition), sah-033 (the report side of
-test 32) and sah-085 (the payslip in both directions).
+Regression blocks appended (no LEGACY file created; `tests/regression/` still holds 83): **8A** legacy-029, 030, 033, 044, 045,
+078; **8B** legacy-003, 009, 011, 013, 019, 020, 031, 032, 042; **8C** legacy-004, 011, 016, 019, 021, 044; **8D** legacy-011
+(the payslip and reconciliation output), legacy-020 (no rate in an 8D source or definition), legacy-033 (the report side of
+test 32) and legacy-085 (the payslip in both directions).
 
 ## Migrations and ADRs
 
@@ -321,7 +321,7 @@ failed** in 145 files (+2: test 32's payroll-document export cases; the failure 
 EN and AR); `packages/contracts` 69, `packages/i18n` 41; the back-office build. Static: `typecheck` 14/14, `lint`,
 `lint:rules` (11 rules, 0 violations), `format:check`, all seventeen `scripts/check/*.sh` gates, and `openapi.json`
 regenerated with no diff (the `excludedRows` schema change is committed with fix 1). The first full `tests` run also
-failed SAH-038's object-key source scan on the new back-office fixture; the fixture's key was made opaque and the scan
+failed LEGACY-038's object-key source scan on the new back-office fixture; the fixture's key was made opaque and the scan
 re-run green.
 
 The record below is the pre-review run.

@@ -73,7 +73,7 @@ describe("packages/domain/payroll — the rate-table schema (§4.12.3)", () => {
     expect([...raw.matchAll(/"type"\s*:\s*"number"/g)]).toHaveLength(0);
   });
 
-  it("source is required with all four of its members — a table with no provenance is refused (SAH-078)", () => {
+  it("source is required with all four of its members — a table with no provenance is refused (LEGACY-078)", () => {
     const { source, ...noSource } = BANDED;
     expect(source).toBeTruthy();
     expect(validateRateTable(noSource).ok).toBe(false);

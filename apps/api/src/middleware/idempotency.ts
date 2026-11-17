@@ -306,7 +306,7 @@ export function idempotency(db: Sql): MiddlewareHandler<AppEnv> {
       // right to: app.tenant_id is already set here. A savepoint per call rather than one around the
       // whole handler keeps each call as atomic as the separate transaction it replaces, and keeps a
       // failed statement from poisoning this transaction — the unique violation a handler raises must
-      // still leave it able to write the row below (tests/regression/sah-083.test.ts).
+      // still leave it able to write the row below (tests/regression/legacy-083.test.ts).
       context.set("withTenant", joinAsSavepoint(scope));
       const answer = await dispatch(context, next);
       // Fenced as well as locked: under the lock nothing can move the token, and if anything ever did, the
@@ -324,7 +324,7 @@ export function idempotency(db: Sql): MiddlewareHandler<AppEnv> {
  * to: app.tenant_id is already set here. A savepoint per call rather than one around the whole handler
  * keeps each call as atomic as the separate transaction it replaces, and keeps a failed statement from
  * poisoning this transaction — the unique violation a handler raises must still leave it able to write
- * the record (tests/regression/sah-083.test.ts).
+ * the record (tests/regression/legacy-083.test.ts).
  */
 function joinAsSavepoint(scope: TransactionScope) {
   return async <T>(fn: (sp: Sql) => Promise<T>): Promise<T> => {

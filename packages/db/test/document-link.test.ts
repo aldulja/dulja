@@ -60,7 +60,7 @@ afterAll(async () => {
   await db.stop();
 });
 
-describe("app.document_link — migration 0037 (contracts §4.6.1; SAH-017, SAH-018)", () => {
+describe("app.document_link — migration 0037 (contracts §4.6.1; LEGACY-017, LEGACY-018)", () => {
   it("the schema linter reports zero violations after 0037", async () => {
     const violations: Violation[] = await lintSchema(db.admin);
     expect(violations).toEqual([]);
@@ -92,7 +92,7 @@ describe("app.document_link — migration 0037 (contracts §4.6.1; SAH-017, SAH-
     expect(v!.opts).toContain("security_invoker=true");
     // The EXACT list, not "SELECT is present". Plan 0A's `alter default privileges … grant select, insert,
     // update on tables to app_rw` (plan0A:2564) applies to VIEWS as well as tables, so without 0037's
-    // explicit revoke this returns ["INSERT", "SELECT", "UPDATE"] — and Task 14's SAH-017 claim that the one
+    // explicit revoke this returns ["INSERT", "SELECT", "UPDATE"] — and Task 14's LEGACY-017 claim that the one
     // place the figure exists "cannot be written to at all" would be unsupported by the privilege surface.
     const grants = await db.admin<{ privilege_type: string }[]>`
       select privilege_type from information_schema.role_table_grants
@@ -241,7 +241,7 @@ describe("app.document_link — migration 0037 (contracts §4.6.1; SAH-017, SAH-
     );
   });
 
-  it("refuses the second of two links that together exceed the order (the double-add of SAH-017)", async () => {
+  it("refuses the second of two links that together exceed the order (the double-add of LEGACY-017)", async () => {
     const orderTy = await orderType(a);
     const receiptTy = await receiptType(a);
     const { itemId, baseUnitId } = await seedItem(db, a, { code: "DOUBLE-ITEM" });

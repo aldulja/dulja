@@ -1,4 +1,4 @@
-# Runbook — Sahlisoft → Dulja cut-over (Phase 9B)
+# Runbook — legacy system → Dulja cut-over (Phase 9B)
 
 Audience: the operator running the migration, with the customer's accountant in the room.
 Prerequisites: Phases 0–8 deployed; 9A's extraction done (`docs/runbooks/legacy-extraction.md`); ADRs 0081–0086 read
@@ -10,7 +10,7 @@ the committed synthetic corpus the test suite loads.
 
 ## 0. Before the day
 
-- [ ] **Owner provides:** read access to the live Sahlisoft database and its Firebird version (OD-17). Prepare the
+- [ ] **Owner provides:** read access to the live legacy database and its Firebird version (OD-17). Prepare the
       machine as 9A's runbook says — `bun install`, then `bun pm trust odbc` once to build the native binding.
 - [ ] **Never put the DSN on a command line**: `bun run` echoes its command before running it, so a password in
       `--dsn` lands in the terminal and any log. Set it in the environment and leave `--dsn` off every command below:
@@ -44,7 +44,7 @@ the committed synthetic corpus the test suite loads.
 
 ## 1. Freeze
 
-- [ ] Stop every Sahlisoft client. Confirm no session remains.
+- [ ] Stop every legacy client. Confirm no session remains.
 - [ ] Take a backup of the legacy database and record its checksum. **Nothing below writes to it**, but the
       reconciliation compares against exactly this state: a later write shows as unexplained rows and invalidates the
       sign-off.
@@ -98,7 +98,7 @@ worker's local disk and no route serves them (ADR 0084 owner question 5).
       `EMPLOYEES` simply loads zero employees and no `employee_ytd_opening`. A source with **no** `EMPLOYEES` table fails
       pre-flight and the message names this same `--only` remedy (`docs/decisions/od-27-9b-part-vii-7-and-13.md`).
 - [ ] **OD-27, Part VII #7 — does `MatOpens.Job` ever differ from 0?** Read `part7-7` too. The real load asks it
-      itself and **refuses** opening stock if any job is non-zero (SAH-022) — a dry run does not reach that check. A
+      itself and **refuses** opening stock if any job is non-zero (LEGACY-022) — a dry run does not reach that check. A
       refusal is not a bug: the legacy opening stock was partitioned by project and someone must decide how a job maps
       to a Dulja warehouse first.
 - [ ] `bun run legacy load --tenant-id <id> --company-id <id> --cut-over-date <YYYY-MM-DD> --account-map <path>
@@ -201,9 +201,9 @@ it makes progress (the worker renews it before every page), so a load of more th
 
 - [ ] Confirm `app.document_series` holds rows for **`OB` and `OS` only**. Every live series — `JV`, `INV`, `PINV`,
       `PO`, `GRN`, `PAY`… — starts at 1 with the first real document after cut-over (§5.1 #8).
-- [ ] **Force a password reset for every user.** Legacy passwords are cleartext (SAH-028) and are never imported;
+- [ ] **Force a password reset for every user.** Legacy passwords are cleartext (LEGACY-028) and are never imported;
       there is no `Users` loader. Invite each user through `POST /v1/admin/users` and have them enrol MFA.
-      **Verify (OD-26):** `bun run --cwd tests test regression/sah-028` and
+      **Verify (OD-26):** `bun run --cwd tests test regression/legacy-028` and
       `bun run --cwd packages/importer test test/load/registry` — they assert that no loader names a `USERS` source,
       that no declared source column matches `PASSWORD` or `PIN` and none is on 9A's `NEVER_READ` deny-list (which is
       unchanged), that `packages/importer/src/load` never names a password or a PIN, and that the invite body has no

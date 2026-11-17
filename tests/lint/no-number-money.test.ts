@@ -8,7 +8,7 @@ const source = (path: string, text: string): SourceFile => ({
   lines: text.split("\n"),
 });
 
-describe("no-number-money — spec §3.9 (SAH-008)", () => {
+describe("no-number-money — spec §3.9 (LEGACY-008)", () => {
   it("flags declared money-ish number property, parameter, variable and return types", () => {
     const file = source(
       "packages/contracts/src/admin/thing.ts",
@@ -66,7 +66,7 @@ describe("no-number-money — spec §3.9 (SAH-008)", () => {
   });
 
   // packages/db is where SQL numeric(19,4) becomes TypeScript, so a money-typed `number` there is
-  // exactly SAH-008. The rule did not read that package at all until the Phase 0 review.
+  // exactly LEGACY-008. The rule did not read that package at all until the Phase 0 review.
   it("reads packages/db, where a numeric column becomes a TypeScript value", () => {
     expect(
       rule.run([source("packages/db/src/x.ts", "export interface Row { totalAmount: number }")]),
@@ -128,7 +128,7 @@ describe("no-number-money — spec §3.9 (SAH-008)", () => {
         line: 2,
         rule: "no-number-money",
         detail:
-          "'netAmount' is typed number — a monetary or rate value must be Money, Quantity, Decimal or string (spec §3.9, SAH-008)",
+          "'netAmount' is typed number — a monetary or rate value must be Money, Quantity, Decimal or string (spec §3.9, LEGACY-008)",
       },
     ]);
   });

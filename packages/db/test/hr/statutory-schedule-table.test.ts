@@ -74,7 +74,7 @@ describe("app.statutory_schedule (§4.6.1, amendment B11; spec:2083)", () => {
     expect(IMMUTABLE.has("statutory_schedule")).toBe(false);
   });
 
-  it("stamps generated_by from the session and refuses a supplied value (SAH-044)", async () => {
+  it("stamps generated_by from the session and refuses a supplied value (LEGACY-044)", async () => {
     const schemeId = await seedStatutoryScheme(db, a, { code: "SYNTH" });
     const docId = await draftDocument(db, a);
     const id = await uuidv7(db.admin);

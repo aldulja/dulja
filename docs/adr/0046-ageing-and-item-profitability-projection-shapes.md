@@ -39,7 +39,7 @@ What `app.party_ageing_rows` counts as open, as 4B Task 1 wrote it against 4A's 
 - a posted party document's ledger rows on the party's control account (vendor-side sign-flipped, so an
   open bill is positive), `amount` in the document's own currency only and `base_amount` over all of them;
 - due on `document.effective_date + payment_term.due_days` for the term **pinned on the document**
-  (round 7's 4.8.2 row) — never the party's current term, which would re-age history (SAH-013);
+  (round 7's 4.8.2 row) — never the party's current term, which would re-age history (LEGACY-013);
 - relieved by a live allocation only once **both** of its documents are dated on or before `as_of`, the
   settled side by `allocation.base_amount` and the settlement side by `base_amount + fx_difference` (the
   settlement's own base), each relief shrinking the document's `|open|` on whichever side of the control

@@ -12,7 +12,7 @@
       "enum": ["synthetic", "myinvois"]
     },
     "version": {
-      "description": "The profile file's own version. Recorded on every transmission as profile_version (SAH-013).",
+      "description": "The profile file's own version. Recorded on every transmission as profile_version (LEGACY-013).",
       "type": "integer",
       "minimum": 1
     },

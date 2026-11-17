@@ -11,16 +11,16 @@ reject before 3C extends a receipt's value.
 **Deciders:** architect (the six decisions), owner (note 7's proposal, with OD-06)
 **Slice:** 3B
 **Supersedes:** nothing. **Related:** ADR 0037 (AVCO and the layer model), ADR 0034 (the sentinel lot),
-contracts §4.7.2, §4.7.3, §4.14's `COST_ADJUSTMENT` row, amendments A12 and A16, Part I SAH-004, SAH-005,
-SAH-009, SAH-010, SAH-054
+contracts §4.7.2, §4.7.3, §4.14's `COST_ADJUSTMENT` row, amendments A12 and A16, Part I LEGACY-004, LEGACY-005,
+LEGACY-009, LEGACY-010, LEGACY-054
 **Spec:** §3.4 (spec:1220-1224, 1227), §3.8 transactions (spec:1368), Part VI test 5 (spec:2423), Part I
-SAH-004, 005, 010, 054
+LEGACY-004, 005, 010, 054
 
 ## Context
 
 The old system's recost was one all-or-nothing transaction over every material, entered from two code
-paths that ordered their work differently — one by document id, one by date (SAH-005) — and aborted on
-the first historical below-cost sale, rolling back every material already processed (SAH-054). Its
+paths that ordered their work differently — one by document id, one by date (LEGACY-005) — and aborted on
+the first historical below-cost sale, rolling back every material already processed (LEGACY-054). Its
 incremental mode visited only materials whose dirty flag was set, and the flag was set from three of the
 four code paths that could dirty one, so `vForce=0` was a silent-wrong-answer mode.
 
@@ -32,7 +32,7 @@ Six things, and each one is a direct answer to one of those failures.
    (`forbid_change`); the recost rewrites `cost_consumption` and books the difference as a
    `COST_ADJUSTMENT`. spec:1224's "never silently rewriting posted history", read literally.
 2. **`document_line.cost` IS rewritten.** It is the current answer, read by reversals, by 3D's
-   `line.variance_value` and by every margin report; two answers to one question is SAH-009.
+   `line.variance_value` and by every margin report; two answers to one question is LEGACY-009.
 3. **A layer is UPDATEd, never re-inserted** — `unique (movement_id)` makes that structural.
 4. **The restore pass is a formula** (`qty_remaining = qty_in − Σ valid consumptions`), so a crash-restart
    re-runs it harmlessly and the resume point is derived from committed state, never from a flag.
@@ -51,7 +51,7 @@ Six things, and each one is a direct answer to one of those failures.
    historical shortfall — and `document_line.cost` exceeds `Σ cost_consumption.value` by the shortfall's
    value. **Consequences, both stated rather than papered over:** Task 11's nightly quantity compare
    **excludes `(item, warehouse)` pairs with an open shortfall**, naming them in the log rather than raising
-   an incident; and `sah-009`'s tie-out asserts
+   an incident; and `legacy-009`'s tie-out asserts
    `Σ document_line.cost = Σ cost_consumption.value + shortfall value`, which is the true identity.
    **The exclusion is bounded by a test, not by this paragraph:** `packages/db/test/costing/valuation.test.ts`
    opens a shortfall through `postOverriddenIssue`, asserts the pair appears in `excluded` and **not** in
@@ -85,7 +85,7 @@ disables `assert_stock_available` or `forbid_change` — it writes no movement, 
   is deliberate — `sum(base_debit) = sum(base_credit)` holds per document and BRANCH stays meaningful.
 - A company whose chart lacks `1300` or `5000` fails at the top of the job with the seed command in the
   message (Task 8), not at an insert halfway through a batch.
-- **Rejected:** a per-item watermark column. It is the shape SAH-005's `CstChanged` had, and the whole
+- **Rejected:** a per-item watermark column. It is the shape LEGACY-005's `CstChanged` had, and the whole
   lesson of that defect is that invalidation must be structural — a row's own `invalidated_at` — rather
   than a scalar somebody has to remember to move.
 - **Nothing above has been observed to hold.** `packages/db/test/costing/replay.test.ts` and
@@ -154,7 +154,7 @@ concurrency defect the pass found, and changes no figure decisions 1–6 define.
 **Status: ACCEPTED by the owner on 2026-10-01 (“fix them please”), following the concrete proposal.** Approval covers this rule together with ADR 0039's
 exact-value amendment; it does not ratify the other unresolved decisions in this ADR.
 
-SAH-004 was rerun on `66ec03c` against PostgreSQL 18 and still fails: buy 100 units at `10.0000`, buy
+LEGACY-004 was rerun on `66ec03c` against PostgreSQL 18 and still fails: buy 100 units at `10.0000`, buy
 another 100 at `20.0000`, and reverse the second purchase. The remaining 100 units are valued at
 `15.0000` each instead of `10.0000`. The cause is concrete: `applyMovements` sends the reversal's outgoing
 leg through ordinary AVCO costing, which consumes a proportional share of both receipt layers at the
@@ -194,7 +194,7 @@ is part of the approval requested, not an incidental implementation choice.
 
 - Amend the frozen receipt/issue rules and any required domain input contract before implementation.
   Resolve source identity internally from existing relationships; add no new public request field.
-- Keep SAH-004's expected quantity and unit cost unchanged. Add assertions that inventory movements,
+- Keep LEGACY-004's expected quantity and unit cost unchanged. Add assertions that inventory movements,
   layers, consumption values, and the inventory ledger agree, rather than checking the displayed cost
   alone.
 - Test as-of reads before and after the reversal; AVCO and FIFO; reversal-of-reversal chains; subsequent

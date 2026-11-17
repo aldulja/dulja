@@ -95,7 +95,7 @@ begin
   end if;
 
   -- The money that LEFT the bank on that document: credits minus debits on the company's `1100` account.
-  -- coalesce, deliberately (SAH-011): a payment with no bank leg reads 0 and is refused by the comparison
+  -- coalesce, deliberately (LEGACY-011): a payment with no bank leg reads 0 and is refused by the comparison
   -- below, never NULL-propagated into a silent pass.
   select coalesce(sum(le.credit) - sum(le.debit), 0) into paid
     from app.ledger_entry le

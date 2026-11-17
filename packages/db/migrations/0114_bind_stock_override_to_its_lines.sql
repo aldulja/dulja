@@ -1,7 +1,7 @@
 -- ── 0114 · a negative-stock override approves the document's stock lines as they stood ─────────────────
 -- Phase 4 code-review pass (not a slice); allocated from the §3.4.1 tail (register row 0113–0115).
 --
--- spec:624 (SAH-048 "New system"): "an audited, explicitly-granted override recording who overrode what";
+-- spec:624 (LEGACY-048 "New system"): "an audited, explicitly-granted override recording who overrode what";
 -- spec:2179 (R8): overrides are "exercised per document by a second principal". The two consumers of
 -- `inventory.negative_stock.override` — 0031's app.assert_stock_available and applyMovements — asked only
 -- whether an override event EXISTED on the document. The event recorded who and which document, never what:
@@ -56,7 +56,7 @@ comment on function app.document_stock_digest(uuid) is
   'and each item line''s (line_no, item_id, warehouse_id, lot_id, unit_id, quantity, expected_quantity, '
   'counted_quantity). The one spelling app.stamp_stock_override() and app.stock_override_admits() share.';
 
--- ── 3. the stamp — never a caller's value (SAH-044), and refused once the document has posted ─────────
+-- ── 3. the stamp — never a caller's value (LEGACY-044), and refused once the document has posted ─────────
 -- Draft, submitted, approved and issued are all legal: test 7 records the override on an issued document,
 -- and the posting that consumes it runs from any of them. A posted, void or reversed document has no post
 -- left for an override to admit, so one recorded there would be a record of an approval never used.

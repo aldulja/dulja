@@ -16,7 +16,7 @@ statutory figure anywhere in this repository, and hazard 2 forbids any detail of
 publication until that publication has been read.
 
 Part VII #3 and spec:2467 are explicit that the current requirement set is fetched from the authority and
-never reconstructed from this specification or from a model's training data. SAH-020 is the defect this
+never reconstructed from this specification or from a model's training data. LEGACY-020 is the defect this
 guards against in its concrete form: the legacy system's GST return multiplied by a rate literal inside a
 stored procedure, with no regime discriminator, no effective date and no provenance — so nobody could say
 which rate had been applied to which period, or revert one.

@@ -16,7 +16,7 @@
 --     Σ (base_debit − base_credit) of those rows — exactly 0048's figure, so nothing else changes;
 --   * a document with a control row in another currency (a base-currency cost leg): its exposure IN ITS OWN
 --     CURRENCY is its keyed total, Σ document_line.total_incl_tax, on the side the ledger moved, carried at its own
---     rate — round(amount × exchange_rate, 4), HALF_AWAY_FROM_ZERO, toBase's arithmetic (spec:1816, SAH-012). That
+--     rate — round(amount × exchange_rate, 4), HALF_AWAY_FROM_ZERO, toBase's arithmetic (spec:1816, LEGACY-012). That
 --     is what the party owes in that currency and the only part a rate can move. What the cost leg put on the
 --     control account beyond it (the price-versus-cost difference) is a second, BASE-currency row: a base-only
 --     residue that the ledger really holds — so the base tie-out to 1200/2100 stays exact to the cent — but that is
@@ -52,7 +52,7 @@ language sql stable as $$
            min(l.base_currency) as base_currency,
            bool_or(l.leg_currency <> l.doc_currency) as in_base,
            coalesce(sum(l.amt) filter (where l.leg_currency = l.doc_currency), 0) as ccy_rows,
-           coalesce(sum(l.base), 0) as base      -- SAH-011: every accumulation coalesced
+           coalesce(sum(l.base), 0) as base      -- LEGACY-011: every accumulation coalesced
       from legs l
     having count(*) > 0
   ),

@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDb } from "@dulja/db";
 // The seed reaches the test tier through the "./seed" subpath export, never through @dulja/db's main entry: that
 // entry is imported by apps/api's production code, and re-exporting the seed there would put
-// @supabase/supabase-js and the service-role admin client on the request-serving path (sah-039).
+// @supabase/supabase-js and the service-role admin client on the request-serving path (legacy-039).
 import { parseSeedArgs, seed, StubSeedAuthAdmin } from "@dulja/db/seed";
 import { startApi, type StartedApi } from "../support/app";
 

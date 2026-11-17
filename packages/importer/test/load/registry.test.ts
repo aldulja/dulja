@@ -100,10 +100,10 @@ describe("the loader registry — §4.13.2's `loaders`, ordered by `dependsOn`",
 });
 
 // 9B T12 — ⚠️ OD-26 (Part VII #4). The default — a forced reset, never an import — holds whatever the answer: Dulja's
-// identity is Supabase with MFA, so there is no password column to migrate a credential into. The SAH-028 `— 9B`
+// identity is Supabase with MFA, so there is no password column to migrate a credential into. The LEGACY-028 `— 9B`
 // block in `tests/regression/` proves the registry half through the barrel; this case is the half that needs 9A's
 // `NEVER_READ`, which the barrel does not re-export (contracts round 20 C16 item 13), so it is asked inside the package.
-describe("no legacy credential is read or imported (OD-26, SAH-028)", () => {
+describe("no legacy credential is read or imported (OD-26, LEGACY-028)", () => {
   it("keeps 9A's NEVER_READ deny-list intact, and no loader declares a column it lists", () => {
     // Upper case, both members, as Firebird stores identifiers and 9A ships the set.
     expect([...NEVER_READ].toSorted()).toEqual(["USERS.PASSWORD", "USERS.PIN"]);

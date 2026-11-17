@@ -14,7 +14,7 @@ import {
 import { startApi, type StartedApi } from "../../support/app";
 import type { Problem } from "@dulja/contracts";
 
-/** The signer is `signSyncRequest` from the shared fixture (§4.17.1, Step 6) and NOT a local copy: SAH-046's
+/** The signer is `signSyncRequest` from the shared fixture (§4.17.1, Step 6) and NOT a local copy: LEGACY-046's
  *  sentence is "one canonical name per concept, checked in one place", and a test file with its own signer is
  *  the second spelling that sentence forbids. `headersFor` below is a one-line alias for readability only. */
 const headersFor = (
@@ -25,7 +25,7 @@ const headersFor = (
   at = new Date(),
 ) => signSyncRequest(t, { method, path, body, at });
 
-describe("terminalAuth (§4.10.3) — the identity a client cannot write (SAH-026, SAH-046)", () => {
+describe("terminalAuth (§4.10.3) — the identity a client cannot write (LEGACY-026, LEGACY-046)", () => {
   let api: StartedApi;
   let s: Seed;
   let t: EnrolledTerminal;
@@ -115,7 +115,7 @@ describe("terminalAuth (§4.10.3) — the identity a client cannot write (SAH-02
       const res = await pull(headers);
       if (label.startsWith("a forged")) {
         // A forged tenant/actor header is INERT, not an error: identity comes from the signature and the
-        // header is never read (SAH-026). The request succeeds AS THE TERMINAL, which is the proof.
+        // header is never read (LEGACY-026). The request succeeds AS THE TERMINAL, which is the proof.
         expect(res.status, label).toBe(200);
       } else {
         expect(res.status, label).toBe(401);
@@ -142,7 +142,7 @@ describe("terminalAuth (§4.10.3) — the identity a client cannot write (SAH-02
     expect(((await signed.json()) as Problem).code).toBe("ERR_TERMINAL_REVOKED");
 
     // The JWT is short-lived but not instantly expiring, so revocation MUST be re-checked per request against
-    // the row. A token that outlived its terminal is exactly SAH-027's "one variable disables every control".
+    // the row. A token that outlived its terminal is exactly LEGACY-027's "one variable disables every control".
     const withToken = await request({
       method: "GET",
       path: "/v1/sync/catalogue?limit=1",
@@ -161,7 +161,7 @@ describe("terminalAuth (§4.10.3) — the identity a client cannot write (SAH-02
       },
     });
     // api.signToken uses the SUPABASE test key, not TERMINAL_JWT_SIGNING_KEY: a valid human token shape signed
-    // by the wrong key must not open a terminal door (SAH-025's "never derive an identity from elsewhere").
+    // by the wrong key must not open a terminal door (LEGACY-025's "never derive an identity from elsewhere").
     expect(forged.status).toBe(401);
     const signingKey = new TextEncoder().encode("dulja-test-terminal-signing-key-0123456789abcdef");
     for (const payload of [

@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript on Bun (tests on Node 24 via Vitest), PostgreSQL 18, `postgres.js` tagged templates, Drizzle read mirrors, Hono + `@hono/zod-openapi`, Zod contracts, pg-boss, `node:zlib` (`gzipSync`) and a hand-written deterministic USTAR writer for the export archive, Testcontainers for every database test. No new package dependency.
 
-**Spec:** `C:/Users/Edres101/Desktop/dulja/rebuild-spec.md` (v1.2). Sections this plan implements: §3.3 (async projections, spec:1204), §4.3 (the data-export sentence, spec:2186), §4.5 (bulk/async with a status resource, spec:2206), §4.6 (right-to-export, spec:2211), §4.8 (graceful degradation, spec:2235–2237), §4.10 (spec:2253), §4.2.1 (`admin.data.export`, `pos.report.read`, the `auditor` row — spec:2146, 2150, 2163), §4.11 (report definitions as text, spec:1240), §4.16, Part V Phase 7 (spec:2293, 2300), Part VI tests 13, 21, 23, 32, 36, Part I SAH-077 and SAH-085.
+**Spec:** `C:/Users/Edres101/Desktop/dulja/rebuild-spec.md` (v1.2). Sections this plan implements: §3.3 (async projections, spec:1204), §4.3 (the data-export sentence, spec:2186), §4.5 (bulk/async with a status resource, spec:2206), §4.6 (right-to-export, spec:2211), §4.8 (graceful degradation, spec:2235–2237), §4.10 (spec:2253), §4.2.1 (`admin.data.export`, `pos.report.read`, the `auditor` row — spec:2146, 2150, 2163), §4.11 (report definitions as text, spec:1240), §4.16, Part V Phase 7 (spec:2293, 2300), Part VI tests 13, 21, 23, 32, 36, Part I LEGACY-077 and LEGACY-085.
 
 ## Assumptions and contracts (from docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md)
 
@@ -18,7 +18,7 @@
 - **Interfaces consumed:** §4.1 (the whole Plan 0A surface), §4.2.1 (`Money`, `currency`, `CurrencyCode`, `round`, `RoundingMode`), §4.2.2 (`withTenant`, `TenantContext`, `systemContext`, `createDb`), §4.2.3 (`AppEnv`, `RequestContext`, `Logger`, the fixed middleware order, and the registered `Variables` — **the eight members §4.2.3 now pins, the eighth being `jobs: JobClient`**, which is 3B's amendment A5 and is already ratified: §4.18 Round 3 carries the ⚑ row *"A5 ratified — `AppEnv["Variables"]` gains an eighth member `jobs: JobClient`"*, naming 7C Task 9's `POST …/exports` as one of its two readers, and §4.2.3's own body now opens *"The registered `Variables` set is eight members (round 3)"*. Task 9's `POST …/exports` calls `c.var.jobs.enqueue(tx, …)` and does not type-check without it, so the Execution-handoff gate table carries a ⚑ BEFORE row that **confirms the ratified row is present** rather than one that waits for it. **This slice registers no `Variables` member of its own** — the download route takes its `ObjectStore` through `createExportRoutes`' closure precisely so it does not need a ninth), §4.2.4 (`Problem`, `ERRORS`, `AppError`, `fromDatabaseError`, `ReportError` — **this slice adds no `ERR_*` row**), §4.2.5 (`PERMISSION`, `PERMISSIONS`, `PermissionDef`, `SliceId`, `requirePermission`, `ScopeSource`, `ROLES`, `INCOMPATIBLE_PAIRS`, `assertRouteGates`), §4.2.6 (`JOBS`, `JobPayload`, `JobEnvelope`, `JobClient`, `registerHandler`, `runJob`, `JOB_PROBES` — this slice owns `admin.export.run`), §4.2.7 (`RouteModule`, `buildRoutes`, `PROBES`, `IsolationProbe`, `IdempotencyHeader`, `createApp`, `AppDeps`), §4.2.8 (the common schemas, the list envelope, the cursor codec, and **the one list-filter convention — literal `filter[…]` keys, the Layer 2 default**), §4.2.9 (`idempotency`, `RECLAIM_AFTER_SECONDS`, `REPLAY_BY_RERUN`), §4.2.12 (`startApi`, `ApiRequest`, `StartedApi`, `MemoryObjectStore`), §4.2.13 (`PackLoader`, `readPackFile`, `SUB_PACKS`), §4.3.3 (`account_balance`), §4.3.4 (`document_line`, `document.branch_id`, `.terminal_id`, `.shift_id`), §4.5.6 (the `branch_isolation` forms — **this slice attaches none**, see Task 5), §4.5.8 (`app.attachment`, `MODULE_READ_CODE`, `readableModules`, `ObjectStore`), §4.6.1 (the register rows for `needs_attention`, `shift`, `till_event`, `export_job`), §4.6.5 in full, §4.8.1–§4.8.3 (allocation, ageing, bank reconciliation), §4.9.2 (`tax_transaction`), §4.10.1 and §4.10.4 (the POS messages and the apply path), §4.11 in full, §4.14 (document-type codes — **this slice registers none**), §4.15 (account codes — **this slice seeds none**), §4.16 in full, §4.17 and §4.17.1, §5 (all thirty-five hazards), §6.1 rows 13, 21, 23, 32, 36, §6.2 rows 1047 and 1067.
 - **Interfaces produced:** §4.16.2's three 7C `DatasetId` members (`shift`, `till_event`, `needs_attention`) and their datasets; §4.16.1's eleven 7C rows as seeded `ReportDefinition`s (three of them re-expressions at `definitionVersion = 2` — `accounting.ageing`, `pos.z_report`, `pos.sales_by_cashier`); §4.6.1's `export_job` row; §3.6.2's one code `admin.data.export` and §3.6.4's `auditor` grant; §4.2.6's `admin.export.run` payload and handler; §4.2.7's `/v1/companies/:companyId/exports` module with its one `PROBES` key; one new §4.2.8 contracts module `packages/contracts/src/admin/export.ts`; `packages/db/src/export/` (`EXPORT_TABLES`, `NEVER_EXPORTED`, `exportTable`, `resolveExportGates`, `exportSchemaDocument`, `tar`, `tarGz`, `toCsv`, `toJson`, `runExport`, `exportObjectKeyFor`, the export-job store); §4.17's one row `seedExportJob`; §4.17.1's one new file `tests/invariants/support/reports-7c.ts` plus three additive members of 7B's `tests/invariants/support/reports.ts`.
 - **Owner decisions:** **OD-09** (post-dated cheques) → **Task 11** (isolated; default **not built** — `accounting.pdc_register` and the `pdc` dataset are dropped together with 4B's table). **OD-27** (Part VII #8, which of the 255 legacy templates are in use) → **Task 12** (isolated; default **the mapping is written for the AR/AP, POS and cross-module templates only, and the task is dropped whole if 9A has not run**). **OD-24** (screenshots before any screen) → **Task 13** (isolated; default **the screen task is blocked, not the slice**).
-- **Part VI tests owned / re-run:** owns **none exclusively**. Re-runs **13** (exports audited — Task 10), **21** (as a report — Task 4 re-expresses `pos.z_report` and Task 14 re-runs `tests/invariants/pos-shift-reconciliation.test.ts` unchanged), **32** (the export clause — Task 10), **36** (the export clause and the branch-narrowed refusal — Task 10), **23** (every generated PDF — Task 14). **§3.0.4 rows owned:** none; this slice completes the "data export" clause of spec:1047 (owned by 7B) and the "included in tenant data export" clause of spec:1067 (owned by 2C). **Regression files created / appended:** creates none; **appends to `tests/regression/sah-077.test.ts`** (created by 7A) and **`tests/regression/sah-085.test.ts`** (created by 0E).
+- **Part VI tests owned / re-run:** owns **none exclusively**. Re-runs **13** (exports audited — Task 10), **21** (as a report — Task 4 re-expresses `pos.z_report` and Task 14 re-runs `tests/invariants/pos-shift-reconciliation.test.ts` unchanged), **32** (the export clause — Task 10), **36** (the export clause and the branch-narrowed refusal — Task 10), **23** (every generated PDF — Task 14). **§3.0.4 rows owned:** none; this slice completes the "data export" clause of spec:1047 (owned by 7B) and the "included in tenant data export" clause of spec:1067 (owned by 2C). **Regression files created / appended:** creates none; **appends to `tests/regression/legacy-077.test.ts`** (created by 7A) and **`tests/regression/legacy-085.test.ts`** (created by 0E).
 - **Shared namespaces this slice writes into:** **Document-type codes (§4.14) — none.** This slice defines no document type and registers no test-only code; every document its fixtures post is a 4A / 4B / 6A / 6D pack envelope read off disk through 4B's `seedTypeFromPack`. **Account codes (§4.15) — seeds none.** Consumed and asserted-not-re-seeded, each with its seeding slice: `1200` trade receivables and `2100` trade payables (**0C** — the ageing tie-out's controls, §4.8.2), `1100` Bank (**0C** — the unreconciled-items fixture), `1110` Cash in till, `1120` Card clearing, `2200` Store-credit liability (**6A** — the Z-report's tender lines), `5120` Till over/short (**6D**), `2300` Output tax payable and `1350` Input tax receivable (**5A** — the tax-return-view tie-out), `4000` Sales and `5000` Cost of goods sold (**0C** — the branch P&L). **Report codes (§4.16.1) — the eleven this slice owns or re-expresses:** `accounting.ageing` (re-expressed, 4B's code), `accounting.party_statement`, `accounting.allocation_register`, `accounting.unreconciled_items`, ⚠️ `accounting.pdc_register` (OD-09), `pos.z_report` (re-expressed, 6D's), `pos.sales_by_cashier` (re-expressed, 6D's), `pos.sales_by_branch`, `pos.needs_attention`, `accounting.branch_profit_and_loss`, `accounting.tax_return_view` — seeded into `packages/db/seed/my/reports/7c/`, a directory no other slice touches. **`DatasetId` members (§4.16.2) — exactly three: `shift`, `till_event`, `needs_attention`.** This slice adds no fourth and edits no 7A entry. **`fixtures.ts` helpers (§4.17) — exactly one new row, `seedExportJob`,** registered by Task 0 amendment A13; every other row this slice's tests need already exists. **Shared test helpers (§4.17.1) — one new file, `tests/invariants/support/reports-7c.ts`,** registered by Task 0 amendment A4, plus three additive optional members on 7B's `LedgerWindow` and **four** additive `assertTieOut` `projection` branches (`shift`, `allocation`, `bank_statement_line`, ⚠️ `pdc`), which §4.17.1's A9 row already sanctions ("7C and 8D extend `assertTieOut`'s `projection` switch additively for their own sources and never edit a case").
 - **Never re-decide:** D1–D27 (spec:114–142); every name in the contracts document is frozen — a needed change goes to that document first.
 - **Contracts version:** 2026-09-07.
@@ -59,7 +59,7 @@ Concretely, this slice is done when:
 6. A table whose `gate` the requester does not hold is **absent** from the archive and **named** in `manifest.excluded` with its gate — the mechanism 8A's `employee_sensitive` row plugs into with no change to exporter code (test 32; 8A's own PR narrows that table's `NEVER_EXPORTED` pin in the same commit as its registry row).
 7. A `branch_manager` whose assignment carries branch rows receives `403 ERR_RBAC_FORBIDDEN` from `POST …/exports`, because the gate is company-scoped (`{ company: "path:companyId" }`) and `app.actor_has(code, company, null)` is false for a branch-narrowed assignment (test 36).
 8. Every export writes audit rows: the request under the requester, the completion under the system principal (test 13).
-9. `AGENTS.md`'s "Current phase" section names Phase 7 complete, and `tests/regression/sah-077.test.ts` and `sah-085.test.ts` each carry a 7C block.
+9. `AGENTS.md`'s "Current phase" section names Phase 7 complete, and `tests/regression/legacy-077.test.ts` and `legacy-085.test.ts` each carry a 7C block.
 
 ---
 
@@ -151,8 +151,8 @@ tests/
                                                    EDIT T8   one JOB_PROBES key (with the handler)
   invariants/report-tie-out-7c.test.ts             NEW  T14  every declared tie-out executed
   invariants/export-audit.test.ts                  NEW  T10  test 13's export clause
-  regression/sah-077.test.ts                       EDIT T12, T14
-  regression/sah-085.test.ts                       EDIT T14
+  regression/legacy-077.test.ts                       EDIT T12, T14
+  regression/legacy-085.test.ts                       EDIT T14
 
 docs/
   adr/0069-tenant-export-archive-and-table-registry.md              NEW  T7  (a PROPOSAL)
@@ -187,7 +187,7 @@ AGENTS.md                                                           EDIT T14 "Cu
 >
 > | `DatasetId` | Row fields | Note |
 > |---|---|---|
-> | `shift` | `shift_id`, `branch_id`, `branch_code`, `terminal_id`, `terminal_code`, `cashier_principal_id`, `cashier_name`, `opened_at`, `opened_on` *(date)*, `closed_at`, `closed_principal_id`, `currency`, `opening_float`, `counted_cash`, `expected_cash`, `over_short`, `over_short_document_id`, `ticket_count` *(computed)*, `return_count` *(computed)*, `net_sales_base` *(computed)*, `no_sale_count` *(computed)*, `drawer_open_count` *(computed)*, `void_count` *(computed)* | **`opened_on` is `(opened_at at time zone 'UTC')::date` and is the field a date-range filter binds to.** `opened_at` stays a `timestamp` column for display and sorting, and 7A's `assertValue` refuses a bare `YYYY-MM-DD` against a `timestamp` column with `ERR_VALIDATION_FAILED` (7a:2526-2547) — so a report whose `fromDate`/`toDate` parameters are `kind: "date"`, which every POS date range in §4.16.1 is, must filter the **date** column. §4.11.1's parameter vocabulary has no `timestamp` kind (7a:1636), so the companion column is the only shape that keeps the parameter a date. `cashier_principal_id` is `app.shift.opened_principal_id` (§4.6.5 — attribution, never `*_by`). The six computed fields are **laterals in SQL**, exactly as 7A's `document.base_total` is: `ticket_count`/`return_count`/`net_sales_base` over `app.ledger_entry` joined to the shift's posted `POS_TICKET` documents, the three counts over `app.till_event`. **`net_sales_base` is `Σ(base_credit − base_debit)` restricted to `account.type = 'income'`** — the same measure 6D's `SalesByCashierRow.netSalesBase` names, so a parity case compares like with like. **There is no `discount_base`**: 6D's route derives that figure its own way and a second derivation in a dataset would be two definitions of one number (SAH-009); the definition-driven `pos.sales_by_cashier` therefore renders four measures and 6D's JSON route keeps all six (7B A2). **There is no `expected_cash_base`** — the count is a physical count in the shift's own currency (6D A3) |
+> | `shift` | `shift_id`, `branch_id`, `branch_code`, `terminal_id`, `terminal_code`, `cashier_principal_id`, `cashier_name`, `opened_at`, `opened_on` *(date)*, `closed_at`, `closed_principal_id`, `currency`, `opening_float`, `counted_cash`, `expected_cash`, `over_short`, `over_short_document_id`, `ticket_count` *(computed)*, `return_count` *(computed)*, `net_sales_base` *(computed)*, `no_sale_count` *(computed)*, `drawer_open_count` *(computed)*, `void_count` *(computed)* | **`opened_on` is `(opened_at at time zone 'UTC')::date` and is the field a date-range filter binds to.** `opened_at` stays a `timestamp` column for display and sorting, and 7A's `assertValue` refuses a bare `YYYY-MM-DD` against a `timestamp` column with `ERR_VALIDATION_FAILED` (7a:2526-2547) — so a report whose `fromDate`/`toDate` parameters are `kind: "date"`, which every POS date range in §4.16.1 is, must filter the **date** column. §4.11.1's parameter vocabulary has no `timestamp` kind (7a:1636), so the companion column is the only shape that keeps the parameter a date. `cashier_principal_id` is `app.shift.opened_principal_id` (§4.6.5 — attribution, never `*_by`). The six computed fields are **laterals in SQL**, exactly as 7A's `document.base_total` is: `ticket_count`/`return_count`/`net_sales_base` over `app.ledger_entry` joined to the shift's posted `POS_TICKET` documents, the three counts over `app.till_event`. **`net_sales_base` is `Σ(base_credit − base_debit)` restricted to `account.type = 'income'`** — the same measure 6D's `SalesByCashierRow.netSalesBase` names, so a parity case compares like with like. **There is no `discount_base`**: 6D's route derives that figure its own way and a second derivation in a dataset would be two definitions of one number (LEGACY-009); the definition-driven `pos.sales_by_cashier` therefore renders four measures and 6D's JSON route keeps all six (7B A2). **There is no `expected_cash_base`** — the count is a physical count in the shift's own currency (6D A3) |
 > | `till_event` | `till_event_id`, `shift_id`, `branch_id`, `branch_code`, `terminal_id`, `terminal_code`, `kind`, `ticket_document_id`, `ticket_number`, `cashier_principal_id`, `cashier_name`, `supervisor_principal_id`, `occurred_at` | No `client_ref`: the till's own uuid is an idempotency key, not a reporting fact |
 > | `needs_attention` | `needs_attention_id`, `branch_id`, `branch_code`, `terminal_id`, `terminal_code`, `client_ref`, `error_code`, `error_detail`, `resolved_principal_id`, `resolved_at`, `resolution_note`, `created_at`, `created_on` *(date)*, `is_open` *(computed: `na.resolved_at is null`)* | **`created_on` is `(created_at at time zone 'UTC')::date`**, the date companion `shift.opened_on` is, and for the same reason: `pos.needs_attention`'s optional `fromDate` is a `date` parameter and a `date` value against the `timestamp` column raises `ERR_VALIDATION_FAILED`. **`payload` is deliberately not a column.** It is the whole rejected ticket — items, prices, the customer, the cashier — and a report rendering it would be a covered side channel for exactly the reason 7B A3 keeps `audit_log.before`/`after` out of the audit report (spec:2450, tests 32 and 36). The payload stays reachable through 6A's gated needs-attention resource. `client_ref` **is** a column, because resolving a rejected ticket means finding it at the till by that ref |
 
@@ -2573,7 +2573,7 @@ export interface ExportJobRow {
   createdAt: string;
 }
 /** '<tenant_id>/exports/<export_job_id>.tar.gz' — server-generated from ids alone, so no client path can
- *  reach the store (SAH-038); the same rule §4.5.8's `objectKeyFor` and 7A's `reportObjectKeyFor` follow. */
+ *  reach the store (LEGACY-038); the same rule §4.5.8's `objectKeyFor` and 7A's `reportObjectKeyFor` follow. */
 export function exportObjectKeyFor(tenantId: string, exportJobId: string): string;
 export interface NewExportJob {
   companyId: string; format: ExportFormat;
@@ -2712,7 +2712,7 @@ describe("the export-job store", () => {
   const write = <T>(fn: (tx: never) => Promise<T>) =>
     withTenant(db.rw, s.tenant, s.human, fn as never) as Promise<T>;
 
-  it("exportObjectKeyFor is derived from ids alone (SAH-038)", () => {
+  it("exportObjectKeyFor is derived from ids alone (LEGACY-038)", () => {
     expect(exportObjectKeyFor("t-1", "j-1")).toBe("t-1/exports/j-1.tar.gz");
   });
 
@@ -3205,7 +3205,7 @@ on conflict (code) do update
 --      3. Nor can this file discover the tenants to set a context FOR: `app.tenant` is itself forced with
 --         `using (id = app.current_tenant())` (plan0A:980-981), so the migrator enumerating it sees
 --         nothing.
---    Disabling or dropping the policy "temporarily" is forbidden outright (SAH-027, 041, 053) and is a
+--    Disabling or dropping the policy "temporarily" is forbidden outright (LEGACY-027, 041, 053) and is a
 --    review-blocking finding, so this file does the one thing it legitimately can and the ROLLBACK
 --    CARRIES A PRECONDITION instead: it is reversible only against an UNSEEDED database -- exactly where
 --    §3.4.6's generalised reversibility test exercises every down file -- and on a database where
@@ -3336,7 +3336,7 @@ In `apps/api/src/routes/index.ts`, register the module **inside `buildRoutes`** 
 Run: `bun run --cwd packages/db db:migrate && bun run --cwd packages/db test -- permission-catalogue && bun run --cwd packages/contracts test && bun run --cwd tests test -- tenant-isolation && bun run lint && bun run lint:rules && bun run typecheck`
 Expected: PASS on all seven, with **no known-red carried out of this task**.
 
-> **The rollback of 0079 carries a precondition, and it is stated here because §3.4.5 requires the task that ships such a migration to state it on its rollback command.** `bun run --cwd packages/db db:rollback 78 && bun run --cwd packages/db db:migrate` is **only** valid against an **unseeded** database — which is where §3.4.6's generalised reversibility test exercises every down file. On a database where `bun run seed --tenant <id> --only roles` has run, Step 4's `auditor` grant names `admin.data.export`, `app.role_permission.permission_code` has no `on delete` action, and the delete in `0079.down.sql` raises SQLSTATE 23503; forced RLS means the down file can neither remove that grant nor enumerate the tenants to set a context for. **The operator removes the tenant's grants at the seed tier first and re-runs `bun run seed --tenant <id> --only roles` after re-migrating.** Never "fix" this by disabling or dropping the `tenant_isolation` policy — that is forbidden outright (SAH-027, 041, 053) and is a review-blocking finding. 6A's `0062.down.sql` and 6B's `0063.down.sql` are the two written precedents and the down file repeats the reasoning verbatim. **`lint:rules` is the one that matters here**: `permission-catalogue` (§3.6.3) sees `PERMISSION["admin.data.export"]` in `apps/api/src/routes/admin/exports.ts` and `role-seed` sees the `auditor` grant against a non-mutating code, so both directions hold and this slice never ships a red lint (amendment A11). `assertRouteGates` passes because the only route so far is a `GET`, and `tenant-isolation` passes because Step 6's `PROBES` key matches the module Step 5 mounted.
+> **The rollback of 0079 carries a precondition, and it is stated here because §3.4.5 requires the task that ships such a migration to state it on its rollback command.** `bun run --cwd packages/db db:rollback 78 && bun run --cwd packages/db db:migrate` is **only** valid against an **unseeded** database — which is where §3.4.6's generalised reversibility test exercises every down file. On a database where `bun run seed --tenant <id> --only roles` has run, Step 4's `auditor` grant names `admin.data.export`, `app.role_permission.permission_code` has no `on delete` action, and the delete in `0079.down.sql` raises SQLSTATE 23503; forced RLS means the down file can neither remove that grant nor enumerate the tenants to set a context for. **The operator removes the tenant's grants at the seed tier first and re-runs `bun run seed --tenant <id> --only roles` after re-migrating.** Never "fix" this by disabling or dropping the `tenant_isolation` policy — that is forbidden outright (LEGACY-027, 041, 053) and is a review-blocking finding. 6A's `0062.down.sql` and 6B's `0063.down.sql` are the two written precedents and the down file repeats the reasoning verbatim. **`lint:rules` is the one that matters here**: `permission-catalogue` (§3.6.3) sees `PERMISSION["admin.data.export"]` in `apps/api/src/routes/admin/exports.ts` and `role-seed` sees the `auditor` grant against a non-mutating code, so both directions hold and this slice never ships a red lint (amendment A11). `assertRouteGates` passes because the only route so far is a `GET`, and `tenant-isolation` passes because Step 6's `PROBES` key matches the module Step 5 mounted.
 
 - [ ] **Step 8: Commit**
 
@@ -5641,19 +5641,19 @@ EOF
 
 ### Task 12: ⚠️ OD-27 — mapping the AR/AP, POS and cross-module legacy templates (ISOLATED; dropped whole if 9A has not run)
 
-**Owner decision OD-27** (§2.12, spec:2470–2473, 2477): *Part VII #8 — which of the 255 legacy report templates are actually in use?* **Default: none.** SAH-077 records that the legacy call graph is unresolvable and that the template blobs must be extracted and catalogued early, because "it is the only way to know which of the 255 templates the customer actually uses" (spec:2341). The catalogue is **9A's** profiler output.
+**Owner decision OD-27** (§2.12, spec:2470–2473, 2477): *Part VII #8 — which of the 255 legacy report templates are actually in use?* **Default: none.** LEGACY-077 records that the legacy call graph is unresolvable and that the template blobs must be extracted and catalogued early, because "it is the only way to know which of the 255 templates the customer actually uses" (spec:2341). The catalogue is **9A's** profiler output.
 
 **This task is dropped whole if 9A has not run, or if the owner has not answered.** 7B's Task 12 owns the same mapping for the accounting and inventory templates; **7C maps only what 7B did not** — the AR/AP, POS and cross-module templates — and cites 7B's file so no template is mapped twice.
 
 **Owner provides:** 9A's legacy template catalogue artefact and the owner's list of templates in use (OD-27).
 **Verify:** `bun run legacy templates --dsn "$LEGACY_ODBC_DSN" --out artefacts/legacy/7c` exits **0** and `ls artefacts/legacy/7c/` lists the catalogue (9A's own command and its own output root — 9a:4978; `artefacts/` is git-ignored by 9A's Task 1 because the file is customer data, so it is never committed and never read from `docs/`).
-**Until provided:** the task is not started, `docs/legacy/7c-template-mapping.md` is not created, and the sah-077 append of Task 14 carries only the version-controlled-definitions clause.
+**Until provided:** the task is not started, `docs/legacy/7c-template-mapping.md` is not created, and the legacy-077 append of Task 14 carries only the version-controlled-definitions clause.
 
 > **Two path facts, because getting either wrong makes this task unreachable.** (1) **7B's mapping file is `docs/legacy/7b-template-mapping.md`** (7b:143, 7b:4988, 7b:5029) — *not* `template-catalogue-mapping-7b.md`, which exists nowhere. 7C's own file is therefore named `docs/legacy/7c-template-mapping.md`, so the two halves share one convention. (2) **9A writes its artefacts to `artefacts/legacy/<run>/`, git-ignored** (9a:45, 9a:171, 9a:4978). 7B's own Verify line spells that gate `ls docs/legacy/9a-artefacts/`, a directory 9A does not produce; that is **a raise against 7B**, carried in this slice's Self-Review, and 7C does not copy the spelling.
 
 **Files:**
 - Create: `docs/legacy/7c-template-mapping.md`
-- Modify: `tests/regression/sah-077.test.ts` (one appended `it` inside 7C's own `describe`, which Task 14 creates)
+- Modify: `tests/regression/legacy-077.test.ts` (one appended `it` inside 7C's own `describe`, which Task 14 creates)
 
 **Interfaces:**
 - Consumes: 9A's artefact index (`ArtefactIndex`, §4.13.1) and `repoFile` (0C, §4.17.1); `CATALOGUE_7C` (Task 2); `readDefinition7C` (Task 2).
@@ -5661,7 +5661,7 @@ EOF
 
 - [ ] **Step 1: Write the failing test**
 
-Append to `tests/regression/sah-077.test.ts`, inside the `describe("SAH-077 … — 7C")` block Task 14 creates:
+Append to `tests/regression/legacy-077.test.ts`, inside the `describe("LEGACY-077 … — 7C")` block Task 14 creates:
 
 ```ts
   it("⚠️ OD-27 — every mapped legacy template names a 7C code that exists, and none is 7B's", () => {
@@ -5689,7 +5689,7 @@ Append to `tests/regression/sah-077.test.ts`, inside the `describe("SAH-077 … 
 
 - [ ] **Step 2: Run it to see it fail**
 
-Run: `bun run --cwd tests test -- sah-077`
+Run: `bun run --cwd tests test -- legacy-077`
 Expected: FAIL — `repoFile` throws `ENOENT` on `docs/legacy/7c-template-mapping.md`.
 
 - [ ] **Step 3: Write the mapping document**
@@ -5702,7 +5702,7 @@ Expected: FAIL — `repoFile` throws `ENOENT` on `docs/legacy/7c-template-mappin
 Source: 9A's template catalogue artefact, produced by `bun run legacy templates --out artefacts/legacy/7c`
 and read from `artefacts/legacy/7c/` (9a:4978). That directory is git-ignored (9a:45, 9a:171) because the
 blobs are customer data; only this mapping is committed. Narrowed to the templates the owner marked in use
-(OD-27, Part VII #8). SAH-077: the legacy call graph is unresolvable, so "in use" is an owner statement,
+(OD-27, Part VII #8). LEGACY-077: the legacy call graph is unresolvable, so "in use" is an owner statement,
 never an inference from the code.
 
 **Scope split.** 7B's `docs/legacy/7b-template-mapping.md` maps the accounting and inventory
@@ -5728,11 +5728,11 @@ the owner sees the trade rather than discovering it after cut-over.
 
 - [ ] **Step 4: Run it to see it pass, and commit**
 
-Run: `bun run --cwd tests test -- sah-077`
+Run: `bun run --cwd tests test -- legacy-077`
 Expected: PASS.
 
 ```bash
-git add docs/legacy/7c-template-mapping.md tests/regression/sah-077.test.ts
+git add docs/legacy/7c-template-mapping.md tests/regression/legacy-077.test.ts
 git commit -m "$(cat <<'EOF'
 docs(legacy): map the AR/AP, POS and cross-module templates [7C T12] (⚠️ OD-27)
 
@@ -5742,7 +5742,7 @@ equivalent is listed with its reason rather than omitted, and the regression
 test asserts that every mapped code is a real 7C code and that no template is
 mapped by both 7B and 7C.
 
-Dropped whole if 9A has not run — SAH-077's point is that "in use" is an owner
+Dropped whole if 9A has not run — LEGACY-077's point is that "in use" is an owner
 statement, never an inference from an unresolvable call graph.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
@@ -5813,7 +5813,7 @@ The Phase 7 definition of done, executed rather than asserted in prose: one inva
 
 **Files:**
 - Create: `tests/invariants/report-tie-out-7c.test.ts`
-- Modify: `tests/regression/sah-077.test.ts` (a 7C `describe`), `tests/regression/sah-085.test.ts` (a 7C `describe`), `AGENTS.md` ("Current phase")
+- Modify: `tests/regression/legacy-077.test.ts` (a 7C `describe`), `tests/regression/legacy-085.test.ts` (a 7C `describe`), `AGENTS.md` ("Current phase")
 
 **Interfaces:**
 - Consumes: `CATALOGUE_7C`, `readEnvelope7C`, `readDefinition7C`, `arApReportFixture`, `posReportFixture` (Task 2); `runDefinition`, `assertFieldCoverage`, `assertTieOut` (7B); `validateReportDefinition`, `reportDefinitionSets` (7A); `renderReport`, `intlFormatters`, `rendererFor` (7A — the test-23 re-run); `pdfText` (2C, §4.17.1); `repoFile`, `sourceFiles`, `sharedDb`, `thinRegression` (0B/0C, §4.17.1); `startApi` (§4.2.12).
@@ -5998,10 +5998,10 @@ Expected: PASS, with **zero edits** to any of those files. Record the exact comm
 
 - [ ] **Step 3: Append the two regression blocks**
 
-`tests/regression/sah-077.test.ts` — created by 7A (§2.8: "sah-077 (report definitions as version-controlled text) — 7A always creates it"); 7C appends its own `describe` and edits no earlier block (§3.7.3):
+`tests/regression/legacy-077.test.ts` — created by 7A (§2.8: "legacy-077 (report definitions as version-controlled text) — 7A always creates it"); 7C appends its own `describe` and edits no earlier block (§3.7.3):
 
 ```ts
-describe("SAH-077 The call graph is unresolvable, so dead code cannot be identified — 7C", () => {
+describe("LEGACY-077 The call graph is unresolvable, so dead code cannot be identified — 7C", () => {
   it("all eleven 7C report definitions are version-controlled text, not blobs (spec:1240)", () => {
     for (const code of CATALOGUE_7C) {
       const path = join("packages", "db", "seed", "my", "reports", "7c", `${code}.json`);
@@ -6027,10 +6027,10 @@ describe("SAH-077 The call graph is unresolvable, so dead code cannot be identif
 });
 ```
 
-`tests/regression/sah-085.test.ts` — created by 0E; 7C appends:
+`tests/regression/legacy-085.test.ts` — created by 0E; 7C appends:
 
 ```ts
-describe("SAH-085 The English build was never proofread — 7C", () => {
+describe("LEGACY-085 The English build was never proofread — 7C", () => {
   it("every 7C definition carries a non-empty nameAr and an Arabic label for every column", () => {
     for (const code of CATALOGUE_7C) {
       const path = join(REPO_ROOT, "packages", "db", "seed", "my", "reports", "7c", `${code}.json`);
@@ -6103,8 +6103,8 @@ bun run lint && bun run lint:rules && bun run format:check && bun run typecheck 
 Expected: PASS on all five, with no known-red. Then:
 
 ```bash
-git add tests/invariants/report-tie-out-7c.test.ts tests/regression/sah-077.test.ts \
-        tests/regression/sah-085.test.ts AGENTS.md
+git add tests/invariants/report-tie-out-7c.test.ts tests/regression/legacy-077.test.ts \
+        tests/regression/legacy-085.test.ts AGENTS.md
 git commit -m "$(cat <<'EOF'
 test(invariants): execute every 7C tie-out and close Phase 7 [7C T14]
 
@@ -6117,8 +6117,8 @@ The predecessors' own tests are re-run UNCHANGED as the proof that the three
 re-expressions moved nothing: 6D's test 21, 4B's ageing DoD tie-out, 6D's
 shift routes, 7B's tie-out suite and 7A's dataset suite.
 
-Appends 7C blocks to sah-077 (definitions are version-controlled text carrying
-no SQL) and sah-085 (every definition has a real Arabic name and column label,
+Appends 7C blocks to legacy-077 (definitions are version-controlled text carrying
+no SQL) and legacy-085 (every definition has a real Arabic name and column label,
 and a rendered report is rtl in Arabic with its logical column order intact).
 
 AGENTS.md's Current phase now names Phase 7 complete.
@@ -6151,7 +6151,7 @@ Run against the spec, §4.16 and the 7C card with fresh eyes, per the writing-pl
 | Mapping the legacy template catalogue (OD-27) | 12 |
 | §3.0.4 spec:1047's "data export" clause and spec:1067's "included in tenant data export" clause | 7–10 |
 | Re-runs 13, 21, 23, 32, 36 | 10, 14 |
-| Regression appends sah-077, sah-085 | 14 |
+| Regression appends legacy-077, legacy-085 | 14 |
 | `AGENTS.md` "Current phase" (§3.8 — 7C completes Phase 7) | 14 |
 | Owner gates OD-09, OD-27, OD-24 as isolated tasks (hazard 6) | 11, 12, 13 |
 

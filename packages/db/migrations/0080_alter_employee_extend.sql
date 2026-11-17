@@ -20,7 +20,7 @@ comment on column app.employee.employment_type is
 comment on column app.employee.statutory_profile_note is
   'Free text for the payroll officer. The statutory INPUTS live in app.employee_statutory_profile (migration 0082); this column never carries one.';
 
--- ── 2. R4 — no self-pay (spec:2175, SAH-045) ────────────────────────────────────────────────────
+-- ── 2. R4 — no self-pay (spec:2175, LEGACY-045) ────────────────────────────────────────────────────
 -- TG_ARGV[0] names the column of NEW that holds the employee id: 'id' on app.employee itself,
 -- 'employee_id' on the three child tables. format(%I) is applied to a literal written in a
 -- migration file and never to request input (§3.3).

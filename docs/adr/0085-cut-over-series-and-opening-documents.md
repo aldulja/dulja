@@ -26,7 +26,7 @@ Separately, the _shape_ of an imported open item is a money decision. An unpaid 
 `SALES_INVOICE`, which would post revenue and tax under 4A's and 5A's policies and move stock under 3D's. The legacy
 trial balance already carries that revenue, that tax and that stock movement.
 
-The legacy numbering is SAH-051's: it has duplicates and gaps, and some numbers are not numbers at all
+The legacy numbering is LEGACY-051's: it has duplicates and gaps, and some numbers are not numbers at all
 (`INV/2025/0417`). And 4B's ageing (`app.party_ageing_rows`, 0048) reads, per party, the ledger rows a document posted to
 the account `app.party_control_account` (0045) names for that party — so an open item on any other account is in no
 party's ageing, and §4.8.2's tie-out to `1200`/`2100` "to the cent" fails.

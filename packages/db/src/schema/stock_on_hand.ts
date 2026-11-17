@@ -23,7 +23,7 @@ export const stockOnHand = app.table(
   },
   (table) => [
     primaryKey({ columns: [table.companyId, table.itemId, table.warehouseId, table.lotId] }),
-    // 7B, migration 0077 (SAH-070) — report-filter indexes the 7B EXPLAIN gate found unserved.
+    // 7B, migration 0077 (LEGACY-070) — report-filter indexes the 7B EXPLAIN gate found unserved.
     index("stock_on_hand_company_warehouse_idx").on(table.companyId, table.warehouseId),
   ],
 );

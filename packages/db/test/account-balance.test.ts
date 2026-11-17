@@ -8,7 +8,7 @@ import { startDb, withTenant, type Db } from "./harness";
 const MERGE_FROM_DOCUMENT = (tenant: string, company: string, doc: string) =>
   [tenant, company, doc] as const;
 
-describe("app.account_balance — contracts §4.3.3 (SAH-001, 002, 049)", () => {
+describe("app.account_balance — contracts §4.3.3 (LEGACY-001, 002, 049)", () => {
   let db: Db;
   let a: Seed;
   let b: Seed;
@@ -22,7 +22,7 @@ describe("app.account_balance — contracts §4.3.3 (SAH-001, 002, 049)", () => 
     await db.stop();
   });
 
-  it("is keyed on the full grain — company, account, period and currency (SAH-049)", async () => {
+  it("is keyed on the full grain — company, account, period and currency (LEGACY-049)", async () => {
     const key = await withTenant(
       db.admin,
       a.tenant,
@@ -70,7 +70,7 @@ describe("app.account_balance — contracts §4.3.3 (SAH-001, 002, 049)", () => 
     );
   });
 
-  it("accumulates rather than replaces when the same key is merged twice (SAH-002)", async () => {
+  it("accumulates rather than replaces when the same key is merged twice (LEGACY-002)", async () => {
     const merge = (amount: string) =>
       withTenant(
         db.rw,
@@ -103,7 +103,7 @@ describe("app.account_balance — contracts §4.3.3 (SAH-001, 002, 049)", () => 
     expect(row!.base_debit).toBe("125.5000");
   });
 
-  it("refuses an account from another tenant through the composite FK (SAH-035)", async () => {
+  it("refuses an account from another tenant through the composite FK (LEGACY-035)", async () => {
     await expect(
       withTenant(
         db.rw,
@@ -116,7 +116,7 @@ describe("app.account_balance — contracts §4.3.3 (SAH-001, 002, 049)", () => 
     ).rejects.toThrow(/account_balance_tenant_id_account_id_fkey/);
   });
 
-  it("a second tenant sees no balances and cannot update one (SAH-001)", async () => {
+  it("a second tenant sees no balances and cannot update one (LEGACY-001)", async () => {
     const seen = await withTenant(
       db.rw,
       b.tenant,

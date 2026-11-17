@@ -15,7 +15,7 @@ into a table a later slice creates, and eight parallel writers editing one file.
 ## Decision
 
 1. **Per-tenant rows are seed-pack data**, applied by `bun run seed --tenant <uuid> [--only <sub-pack>]`, run as
-   `app_migrator` from `packages/db/src/cli.ts`. Never an endpoint (spec:2188, SAH-039).
+   `app_migrator` from `packages/db/src/cli.ts`. Never an endpoint (spec:2188, LEGACY-039).
 2. **A pack is a directory of sub-pack directories**; a sub-pack is a directory of JSON files. Phase 0's pack is
    `packages/db/seed/my/` with exactly `chart-of-accounts/`, `dimensions/` and `fiscal-periods/`; `assertPackShape`
    fails the run, exit code 3, if a later slice's directory appears early, naming the owning slice.

@@ -53,7 +53,7 @@ const PACK_DIR = join(REPO_ROOT, "packages", "db", "seed", "my", "document-types
 
 /**
  * Acceptance test 7 (spec:2425) — "Stock valuation and profit reports tie to the cent for an item that has
- * been transferred, gone negative, and had a supplier return." SAH-009.
+ * been transferred, gone negative, and had a supplier return." LEGACY-009.
  *
  * At Phase 3 "profit" is the COST side only: quantity times unit cost from `cost_consumption`. No document
  * type posts revenue before 4A's SALES_INVOICE, so there is no sales value to tie to (hazard 4, and the 3D
@@ -65,7 +65,7 @@ const PACK_DIR = join(REPO_ROOT, "packages", "db", "seed", "my", "document-types
  * `document_event` written by a SECOND principal (§4.5.3). Nothing below toggles a flag, writes a movement
  * directly or relaxes a trigger.
  */
-describe("acceptance test 7 — one costing answer (spec:2425, SAH-009)", () => {
+describe("acceptance test 7 — one costing answer (spec:2425, LEGACY-009)", () => {
   let db: Db;
   let ctx: TenantContext;
   let s: Seed;
@@ -93,7 +93,7 @@ describe("acceptance test 7 — one costing answer (spec:2425, SAH-009)", () => 
   /** A GOODS_RECEIPT of `qty` at `unitCost` into `warehouseId`/`lotId` — the only way stock legitimately
    *  exists (hazard 22). `amount` is computed with `Money`, never `Number(qty) * Number(cost)`. `jobs` is
    *  passed on every post in this file: `postDocument` step 14 REFUSES a back-dated document whose caller
-   *  supplied no `JobClient` (SAH-005), and the last case back-dates one deliberately. */
+   *  supplied no `JobClient` (LEGACY-005), and the last case back-dates one deliberately. */
   async function receive(
     warehouseId: string,
     lotId: string,
@@ -200,7 +200,7 @@ describe("acceptance test 7 — one costing answer (spec:2425, SAH-009)", () => 
 
   /** Dispatch `dispatched` from `from` to `to`, then receive `received` — the two-step transfer end to end.
    *  **`lotId` is explicit.** `TransferInput.lines[].lotId` is optional and `applyMovements` resolves a null
-   *  lot to the item's `NONE` sentinel (SAH-050), which holds nothing, so a lot-tracked item transferred
+   *  lot to the item's `NONE` sentinel (LEGACY-050), which holds nothing, so a lot-tracked item transferred
    *  without a lot raises ERR_STOCK_INSUFFICIENT before step 4 of the story is ever reached. */
   async function dispatchAndReceive(
     fromWarehouseId: string,
@@ -818,7 +818,7 @@ describe("acceptance test 7 — one costing answer (spec:2425, SAH-009)", () => 
     // replay posts the COGS difference to 5000 and NEVER to 1250 (`resolveAdjustmentAccounts` resolves
     // exactly 1300 and 5000), so the delivered cost the report now reports is the original 1250 debit plus
     // the adjustment. Expecting `reported === control` alone here would assert that a recost silently
-    // rewrote a posted control account, which is the SAH-005 behaviour Phase 3 exists to refuse.
+    // rewrote a posted control account, which is the LEGACY-005 behaviour Phase 3 exists to refuse.
     const c = await tieOutC();
     expect(c.reported).toBe(c.consumed);
     expect(c.reported).toBe(Money.of(c.control, MYR).add(Money.of(c.adjustment, MYR)).toString());

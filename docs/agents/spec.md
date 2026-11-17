@@ -29,7 +29,7 @@ Do not take a migration or ADR number. Write `NNNN` and say how many the plan ne
 
 - **Money semantics, security, the data model or the sync protocol:** write the decision as an ADR draft in `adr/<slug>.md` in the feature folder (the format of `docs/adr/`, status _Proposed_, no number) with its questions. The owner answers before the build.
 - **An `OD-##`, `⚠️`, "Confirm" or "Decide" item:** name it, state the default the documents give if there is one, and plan either to wait or to build that documented default — and say which.
-- **A screen:** the plan needs screenshots of the equivalent Sahlisoft screen and an operator walkthrough (OD-24). Without them plan no screen, unless the owner's request says to build on the default baseline.
+- **A screen:** the plan needs screenshots of the equivalent legacy screen and an operator walkthrough (OD-24). Without them plan no screen, unless the owner's request says to build on the default baseline.
 - **A disagreement between the spec and Plan Contracts:** propose the amendment; do not choose a third reading.
 - **A request that is unclear:** list what is unclear as a question. Do not plan your best guess as if it were the request.
 

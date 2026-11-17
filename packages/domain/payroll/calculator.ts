@@ -92,7 +92,7 @@ export const payrollCalculator: PayrollCalculator = {
     for (const e of employees) {
       // The per-component input gate runs BEFORE the currency is derived, and the order is load-bearing: an
       // employee whose only line is a quantity with no per-unit rate has no amount to take a currency from, so the
-      // other order raises the generic refusal and BURIES the one SAH-011 asks for — naming the component.
+      // other order raises the generic refusal and BURIES the one LEGACY-011 asks for — naming the component.
       assertComponentInputs(e);
       const currency = firstCurrency(e);
       const zero = Money.zero(currency);
@@ -259,7 +259,7 @@ function computeScheme(
 type CompensationLine = EmployeePeriodInput["compensation"][number];
 
 /**
- * The exact `ERR_PAYROLL_INPUT_MISSING` message for a component with no usable amount (SAH-011, test 33). ONE
+ * The exact `ERR_PAYROLL_INPUT_MISSING` message for a component with no usable amount (LEGACY-011, test 33). ONE
  * function, so the pre-pass and the narrowing throw inside the loop cannot spell one refusal two ways.
  */
 function missingInput(e: EmployeePeriodInput, c: CompensationLine): PayrollCalculationError {

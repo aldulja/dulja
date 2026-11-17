@@ -17,7 +17,7 @@ export const auditLogTable = app.table(
     hash: bytea("hash").notNull(),
   },
   (table) => [
-    // 7B, migration 0077 (SAH-070) — accounting.audit_log's required window, table cut and actor cut. The
+    // 7B, migration 0077 (LEGACY-070) — accounting.audit_log's required window, table cut and actor cut. The
     // table has no company column; the chain is per tenant.
     index("audit_log_tenant_time_idx").on(table.tenantId, table.occurredAt),
     index("audit_log_tenant_table_time_idx").on(table.tenantId, table.tableName, table.occurredAt),

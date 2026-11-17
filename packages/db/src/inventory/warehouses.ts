@@ -74,7 +74,7 @@ export async function getWarehouse(tx: Sql, warehouseId: string): Promise<Wareho
 }
 
 /** `code`, `kind` and `branch_id` are immutable: movements already written are keyed by this row, and
- *  moving a warehouse to another branch would silently re-scope every historical figure (SAH-045). */
+ *  moving a warehouse to another branch would silently re-scope every historical figure (LEGACY-045). */
 export async function updateWarehouse(
   tx: Sql,
   warehouseId: string,
@@ -122,7 +122,7 @@ export async function listWarehouses(
   return rows.map(toWarehouse);
 }
 
-/** SAH-071's positive form: one recursive CTE, top-down, returning depth and the code path. */
+/** LEGACY-071's positive form: one recursive CTE, top-down, returning depth and the code path. */
 export async function warehouseTree(tx: Sql, companyId: string): Promise<WarehouseNode[]> {
   const rows = await tx<(DbWarehouse & { depth: number; path: string[] })[]>`
     with recursive node as (

@@ -39,6 +39,6 @@ export const ConvertResultSchema = z.object({
   lines: z.array(ConvertResultLineSchema),
   links: z.array(DocumentLinkSchema),
   /** The source order's open quantity AFTER the links were written, read back from 3C's view and never
-   *  computed (SAH-017, SAH-018: a remaining quantity is a projection, never a stored column). */
+   *  computed (LEGACY-017, LEGACY-018: a remaining quantity is a projection, never a stored column). */
   remaining: z.array(OpenQuantitySchema),
 });

@@ -9,8 +9,8 @@
 spec:1043 requires "statement import (CSV), match/unmatch against receipts, payments, payroll batches and
 till bankings; unreconciled-items report", and acceptance test 39 adds "matching never alters a ledger
 entry; the reconciled balance equals the bank account's ledger balance". The legacy system's equivalent
-did the opposite: SAH-031 shows a direct `UPDATE "VouItems"` on a signed, locked, closed-period voucher
-silently rewriting `AccTotals` to match, and SAH-041 shows the anti-tampering triggers shipped inactive.
+did the opposite: LEGACY-031 shows a direct `UPDATE "VouItems"` on a signed, locked, closed-period voucher
+silently rewriting `AccTotals` to match, and LEGACY-041 shows the anti-tampering triggers shipped inactive.
 
 ## Decision
 
@@ -19,7 +19,7 @@ writes, updates or deletes a `ledger_entry`, an `account_balance` or a `document
 `packages/db/src/ar-ap/reconciliation.ts` is outside `posting/` and `costing/`, so the
 `posting-only-tables` lint (§3.7.5) makes that mechanical rather than a promise. **A match in a locked
 period therefore succeeds** — there is nothing for `assert_period_open` to refuse — and the locked
-period's ledger rows are byte-identical afterwards, which is what the sah-031 regression block asserts.
+period's ledger rows are byte-identical afterwards, which is what the legacy-031 regression block asserts.
 
 **Unmatching sets `unmatched_at`; nothing is deleted.** §3.5.4's `app_rw` DELETE list is pinned to five
 tables and 2B is its only extender, so a `bank_match` row survives its own reversal and the audit trigger
@@ -58,7 +58,7 @@ two-column bank form, **debit is money out**: `amount = credit − debit`.
 difference. A statement that does not add up is a bad file or a bad mapping, and importing it would make
 every later "reconciled == ledger" assertion meaningless. For the same reason an amount finer than 4 dp
 and a date that is not on the calendar are refused, naming the line, rather than rounded or coerced: a
-stored line that differs from the file is a silent correction (SAH-019) the balance check cannot see.
+stored line that differs from the file is a silent correction (LEGACY-019) the balance check cannot see.
 
 **A statement belongs to one company, and so does every line of it.** RLS bounds the tenant and nothing
 else, so the import matches the bank account on both its id and the company, and a line's key is

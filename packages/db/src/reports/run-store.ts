@@ -65,7 +65,7 @@ export interface ReportRunRow {
 
 /**
  * `<tenant_id>/reports/<run_id>/<attempt>.<ext>` — server-generated from ids alone, so no client path can reach
- * the store (SAH-038, the same rule §4.5.8's `objectKeyFor` follows for attachments).
+ * the store (LEGACY-038, the same rule §4.5.8's `objectKeyFor` follows for attachments).
  *
  * The CLAIM's `attempts` is part of the key (Phase 7 second review, finding 2): fencing guards the row, not the
  * store, and under one key per run a superseded worker that woke up `put` its stale bytes over the bytes its

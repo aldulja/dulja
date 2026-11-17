@@ -136,7 +136,7 @@ describe("the document-types sub-pack loader — contracts §3.4.8, §4.3.7", ()
     expect(policy!.definition.direction).toBe("internal");
   });
 
-  it("refuses to rewrite a drifted version that a POSTED document pins, and names the fix (SAH-013)", async () => {
+  it("refuses to rewrite a drifted version that a POSTED document pins, and names the fix (LEGACY-013)", async () => {
     // A tenant of its own, so the drift never has to be undone for the cases that follow: migration 0106's
     // guard makes a pinned version immutable, and no case may switch that guard off to restore one.
     const d = await seedTenantV2(db, "Drift");

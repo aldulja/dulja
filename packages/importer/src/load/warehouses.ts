@@ -36,7 +36,7 @@ const COLUMNS: readonly SourceColumn[] = [
  * Every imported warehouse lands in the company's HEAD-OFFICE BRANCH, because the legacy schema has no branch concept
  * that maps onto Dulja's BRANCH dimension (dossier §0.4: `Site` is a replication partition, `Job` a project), and
  * inventing a branch per warehouse would put stock behind a `branch_isolation` policy nobody can see through
- * (§4.5.6 Form A″). `branch_id` is immutable on a warehouse (`updateWarehouse`, SAH-045), so re-homing a warehouse after
+ * (§4.5.6 Form A″). `branch_id` is immutable on a warehouse (`updateWarehouse`, LEGACY-045), so re-homing a warehouse after
  * cut-over is an archive and a new warehouse with a transfer — the cut-over runbook (Task 10) must say so.
  */
 export const warehouseLoader: Loader<LegacyRow, WarehouseTarget> = {

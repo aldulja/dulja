@@ -243,7 +243,7 @@ documentTypeRoutes.openapi(
     const report = validatePolicy(body.definition, CATALOGUE);
     if (!report.ok) {
       // `errors` carries the JSON Pointer into the rejected definition. §4.2.4 reserved the member for
-      // ERR_VALIDATION_FAILED; amendment A10 extends it to ERR_POLICY_INVALID, because SAH-078's claim is
+      // ERR_VALIDATION_FAILED; amendment A10 extends it to ERR_POLICY_INVALID, because LEGACY-078's claim is
       // that an invalid rule is refused at configuration time *naming the JSON path*, and `detail` alone
       // makes a caller parse prose. `detail` carries the same paths so a human-readable message loses nothing.
       throw new AppError(

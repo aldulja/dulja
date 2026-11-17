@@ -5,7 +5,7 @@
 - **Date:** 2026-09-07
 - **Slice:** 3C
 - **Spec:** spec:95 (an ADR proposal precedes a money-semantics change), spec:1020 (landed cost), spec:1049,
-  spec:1698 (purchase return); Part I SAH-007, SAH-009, SAH-049
+  spec:1698 (purchase return); Part I LEGACY-007, LEGACY-009, LEGACY-049
 
 ## Context
 

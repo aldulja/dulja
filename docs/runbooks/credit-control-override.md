@@ -43,7 +43,7 @@ customer, not about one document: clear `party.credit_hold` (`creditHold: false`
 
 **`ERR_POLICY_REQUIRES_MISSING` naming a credit limit is a misconfiguration, not a limit.** A customer
 that carries a credit limit and no receivable control account cannot have its exposure measured, so the
-database refuses the sale rather than assume the customer owes nothing (SAH-042). Set the customer's
+database refuses the sale rather than assume the customer owes nothing (LEGACY-042). Set the customer's
 `receivableAccountId` (`1200` trade receivables is the default) or clear the limit. An override recorded
 on one document lets that sale through exactly as it would an over-limit one — the comparison is what the
 override skips — but it fixes nothing for the next sale; the account is the fix.

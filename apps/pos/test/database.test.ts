@@ -270,7 +270,7 @@ describe("durable local POS store", () => {
     expect(() => revisionToText(-1n)).toThrow();
   });
 
-  it("the schema file mentions no ESC/POS, drawer port, scanner, scale or OPOS term — D18, SAH-086", () => {
+  it("the schema file mentions no ESC/POS, drawer port, scanner, scale or OPOS term — D18, LEGACY-086", () => {
     // POS hardware is out of v1 (D18): a scanner is a keyboard, a drawer opens through the printer driver, and
     // nothing in the local model names a device. As words, so `drawer_open` and `max_cash_in_drawer` — a till
     // event and a branch limit, not hardware — stay legal while a `drawer_port` column does not.

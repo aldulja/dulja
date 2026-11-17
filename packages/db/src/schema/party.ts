@@ -13,7 +13,7 @@ import {
 import { app } from "./tenant";
 
 /**
- * contracts §4.5.7 — the party (2A, migration 0017). One table, one `kind` discriminator (SAH-072). This
+ * contracts §4.5.7 — the party (2A, migration 0017). One table, one `kind` discriminator (LEGACY-072). This
  * mirror is the diff source for the next slice that alters the table (4A added `credit_limit`,
  * `payment_term_id`, `credit_hold` and `price_list_id` in 0045; 9B adds `legacy_ref`) — extend it, never
  * rewrite it (ADR-0002, contracts §3.4.9).

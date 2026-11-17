@@ -110,7 +110,7 @@ describe("postDocument step 11 — app.tax_transaction (§4.3.2, §4.9.2)", () =
 
   it("an EXEMPT line writes a row with tax = 0; a CODE-LESS line writes no row at all", async () => {
     // The distinction matters to the return: an exempt supply is reported in box S3, so it must be a row
-    // with a zero tax; a line with no code is not a taxable event and must not appear at all. SAH-058's
+    // with a zero tax; a line with no code is not a taxable event and must not appear at all. LEGACY-058's
     // failure was the inverse — an uncoded voucher line was invisible to the reconciliation AND excluded
     // from the return, so nothing could tell the two apart.
     const { documentId: exempt } = await postTaxedDocument(db, f, {
@@ -133,7 +133,7 @@ describe("postDocument step 11 — app.tax_transaction (§4.3.2, §4.9.2)", () =
     expect(p!.n).toBe(0);
   });
 
-  it("posting twice is impossible, so a tax transaction cannot be duplicated (SAH-041 + the unique key)", async () => {
+  it("posting twice is impossible, so a tax transaction cannot be duplicated (LEGACY-041 + the unique key)", async () => {
     const { documentId } = await postTaxedDocument(db, f, {
       typeCode: "SALES_INVOICE",
       effectiveDate: "2026-01-22",

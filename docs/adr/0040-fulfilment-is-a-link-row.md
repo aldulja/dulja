@@ -13,15 +13,15 @@ It is implemented ahead of approval, as ADR 0020 was, as Phase 2's 0026, 0027 an
 **Slice:** 3C
 **Supersedes:** nothing. **Related:** contracts §4.6.1 (`document_link`), §3.5.4 (the closed DELETE grant
 list), §4.2.4 (`ERR_DOC_LINK_OVER_FULFILLED`), ADR 0029 (the document state machine in triggers), ADR 0030
-(gapless numbering and draft deletion), Part I SAH-017, SAH-018, SAH-049
+(gapless numbering and draft deletion), Part I LEGACY-017, LEGACY-018, LEGACY-049
 **Spec:** spec:1049, spec:1050, spec:2173 (the data layer is the control), Part VI tests 12, 13
 
 ## Context
 
 An order commits to a quantity; one or more fulfilment documents consume it. The legacy system stored the
-consumed quantity on the order line and incremented it from application code. SAH-017 is the result: editing a
+consumed quantity on the order line and incremented it from application code. LEGACY-017 is the result: editing a
 fulfilment double-added the bonus quantity, and re-pointing it at another order never reversed the first.
-SAH-018 is the same defect on the returns side. SAH-049 is its concurrency face — an aggregate row with no
+LEGACY-018 is the same defect on the returns side. LEGACY-049 is its concurrency face — an aggregate row with no
 unique key duplicates under an upsert race and is then double-updated forever.
 
 ## Decision

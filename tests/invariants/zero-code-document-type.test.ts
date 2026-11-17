@@ -205,7 +205,7 @@ describe("Part VI test 15 — a new document type is added with ZERO CODE (spec:
     expect(rows).toHaveLength(2);
     expect(rows.map((r) => r.debit)).toEqual(["90.0000", "0.0000"]);
     expect(rows.map((r) => r.credit)).toEqual(["0.0000", "90.0000"]);
-    // Every entry is pinned to the policy version that produced it (SAH-013).
+    // Every entry is pinned to the policy version that produced it (LEGACY-013).
     expect(new Set(rows.map((r) => r.policy)).size).toBe(1);
   });
 

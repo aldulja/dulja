@@ -77,7 +77,7 @@ describe("POST /v1/companies/{companyId}/attachments — contracts §4.5.8, spec
     expect(api.objectStore.objects.has(body.objectKey)).toBe(true);
   });
 
-  it("stores non-UTF-8 bytes byte for byte — a multipart body is not text (SAH-038 sibling: silent corruption)", async () => {
+  it("stores non-UTF-8 bytes byte for byte — a multipart body is not text (LEGACY-038 sibling: silent corruption)", async () => {
     const documentId = await draftDocument(api.db, a);
     const bytes = new Uint8Array([
       0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x80, 0xff, 0x00, 0xfe,

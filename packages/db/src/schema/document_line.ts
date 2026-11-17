@@ -48,7 +48,7 @@ export const documentLine = app.table(
     unitId: uuid("unit_id"),
     unitQuantity: numeric("unit_quantity", { precision: 19, scale: 6 }),
     // 3D, migration 0040 — contracts §4.3.4. Both nullable; on a line that carries them `quantity` is the
-    // signed variance (counted_quantity - expected_quantity), never a second stored number (SAH-018).
+    // signed variance (counted_quantity - expected_quantity), never a second stored number (LEGACY-018).
     countedQuantity: numeric("counted_quantity", { precision: 19, scale: 6 }),
     expectedQuantity: numeric("expected_quantity", { precision: 19, scale: 6 }),
   },

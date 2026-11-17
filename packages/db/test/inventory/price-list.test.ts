@@ -95,7 +95,7 @@ describe("app.price_list / price_list_line / promotion — migration 0030 (contr
     ).rejects.toThrow(/price_list_line_price_list_id_item_id_unit_id_min_quantity_key/);
   });
 
-  it("a negative unit price is refused (SAH-073's shape, applied to a price)", async () => {
+  it("a negative unit price is refused (LEGACY-073's shape, applied to a price)", async () => {
     const [pl] = await withTenant(
       db.rw,
       a.tenant,

@@ -63,7 +63,7 @@ export function taxFileNames(regimeCode: string): { regime: string; codes: strin
  * re-run, which is what "changes nothing" means (spec:2002). `on conflict … do nothing` returns no row on a
  * hit, so counting `returning id` results is exact. **`do nothing`, not `do update`:** §3.4.8 reserves
  * `do update` for `posting_policy` alone, and a changed rate is a NEW regime version or a new
- * `effective_from` — never an edit of a row a filed return already points at (SAH-020, ADR 0050).
+ * `effective_from` — never an edit of a row a filed return already points at (LEGACY-020, ADR 0050).
  *
  * **A missing account fails loudly.** `chart-of-accounts` runs earlier in application order, so an absent
  * `2300` is the PACK's problem and not the tenant's; letting it pass would leave `output_account_id` null

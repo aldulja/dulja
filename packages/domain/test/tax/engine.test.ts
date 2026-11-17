@@ -75,7 +75,7 @@ describe("taxEngine.compute (§4.9.1, spec:2227-2228)", () => {
     expect(r!.tax.toString()).toBe("33.0000");
   });
 
-  it("the rounding MODE is the code's, not the engine's — SAH-019's whole finding", () => {
+  it("the rounding MODE is the code's, not the engine's — LEGACY-019's whole finding", () => {
     // 100.05 x 0.045 = 4.50225. HALF_AWAY_FROM_ZERO -> 4.5023 (fourth dp); TOWARD_ZERO -> 4.5022.
     const away = taxEngine.compute(REGIME, [
       {
@@ -97,7 +97,7 @@ describe("taxEngine.compute (§4.9.1, spec:2227-2228)", () => {
     expect(toward[0]!.tax.toString()).toBe("4.5022");
   });
 
-  it("rounding is SYMMETRIC across sign — SAH-019's +6 -> 10 / -6 -> -5 asymmetry cannot recur", () => {
+  it("rounding is SYMMETRIC across sign — LEGACY-019's +6 -> 10 / -6 -> -5 asymmetry cannot recur", () => {
     const pos = taxEngine.compute(REGIME, [
       { lineNo: 1, amount: m("100.0500"), taxCode: code({ rate: "0.04500000" }), inclusive: false },
     ]);
@@ -152,7 +152,7 @@ describe("taxEngine.compute (§4.9.1, spec:2227-2228)", () => {
     expect(r!.tax.toString()).toBe("0.0000");
   });
 
-  it("a code from another regime is REFUSED, not silently applied (SAH-020, spec:2444)", () => {
+  it("a code from another regime is REFUSED, not silently applied (LEGACY-020, spec:2444)", () => {
     const foreign = code({ id: "c-9", regimeId: "r-OTHER", code: "SYN-OTHER" });
     try {
       taxEngine.compute(REGIME, [
@@ -162,7 +162,7 @@ describe("taxEngine.compute (§4.9.1, spec:2227-2228)", () => {
     } catch (e) {
       expect(e).toBeInstanceOf(TaxError);
       expect((e as TaxError).code).toBe("ERR_TAX_REGIME_MISMATCH");
-      // The message names the LINE and BOTH regimes — SAH-020's failure was silence.
+      // The message names the LINE and BOTH regimes — LEGACY-020's failure was silence.
       expect((e as TaxError).detail).toBe(
         "line 4: tax code SYN-OTHER belongs to regime r-OTHER, not to SYNTH-MY-v1 v1 (r-1)",
       );
@@ -193,7 +193,7 @@ describe("taxEngine.compute (§4.9.1, spec:2227-2228)", () => {
     // `SYNTH-MY-v1` has `effectiveTo: null`, and a live regime runs indefinitely. A second rate arrives as
     // a new code at a new `effective_from` INSIDE that window — the `unique (company_id, code,
     // effective_from)` shape of 0053 — and refusing it would make every rate change a new REGIME, which is
-    // the thing SAH-020's hardcoded literal was the alternative to. T11 Step 1 posts exactly this case.
+    // the thing LEGACY-020's hardcoded literal was the alternative to. T11 Step 1 posts exactly this case.
     const later = code({ code: "SYN-OUT-STD-2", effectiveFrom: "2026-07-01", rate: "0.20000000" });
     const [r] = taxEngine.compute(REGIME, [
       { lineNo: 1, amount: m("1000.0000"), taxCode: later, inclusive: false },

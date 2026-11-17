@@ -417,7 +417,7 @@ export async function postDocument(
   await mergeEmployeeYtd(tx, input.documentId);
 
   // 13. the header. posted_by is written explicitly — the column has no default and app.stamp_actor
-  //     overwrites a supplied value on the NULL → non-null transition but never invents one (SAH-044).
+  //     overwrites a supplied value on the NULL → non-null transition but never invents one (LEGACY-044).
   //     2B's AFTER UPDATE OF status trigger writes the document_event; at Phase 1 there is none.
   await tx`update app.document
               set status = 'posted', posting_policy_id = ${policyId}, posted_at = now(), posted_by = app.current_actor()
@@ -440,7 +440,7 @@ export async function postDocument(
            and m.effective_date > ${snapshot.header.effectiveDate}::date) as back_dated`;
     if (later?.back_dated) {
       if (!input.jobs) {
-        // Never silently skip a recost. SAH-005 is exactly this: the flag that should have said "recost me"
+        // Never silently skip a recost. LEGACY-005 is exactly this: the flag that should have said "recost me"
         // was never set on insert, so a back-dated goods receipt mis-costed a whole month and nothing noticed.
         throw new PostingError(
           "ERR_INTERNAL",
@@ -457,7 +457,7 @@ export async function postDocument(
       // `singletonKey` on the replay's stately queue collapses a burst of back-dated posts into ONE queued
       // job (contracts §4.2.6), so the id is the key and not a pg-boss uuid — two postings in the same second
       // must not report two different replays. A post while a replay RUNS queues a fresh one; it never
-      // collapses into a job that may already have read the tail this post invalidated (SAH-005).
+      // collapses into a job that may already have read the tail this post invalidated (LEGACY-005).
       enqueuedJobIds.push(`inventory.cost.replay:${snapshot.header.companyId}`);
     }
   }
@@ -492,7 +492,7 @@ export async function postDocument(
     } else {
       // Deliberately a WARNING and not a throw — the opposite of 3B's back-dated branch above, and the
       // difference is the severity of the omission. A missed cost replay leaves a WRONG number in the ledger
-      // for ever (SAH-005). A missed projection enqueue leaves a STALE snapshot that the nightly
+      // for ever (LEGACY-005). A missed projection enqueue leaves a STALE snapshot that the nightly
       // accounting.projection.rebuild recomputes and the nightly compare would flag. Throwing here would break
       // every 4A call site that supplies no JobClient, postArDocument included (amendment 2).
       warnings.push(
@@ -518,7 +518,7 @@ export async function postDocument(
   // JobClient the row is still written and a warning is pushed — the DURABLE ROW is the state of
   // record (ADR 0053), and the manual submit route and the poll phase both drive it, so a missed
   // enqueue delays a transmission and loses nothing. This is deliberately NOT 3B's fail-closed
-  // branch: a missed cost replay leaves a wrong number in the ledger for ever (SAH-005), while a
+  // branch: a missed cost replay leaves a wrong number in the ledger for ever (LEGACY-005), while a
   // missed enqueue leaves a pending row anyone can see.
   if (definition.tax?.applies === true && definition.tax.einvoice === true) {
     const [companyEinvoice] = await tx<{ transmitter: string | null }[]>`

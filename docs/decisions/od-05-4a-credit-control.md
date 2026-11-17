@@ -66,15 +66,15 @@ sales? And does it also want a per-customer *hold* that no override lifts?
 - **`ERR_CREDIT_HOLD`**, raised first, which an override does **not** lift (§4.8.1 "blocks regardless").
 - **`app.party_open_balance(p_party_id, p_as_of)`** is the one read of the customer's exposure. The trigger
   and **`creditStatus()`** (`packages/db/src/ar-ap/credit.ts`) both use it, so a screen cannot disagree with
-  the control. It works in base currency (SAH-014) and coalesces at the sum (SAH-011). It **fails closed**
-  with `ERR_POLICY_REQUIRES_MISSING` for a party that has a limit and no receivable account (SAH-042).
+  the control. It works in base currency (LEGACY-014) and coalesces at the sum (LEGACY-011). It **fails closed**
+  with `ERR_POLICY_REQUIRES_MISSING` for a party that has a limit and no receivable account (LEGACY-042).
 - **`accounting.credit_limit.override`** is one of 4A's seven codes (migration 0047), held by the seeded
   `accountant`. The parties module also requires it, beside `accounting.party.manage`, to set or clear
   `creditLimit`.
 - **`docs/runbooks/credit-control-override.md`**, the two-principal procedure.
 - **Proven against Postgres**, not just written: `packages/db/test/ar-ap/credit-control.test.ts` (16 cases,
   over the test-only `CREDIT_TEST` type) and the credit-control case of
-  `packages/db/test/ar-ap/sales-invoice.test.ts`, which runs on the real `SALES_INVOICE`. The `sah-042` 4A
+  `packages/db/test/ar-ap/sales-invoice.test.ts`, which runs on the real `SALES_INVOICE`. The `legacy-042` 4A
   block and the `parties` route suite also cover it. All were green in this sandbox on 2026-09-28 (Task 14's
   exit report has the run).
 
@@ -86,7 +86,7 @@ Ageing is 4B's and is covered by 4B's own OD-05 task.
 |---|---|---|---|
 | 1 | Is a per-customer **hold**, distinct from a limit, wanted? spec:1026 does not ask for one; §4.8.1 added it | **Yes, and not overridable.** It defaults to `false`, so nobody is on hold unless someone puts them there | `party.credit_hold`, `ERR_CREDIT_HOLD` (0045) |
 | 2 | **Which documents** does "a block on over-limit sales" stop? | **Every document that sells on credit, at `→ issued`**: an outbound policy that names no `party.payable_account` rule (`app.policy_extends_credit`, since the code review of 2026-09-29). The trigger decides by policy shape, never by type code. Today that means `SALES_INVOICE` and also 3D's `DELIVERY_ORDER`, so stock cannot leave for a held or over-limit customer. A `PAYMENT`, `PURCHASE_RETURN` or `PURCHASE_CREDIT_NOTE` is **not** controlled: the first build decided by `direction` alone, so a vendor on hold could not be paid and a payment counted as credit exposure — a defect, not a reading of spec:1026. A refund cannot post at all yet (ADR 0047 open question 5). A reversal that lowers the exposure — a DELIVERY_ORDER reversed into DELIVERY_ORDER — is not controlled either (code review, second pass), so goods can always be taken back from a held customer | `app.assert_credit_available()` guard 2, `app.policy_extends_credit` (0045) |
-| 3 | Is the limit compared in the **invoice currency** or in **base**? | **Base.** There is one bare `numeric(19,4)` limit per party, and a party may be invoiced in several currencies. Comparing in any other currency would repeat SAH-014 | `app.party_open_balance`, `creditStatus` |
+| 3 | Is the limit compared in the **invoice currency** or in **base**? | **Base.** There is one bare `numeric(19,4)` limit per party, and a party may be invoiced in several currencies. Comparing in any other currency would repeat LEGACY-014 | `app.party_open_balance`, `creditStatus` |
 
 Question 2's refund consequence was first recorded rather than fixed. The code review of 2026-09-29 narrowed
 the trigger to documents that sell on credit, because payments to vendors were being refused; that narrowing is
@@ -123,7 +123,7 @@ What that migration and PR remove, against this tree:
 
 **Tests removed with the columns, in that PR:** `packages/db/test/ar-ap/credit-control.test.ts` (all but the
 `payment_term_id` and `price_list_id` cases, which stay); the credit-control case of `sales-invoice.test.ts`;
-`tests/regression/sah-042.test.ts`'s 4A block; the credit-limit cases of
+`tests/regression/legacy-042.test.ts`'s 4A block; the credit-limit cases of
 `apps/api/test/routes/accounting/parties.test.ts`; the `creditOverride` option of
 `tests/invariants/support/post-ar.ts`; and the three rows for this code in the pinned catalogue suites
 (`permission-phase4a`, `permission-catalogue`, `roles-seed`, `packages/contracts/test/contracts.test.ts`).

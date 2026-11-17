@@ -22,7 +22,7 @@ alter table app.document_line
 alter table app.document_line
   add constraint document_line_kind_check check (kind in ('account', 'item', 'tax', 'text'));
 
--- ── 3. The lookups the snapshot and the reports make (SAH-070) ────────────────────────────────────────
+-- ── 3. The lookups the snapshot and the reports make (LEGACY-070) ────────────────────────────────────────
 create index document_line_item_idx on app.document_line (item_id) where item_id is not null;
 
 -- No branch key: a line is isolated through its parent document's own branch_isolation policy

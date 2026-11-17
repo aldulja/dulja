@@ -4,11 +4,11 @@
 
 **Goal:** Close Phase 2 by proving its definition of done — *"a new document type is added with zero code"* — end to end: a tenant defines `CONSIGNMENT_RETURN` as configuration alone (type, policy, series, print template) and it numbers, posts, prints in both text directions, appears in the 1B ledger report and reverses; and ship the two tables the phase still owes (`app.attachment` with opaque server-generated object keys, `app.print_template` with text-defined versioned templates) plus the live-table expand/contract demonstration acceptance test 25 requires.
 
-**Architecture:** Four seams on top of 2B's finished document lifecycle. **Storage** is an `ObjectStore` port in `packages/db/src/attachment/` with a `MemoryObjectStore` for tests and an R2 S3-compatible implementation for the container — the object key is always `<tenant_id>/<attachment id>`, derived from the server-minted `uuidv7`, never from anything the client sends (SAH-038). **Printing** splits pure from impure exactly as posting does: `packages/domain/src/print/` holds the template-source parser, a deterministic mustache-subset renderer and `buildPrintModel` (all pure, no I/O); `packages/db/src/print/` loads the template and the document snapshot under RLS; `apps/api/src/print/engines/` holds one adapter per ADR-0016 engine code and turns rendered template text into a PDF. **Configuration** reaches a tenant two ways that produce identical rows — the `templates` seed sub-pack (`bun run seed --only templates`) and `POST /v1/companies/{companyId}/print-templates` under `admin.company.manage` — because test 15 is about a tenant adding a type without a release, not about a seed file. **Expand/contract** is demonstrated on the live `document` table: `0027_expand_document_add_notes.sql` adds one nullable column while a request loop keeps serving, and the contract half is documented as a later slice's PR.
+**Architecture:** Four seams on top of 2B's finished document lifecycle. **Storage** is an `ObjectStore` port in `packages/db/src/attachment/` with a `MemoryObjectStore` for tests and an R2 S3-compatible implementation for the container — the object key is always `<tenant_id>/<attachment id>`, derived from the server-minted `uuidv7`, never from anything the client sends (LEGACY-038). **Printing** splits pure from impure exactly as posting does: `packages/domain/src/print/` holds the template-source parser, a deterministic mustache-subset renderer and `buildPrintModel` (all pure, no I/O); `packages/db/src/print/` loads the template and the document snapshot under RLS; `apps/api/src/print/engines/` holds one adapter per ADR-0016 engine code and turns rendered template text into a PDF. **Configuration** reaches a tenant two ways that produce identical rows — the `templates` seed sub-pack (`bun run seed --only templates`) and `POST /v1/companies/{companyId}/print-templates` under `admin.company.manage` — because test 15 is about a tenant adding a type without a release, not about a seed file. **Expand/contract** is demonstrated on the live `document` table: `0027_expand_document_add_notes.sql` adds one nullable column while a request loop keeps serving, and the contract half is documented as a later slice's PR.
 
 **Tech Stack:** Bun 1.4 (install, scripts, the API entrypoint) · Node 24 LTS (runs Vitest) · TypeScript strict · PostgreSQL 18 (Testcontainers `postgres:18`) · `postgres` (postgres.js) tagged templates · Drizzle ORM mirrors for reads · Hono + `@hono/zod-openapi` · Zod · `aws4fetch` (SigV4 against the R2 S3 endpoint) · Playwright Chromium and/or the `typst` binary as the ADR-0016 PDF engine · `pdfjs-dist` (test-side PDF text extraction) · Vitest + Testcontainers · oxlint + oxfmt · Turborepo.
 
-**Spec:** `docs/spec/rebuild-spec.md` v1.2 — §0.2 (spec:97–108), §3.2.2 PDF and R2 rows (spec:1132, 1138), §3.3 Attachment (spec:1192), §3.5 report-designer sentence (spec:1240), §3.9 Migrations/expand-contract (spec:2057) and Deletion (spec:2049), §4.6 right-to-export (spec:2211), §4.8 zero-downtime (spec:2236), §4.10 RTL/LTR parity (spec:2253), §4.11 engineering practice (spec:2258–2266), Part V Phase 2 row (spec:2288), Part VI tests 13, 15, 23, 25 (spec:2431, 2433, 2441, 2443), Part I SAH-038 (spec:545), SAH-080 (spec:872), SAH-085 (spec:914).
+**Spec:** `docs/spec/rebuild-spec.md` v1.2 — §0.2 (spec:97–108), §3.2.2 PDF and R2 rows (spec:1132, 1138), §3.3 Attachment (spec:1192), §3.5 report-designer sentence (spec:1240), §3.9 Migrations/expand-contract (spec:2057) and Deletion (spec:2049), §4.6 right-to-export (spec:2211), §4.8 zero-downtime (spec:2236), §4.10 RTL/LTR parity (spec:2253), §4.11 engineering practice (spec:2258–2266), Part V Phase 2 row (spec:2288), Part VI tests 13, 15, 23, 25 (spec:2431, 2433, 2441, 2443), Part I LEGACY-038 (spec:545), LEGACY-080 (spec:872), LEGACY-085 (spec:914).
 
 ## Assumptions and contracts (from docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md)
 
@@ -18,7 +18,7 @@
 - **Interfaces consumed:** §4.1 (the Plan 0A surface), §4.2.2 (`withTenant`, `TenantContext`, `createDb`), §4.2.3 (`Logger`, `AppEnv`, `RequestContext`, `readConfig`), §4.2.4 (`Problem`, `ERRORS`, `AppError`, `fromDatabaseError`), §4.2.5 (`PERMISSION`, `PermissionCode`, `requirePermission`, `ScopeSource`, `assertRouteGates`), §4.2.7 (`RouteModule`, `buildRoutes`, `ROUTES`, `IdempotencyHeader`, `createApp`, `AppDeps`, `PROBES`), §4.2.8 (`ListEnvelope`, `ListQuery`, `UuidSchema`, `DateSchema`, `ProblemSchema`, `encodeCursor`, `decodeCursor`), §4.2.9 (`idempotency`, `RECLAIM_AFTER_SECONDS`), §4.2.12 (`startApi`, `ApiRequest`, `StartedApi`, `TEST_ISSUER`), §4.2.13 (`SubPack`, `SUB_PACKS`, `PackLoader`, `LoaderContext`, `readPackFile`, `assertPackShape`), §4.3.1 (`postDocument`, `loadSnapshot`, `resolvePolicy`, `reverseDocument`), §4.3.2 (the fixed posting algorithm), §4.3.4 (`document_line`, the `document` header additions), §4.3.7 (the document-type seed envelope), §4.4.1 (`posting-policy.schema.json`), §4.4.2 (`DocumentSnapshot`, `LineSnapshot`, `evaluatePolicy`, `validatePolicy`), §4.5.1 (legal transitions), §4.5.2 (`document_event`), §4.5.4 (`requireDocumentPermission`, `DOCUMENT_STAGE_CODES`), §4.5.8 (`app.attachment` DDL and the download gate), §4.5.9 (`app.print_template` DDL and the print endpoint), §4.14 (`CONSIGNMENT_RETURN`), §4.15 (account codes), §4.16.3 (`accountLedger`, `trialBalance`), §4.17 / §4.17.1 (the two helper registers).
 - **Interfaces produced:** §4.5.8 `app.attachment` and its upload/download surface verbatim; §4.5.9 `app.print_template` and `POST …/documents/{documentId}/print` verbatim; the `templates` sub-pack loader §3.4.8 assigns 2C; migration 0027, the `document.notes` column §4.3.4 assigns 2C. Everything else this slice names is listed under *Contract additions* in the Self-Review and **must be carried into the contracts document before 3A consumes any of it** (3A adds `attachment.lot_id` in migration 0031 and the `inventory` row of the download map).
 - **Owner decisions:** **OD-24** (screenshots + a two-minute operator description before any screen) → **Task 12**, isolated. Default: the screen task is blocked, the slice is not. No other OD item gates this slice; OD-18, OD-19, OD-20, OD-21 and OD-22 are 0C's and 0E's and are consumed here with the stated local equivalents (Testcontainers, `MemoryObjectStore`, `wrangler dev`), never re-gated.
-- **Part VI tests owned / re-run:** **owns 15** (new document type, zero code — Task 10) and **25** (zero-downtime migration — Task 11). **Re-runs:** 13 (every upload audited — Tasks 3 and 13), 23 (PDF parity in both directions — Task 9), 12 and 36 (`attachment` and `print_template` under the isolation harness and the catalogue check — Tasks 1, 5 and 13). **§3.0.4 rows owned:** spec:1067 Attachments — "2 (service + document link)"; 3A adds the lot link and 7C the export. **Regression files created / appended:** **creates `tests/regression/sah-038.test.ts`** (2C is the first slice in execution order to touch path traversal to a file write — §3.7.3); **appends** a `— 2C` block to `tests/regression/sah-080.test.ts` (created by 0B) and to `tests/regression/sah-085.test.ts` (created by 0E).
+- **Part VI tests owned / re-run:** **owns 15** (new document type, zero code — Task 10) and **25** (zero-downtime migration — Task 11). **Re-runs:** 13 (every upload audited — Tasks 3 and 13), 23 (PDF parity in both directions — Task 9), 12 and 36 (`attachment` and `print_template` under the isolation harness and the catalogue check — Tasks 1, 5 and 13). **§3.0.4 rows owned:** spec:1067 Attachments — "2 (service + document link)"; 3A adds the lot link and 7C the export. **Regression files created / appended:** **creates `tests/regression/legacy-038.test.ts`** (2C is the first slice in execution order to touch path traversal to a file write — §3.7.3); **appends** a `— 2C` block to `tests/regression/legacy-080.test.ts` (created by 0B) and to `tests/regression/legacy-085.test.ts` (created by 0E).
 - **Shared namespaces this slice writes into:** document-type codes (§4.14) — **`CONSIGNMENT_RETURN`, module `accounting`, series `CR`, test-only and never seeded into `packages/db/seed/my/document-types/`**; the file lives at `tests/fixtures/document-types/CONSIGNMENT_RETURN.json` and is loaded through the API, which is the point of test 15. Account codes (§4.15) — **2C seeds none**; the `CONSIGNMENT_RETURN` policy resolves accounts through `line.account` exactly as `JOURNAL` does, so no `account: { code }` literal appears anywhere in this slice; the codes its tests use, `1000` and `4000`, are 0C's and are already present through `seedTenantV2`. Report codes (§4.16.1) and `DatasetId` members (§4.16.2) — **none**; Task 10 reads 1B's existing `accounting.ledger` route and adds no code. `fixtures.ts` helpers (§4.17) — **none: §4.17 assigns 2C no helper and hazard 9 forbids inventing one**; every row this slice's tests need is created by an existing helper (`seedTenantV2`, `grantCodes`, `seedDocumentType`, `draftDocument`, `postJournal`) or by a **file-local** function inside the one test file that needs it. Shared test helpers (§4.17.1) — **`pdfText` in `tests/support/pdf.ts` and nothing else** (Task 9; §4.17.1 already registers it, and Task 0's gate verifies that).
 - **Two `Seed` facts every test in this plan depends on, stated once because getting either wrong is a silent failure.** (1) **`seedAccount` is never called in this slice.** `seedTenantV2` already creates `1000 Cash` (asset) and `4000 Sales` (income) — §4.1's pinned constants — and §4.15 gives 2C no account to seed, so every test that needs one of those ids **reads it** (`select id from app.account where company_id = … and code = …`). 1A's helper is also `{ code; nameEn; type }` with `type` in `('asset','liability','equity','income','expense')`, so a call written `{ code, name, type: "revenue" }` would not compile in any case. (2) **`Seed` has no `branch` member.** It is `{ tenant; system; human; company; period; closedPeriod; lockedPeriod; cash; sales; docType; policy; branchType; hq }` (§4.1) — the BRANCH dimension *value* is **`hq`**, and `app.document.branch_id` is `not null`, so every `branchId:` in this plan is `<seed>.hq`.
 - **Never re-decide:** D1–D27 (spec:114–142); every name in the contracts document is frozen — a needed change goes to that document first.
@@ -28,12 +28,12 @@
 
 Copied verbatim from the spec and the contracts document; every task's requirements implicitly include this section.
 
-1. **Never**, at any phase, for any reason (spec:97–104): write to a ledger or movement table outside the posting service; represent money as a float, anywhere, including in TypeScript; build SQL by string concatenation (SAH-036/037/069); issue DDL from application code (SAH-053); disable an invariant, constraint or trigger "temporarily" (SAH-027, 041, 053); gate an audit write on any flag (SAH-030); hard-code a package version into a source file — the lockfile owns versions.
+1. **Never**, at any phase, for any reason (spec:97–104): write to a ledger or movement table outside the posting service; represent money as a float, anywhere, including in TypeScript; build SQL by string concatenation (LEGACY-036/037/069); issue DDL from application code (LEGACY-053); disable an invariant, constraint or trigger "temporarily" (LEGACY-027, 041, 053); gate an audit write on any flag (LEGACY-030); hard-code a package version into a source file — the lockfile owns versions.
 2. **Always**, for every new table (spec:106): `tenant_id`, an RLS policy, `created_at`, a migration, and a test that a second tenant cannot see it. For every new endpoint: Zod schema, OpenAPI entry, idempotency on unsafe methods, and a tenant-isolation test. For every UI screen: verified in both text directions before merge.
 3. **Binding form of a new table** (§3.3): `tenant_id`; RLS enabled **and forced** through `app_meta.enable_tenant_rls`; the policy named exactly `tenant_isolation`; `id uuid primary key default uuidv7()`; `created_at timestamptz not null default now()`; an `audit_row` trigger through `app_meta.attach_audit`; `stamp_<col>` for every `*_by` column through `app_meta.attach_stamp`; composite `(tenant_id, <parent>_id)` FKs to every tenant-scoped parent; a hand-written down file; a two-tenant test. `lintSchema` must report **zero** violations after every migration.
 4. **Money** is `numeric(19,4)` in Postgres and the opaque `Money` type in `@dulja/domain` in TypeScript; no `number` ever holds a monetary value (spec:2041, §3.7.5 `no-number-money`). This slice formats money for print through `Money.toString()` and never re-computes a stored base amount on read.
 5. **Every query, reads included, runs inside `withTenant`** (spec:2053). `db.` is a lint violation; only a `tx` obtained from `withTenant` may tag SQL. `sql.unsafe` has exactly three homes and none of them is in this slice (§3.3).
-6. **One migration per PR** (spec:2057); each file runs whole in one transaction; every statement carries a comment naming the SAH-/spec reference it serves; SQL keywords lowercase; section banners `-- ── N. title ───`.
+6. **One migration per PR** (spec:2057); each file runs whole in one transaction; every statement carries a comment naming the LEGACY-/spec reference it serves; SQL keywords lowercase; section banners `-- ── N. title ───`.
 7. **Expand/contract for any change touching a live table** (spec:2057, 2236): expand and contract are two PRs in two slices, never one file. Renaming a column is forbidden — add and backfill.
 8. **Deletion** (spec:2049): financial rows never; master data `archived_at`; genuine deletion only for drafts and the erasure workflow, both writing an audit row first. **`app.print_template` is never deleted and never archived** — a new `version` supersedes; **`app.attachment` carries `archived_at`** and no DELETE grant. §3.5.4's pinned DELETE list is **unchanged** by this slice.
 9. **Error codes** are `ERR_<DOMAIN>_<REASON>`, enumerated in `packages/contracts/src/errors.ts`, and a code no code raises fails the build (spec:2051). This slice adds exactly one: `ERR_PRINT_ENGINE_UNSUPPORTED`.
@@ -159,9 +159,9 @@ infra/
 └─ test/secrets.test.ts                     EDIT the pinned name list                                T2
 
 tests/
-├─ regression/sah-038.test.ts               NEW  CREATED by this slice                               T2
-├─ regression/sah-080.test.ts               EDIT append the `— 2C` describe block                    T11
-├─ regression/sah-085.test.ts               EDIT append the `— 2C` describe block                    T9
+├─ regression/legacy-038.test.ts               NEW  CREATED by this slice                               T2
+├─ regression/legacy-080.test.ts               EDIT append the `— 2C` describe block                    T11
+├─ regression/legacy-085.test.ts               EDIT append the `— 2C` describe block                    T9
 ├─ support/pdf.ts                           NEW  `pdfText`, the one test-side PDF reader (§4.17.1)   T9
 ├─ package.json                             EDIT pdfjs-dist as a dev dependency                      T9
 ├─ invariants/probes.ts                     EDIT two PROBES entries                                  T3,T4,T7
@@ -262,7 +262,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 ### Task 1: Migration 0025 — `app.attachment`
 
-`app.attachment` is the table spec:1067 calls "attachments — object storage (R2) addressed by opaque server-generated ids (SAH-038), SHA-256 recorded per file, linked to a document or a lot, download gated by the owning module's read permission, included in tenant data export". Its DDL is frozen in contracts §4.5.8 and is reproduced below **verbatim**, with the three `app_meta` calls §3.3 requires added beneath it. `lot_id` is 3A's addition in migration 0031 and is **not** written here.
+`app.attachment` is the table spec:1067 calls "attachments — object storage (R2) addressed by opaque server-generated ids (LEGACY-038), SHA-256 recorded per file, linked to a document or a lot, download gated by the owning module's read permission, included in tenant data export". Its DDL is frozen in contracts §4.5.8 and is reproduced below **verbatim**, with the three `app_meta` calls §3.3 requires added beneath it. `lot_id` is 3A's addition in migration 0031 and is **not** written here.
 
 **Files:**
 - Create: `packages/db/migrations/0025_create_attachment.sql`, `packages/db/migrations/0025.down.sql`, `packages/db/src/schema/attachment.ts`, `packages/db/test/attachment.test.ts`
@@ -282,7 +282,7 @@ import { lintSchema } from "../src/lint-schema";
 import { startDb, uuidv7, withTenant, type Db } from "./harness";
 import { draftDocument, seedTenantV2, type Seed } from "./fixtures";
 
-describe("app.attachment — contracts §4.5.8, spec:1067, SAH-038", () => {
+describe("app.attachment — contracts §4.5.8, spec:1067, LEGACY-038", () => {
   let db: Db;
   let a: Seed;
   let b: Seed;
@@ -317,7 +317,7 @@ describe("app.attachment — contracts §4.5.8, spec:1067, SAH-038", () => {
     expect(row.byte_size).toBe("1024");
   });
 
-  it("refuses a second row with the same object_key — the key is globally unique (SAH-038)", async () => {
+  it("refuses a second row with the same object_key — the key is globally unique (LEGACY-038)", async () => {
     const docId = await draftDocument(db, a);
     const id = await uuidv7(db.admin);
     const other = await uuidv7(db.admin);
@@ -397,7 +397,7 @@ Expected: FAIL — every case errors with `relation "app.attachment" does not ex
 -- ── 0025 · app.attachment ───────────────────────────────────────────────────────────────────────
 -- spec:1067 (§3.0.4 Attachments row), spec:1138 (R2, opaque server-generated ids), spec:1192
 -- (§3.3 Attachment under Document). Contracts §4.5.8 fixes these columns.
--- SAH-038: the object key is derived from the server-minted uuidv7 primary key and is NEVER built
+-- LEGACY-038: the object key is derived from the server-minted uuidv7 primary key and is NEVER built
 -- from anything the client sends; the unique constraint makes a duplicate key impossible.
 
 -- ── 1. the table ────────────────────────────────────────────────────────────────────────────────
@@ -406,7 +406,7 @@ create table app.attachment (
   tenant_id    uuid not null references app.tenant(id),
   company_id   uuid not null,
   document_id  uuid,                                                  -- lot_id uuid is added by 3A (migration 0031)
-  object_key   text not null unique,                                  -- '<tenant_id>/<id>' — server-generated (SAH-038)
+  object_key   text not null unique,                                  -- '<tenant_id>/<id>' — server-generated (LEGACY-038)
   file_name    text not null,
   mime_type    text not null,
   byte_size    bigint not null check (byte_size >= 0),
@@ -427,7 +427,7 @@ create index attachment_company_idx  on app.attachment (company_id, created_at);
 -- ── 3. tenancy, audit, actor stamping (spec:106, spec:1370, §3.3) ───────────────────────────────
 call app_meta.enable_tenant_rls('app.attachment');
 call app_meta.attach_audit('app.attachment');                          -- test 13: every upload audited
-call app_meta.attach_stamp('app.attachment', 'uploaded_by');           -- SAH-044: the server supplies the actor
+call app_meta.attach_stamp('app.attachment', 'uploaded_by');           -- LEGACY-044: the server supplies the actor
 
 -- app_rw receives select/insert/update through default privileges (plan0A:2564). No DELETE grant:
 -- §3.5.4 pins the list and 2B is the only slice that extends it. Removal is `archived_at`.
@@ -500,7 +500,7 @@ git add packages/db/migrations/0025_create_attachment.sql packages/db/migrations
         packages/db/src/schema/attachment.ts packages/db/test/attachment.test.ts
 git commit -m "feat(db): app.attachment with opaque object keys and stamped uploader [2C T1]
 
-spec:1067, spec:1138, SAH-038. Contracts §4.5.8 verbatim plus the §3.3 app_meta calls
+spec:1067, spec:1138, LEGACY-038. Contracts §4.5.8 verbatim plus the §3.3 app_meta calls
 the registry snippet omits. No lint-schema set membership (§3.5.3); no DELETE grant (§3.5.4).
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
@@ -510,12 +510,12 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 ### Task 2: The object store — the port, the memory and R2 implementations, and ADR 0031
 
-SAH-038 is a path-traversal defect: the legacy system concatenated a caller-supplied identifier into a filesystem path and handed it to a native file-writing UDF. The structural answer (spec:545) is "blobs in object storage … addressed by opaque server-generated identifiers. Never build a filesystem path from client input". This task makes that mechanical: **one** function derives a key, it takes the tenant id and the attachment id and nothing else, and it is the only producer of a key anywhere in the codebase.
+LEGACY-038 is a path-traversal defect: the legacy system concatenated a caller-supplied identifier into a filesystem path and handed it to a native file-writing UDF. The structural answer (spec:545) is "blobs in object storage … addressed by opaque server-generated identifiers. Never build a filesystem path from client input". This task makes that mechanical: **one** function derives a key, it takes the tenant id and the attachment id and nothing else, and it is the only producer of a key anywhere in the codebase.
 
 The port lives in `packages/db` and not in `apps/api` because 7C's tenant-export job runs in `apps/worker`, and `apps/worker` may not import `apps/api` (§3.1).
 
 **Files:**
-- Create: `packages/db/src/attachment/object-store.ts`, `packages/db/test/object-store.test.ts`, `apps/api/src/object-store.ts`, `docs/adr/0031-attachment-storage-opaque-keys.md`, `tests/regression/sah-038.test.ts`
+- Create: `packages/db/src/attachment/object-store.ts`, `packages/db/test/object-store.test.ts`, `apps/api/src/object-store.ts`, `docs/adr/0031-attachment-storage-opaque-keys.md`, `tests/regression/legacy-038.test.ts`
 - Modify: `packages/db/src/index.ts`, `apps/api/src/app.ts`, `apps/api/src/config.ts`, `apps/api/src/routes/index.ts`, `apps/api/test/support/app.ts`, `infra/src/secrets.ts`, `infra/test/secrets.test.ts`, `packages/db/package.json`
 
 **Interfaces:**
@@ -524,7 +524,7 @@ The port lives in `packages/db` and not in `apps/api` because 7C's tenant-export
 
 ```ts
 // packages/db/src/attachment/object-store.ts
-/** The ONE key derivation in the system (SAH-038). Both arguments are server-minted uuids; the
+/** The ONE key derivation in the system (LEGACY-038). Both arguments are server-minted uuids; the
  *  function validates them and never accepts a file name, a folder or any other client string. */
 export function objectKeyFor(tenantId: string, attachmentId: string): string;   // `${tenantId}/${attachmentId}`
 export class ObjectKeyError extends Error { readonly code: "ERR_OBJECT_KEY_INVALID" }
@@ -562,7 +562,7 @@ import {
 const TENANT = "01927f3a-0000-7000-8000-000000000001";
 const ATTACHMENT = "01927f3a-0000-7000-8000-0000000000aa";
 
-describe("objectKeyFor — SAH-038: the key is derived, never supplied", () => {
+describe("objectKeyFor — LEGACY-038: the key is derived, never supplied", () => {
   it("is exactly '<tenant_id>/<attachment_id>'", () => {
     expect(objectKeyFor(TENANT, ATTACHMENT)).toBe(`${TENANT}/${ATTACHMENT}`);
   });
@@ -659,14 +659,14 @@ describe("R2ObjectStore — the S3-compatible surface, exercised through an inje
 });
 ```
 
-`tests/regression/sah-038.test.ts` — **created by this slice** (§3.7.3: 2C is the first slice in execution order to touch SAH-038):
+`tests/regression/legacy-038.test.ts` — **created by this slice** (§3.7.3: 2C is the first slice in execution order to touch LEGACY-038):
 
 ```ts
 import { describe, expect, it } from "vitest";
 import { objectKeyFor, ObjectKeyError } from "@dulja/db";
 import { sourceFiles } from "../support/source";
 
-describe("SAH-038 Path traversal to arbitrary file write on the database server — 2C", () => {
+describe("LEGACY-038 Path traversal to arbitrary file write on the database server — 2C", () => {
   it("the only key derivation takes two uuids and refuses everything else", () => {
     const tenant = "01927f3a-0000-7000-8000-000000000001";
     // the exact payload of spec:545 — `..\..\..\Windows\Temp\evil.dll`
@@ -698,7 +698,7 @@ describe("SAH-038 Path traversal to arbitrary file write on the database server 
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `bun run --cwd packages/db test -- test/object-store.test.ts && bun run --cwd tests test -- regression/sah-038.test.ts`
+Run: `bun run --cwd packages/db test -- test/object-store.test.ts && bun run --cwd tests test -- regression/legacy-038.test.ts`
 Expected: FAIL — `Cannot find module '../src/attachment/object-store'` and, in the regression file, `objectKeyFor is not exported from '@dulja/db'`.
 
 - [ ] **Step 3: Add the one dependency and write the implementation**
@@ -720,7 +720,7 @@ export class ObjectKeyError extends Error {
   readonly code = "ERR_OBJECT_KEY_INVALID" as const;
   constructor(argument: "tenantId" | "attachmentId") {
     // The bad value is deliberately NOT echoed: it is attacker-controlled and this message reaches a log.
-    super(`${argument} must be a uuid — an object key is derived from server-minted ids only (SAH-038)`);
+    super(`${argument} must be a uuid — an object key is derived from server-minted ids only (LEGACY-038)`);
   }
 }
 
@@ -728,7 +728,7 @@ export class ObjectKeyError extends Error {
  * The ONE object-key derivation in the system. Both arguments are server-minted `uuidv7` values:
  * `tenant_id` comes from the session (`app.current_tenant()`), `attachmentId` is the row's primary key.
  * Nothing a client sends — a file name, a folder, a document reference — ever reaches this function,
- * which is the structural answer to SAH-038 (spec:545).
+ * which is the structural answer to LEGACY-038 (spec:545).
  */
 export function objectKeyFor(tenantId: string, attachmentId: string): string {
   if (!UUID.test(tenantId)) throw new ObjectKeyError("tenantId");
@@ -944,8 +944,8 @@ In `infra/src/secrets.ts`, add the four names to the container's environment (§
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
-Run: `bun run --cwd packages/db test -- test/object-store.test.ts && bun run --cwd tests test -- regression/sah-038.test.ts && bun run --cwd apps/api test && bun run --cwd infra test`
-Expected: PASS — 8 object-store tests (3 key derivation, 2 memory store, 3 R2), 3 SAH-038 tests, every existing `apps/api` and `infra` test still green.
+Run: `bun run --cwd packages/db test -- test/object-store.test.ts && bun run --cwd tests test -- regression/legacy-038.test.ts && bun run --cwd apps/api test && bun run --cwd infra test`
+Expected: PASS — 8 object-store tests (3 key derivation, 2 memory store, 3 R2), 3 LEGACY-038 tests, every existing `apps/api` and `infra` test still green.
 
 - [ ] **Step 6: Write ADR 0031 as a proposal**
 
@@ -956,11 +956,11 @@ Expected: PASS — 8 object-store tests (3 key derivation, 2 memory store, 3 R2)
 
 **Status:** Proposed (spec:95 — this touches security and the data model, so it is asked before it is relied on)
 **Date:** 2026-09-05 · **Slice:** 2C · **Spec:** §3.2.2 R2 row (spec:1138), §3.3 Attachment (spec:1192),
-§3.0.4 Attachments (spec:1067), Part I SAH-038 (spec:545)
+§3.0.4 Attachments (spec:1067), Part I LEGACY-038 (spec:545)
 
 ## Context
 
-SAH-038 is a path traversal to arbitrary file write: `ProcCopyExternalFile.sql` concatenated a caller-supplied
+LEGACY-038 is a path traversal to arbitrary file write: `ProcCopyExternalFile.sql` concatenated a caller-supplied
 `vDstID` into a filesystem path and handed it to a native `BlobToFile` UDF running as the Firebird service
 account. The prefix itself came from an unprotected `Options` table, so both halves of the path were
 attacker-influenceable. The same shape reached file deletion.
@@ -989,7 +989,7 @@ attacker-influenceable. The same shape reached file deletion.
 ## Consequences
 
 - A traversal payload cannot be expressed: the function's domain is two uuids.
-- `tests/regression/sah-038.test.ts` additionally scans `apps/**` and `packages/**` for any other line that
+- `tests/regression/legacy-038.test.ts` additionally scans `apps/**` and `packages/**` for any other line that
   composes an object key or joins a request-supplied name into a path, so a second spelling fails the build.
 - The four R2 values are secrets and never enter the repository or a committed `.env` (spec:2273).
 - **Asked:** is direct container-to-R2 access acceptable, or must attachment bytes traverse the edge Worker?
@@ -1002,10 +1002,10 @@ attacker-influenceable. The same shape reached file deletion.
 git add packages/db/src/attachment/object-store.ts packages/db/test/object-store.test.ts packages/db/src/index.ts \
         packages/db/package.json apps/api/src/object-store.ts apps/api/src/config.ts apps/api/src/app.ts \
         apps/api/src/routes/index.ts apps/api/test/support/app.ts infra/src/secrets.ts infra/test/secrets.test.ts \
-        tests/regression/sah-038.test.ts docs/adr/0031-attachment-storage-opaque-keys.md bun.lock
+        tests/regression/legacy-038.test.ts docs/adr/0031-attachment-storage-opaque-keys.md bun.lock
 git commit -m "feat(db): ObjectStore port with derived opaque keys; ADR 0031 [2C T2]
 
-SAH-038 (spec:545): objectKeyFor(tenantId, attachmentId) is the only key producer and takes
+LEGACY-038 (spec:545): objectKeyFor(tenantId, attachmentId) is the only key producer and takes
 two uuids. MemoryObjectStore for tests, R2ObjectStore over the S3 endpoint for the container.
 AppDeps and buildRoutes gain objectStore; containerSecrets gains the four R2 names (§3.11).
 
@@ -1243,7 +1243,7 @@ function toRow(r: DbAttachment): AttachmentRow {
 }
 
 /**
- * Mints the id, derives the key from it (SAH-038), writes the object, then the row. Object first: a rollback
+ * Mints the id, derives the key from it (LEGACY-038), writes the object, then the row. Object first: a rollback
  * of `tx` leaves an unreferenced object that 7C's export never sees and a later sweep can remove, whereas a
  * row without an object would be a 404 in a list the user is looking at.
  */
@@ -1406,7 +1406,7 @@ describe("POST /v1/companies/{companyId}/attachments — contracts §4.5.8, spec
     expect(api.objectStore.objects.has(body.objectKey)).toBe(true);
   });
 
-  it("stores non-UTF-8 bytes byte for byte — a multipart body is not text (SAH-038 sibling: silent corruption)", async () => {
+  it("stores non-UTF-8 bytes byte for byte — a multipart body is not text (LEGACY-038 sibling: silent corruption)", async () => {
     const documentId = await draftDocument(api.db, a);
     const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x80, 0xff, 0x00, 0xfe]);
     const res = await api.request({
@@ -1565,7 +1565,7 @@ export const AttachmentSchema = z.object({
   id: UuidSchema,
   companyId: UuidSchema,
   documentId: UuidSchema.nullable(),
-  objectKey: z.string(),                       // '<tenant_id>/<id>' — server-derived (SAH-038); returned so a
+  objectKey: z.string(),                       // '<tenant_id>/<id>' — server-derived (LEGACY-038); returned so a
   fileName: z.string(),                        // support engineer can find the object without a second query
   mimeType: z.string(),
   byteSize: z.number().int().nonnegative(),
@@ -1680,7 +1680,7 @@ export function createAttachmentRoutes(store: ObjectStore): OpenAPIHono<AppEnv> 
       await assertMayAttach(c, companyId, documentId);
 
       // The name is data. It reaches Content-Disposition and nothing else; the object key is derived
-      // from the row's uuid (SAH-038), so a traversal payload here addresses nothing.
+      // from the row's uuid (LEGACY-038), so a traversal payload here addresses nothing.
       const fileName = (file.name || "attachment").split(/[/\\]/).pop()!.slice(0, 255);
       const bytes = new Uint8Array(await file.arrayBuffer());
 
@@ -4636,7 +4636,7 @@ Contracts §4.5.9 freezes the endpoint: `POST /v1/companies/{companyId}/document
 
 **Files:**
 - Create: `packages/contracts/src/accounting/print.ts`, `apps/api/test/routes/accounting/print.test.ts`, `tests/support/pdf.ts`
-- Modify: `packages/contracts/src/index.ts`, `apps/api/src/routes/accounting/documents.ts`, `apps/api/src/middleware/require-attachment-read.ts`, `apps/api/src/middleware/idempotency.ts`, `apps/api/package.json`, `tests/package.json`, `tests/regression/sah-085.test.ts`
+- Modify: `packages/contracts/src/index.ts`, `apps/api/src/routes/accounting/documents.ts`, `apps/api/src/middleware/require-attachment-read.ts`, `apps/api/src/middleware/idempotency.ts`, `apps/api/package.json`, `tests/package.json`, `tests/regression/legacy-085.test.ts`
 
 **Interfaces:**
 - Consumes: `renderDocumentSource`, `RenderedDocument`, `PrintError` (Task 8); `engineFor`, `PdfEngine`, `PDF_MAGIC` (Task 8); `MODULE_READ_CODE`, `DocumentTypeModule` (Task 4); `documentRoutes` at `/v1/companies/:companyId/documents` (1A, §4.2.7); `AppError`, `ERRORS`, `Problem` (§4.2.4); `PERMISSION`, `PermissionCode` (§4.2.5); `IdempotencyHeader`, `RECLAIM_AFTER_SECONDS` (§4.2.9); `UuidSchema`, `ProblemSchema` (§4.2.8); `startApi`, `StartedApi`, `problemOf`, `grantAdmin` (§4.2.12, §4.17.1); `seedTenantV2`, `grantCodes` (§4.17); `postJournal` (§4.17.1).
@@ -4673,7 +4673,7 @@ and one more member on `AppEnv["Variables"]`:
 
 - [ ] **Step 1: Write the shared PDF reader, then the failing route tests**
 
-The reader is written **once, in the `tests` workspace**, and imported from both places that read a PDF — this file and `tests/regression/sah-085.test.ts` (Step 6). §4.17.1 registers it as `pdfText` in `tests/support/pdf.ts` and calls it "the ONE test-side PDF reader", so it is never defined inline anywhere.
+The reader is written **once, in the `tests` workspace**, and imported from both places that read a PDF — this file and `tests/regression/legacy-085.test.ts` (Step 6). §4.17.1 registers it as `pdfText` in `tests/support/pdf.ts` and calls it "the ONE test-side PDF reader", so it is never defined inline anywhere.
 
 `tests/support/pdf.ts`:
 
@@ -4682,7 +4682,7 @@ import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 
 /** The one test-side PDF reader (§4.17.1): every text item of page 1, in reading order, trimmed and
  *  with empties dropped. `useSystemFonts` lets the Arabic faces resolve so the text layer is real text
- *  rather than glyph ids — which is what test 23 and SAH-085 assert on. */
+ *  rather than glyph ids — which is what test 23 and LEGACY-085 assert on. */
 export async function pdfText(bytes: Uint8Array): Promise<string[]> {
   const doc = await getDocument({ data: bytes, useSystemFonts: true }).promise;
   const content = await (await doc.getPage(1)).getTextContent();
@@ -5155,14 +5155,14 @@ The module's `permissions` array stays `DOCUMENT_STAGE_CODES` (2B) — the print
 Run: `bun run --cwd apps/api test -- test/routes/accounting/print.test.ts && bun run --cwd packages/contracts openapi:generate`
 Expected: PASS — 11 tests, and `packages/contracts/openapi.json` gains the operation with an `application/pdf` response.
 
-- [ ] **Step 6: Append the `— 2C` block to the SAH-085 regression file**
+- [ ] **Step 6: Append the `— 2C` block to the LEGACY-085 regression file**
 
-`tests/regression/sah-085.test.ts` was created by 0E (screens). Append below the existing blocks, editing nothing above:
+`tests/regression/legacy-085.test.ts` was created by 0E (screens). Append below the existing blocks, editing nothing above:
 
-§4.17.1 fixes the shape: `fullRegression(sah, heading, cases)` is **declarative** — it takes a record of named cases, each receiving a `FullContext` of `{ api, a, b, expect }` from `sharedApi()`. It is not a per-test seeder, so the block below is written to that signature and not to a guess:
+§4.17.1 fixes the shape: `fullRegression(legacyDefect, heading, cases)` is **declarative** — it takes a record of named cases, each receiving a `FullContext` of `{ api, a, b, expect }` from `sharedApi()`. It is not a per-test seeder, so the block below is written to that signature and not to a guess:
 
 ```ts
-fullRegression("sah-085", "Arabic renders correctly in every output, PDFs included — 2C", {
+fullRegression("legacy-085", "Arabic renders correctly in every output, PDFs included — 2C", {
   "one template row renders both directions with the right labels and no leakage": async ({ api, a, expect }) => {
     await grantCodes(api.db, a, {
       principalId: a.human,
@@ -5186,14 +5186,14 @@ fullRegression("sah-085", "Arabic renders correctly in every output, PDFs includ
     expect(seen["ar"]).not.toContain("Debit");
     expect(seen["en"]).toContain("Debit");
     expect(seen["en"]).not.toContain("مدين");
-    // The amount is identical in both — Latin digits inside an RTL run are not reordered (SAH-085).
+    // The amount is identical in both — Latin digits inside an RTL run are not reordered (LEGACY-085).
     expect(seen["ar"]).toContain("42.0000");
     expect(seen["en"]).toContain("42.0000");
   },
 });
 ```
 
-Two helpers this file needs, both **file-local** in `tests/regression/sah-085.test.ts` (§4.17.1 assigns 2C no shared helper beyond `pdfText`):
+Two helpers this file needs, both **file-local** in `tests/regression/legacy-085.test.ts` (§4.17.1 assigns 2C no shared helper beyond `pdfText`):
 
 ```ts
 /** Creates and posts a JOURNAL through the API. 1A's CreateDocumentBody carries `lines`, so one call. */
@@ -5252,7 +5252,7 @@ That is a **shared test helper**, recorded under *Contract additions* against §
 
 - [ ] **Step 7: Run the regression tier and the whole API suite**
 
-Run: `bun run --cwd tests test -- regression/sah-085.test.ts && bun run --cwd apps/api test && bun run lint && bun run typecheck`
+Run: `bun run --cwd tests test -- regression/legacy-085.test.ts && bun run --cwd apps/api test && bun run lint && bun run typecheck`
 Expected: PASS — including 1A's and 2B's existing `documents.test.ts` and `document-lifecycle.test.ts`, untouched by the new sub-path.
 
 - [ ] **Step 8: Commit**
@@ -5262,7 +5262,7 @@ git add packages/contracts/src/accounting/print.ts packages/contracts/src/index.
         packages/contracts/openapi.json apps/api/src/routes/accounting/documents.ts \
         apps/api/src/middleware/require-attachment-read.ts apps/api/src/middleware/idempotency.ts \
         apps/api/test/routes/accounting/print.test.ts apps/api/package.json \
-        tests/support/pdf.ts tests/package.json tests/regression/sah-085.test.ts
+        tests/support/pdf.ts tests/package.json tests/regression/legacy-085.test.ts
 git commit -m "feat(api): POST .../documents/{id}/print — synchronous PDF in both directions [2C T9]
 
 §4.5.9 verbatim: synchronous 200 application/pdf, no job name, JOBS stays closed. The gate is
@@ -5555,7 +5555,7 @@ describe("Part VI test 15 — a new document type is added with ZERO CODE (spec:
     expect(rows).toHaveLength(2);
     expect(rows.map((r) => r.debit)).toEqual(["90.0000", "0.0000"]);
     expect(rows.map((r) => r.credit)).toEqual(["0.0000", "90.0000"]);
-    // Every entry is pinned to the policy version that produced it (SAH-013).
+    // Every entry is pinned to the policy version that produced it (LEGACY-013).
     expect(new Set(rows.map((r) => r.policy)).size).toBe(1);
   });
 
@@ -5713,7 +5713,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 ### Task 11: Migration 0027 — the expand half on a live table, and acceptance test 25
 
-Part VI test 25, verbatim (spec:2443): *"**Zero-downtime migration.** A schema change deploys with no maintenance window; duration is proportional to the change, not the data."* SAH-080 is the finding it answers — the legacy system's "schema upgrade is a full database dump-and-repump driven by 6,251 uncoordinated version integers" (spec:872). §3.9 states the rule: *"Expand/contract for any change touching a live table"* (spec:2057), and §4.8 promises *"zero-downtime deployments; expand/contract migrations so schema change never requires a maintenance window"* (spec:2236).
+Part VI test 25, verbatim (spec:2443): *"**Zero-downtime migration.** A schema change deploys with no maintenance window; duration is proportional to the change, not the data."* LEGACY-080 is the finding it answers — the legacy system's "schema upgrade is a full database dump-and-repump driven by 6,251 uncoordinated version integers" (spec:872). §3.9 states the rule: *"Expand/contract for any change touching a live table"* (spec:2057), and §4.8 promises *"zero-downtime deployments; expand/contract migrations so schema change never requires a maintenance window"* (spec:2236).
 
 `app.document` is the busiest live table in the system by the end of Phase 2, so it is the honest subject. `document.notes` is the column §4.3.4 assigns 2C, and adding it is the **expand** half. The **contract** half — dropping something — is a separate PR in a later slice by construction, and this task writes the runbook that later slice follows.
 
@@ -5723,7 +5723,7 @@ Part VI test 25, verbatim (spec:2443): *"**Zero-downtime migration.** A schema c
 
 **Files:**
 - Create: `packages/db/migrations/0027_expand_document_add_notes.sql`, `packages/db/migrations/0027.down.sql`, `packages/db/test/expand-contract.test.ts`, `docs/adr/0033-expand-contract-live-tables.md`, `docs/runbooks/expand-contract.md`
-- Modify: `packages/db/src/schema/document.ts`, `packages/db/src/print/template.ts`, `packages/db/test/print-render.test.ts`, `packages/db/test/privileges.test.ts`, `tests/regression/sah-080.test.ts`
+- Modify: `packages/db/src/schema/document.ts`, `packages/db/src/print/template.ts`, `packages/db/test/print-render.test.ts`, `packages/db/test/privileges.test.ts`, `tests/regression/legacy-080.test.ts`
 
 **Interfaces:**
 - Consumes: `up`, `down`, `listApplied`, `discover`, `lintSchema`, `Violation` from `packages/db/src` (§4.1); `MIGRATIONS_DIR`, `startDb`, `Db` from `packages/db/test/harness.ts` and `seedTenantV2`, `grantCodes`, `draftDocument`, `Seed` from `packages/db/test/fixtures.ts` (§4.17) — both reachable as `@dulja/db/test` from another workspace; `loadPrintContext`, `renderDocumentSource` (Task 8); `startApi`, `StartedApi` from `apps/api/test/support/app` (§4.2.12); `thinRegression` (§4.17.1). **Not `sharedApi`/`fullRegression`** — see the box in Step 5.
@@ -5854,7 +5854,7 @@ Expected: FAIL — `applied migration 27 has no file` from `down`, or `up` retur
 ```sql
 -- 0027_expand_document_add_notes.sql
 -- The EXPAND half of an expand/contract change on a LIVE table (spec:2057; §4.8 spec:2236).
--- Answers SAH-080 (spec:872): the legacy system's schema upgrade is a full dump-and-repump.
+-- Answers LEGACY-080 (spec:872): the legacy system's schema upgrade is a full dump-and-repump.
 -- Contracts §4.3.4 assigns `document.notes` to 2C. The CONTRACT half is a later slice's PR —
 -- the procedure is docs/runbooks/expand-contract.md and the reasoning is ADR 0033.
 -- Acceptance test 25 (spec:2443) is asserted against this file.
@@ -5977,13 +5977,13 @@ Replace Task 8's placeholder assertion in `packages/db/test/print-render.test.ts
 
 If the repository's list differs at execution time, **do not edit the expectation to match** — a difference means a slice granted DELETE outside hazard 25 and the finding belongs in that slice's review.
 
-- [ ] **Step 5: Prove the zero-downtime claim end to end and append the SAH-080 block**
+- [ ] **Step 5: Prove the zero-downtime claim end to end and append the LEGACY-080 block**
 
-`tests/regression/sah-080.test.ts` was created by 0B. Append below the existing blocks — as a plain `describe` with **its own API instance**, not through `fullRegression`/`sharedApi`:
+`tests/regression/legacy-080.test.ts` was created by 0B. Append below the existing blocks — as a plain `describe` with **its own API instance**, not through `fullRegression`/`sharedApi`:
 
 > **This block must not use `sharedApi()`.** §4.17.1's `sharedApi` is one instance shared by the whole regression tier, and this test **rolls migrations back**. A `down(…, 26)` on the shared instance breaks every other file mid-run, and hazard 14 makes it worse: migration numbers are allocated per slice and applied in whatever order the parallel phases merge, so `down(…, 26)` also unwinds any 0028+ that happens to be applied. A test that mutates the schema owns its instance and stops it.
 
-It therefore calls `startApi()` directly, and the import is the one 0B already uses from this tier — there is **no `tests/support/app.ts`**. Add to the head of `tests/regression/sah-080.test.ts`, beside the imports 0B wrote:
+It therefore calls `startApi()` directly, and the import is the one 0B already uses from this tier — there is **no `tests/support/app.ts`**. Add to the head of `tests/regression/legacy-080.test.ts`, beside the imports 0B wrote:
 
 ```ts
 import { down, up } from "@dulja/db";
@@ -5994,12 +5994,12 @@ import { startApi, type StartedApi } from "../../apps/api/test/support/app";
 (`up` and `down` are `@dulja/db`'s migration runner (§4.1); `MIGRATIONS_DIR` is `packages/db/test/harness.ts`'s and so comes through the `./test` subpath. If 0B's existing blocks in this file already import any of the four, add to that import rather than writing a second line for the same module.)
 
 ```ts
-describe("SAH-080 (schema upgrade is a dump-and-repump) — 2C", () => {
+describe("LEGACY-080 (schema upgrade is a dump-and-repump) — 2C", () => {
   let api: StartedApi; let s: Seed;
 
   beforeAll(async () => {
     api = await startApi();
-    s = await seedTenantV2(api.db, "Sah080");
+    s = await seedTenantV2(api.db, "Legacy080");
     await grantCodes(api.db, s, {
       principalId: s.human, codes: ["accounting.journal.create", "accounting.ledger.read"],
     });
@@ -6079,12 +6079,12 @@ describe("SAH-080 (schema upgrade is a dump-and-repump) — 2C", () => {
 **Status:** accepted · **Date:** 2026-09-05 · **Slice:** 2C
 **Spec:** §3.9 Migrations (spec:2057) "Expand/contract for any change touching a live table";
 §4.8 (spec:2236) "zero-downtime deployments … so schema change never requires a maintenance window
-(the direct answer to SAH-080)"; SAH-080 (spec:872); Part VI test 25 (spec:2443).
+(the direct answer to LEGACY-080)"; LEGACY-080 (spec:872); Part VI test 25 (spec:2443).
 **Demonstrated by:** `0027_expand_document_add_notes.sql`, `packages/db/test/expand-contract.test.ts`,
-`tests/regression/sah-080.test.ts`. **Binds:** every later migration that touches a live table.
+`tests/regression/legacy-080.test.ts`. **Binds:** every later migration that touches a live table.
 
 ## Context
-SAH-080 is a High finding: the legacy system upgrades its schema by dumping and re-pumping the whole
+LEGACY-080 is a High finding: the legacy system upgrades its schema by dumping and re-pumping the whole
 database, coordinated by 6,251 version integers. The rebuild's answer is expand/contract. The rule was
 written in §3.9 and never demonstrated, so "zero downtime" had no operational definition and no test.
 
@@ -6109,7 +6109,7 @@ test measures the same migration against two row counts a decade apart in scale 
 timings stay comparable. A wall-clock bound would pass on a fast machine and prove nothing.
 
 **5. "No maintenance window" is asserted as ZERO non-2xx responses in a request loop that spans the
-migration** — not as "the migration finished quickly". `tests/regression/sah-080.test.ts` holds that
+migration** — not as "the migration finished quickly". `tests/regression/legacy-080.test.ts` holds that
 loop.
 
 **6. Adding a column requires no audit or RLS change.** `app.document` carries its `audit_row` trigger
@@ -6138,7 +6138,7 @@ Governed by ADR 0033. Applies to every migration that touches a table already ca
 3. `NNNN.down.sql` drops exactly what the up added — a column, never a table.
 4. The Drizzle mirror is updated in the same PR; readers that do not select the column are untouched.
 5. CI: `up`, `down`, `up` on Testcontainers; `lintSchema` reports zero violations; the request-loop
-   test in `tests/regression/sah-080.test.ts` records zero non-2xx.
+   test in `tests/regression/legacy-080.test.ts` records zero non-2xx.
 
 ## Between the two PRs
 6. Deploy. Both shapes are now valid: old readers ignore the column, new readers use it.
@@ -6162,8 +6162,8 @@ runbook is what the first real contract PR follows.
 
 - [ ] **Step 7: Run everything**
 
-Run: `bun run --cwd packages/db test -- test/expand-contract.test.ts test/print-render.test.ts test/privileges.test.ts && bun run --cwd tests test -- regression/sah-080.test.ts && bun run --cwd packages/db typecheck`
-Expected: PASS — 6 expand/contract tests (including the reversibility round trip), the two new print assertions, the privilege list unchanged, and the two SAH-080 blocks.
+Run: `bun run --cwd packages/db test -- test/expand-contract.test.ts test/print-render.test.ts test/privileges.test.ts && bun run --cwd tests test -- regression/legacy-080.test.ts && bun run --cwd packages/db typecheck`
+Expected: PASS — 6 expand/contract tests (including the reversibility round trip), the two new print assertions, the privilege list unchanged, and the two LEGACY-080 blocks.
 
 - [ ] **Step 8: Commit**
 
@@ -6171,11 +6171,11 @@ Expected: PASS — 6 expand/contract tests (including the reversibility round tr
 git add packages/db/migrations/0027_expand_document_add_notes.sql packages/db/migrations/0027.down.sql \
         packages/db/src/schema/document.ts packages/db/src/print/template.ts \
         packages/db/test/expand-contract.test.ts packages/db/test/print-render.test.ts \
-        packages/db/test/privileges.test.ts tests/regression/sah-080.test.ts \
+        packages/db/test/privileges.test.ts tests/regression/legacy-080.test.ts \
         docs/adr/0033-expand-contract-live-tables.md docs/runbooks/expand-contract.md
 git commit -m "feat(db): 0027 expand document.notes — zero-downtime demonstrated, not claimed [2C T11]
 
-Acceptance test 25 (spec:2443) against SAH-080 (spec:872). Nullable, DEFAULT-less, catalogue-only.
+Acceptance test 25 (spec:2443) against LEGACY-080 (spec:872). Nullable, DEFAULT-less, catalogue-only.
 "No maintenance window" is asserted as zero non-2xx in a request loop spanning up(); "proportional
 to the change, not the data" as a RATIO across two row counts, because a wall-clock bound proves
 nothing. lock_timeout lives in the FILE, so Plan 0A's runner stays frozen. The contract half is a
@@ -6190,7 +6190,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 **Owner decision OD-24** (contracts §2.12; spec:79, 108, 2408): *screenshots of the legacy screens plus a two-minute operator description, before any screen is built.* spec:79 and spec:108 say the user interface is **not specified** and hazard 29 forbids a plan from inventing a workflow. This task is therefore **one isolated task**, and it is the only task in this plan that can be dropped.
 
-**Owner provides:** screenshots of the Sahlisoft document list and document entry screens (any module), and a two-minute recorded or written description of how an operator actually works them — the order fields are filled, what is typed versus chosen, which keys are used, what is printed and when.
+**Owner provides:** screenshots of the legacy document list and document entry screens (any module), and a two-minute recorded or written description of how an operator actually works them — the order fields are filled, what is typed versus chosen, which keys are used, what is printed and when.
 **Verify:** `ls docs/owner/od-24/` lists at least one image per screen and `docs/owner/od-24/document-entry.md` exists and is non-empty:
 
 ```bash
@@ -6466,7 +6466,7 @@ export function AttachmentPanel({ attachments, onUpload, onDownload }: Attachmen
       <ul>
         {attachments.map((a) => (
           <li key={a.id}>
-            {/* The file NAME is display only. The object is addressed by its opaque id — SAH-038. */}
+            {/* The file NAME is display only. The object is addressed by its opaque id — LEGACY-038. */}
             <Button onClick={() => void onDownload(a.id, a.fileName)}>{a.fileName}</Button>
             <span>{t("documents.attachments.size", { bytes: a.byteSize })}</span>
           </li>
@@ -6741,7 +6741,7 @@ git commit -m "feat(backoffice): document list and entry screens, both direction
 OD-24: built only after the owner's screenshots and operator description landed in
 docs/owner/od-24/. Field SET comes from the API; field ORDER and the keyboard map come from the
 owner. Amounts are strings in every input — inputMode decimal, never type=number. Attachments are
-addressed by opaque id and the file name is display only (SAH-038). Print offers both languages
+addressed by opaque id and the file name is display only (LEGACY-038). Print offers both languages
 because an English-working operator prints the Arabic copy. Both catalogues complete.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
@@ -6776,8 +6776,8 @@ Expected: green. Then confirm each named test by file:
 | 13 Audit completeness | `packages/db/test/attachment.test.ts` (uploads) + the chain-walk job | 0B, extended here |
 | **15 New document type, zero code** | `tests/invariants/zero-code-document-type.test.ts` | **2C — Task 10** |
 | 16 Numbering | `tests/invariants/numbering.test.ts` | 2B |
-| 23 RTL/LTR parity | `tests/e2e/documents.spec.ts` + `apps/api/test/routes/accounting/print.test.ts` + `tests/regression/sah-085.test.ts` | 0E, extended here |
-| **25 Zero-downtime migration** | `packages/db/test/expand-contract.test.ts` + `tests/regression/sah-080.test.ts` | **2C — Task 11** |
+| 23 RTL/LTR parity | `tests/e2e/documents.spec.ts` + `apps/api/test/routes/accounting/print.test.ts` + `tests/regression/legacy-085.test.ts` | 0E, extended here |
+| **25 Zero-downtime migration** | `packages/db/test/expand-contract.test.ts` + `tests/regression/legacy-080.test.ts` | **2C — Task 11** |
 | 27 No SQL text across the API | `scripts/lint/rules/no-sql-concat.ts`, `no-bare-db` | 0B (CI) |
 | 31 Segregation of duties | `tests/invariants/sod.test.ts` | 2B |
 | 36 Role catalogue integrity | `tests/invariants/role-catalogue.test.ts` | 0D |
@@ -6874,7 +6874,7 @@ numbers are unique and gapless-provable."
   half.
 - **Two tables**, `app.attachment` and `app.print_template`, both under the isolation harness, the
   audit trigger and the catalogue check. Attachment object keys are `<tenant_id>/<id>` from a
-  server-minted `uuidv7` and are never derived from client input (SAH-038, `tests/regression/sah-038.test.ts`).
+  server-minted `uuidv7` and are never derived from client input (LEGACY-038, `tests/regression/legacy-038.test.ts`).
 - **Re-runs green:** 13 (uploads audited), 23 (PDFs in both directions, at the text layer),
   12 and 36 for both new tables.
 
@@ -6938,7 +6938,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 | Migrations 0025–0027, ADRs 0031–0033, owner gate OD-24 | T1, T5, T11; T2, T8, T11; T12 | ✅ |
 | Owns tests **15** and **25**; re-runs 13, 23, 12/36 | T10, T11; T3/T13, T9/T12, T13 | ✅ |
 | §3.0.4 row spec:1067 Attachments — "2 (service + document link)" | T3 (service), T1 (`document_id` link). 3A adds the lot link, 7C the export | ✅ |
-| Creates `tests/regression/sah-038.test.ts`; appends `— 2C` to `sah-080` and `sah-085` | T2, T11, T9 | ✅ |
+| Creates `tests/regression/legacy-038.test.ts`; appends `— 2C` to `legacy-080` and `legacy-085` | T2, T11, T9 | ✅ |
 
 ### Against the skill
 
@@ -6955,12 +6955,12 @@ Fourteen tasks, Task 0 through Task 13, every heading at `### Task N:`. Each car
 7. **Plan 0A stays frozen.** T11's lock bounding is `set local lock_timeout` **inside the migration file**, legal in the transaction 0A's `up()` already opens. The alternative — teaching the runner about timeouts — would have meant editing a frozen plan.
 8. **The `ERR_*` register.** The slice adds exactly one registry code, `ERR_PRINT_ENGINE_UNSUPPORTED`. The four `code` literals on `ObjectKeyError`, `AttachmentIntegrityError`, `TemplateSourceError` and `TemplateError` are internal discriminants — `packages/db` and `packages/domain` cannot import `AppError`, which is contracts §4.2.4's declared `PostingError` exception — and each is translated at the API boundary: `AttachmentIntegrityError` → `ERR_INTERNAL` (T4), `TemplateSourceError` and `TemplateError` → `ERR_VALIDATION_FAILED` (T7, T8), `ObjectKeyError` → the global handler's unmapped `ERR_INTERNAL` branch, since both its arguments are server-minted uuids and a throw is a server bug. T8 Step 4 states this in the file so a reviewer does not have to re-derive it.
 9. **Shared namespaces.** Document-type codes: `CONSIGNMENT_RETURN` only, already in §4.14, test-only, never seeded. Account codes: **none** — every policy line resolves through `line.account`, so no `account: { code }` literal appears in this slice and §4.15 is untouched. Report codes and `DatasetId`: **none** — T10 reads 1B's existing route and T10's last test asserts `packages/contracts/src/accounting/reports.ts` gained nothing. `fixtures.ts` helpers: **none** — §4.17 assigns 2C none and hazard 9 forbids inventing one; every row the tests need comes from an existing helper or a file-local function.
-10. **Every wire shape was read out of the plan that ships it, not assumed.** Five would have failed silently otherwise, and each is now written the way the owning plan actually defines it. 1A's `LineInput` takes **`accountId`**, never `accountCode`, and `CreateDocumentBody` carries `lines` (min 1) — so T9, T10 and the SAH-085 block create a document *with* its lines in one call and resolve codes to ids first; `PUT …/lines` is for replacement only. A `bigint` crosses the wire as a **string**, so T10 asserts `number: "1"` on both the transition result and 1B's `LedgerRowSchema.number` (`z.string().nullable()`). §4.17.1's `fullRegression(sah, heading, cases)` is **declarative** — a record of named cases receiving `{ api, a, b, expect }` — so the SAH-085 block is written to that signature and the two suites that must own a database (T10, and T11's rollback block) use `startApi()` instead. `sourceFiles(roots?)` returns **`SourceFile[]`** (`{ path, text, lines }`, path repo-relative) so T10 reads `.text` rather than the filesystem. `ReportCodeSchema` lives at **`packages/contracts/src/accounting/reports.ts`**, not at `src/reports.ts`.
+10. **Every wire shape was read out of the plan that ships it, not assumed.** Five would have failed silently otherwise, and each is now written the way the owning plan actually defines it. 1A's `LineInput` takes **`accountId`**, never `accountCode`, and `CreateDocumentBody` carries `lines` (min 1) — so T9, T10 and the LEGACY-085 block create a document *with* its lines in one call and resolve codes to ids first; `PUT …/lines` is for replacement only. A `bigint` crosses the wire as a **string**, so T10 asserts `number: "1"` on both the transition result and 1B's `LedgerRowSchema.number` (`z.string().nullable()`). §4.17.1's `fullRegression(legacyDefect, heading, cases)` is **declarative** — a record of named cases receiving `{ api, a, b, expect }` — so the LEGACY-085 block is written to that signature and the two suites that must own a database (T10, and T11's rollback block) use `startApi()` instead. `sourceFiles(roots?)` returns **`SourceFile[]`** (`{ path, text, lines }`, path repo-relative) so T10 reads `.text` rather than the filesystem. `ReportCodeSchema` lives at **`packages/contracts/src/accounting/reports.ts`**, not at `src/reports.ts`.
 11. **`postJournal` is not reachable from `packages/db/test`.** It is a root-tier helper (`tests/invariants/support/post-journal.ts`, 1B) and §3.1 forbids the crossing, while §4.17 assigns 2C no `fixtures.ts` helper and hazard 9 forbids inventing one. T8 therefore carries a **file-local** `postJournalLocal`, shaped like 1A's own `post.test.ts`, and it calls 2B's `grantCodes` — not optional, because 2B's R2 evaluates `approval.post` inside the posting transaction and `seedTenant` grants `s.human` nothing (§4.1, pinned).
-12. **Two tests that could not fail were made deterministic.** T9's module-read refusal now uses a second tenant granted exactly `accounting.journal.create`, `accounting.journal.post` and `admin.company.manage` and **not** `accounting.ledger.read` — it can post and configure but not read, which isolates the gate to a single cause and pins the 403. And T11's SAH-080 block owns its instance rather than rolling migrations back on the tier-shared one, where a `down(…, 26)` would break every concurrently running file and, under hazard 14, unwind a parallel phase's 0028+ as well.
+12. **Two tests that could not fail were made deterministic.** T9's module-read refusal now uses a second tenant granted exactly `accounting.journal.create`, `accounting.journal.post` and `admin.company.manage` and **not** `accounting.ledger.read` — it can post and configure but not read, which isolates the gate to a single cause and pins the 403. And T11's LEGACY-080 block owns its instance rather than rolling migrations back on the tier-shared one, where a `down(…, 26)` would break every concurrently running file and, under hazard 14, unwind a parallel phase's 0028+ as well.
 13. **`REPLAY_BY_RERUN` matches the concrete path, not a route pattern.** The idempotency middleware is registered with `app.use` in `createApp`, so `c.req.routePath` there is the middleware's own pattern and never the terminal handler's — a pattern comparison would have matched nothing, the replay would have returned the descriptor as a JSON body, and T9's replay test would have failed for a reason no executor could have diagnosed from the assertion. It is now a `{ method, path: RegExp }` list with `isReplayByRerun(c)` and four cases in 0B's own suite pinning what it does and does not match.
 14. **T12's UI fixture uses `JOURNAL`, not `CONSIGNMENT_RETURN`.** `sourceFiles` does not exclude `test/` directories, so T10's zero-code sweep is scoped to `**/src/**` — the claim is about application code, and a UI test double naming a type says nothing about whether a release was needed. Scoping the sweep and keeping the literal out of the fixture are both done, so neither task can turn the other red.
-15. **Two files are written by more than one task, and both were checked for scope, not just for content.** `apps/api/test/routes/accounting/attachments.test.ts` is created by T3 and *appended to* by T4, so T3 puts `upload()`, `problemOf`, the `api` / `a` / `b` bindings and the `beforeAll`/`afterAll` at **module scope** rather than inside its own `describe` callback — a `let` inside the first describe is block-scoped to it, and T4's sibling `describe` would be a TypeScript "Cannot find name 'api'" that no amount of re-reading T4 would explain. Vitest runs file-level hooks once around every suite in the file, so the two blocks still share one container and T4's fourteen-case count is what the file actually reports. `tests/support/pdf.ts` has the mirror-image risk: §4.17.1 calls `pdfText` "the ONE test-side PDF reader", so T9 Step 1 writes it there **first** and both readers — `apps/api`'s print suite and `tests/regression/sah-085.test.ts` — import it, rather than one defining it inline and a later step promising to move it. `pdfjs-dist` is therefore a dev dependency of **both** workspaces that resolve the specifier, since a workspace resolving a package it does not declare is a phantom dependency that breaks the moment the hoist changes.
+15. **Two files are written by more than one task, and both were checked for scope, not just for content.** `apps/api/test/routes/accounting/attachments.test.ts` is created by T3 and *appended to* by T4, so T3 puts `upload()`, `problemOf`, the `api` / `a` / `b` bindings and the `beforeAll`/`afterAll` at **module scope** rather than inside its own `describe` callback — a `let` inside the first describe is block-scoped to it, and T4's sibling `describe` would be a TypeScript "Cannot find name 'api'" that no amount of re-reading T4 would explain. Vitest runs file-level hooks once around every suite in the file, so the two blocks still share one container and T4's fourteen-case count is what the file actually reports. `tests/support/pdf.ts` has the mirror-image risk: §4.17.1 calls `pdfText` "the ONE test-side PDF reader", so T9 Step 1 writes it there **first** and both readers — `apps/api`'s print suite and `tests/regression/legacy-085.test.ts` — import it, rather than one defining it inline and a later step promising to move it. `pdfjs-dist` is therefore a dev dependency of **both** workspaces that resolve the specifier, since a workspace resolving a package it does not declare is a phantom dependency that breaks the moment the hoist changes.
 16. **Hazards.** No statutory rate, threshold or formula appears anywhere (1). No MyInvois or LHDN detail (2). Nothing assumes a Firebird version (3). The slice ships no report and defers none (4). OD-24 is one isolated task with a verify command and a stated local behaviour (5, 6, 29). No D1–D27 or §2.12 item is re-opened (7). Every 0A helper is cited by its exact name (8). No migration writes a per-tenant row — templates arrive through the seed pack or the API (10). No enum label is added; `engine`, `module` and `paper` are `text + CHECK` (11). `lint-schema.ts` set memberships are edited to exactly §3.5.3's declared state and nothing else (13). No number is renamed or borrowed and nothing asserts `max(version)` (14). `sql.unsafe` — and its transaction form `tx.unsafe`, which is the same function — appears nowhere in this slice: every column list in `packages/db/src/attachment/index.ts` and in the print-template routes is written out literally, and `document_type_code` is attached in TypeScript rather than bound into a `RETURNING` list (21). Nothing outside `packages/db/src/posting/` writes a ledger row — printing and attachments read (22). No handler inserts `document_event` (24). The DELETE grant list is re-asserted unchanged, and T11 says explicitly not to edit the expectation if it differs (25). No permission code is introduced or seeded (26). ADR 0016 is consumed and never re-evaluated (30). Every route has a probe (31). No literal enters a shared namespace unregistered (32). The slice seeds no policy naming an account code, so rule 33 does not engage. `CONSIGNMENT_RETURN`'s fixture is an envelope with `module` set explicitly, not a bare policy (34).
 
 17. **The map's own test is widening-safe, because three separate slices widen the map.** `MODULE_READ_CODE` is built one row per slice and 8B raised the consequence: a case asserting `Object.keys(MODULE_READ_CODE)` equals `["accounting"]`, plus a loop asserting `inventory` / `pos` / `hr` are `undefined`, is falsified by **every** one of 3A's `inventory`, 6D's `pos` and 8B's `hr` — in whichever order Phases 3, 6 and 8 merge (spec:2301 allows any) — so the same edit would sit on three unrelated critical paths and a slice that skipped it would hide its new row behind a red `apps/api` suite. T4 Step 1 therefore asserts the `accounting` row **by name**, deny-by-absence as a **property** over whichever modules have no row yet, and that every row present names a code `PERMISSION` actually carries (checked against `PERMISSION` rather than a literal table, since `PERMISSION["inventory.stock.read"]` does not compile at 2C). All three stay true at every later state of the map, so the widening slices add a row and a positive case of their own and edit nothing here.

@@ -1,6 +1,6 @@
 # Dulja documentation review — 2026-09-04
 
-**Scope.** Full read of both project documents — `rebuild-spec.md` (2,146 lines before edits) and `sahlisoft-accounting-analysis.md` (894 lines) — followed by targeted corrections, the product rename to **Dulja**, and a Phase 0 implementation plan. Nothing was scaffolded and no code was written; implementation waits for the owner's go.
+**Scope.** Full read of both project documents — `rebuild-spec.md` (2,146 lines before edits) and `legacy-system-analysis.md` (894 lines) — followed by targeted corrections, the product rename to **Dulja**, and a Phase 0 implementation plan. Nothing was scaffolded and no code was written; implementation waits for the owner's go.
 
 **Verdict.** The two documents are unusually rigorous for a rebuild brief: every defect is cited to a source line, the decisions are logged, the schema is written to be derived into a migration directly, and the phase gates have testable definitions of done. The plan is sound. Two defects in the reference schema, however, would have stopped Phase 0 at tasks 0.6 and 0.7b — nobody could have logged in and the seed could not have inserted its first principal. Both are corrected. The spec is now version **1.1** with a changelog; the dossier is re-scoped as the *what-it-is* companion.
 
@@ -55,8 +55,8 @@ Severity here is about *impact on the build*, not on the old system.
 ## 2. Deliberately not changed
 
 - **Version claims** in §3.2 (PostgreSQL 18.3, Bun 1.4, Cloudflare Containers GA, oxfmt status). The document states these were verified in September 2026; D22 re-pins everything at scaffold time from the lockfile. Left as written.
-- **Filenames.** `rebuild-spec.md` and `sahlisoft-accounting-analysis.md` are cross-referenced by name inside both documents and §5.2 moves them to `docs/spec/` at scaffold anyway. Renaming now would only churn links.
-- **Sahlisoft references.** Sahlisoft is the legacy system being replaced; every mention of it stays. Only the unnamed *new* product became Dulja.
+- **Filenames.** `rebuild-spec.md` and `legacy-system-analysis.md` are cross-referenced by name inside both documents and §5.2 moves them to `docs/spec/` at scaffold anyway. Renaming now would only churn links.
+- **Legacy-system references.** The legacy system is the one being replaced; every mention of it stays. (Superseded on 2026-11-17: the owner directed that the legacy vendor's name be removed from the repository — `docs/decisions/2026-11-17-legacy-naming.md`.) Only the unnamed *new* product became Dulja.
 - **The spec's size** (219 KB, roughly 55k tokens per full read). See recommendation 3 below.
 - **Anything about the UI.** Both documents are explicit that the UI is unspecified and must come from screenshots and operator walkthroughs. Nothing was invented.
 
@@ -70,7 +70,7 @@ These are in rough priority order. Items 1 and 2 are folded into the Phase 0 pla
 2. **Give the implementing agent one entry point.** A root `CLAUDE.md` (added to §5.2) that states the §0 reading order, the "never / always" lists from §0.2, and which phase is in progress. An agent that opens the repo cold should not have to discover the spec.
 3. **Split the spec into one file per Part** under `docs/spec/` (00-how-to-use, 01-defects, 02-root-causes, 03-architecture, 04-saas-standards, 05-build-plan, 06-acceptance, 07-open-questions). An agent working on Phase 3 should be able to load §3.4 and the costing defects without loading the POS sync protocol. *Proposed, not done* — it changes how you reference the document, so it is your call.
 4. **Enforce the phase gate mechanically.** A `PHASE` marker in the repo and a CI job that refuses to merge work tagged for phase N+1 while phase N's definition-of-done suite is red. The spec relies on discipline here; make it a check.
-5. **Make the defect register greppable against tests from day one.** `tests/regression/sah-NNN.test.ts` is already the convention. Add a CI script that lists every `SAH-###` referenced in the current phase's spec sections and fails if a corresponding test file is missing. Appendix A is the checklist.
+5. **Make the defect register greppable against tests from day one.** `tests/regression/legacy-NNN.test.ts` is already the convention. Add a CI script that lists every `LEGACY-###` referenced in the current phase's spec sections and fails if a corresponding test file is missing. Appendix A is the checklist.
 6. **Run the risk spikes in week one, not when the phase arrives.** Five things could invalidate settled decisions and are cheap to probe on an empty repo: Arabic RTL glyph shaping in the chosen PDF engine (§3.2.2 already says week one); electron-builder + Bun workspace + `better-sqlite3` (task 0.13); pg-boss under Bun (task 0.11); Cloudflare Container sleep/wake latency and the Cron keep-alive for the worker (task 0.5); Supabase session-mode connection limits against the container's pool size (task 0.2).
 7. **Secret scanning before the first commit that touches Supabase.** §4.11 lists the v1 secret inventory. Add a pre-commit hook and the CI secret scanner in task 0.1, not later.
 8. **Windows development environment.** Testcontainers needs Docker Desktop with WSL2 on the owner's machine. Confirm it is available before task 0.3; otherwise CI is the only place migrations can be tested.
@@ -81,7 +81,7 @@ These are in rough priority order. Items 1 and 2 are folded into the Phase 0 pla
 
 ## 4. Assumptions made during this review
 
-- **A1** — "Dulja" names the new product only. Sahlisoft remains the name of the legacy system throughout.
+- **A1** — "Dulja" names the new product only. The legacy system kept its own name throughout (superseded on 2026-11-17 — `docs/decisions/2026-11-17-legacy-naming.md`).
 - **A2** — Both filenames stay as they are until §5.2 moves them into `docs/spec/` at scaffold.
 - **A3** — "The plan" means an executable plan for **Phase 0 (Foundations)**, derived from §5.0's sixteen tasks with the v1.1 corrections folded in. The spec's own gating rule means Phases 1–9 are planned when their turn comes, against a Phase 0 that has actually passed.
 - **A4** — No `git init` and no commit were made; the repository is created as the first step of the plan, on the owner's go.
@@ -93,7 +93,7 @@ These are in rough priority order. Items 1 and 2 are folded into the Phase 0 pla
 | Artefact | Path |
 |---|---|
 | Specification, v1.1 | `rebuild-spec.md` |
-| Dossier, re-scoped | `sahlisoft-accounting-analysis.md` |
+| Dossier, re-scoped | `legacy-system-analysis.md` |
 | This review | `docs/review/2026-09-04-dulja-docs-review.md` |
 | Phase 0 implementation plan | `docs/superpowers/plans/2026-09-04-dulja-phase-0-foundations.md` |
 | Pre-edit backups | session scratchpad `backup/` (outside the project) |

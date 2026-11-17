@@ -4,7 +4,7 @@
 
 ## Goal
 
-Open Phase 8 by building the **data** payroll runs on, and by closing two defects the legacy system never closed: confidentiality as a display filter with a caller-supplied off switch (SAH-033, SAH-045) and behaviour-governing configuration living in opaque blobs (SAH-078).
+Open Phase 8 by building the **data** payroll runs on, and by closing two defects the legacy system never closed: confidentiality as a display filter with a caller-supplied off switch (LEGACY-033, LEGACY-045) and behaviour-governing configuration living in opaque blobs (LEGACY-078).
 
 Seven things ship. (1) The minimal `app.employee` grows the columns §3.10.1 names — position, employment type, a statutory-profile note and `archived_at` — and gains the **R4 no-self-pay** guard on `terminated_on`. (2) `app.employee_sensitive` holds national ID, passport, date of birth, residency category, bank account, EPF/SOCSO/tax reference numbers and work-permit expiry as **AES-256-GCM ciphertext under a dedicated key**, behind the `sensitive_gate` RESTRICTIVE RLS policy of spec:2076 — a principal without `hr.employee.read_sensitive` gets **zero rows through every path**, and a new schema-linter rule makes a missing gate a build failure. (3) `app.employee_statutory_profile` is effective-dated and carries the fields the spec names plus an `extra jsonb` for the verified additions ⚠️ OD-28. (4) `app.pay_component` (`earning | deduction` — two values, never three), the `app.pay_component_scheme` join that replaces "subject to X" booleans, and effective-dated `app.compensation_line` whose history *is* its closed rows. (5) `app.statutory_scheme` as **rows, never an enum**, and `app.statutory_rate_table` with the `verified_by <> loaded_by` trigger — the segregation of duties that makes a rate table trustworthy. (6) The rate-table **JSON Schema** in `packages/domain/payroll/`, the `statutory` seed sub-pack loader, and the `hr.rate_table.lapse_warning` job that warns sixty days before a table lapses. (7) Six permission codes and their role grants.
 
@@ -27,7 +27,7 @@ TypeScript 5 on Bun; PostgreSQL 18 via `postgres.js` tagged templates (Drizzle m
 
 ## Spec
 
-`C:/Users/Edres101/Desktop/dulja/rebuild-spec.md` v1.2 — **§3.10 in full** (spec:2067–2110), especially **§3.10.1** (spec:2075–2080, 2086–2088, 2090, 2093) and **§3.10.2** (spec:2097); §3.3's Employee subtree (spec:1170–1174, 1200); §3.8's linter rules and the `stamp_actor` list (spec:1370, 1648–1652); §3.9 Deletion (spec:2049); §4.2.1 (spec:2149, 2162–2163 — the `hr` module rows and the `hr_payroll`, `accountant` and `auditor` role rows); §4.2.2 **R4, R6, R7** (spec:2175–2178); §4.6 HR data (spec:2211); §4.11 secrets (spec:2273); §5.2 (spec:2366, 2368); Part V Phase 8 (spec:2294, 2301); Part VI tests **31**, **32**, **35** (spec:2449–2451, 2453); Part VII **#14** (spec:2478); Part I **SAH-029, 030, 033, 044, 045, 078**.
+`C:/Users/Edres101/Desktop/dulja/rebuild-spec.md` v1.2 — **§3.10 in full** (spec:2067–2110), especially **§3.10.1** (spec:2075–2080, 2086–2088, 2090, 2093) and **§3.10.2** (spec:2097); §3.3's Employee subtree (spec:1170–1174, 1200); §3.8's linter rules and the `stamp_actor` list (spec:1370, 1648–1652); §3.9 Deletion (spec:2049); §4.2.1 (spec:2149, 2162–2163 — the `hr` module rows and the `hr_payroll`, `accountant` and `auditor` role rows); §4.2.2 **R4, R6, R7** (spec:2175–2178); §4.6 HR data (spec:2211); §4.11 secrets (spec:2273); §5.2 (spec:2366, 2368); Part V Phase 8 (spec:2294, 2301); Part VI tests **31**, **32**, **35** (spec:2449–2451, 2453); Part VII **#14** (spec:2478); Part I **LEGACY-029, 030, 033, 044, 045, 078**.
 
 ## Assumptions and contracts (from docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md)
 
@@ -37,7 +37,7 @@ TypeScript 5 on Bun; PostgreSQL 18 via `postgres.js` tagged templates (Drizzle m
 - **Interfaces consumed:** §4.1 (the whole Plan 0A surface), §4.2.1 (`Money`, `currency`, `round`, `RoundingMode`, `MONEY_SCALE`, `Quantity`), §4.2.2 (`withTenant`, `TenantContext`, `systemContext`), §4.2.3 (`AppEnv`, `RequestContext`, `Logger`, `readConfig`, `ApiConfig`, `ConfigError`, the fixed middleware order), §4.2.4 (`Problem`, `ERRORS`, `AppError`, `fromDatabaseError` — and this slice's **two** allocated rows `ERR_HR_SELF_PAY` and `ERR_HR_SELF_VERIFY`), §4.2.5 (`PERMISSION`, `PERMISSIONS`, `PermissionDef`, `requirePermission`, `ScopeSource`, `ROLES`, `INCOMPATIBLE_PAIRS`, `assertRouteGates`), §4.2.6 (`JOBS`, `JobPayload`, `JobClient`, `eachTenant`, `registerHandler`, `runJob`, `JOB_PROBES`, **and the audit `table_name` sentinel paragraph — this slice registers the third sentinel**), §4.2.7 (`RouteModule`, `buildRoutes`, `IdempotencyHeader`, `createApp`, `AppDeps`, `PROBES`, `TENANT_FREE`), §4.2.8 (the common schemas, the list envelope, the cursor codec, **the one list-filter convention — literal `filter[…]` keys, the Layer 2 default**), §4.2.9 (`idempotency`, `IdempotencyHeader`), §4.2.12 (`startApi`, `ApiRequest`, `StartedApi`), §4.2.13 (`SubPack`, `SUB_PACKS`, `PackLoader`, `LoaderContext`, `readPackFile`, `assertPackShape`, `PHASE_0_SUB_PACK_DIRECTORIES` — **this slice adds the `statutory` member and loader**), §3.4.8 (the sub-pack rule that assigns 8A `statutory`), §3.5.1 (the new-table recipe), §3.5.2 (**this slice adds the `sensitive_gate` rule**), §3.5.3 (the six pre-declared set memberships for this slice's tables), §3.6.1–§3.6.4 (the six codes and their grants), §4.5.6 (`app.actor_in_branch` and Form A′ — consumed, never re-attached), §4.5.7 (`app.party` — an employee extends a party of kind `employee`), §4.6.1 (the register rows for `employee`, `employee_sensitive`, `employee_statutory_profile`, `pay_component`, `pay_component_scheme`, `compensation_line`, `statutory_scheme`, `statutory_rate_table`, `company_hr_setting`), **§4.6.2 in full**, §4.12.1 (read only — 8B implements it; this slice ships the `RateTable` type it names), **§4.12.3 in full**, §4.12.4 (the synthetic table's shape), **§4.12.5 in full**, §4.14 (document-type codes — **none added, none seeded**), §4.15 (account codes — **none seeded, none consumed by literal**), §4.16 (report codes and `DatasetId` — **none**; the five HR reports are 8D's), §4.17 (`seedPayComponent`, `seedStatutoryScheme`, `seedRateTable` — this slice's three rows — plus `seedEmployee` under the §4.17 first-to-run rule), §4.17.1, §5 (all thirty-five hazards, **1 and 32 above all**), §6.1 rows **31, 32, 35**, §6.2 row **1056**.
 - **Interfaces produced:** §4.6.1's rows for `employee_sensitive`, `employee_statutory_profile`, `pay_component`, `pay_component_scheme`, `compensation_line`, `statutory_scheme`, `statutory_rate_table` and `company_hr_setting`, implemented as written with the corrections Task 0 records; **§4.12.3 verbatim** as `packages/domain/payroll/rate-table.schema.json` and its generated `RateTable`; **§4.12.5 verbatim** as migration 0081 and `packages/db/src/hr/sensitive.ts`; §3.5.2's `sensitive_gate` linter rule; §3.6.2's six `hr` codes and §3.6.4's six role grants; §4.2.4's `ERR_HR_SELF_PAY` and `ERR_HR_SELF_VERIFY`; §4.2.6's `hr.rate_table.lapse_warning` handler, payload and probe, and the third audit sentinel; §4.2.13's `statutory` `SubPack` member and `statutoryLoader`; §4.17's `seedPayComponent`, `seedStatutoryScheme`, `seedRateTable`. Everything else is listed under **Contract additions** in the Self-Review and lands through **Task 0**.
 - **Owner decisions:** **OD-28** (⚠️ the statutory-profile field list, verified against LHDN's current publication — spec:2077) → **Task 5** (isolated; default **the fields the spec names plus `extra jsonb`**). **OD-23** (employer registration numbers; the accountant-signed rate tables) → **Task 11** (isolated; default **the settings row ships with no registration value and `packages/db/seed/my/statutory/<scheme>/` is empty**; every test runs on `SYNTH`). **OD-14** (⚠️ HR facts — levy, foreign workers, hourly/part-time staff, staff purchases on salary deduction — spec:2093, Part VII #14) → **Task 12** (isolated; default **none of the four is built**; the task states exactly what each adds). **OD-24** (screenshots and an operator description before any screen) → **Task 13** (isolated; default **the screen task is blocked, not the slice**). **OD-13 (the leave register) is not this slice's gate** — §2.12 assigns it to **8D**, and nothing leave-shaped is built here; the orchestrator's slice JSON lists OD-13 where the §2 card lists OD-28, and the contracts card and §2.12 govern (Task 0, amendment **A1**).
-- **Part VI tests owned / re-run:** owns **32** (Task 4 for the endpoint, filter, sort, search, OpenAPI and direct-SQL channels; **Task 14 Steps 3–4 for the export channel**, behind amendment A20's `7C-FIRST` / `8A-FIRST` branch — §6.3 runs 8A and 7C in parallel, so `packages/db/src/export/` may not exist yet). Re-runs **31**'s R4 clause (Tasks 1, 5, 6, 7 — "a principal cannot alter their own compensation, sensitive data or leave approval"), **35**'s verify-not-load clause (Task 8 — "a rate table can be verified only by a principal other than the one who loaded it"; 8C owns the rest of 35), **12** and **13** and **36** for every new table, and **27**'s lint clause in CI. **§3.0.4 rows owned:** spec:1056 — Employee master (6C contributes the minimal master). **Regression files created / appended:** **creates none**; appends `— 8A` blocks to `tests/regression/sah-029.test.ts`, `sah-030.test.ts`, `sah-033.test.ts`, `sah-044.test.ts`, `sah-045.test.ts` and `sah-078.test.ts` — **all six created by 0B** (§3.7.3's Plan 0A-proven list names 029, 030, 033, 044; 0B's sixteen full files name 078; 045 is one of 0B's six structural files).
+- **Part VI tests owned / re-run:** owns **32** (Task 4 for the endpoint, filter, sort, search, OpenAPI and direct-SQL channels; **Task 14 Steps 3–4 for the export channel**, behind amendment A20's `7C-FIRST` / `8A-FIRST` branch — §6.3 runs 8A and 7C in parallel, so `packages/db/src/export/` may not exist yet). Re-runs **31**'s R4 clause (Tasks 1, 5, 6, 7 — "a principal cannot alter their own compensation, sensitive data or leave approval"), **35**'s verify-not-load clause (Task 8 — "a rate table can be verified only by a principal other than the one who loaded it"; 8C owns the rest of 35), **12** and **13** and **36** for every new table, and **27**'s lint clause in CI. **§3.0.4 rows owned:** spec:1056 — Employee master (6C contributes the minimal master). **Regression files created / appended:** **creates none**; appends `— 8A` blocks to `tests/regression/legacy-029.test.ts`, `legacy-030.test.ts`, `legacy-033.test.ts`, `legacy-044.test.ts`, `legacy-045.test.ts` and `legacy-078.test.ts` — **all six created by 0B** (§3.7.3's Plan 0A-proven list names 029, 030, 033, 044; 0B's sixteen full files name 078; 045 is one of 0B's six structural files).
 - **Shared namespaces this slice writes into:** **Document-type codes (§4.14) — none, and no test-only code either.** This slice posts nothing; `PAYROLL` is 8B's. **Account codes (§4.15) — none seeded and none consumed by literal.** `pay_component.expense_account_id`, `pay_component.payable_account_id`, `statutory_scheme.payable_account_id` and `statutory_scheme.employer_expense_account_id` are **nullable** and are filled by **8B**'s `chart-of-accounts/8b-payroll.json` seed task (§4.12.2, hazard 33). Task 0 amendment **A2** records the `not null` correction on `statutory_scheme.payable_account_id`; tests that need an account call **1A's `seedAccount`** with a code of their own choosing from the already-seeded `0c-base.json` set and never invent a `24nn`. **Report codes (§4.16.1) and `DatasetId` members (§4.16.2) — none.** All five HR reports and all six HR datasets are **8D's** rows (§2.9). This slice does not widen `ReportCodeSchema`. **`fixtures.ts` helpers (§4.17) — exactly the three rows §4.17 assigns 8A** — `seedPayComponent`, `seedStatutoryScheme`, `seedRateTable` — **plus `seedEmployee` under §4.17's first-to-run rule** (committed here only if 6C has not merged; otherwise verified and left alone — **with the fourth option `hiredOn?: string` that 6C's own amendment A12 already registers against §4.17's row**, re-recorded here as **A17** because under `8A-FIRST` this slice is the one that ships it), **plus one exported const, `SYNTH_RATE_TABLE_V1`**, registered by amendment **A5** because §4.17's `seedRateTable` row says its `definition` "defaults to `SYNTHETIC-TEST-v1`" and names no home for that value. **Shared test helpers (§4.17.1) — one new file, registered by amendment A6:** `tests/invariants/support/hr.ts` with `HrFixture`, `hrFixture` and `hrActor`, the one HR corpus 8B, 8C and 8D re-use.
 - **Never re-decide:** D1–D27 (spec:114–142); every name in the contracts document is frozen — a needed change goes to that document first.
 - **Contracts version:** 2026-09-07.
@@ -53,7 +53,7 @@ TypeScript 5 on Bun; PostgreSQL 18 via `postgres.js` tagged templates (Drizzle m
 7. **Never hard-code a package version into a source file** — the lockfile owns versions (spec:104).
 8. **Every new table** carries `tenant_id`, RLS via `app_meta.enable_tenant_rls`, FORCE RLS, `created_at`, the audit trigger via `app_meta.attach_audit` unless the table is in `AUDIT_EXEMPT`, `stamp_<col>` for every `*_by` column, composite `(tenant_id, x)` FKs, `unique (tenant_id, id)` (or `unique (tenant_id, <pk>)` for the two `NO_ID_TABLES` members), `snake_case` singular names, and a test that a second tenant cannot see it (§3.3, §3.5.1). **None of this slice's tables is in `AUDIT_EXEMPT` or `IMMUTABLE`** (§3.5.3): `employee_sensitive` is audited deliberately, because its before/after images are ciphertext.
 9. **Every permission or branch gate is `AS RESTRICTIVE`** (spec:1370). `ALLOWED_PERMISSIVE` never grows; `sensitive_gate` and both `compensation_gate` policies are restrictive, and `extra_permissive_policy` is what proves it.
-10. **A `*_by` column means "the acting principal, stamped by the server"** and nothing else (§3.3). `entered_by`, `loaded_by` and `verified_by` carry `app_meta.attach_stamp` — the write-once stamp, which raises `ERR_ACTOR_IMMUTABLE` on any later change. **`employee_sensitive.updated_by` is the one exception and carries a dedicated always-stamp trigger instead** (amendment **A19**, Task 3): the row is mutable by design — a bank account changes — so a write-once stamp would freeze the column at the *creator* forever while `updated_at` moved, which is precisely SAH-044's "attributable to the wrong user" shape. Either way the value comes from `app.current_actor()` and never from the caller; a column recording *whom* something is about is not named `*_by`.
+10. **A `*_by` column means "the acting principal, stamped by the server"** and nothing else (§3.3). `entered_by`, `loaded_by` and `verified_by` carry `app_meta.attach_stamp` — the write-once stamp, which raises `ERR_ACTOR_IMMUTABLE` on any later change. **`employee_sensitive.updated_by` is the one exception and carries a dedicated always-stamp trigger instead** (amendment **A19**, Task 3): the row is mutable by design — a bank account changes — so a write-once stamp would freeze the column at the *creator* forever while `updated_at` moved, which is precisely LEGACY-044's "attributable to the wrong user" shape. Either way the value comes from `app.current_actor()` and never from the caller; a column recording *whom* something is about is not named `*_by`.
 11. **Per-tenant rows cannot be written by a migration** (hazard 10). `FORCE ROW LEVEL SECURITY` binds `app_migrator`, so 0080–0085 create objects only and 0086 seeds `app.permission` (global). Pay components, statutory schemes, rate tables and the HR settings row are **seed-pack data** applied by `bun run seed --tenant <id> --only statutory`.
 12. **Error codes** are `ERR_<DOMAIN>_<REASON>` enumerated in `packages/contracts/src/errors.ts`, and a code no code raises fails the build (spec:2051). **This slice adds exactly two `ERRORS` rows**, each landing in the same commit as the migration whose SQL text raises it (the 2B precedent, because `error-codes` scans `packages/db/migrations/**`): `ERR_HR_SELF_PAY` (409) with **0080**, `ERR_HR_SELF_VERIFY` (409) with **0084**. Everything else it raises is already shipped: `ERR_NOT_FOUND`, `ERR_VALIDATION_FAILED`, `ERR_RBAC_FORBIDDEN`, `ERR_RLS_DENIED`, `ERR_CONFLICT_UNIQUE`, `ERR_CONFLICT_REFERENCE`, `ERR_ACTOR_IMMUTABLE`, `ERR_IDEMPOTENCY_KEY_MISSING`, `ERR_INTERNAL`, and **`ERR_MONEY_CURRENCY_MISMATCH`** (0D's row, 422, §4.2.4 — 8A raises it from Task 7's compensation *handler* rather than from `Money`, which is why §4.2.4's "Raised by" column does not name a handler; the row already exists and no registry change is made). **This list is closed:** a token in any test of this slice that is not on it is either a typo or an unregistered code, and both fail the `error-codes` lint.
 13. **The permission vocabulary and module list are closed** (§3.6.1, hazard 26). This slice seeds exactly the six codes §3.6.2 assigns it and invents none. `hr.employee.read`, `hr.employee.manage` and `hr.attendance.record` are **6C's** and are consumed, never re-seeded; `hr.payroll.*` are 8B's and are not referenced here.
@@ -72,7 +72,7 @@ Phase 8's DoD is one long sentence (spec:2294). Six of its clauses belong to 8B,
 
 | Clause | Where it becomes true |
 |---|---|
-| **"preparer ≠ approver … data layer"**, the **sensitive-data** half | **Tasks 1, 3, 5, 6**: `app.forbid_self_pay()` is a trigger, not a handler check. A principal cannot write their own `compensation_line`, `employee_sensitive`, `employee_statutory_profile` row or their own `employee.terminated_on` — through the API, a job, or direct `app_rw` SQL. Proven in `tests/regression/sah-045.test.ts` and in Task 7 Step 5's API case, both of which are test 31's R4 clause. |
+| **"preparer ≠ approver … data layer"**, the **sensitive-data** half | **Tasks 1, 3, 5, 6**: `app.forbid_self_pay()` is a trigger, not a handler check. A principal cannot write their own `compensation_line`, `employee_sensitive`, `employee_statutory_profile` row or their own `employee.terminated_on` — through the API, a job, or direct `app_rw` SQL. Proven in `tests/regression/legacy-045.test.ts` and in Task 7 Step 5's API case, both of which are test 31's R4 clause. |
 | **"preparer ≠ approver … data layer"**, the **verify-not-load** half | **Task 8**: `app.assert_rate_table_verifier()` refuses `verified_at` set by the principal named in `loaded_by`, with `ERR_HR_SELF_VERIFY`, and freezes `definition` once verified. Proven by direct `app_rw` SQL, which is what "in the data layer" means. This is test **35**'s third clause; 8C owns the other two. |
 | **§3.0.4 row spec:1056 — Employee master** | **Tasks 1, 3, 5**: the master carries position, employment type, hire and termination dates, home branch, the optional principal, the encrypted identity set and the effective-dated statutory profile. 6C contributes the minimal master (§6.2). |
 | **Acceptance test 32** | **Task 4**, in `apps/api/test/routes/hr/sensitive.test.ts` and `tests/invariants/hr-sensitive-side-channels.test.ts`: no endpoint, filter, sort, search, OpenAPI schema or direct `app_rw` query under `withTenant` yields a sensitive or compensation field to a principal without the code. **The export channel is Task 14 Steps 3–4** — three gated `EXPORT_TABLES` rows and one appended invariant case, skipped when 7C has not merged (A20). |
@@ -191,12 +191,12 @@ tests/
   invariants/support/hr.ts                                  NEW  HrFixture, hrFixture, hrActor             T3
   invariants/hr-sensitive-side-channels.test.ts             NEW  test 32, the OpenAPI + SQL half           T4
                                                             EDIT the export case (7C-FIRST skips)         T14
-  regression/sah-029.test.ts                                EDIT append "— 8A"                             T14
-  regression/sah-030.test.ts                                EDIT append "— 8A"                             T14
-  regression/sah-033.test.ts                                EDIT append "— 8A"                             T14
-  regression/sah-044.test.ts                                EDIT append "— 8A"                             T14
-  regression/sah-045.test.ts                                EDIT append "— 8A"                             T14
-  regression/sah-078.test.ts                                EDIT append "— 8A"                             T14
+  regression/legacy-029.test.ts                                EDIT append "— 8A"                             T14
+  regression/legacy-030.test.ts                                EDIT append "— 8A"                             T14
+  regression/legacy-033.test.ts                                EDIT append "— 8A"                             T14
+  regression/legacy-044.test.ts                                EDIT append "— 8A"                             T14
+  regression/legacy-045.test.ts                                EDIT append "— 8A"                             T14
+  regression/legacy-078.test.ts                                EDIT append "— 8A"                             T14
 packages/db/src/export/tables.ts                            EDIT *only under `7C-FIRST`* — three
                                                                  EXPORT_TABLES rows + the pin (A20)        T14
 docs/adr/0071-hr-field-encryption-envelope.md               NEW  a PROPOSAL                                T3
@@ -225,7 +225,7 @@ docs/adr/0073-statutory-tables-are-seed-pack-data-with-a-break-glass-door.md NEW
 | **A1** | 2.9 (8A card), 2.12 | **The 8A owner gates are OD-28, OD-14, OD-23 and OD-24 — not OD-13.** §2.12 gates OD-13 (the leave register) to **8D** and the 8A card names OD-28 in its place; the orchestrator's slice JSON lists OD-13. The card and the ledger govern, and this plan builds nothing leave-shaped: no `leave_type`, no `leave_entitlement`, no `leave_record`, no `public_holiday`, no `hr.leave.*` code. | header, T5, T11, T12, T13 |
 | **A2** | 4.6.1 | **`statutory_scheme.payable_account_id` ships NULLABLE, not `not null`.** §4.6.1's row says `not null`; §4.12.2 and §4.15 give `2411`…`2414` and `5311`…`5314` to **8B**'s seed, and hazard 33 forbids 8A writing an account literal. A `not null` column with no legal value is unshippable. The column, `employer_expense_account_id`, `authority_party_id`, `pay_component.expense_account_id` and `pay_component.payable_account_id` are all nullable at 0083/0084; **8B's seed task fills them and 8B's `PAYROLL` policy fails closed with `ERR_POLICY_REQUIRES_MISSING` until it has.** Task 8 Step 3 carries a comment saying so on the column. | T6, T8 |
 | **A3** | 4.6.1 | **`statutory_scheme` gains `employer_registration text`.** §4.6.1's `company_hr_setting` row calls it "the primary store" for the per-scheme employer registration number, but `statutory_scheme`'s own column list omits it. It is added in 0084. | T8, T11 |
-| **A4** | 4.6.1 | **`company_hr_setting.employer_registrations jsonb` is dropped.** §4.6.1 describes it as "the display copy" of A3's column. spec:2088 says employer registration identifiers are "relational company settings … **never a blob**", and a second store with no rebuild path is exactly SAH-078's shape. `company_hr_setting` ships `proration_rule` and `pay_day` only; the registrations are read by joining `statutory_scheme`. | T11 |
+| **A4** | 4.6.1 | **`company_hr_setting.employer_registrations jsonb` is dropped.** §4.6.1 describes it as "the display copy" of A3's column. spec:2088 says employer registration identifiers are "relational company settings … **never a blob**", and a second store with no rebuild path is exactly LEGACY-078's shape. `company_hr_setting` ships `proration_rule` and `pay_day` only; the registrations are read by joining `statutory_scheme`. | T11 |
 | **A5** | 4.17, 4.12.4 | **`SYNTH_RATE_TABLE_V1` is an exported const of `packages/db/test/fixtures.ts`, owned by 8A**, and is what `seedRateTable`'s `definition` defaults to. §4.17 says the default is "`SYNTHETIC-TEST-v1`" and §4.12.4 puts the *file* (`packages/db/seed/test/statutory/SYNTH/v1.json`) in 8B; a fixture default cannot depend on a file a later slice writes. The const carries §4.12.4's three bands unchanged, and its `scheme` is **`SYNTH`** — the schema pattern `^[A-Z][A-Z0-9_]{1,15}$` admits no hyphen and no lower case, so `SYNTHETIC-TEST-v1` is the *label* §4.12.4 uses in prose, never a `scheme` value. 8B's file and this const carry identical numbers, and Task 9 Step 7's test asserts the const validates against the schema. | T8, T9 |
 | **A6** | 4.17.1 | **`tests/invariants/support/hr.ts` is registered, owner 8A**, exporting `HrFixture`, **`hrFixture(api: StartedApi, name?: string)`** and `hrActor(f, role)` — and **nothing else**. `HrFixture` carries `sixC: boolean` (`"hr.employee.read" in PERMISSION` — the 6C branch as a repository fact, T3) and `schemeId: string` (one `SYNTH` `statutory_scheme`, appended in T8 with `seedStatutoryScheme` itself). **It takes the running API as a parameter and imports only its type** — `import type { StartedApi } from "../../../apps/api/test/support/app";` — because that is the settled shape for a §4.17.1 fixture that needs an API: 6A's `posFixture(api, name)`, 6C's `staffFixture(api, name)` and 7C's `reports-7c.ts` all do exactly this, and 7C states the rule outright (7c:1744 — *"The **type-only** `import type { StartedApi }` … is erased at compile time, exactly as 6A's `pos.ts` and 6C's `staff.ts` already do it"*), while §3.1's tier table lets the `tests` workspace reach `apps/api` only through `createApp()` and `./routes`. It needs a `StartedApi` and 2B's `grantCodes`, so it cannot live in `fixtures.ts` (§3.1). **It re-exports no other helper:** `problemOf` is 0B's and every consuming test file imports it from `tests/support/api` directly, which is what 4A (`4a:1118`), 6C (`6c:1763`, `6c:3670`) and 7C (`7c:4464`, `7c:5035`) already do from `apps/api/test/**` — 4A is merged before this slice by the Phase 4 gate, so the allowance those three rely on is a repository fact here, and a second spelling of one helper would be hazard 9. `hrFixture`'s **checker** holds `hr.statutory_table.verify` and `hr.statutory_table.manage`, plus `hr.employee.read` when `sixC` is true — the manage code is there so T10 can prove that a principal holding *both* codes still cannot verify what it loaded. 8B, 8C and 8D re-use the whole fixture; nothing else in the repository builds an HR corpus. | T3, T10, and every later task |
 | **A7** | 4.2.7, 4.2.8 | **Three route modules are registered to 8A**, with their paths, router exports and gate codes: `/v1/companies/:companyId/pay-components` → `payComponentRoutes` (`hr.pay_component.manage`, `hr.compensation.read`); `/v1/companies/:companyId/statutory-schemes` → `statutorySchemeRoutes` (`hr.statutory_table.manage`, `hr.statutory_table.verify` — **and no third code**: §4.2.7 defines `RouteModule.permissions` as "every code this module evaluates", and Task 10's three routes evaluate exactly these two; `admin.company.manage` is the `hr-settings` module's gate and belongs on that row only); `/v1/companies/:companyId/hr-settings` → `hrSettingRoutes` (`admin.company.manage`). **Three `PROBES` keys, no sub-path key** (hazard 31). The six sub-paths on **6C's** `employees` module — `GET|PUT …/employees/{employeeId}/sensitive`, `GET|POST …/employees/{employeeId}/statutory-profiles`, `GET|POST …/employees/{employeeId}/compensation-lines` — inherit 6C's key. New §4.2.8 contracts modules: `hr/sensitive.ts`, `hr/statutory-profile.ts`, `hr/pay-component.ts`, `hr/compensation.ts`, `hr/statutory-scheme.ts`, `hr/hr-setting.ts`. | T4, T5, T7, T10, T11 |
@@ -240,7 +240,7 @@ docs/adr/0073-statutory-tables-are-seed-pack-data-with-a-break-glass-door.md NEW
 | **A16** | 4.2.7 | **A sub-router is composed into another slice's module inside `buildRoutes`, never mounted onto its exported const.** 6C exports `employeeRoutes` and `employeeRouteModule` as **consts**, not factories, so `employeeRoutes.route(…)` at another module's import time is an import-order hazard and has no `deps` in scope. `apps/api/src/routes/hr/employees-composed.ts` therefore exports **`composeEmployeeRouter(hrKeys: HrKeyRing): OpenAPIHono<AppEnv>`**, which builds a fresh router, `.route("/", employeeRoutes)` and then the three 8A sub-routers, and `buildRoutes` spreads 6C's module with the composed router and the widened `permissions` array. 6C's two exports are untouched, which is what §4.1's "never rename what an earlier slice produced" requires. | T4, T5, T7 |
 | **A17** | 4.17 | **`seedEmployee` carries a fourth option, `hiredOn?: string`** (default `'2026-01-05'`). §4.17's register row lists three; **6C's own amendment A12 already adds this one** under §4.17's closing rule, and it is re-recorded here because under the `8A-FIRST` branch **8A** is the slice that ships the helper and would otherwise ship a fourth option no 8A amendment names. Same option, same default, same position — the two slices must not diverge, which is the whole point of §4.6.2's and §4.17's first-to-run rules. No existing parameter and no return type changes. | T1 |
 | **A18** | 4.2.8, 4.6.2, 4.17 | **`packages/contracts/src/hr/employee.ts` follows the same first-to-run rule as migration 0064 and `seedEmployee`.** §4.6.2 assigns the *table* to "whichever of 6C and 8A executes first" and §4.17 the *fixture*, but §4.2.8's contracts-module register names `hr/employee.ts` as 6C's outright — and 8A Task 1 Step 5 appends three wire fields to `EmployeeSchema`, which cannot append to a file that does not exist. Under `8A-FIRST`, Task 1 Step 1 therefore commits **6C's file verbatim** (`EmployeeSchema`, `CreateEmployeeBody`, `EmployeeQuery`, `EmployeeList`, `EmployeeDto`) before Step 5 extends it, and 6C's Task 3 Step 4 then takes its verification branch exactly as its Task 1 already does for 0064. Under `6C-FIRST` nothing is created. | T1 |
-| **A19** | 4.12.5, 3.3 | **`employee_sensitive.updated_by` is stamped by a dedicated ALWAYS-stamp trigger, not by `app_meta.attach_stamp`.** §4.12.5 writes the column as `updated_by (stamped)` and says nothing about *which* stamp; Plan 0A's `app.stamp_actor` is a **write-once** stamp — on UPDATE it fills a NULL and raises `ERR_ACTOR_IMMUTABLE` on any change to a non-null value (plan0A:2369–2386). `employee_sensitive` is the one table in this slice whose rows are *edited* (a bank account changes; `writeSensitive` is an upsert), so `attach_stamp` would freeze the column at the **creator** for the life of the row while `updated_at` moved — a column that names the wrong principal, which is SAH-044's own shape. 0081 therefore creates `app.stamp_actor_always()` — the same `tg_argv[0]` + `jsonb_populate_record` shape as 0A's `app.stamp_actor()`, so it generalises to any column a later slice needs it for — and attaches it as the trigger **`stamp_updated_by`**, which sets the named column to `app.current_actor()` on **every** INSERT and UPDATE. **The trigger keeps the name `attach_stamp` would have given it**, so 0A's `stamp_actor` linter rule (which fires on a `*_by` column with no trigger *named* `stamp_<col>`, plan0A:2755-2758) is satisfied unchanged and this task's trigger-inventory assertion needs no edit. The value still never comes from the caller, which is all §3.3 requires; immutability was never the requirement. `entered_by`, `loaded_by` and `verified_by` — all write-once by design — keep `app_meta.attach_stamp`. `0081.down.sql` drops the trigger and the function. | T3 |
+| **A19** | 4.12.5, 3.3 | **`employee_sensitive.updated_by` is stamped by a dedicated ALWAYS-stamp trigger, not by `app_meta.attach_stamp`.** §4.12.5 writes the column as `updated_by (stamped)` and says nothing about *which* stamp; Plan 0A's `app.stamp_actor` is a **write-once** stamp — on UPDATE it fills a NULL and raises `ERR_ACTOR_IMMUTABLE` on any change to a non-null value (plan0A:2369–2386). `employee_sensitive` is the one table in this slice whose rows are *edited* (a bank account changes; `writeSensitive` is an upsert), so `attach_stamp` would freeze the column at the **creator** for the life of the row while `updated_at` moved — a column that names the wrong principal, which is LEGACY-044's own shape. 0081 therefore creates `app.stamp_actor_always()` — the same `tg_argv[0]` + `jsonb_populate_record` shape as 0A's `app.stamp_actor()`, so it generalises to any column a later slice needs it for — and attaches it as the trigger **`stamp_updated_by`**, which sets the named column to `app.current_actor()` on **every** INSERT and UPDATE. **The trigger keeps the name `attach_stamp` would have given it**, so 0A's `stamp_actor` linter rule (which fires on a `*_by` column with no trigger *named* `stamp_<col>`, plan0A:2755-2758) is satisfied unchanged and this task's trigger-inventory assertion needs no edit. The value still never comes from the caller, which is all §3.3 requires; immutability was never the requirement. `entered_by`, `loaded_by` and `verified_by` — all write-once by design — keep `app_meta.attach_stamp`. `0081.down.sql` drops the trigger and the function. | T3 |
 | **A20** | 4.6.1 (7C `export_job`), 6.3 | **8A's three `EXPORT_TABLES` rows follow a first-to-run branch, exactly as migration 0064 does.** 7C's handoff assigns 8A one row (7c:5858: *"**8A** adds one `EXPORT_TABLES` row … `NEVER_EXPORTED` already pins that table's `["*"]` so the row must narrow it deliberately"*), but §6.3 (contracts:4025) puts **8A on its own branch from 4B, parallel to `7A ─ 7B ─ 7C (needs 6D)`**, and contracts:4029 lists `8A → 8B ∥ … ∥ (7A → 7B)` — so `packages/db/src/export/` may not exist when this slice runs and 7C is more likely *later* than 8A, not earlier. **Under `7C-FIRST`** (`packages/db/src/export/tables.ts` present) Task 14 Step 3 adds three rows — `employee_sensitive` gated on `hr.employee.read_sensitive` with **metadata columns only**, `compensation_line` and `employee_statutory_profile` gated on `hr.compensation.read` — and narrows `NEVER_EXPORTED["employee_sensitive"]` from `["*"]` to the nine `*_enc` column names, which is what "narrow it deliberately" means and what 7C's own `expect(forbidden).not.toContain("*")` case (7c:3251) requires of a registered table. **Under `8A-FIRST`** nothing is added, the three tables are simply absent from the registry — which is 7C's safe default, since a table the registry does not name is never exported — and the rows are written into `docs/handoff/8a-to-8b.md` for whichever of 7C and 8D runs after both. The invariant case is `it.skipIf(!SEVEN_C)` and starts running by itself the moment the module lands, exactly as T4's two `sixC` cases do. | T14 |
 
 - [ ] **Step 2: Assert the repository is at the Phase 4 gate**
@@ -542,7 +542,7 @@ comment on column app.employee.employment_type is
 comment on column app.employee.statutory_profile_note is
   'Free text for the payroll officer. The statutory INPUTS live in app.employee_statutory_profile (migration 0082); this column never carries one.';
 
--- ── 2. R4 — no self-pay (spec:2175, SAH-045) ────────────────────────────────────────────────────
+-- ── 2. R4 — no self-pay (spec:2175, LEGACY-045) ────────────────────────────────────────────────────
 -- TG_ARGV[0] names the column of NEW that holds the employee id: 'id' on app.employee itself,
 -- 'employee_id' on the three child tables. format(%I) is applied to a literal written in a
 -- migration file and never to request input (§3.3, hazard 5 of the never list).
@@ -814,7 +814,7 @@ EOF
 
 ### Task 3: Migration 0081 — `app.employee_sensitive`, the `sensitive_gate` policy, the encryption envelope and ADR 0071
 
-**The spec writes this policy for us, and it is copied character for character** (spec:2076). Everything about it is load-bearing: `AS RESTRICTIVE` because permissive policies OR together and a permissive gate would be voided by `tenant_isolation` (SAH-033); `app.actor_has(...)` because the system principal passes it, so 8D's rotation job and 8C's schedules still run; the sub-select joining `employee` because the table carries **no `company_id` of its own**; and no `with check` clause, because a policy without one uses its `using` expression for `with check` too, so the same predicate gates writes.
+**The spec writes this policy for us, and it is copied character for character** (spec:2076). Everything about it is load-bearing: `AS RESTRICTIVE` because permissive policies OR together and a permissive gate would be voided by `tenant_isolation` (LEGACY-033); `app.actor_has(...)` because the system principal passes it, so 8D's rotation job and 8C's schedules still run; the sub-select joining `employee` because the table carries **no `company_id` of its own**; and no `with check` clause, because a policy without one uses its `using` expression for `with check` too, so the same predicate gates writes.
 
 **The ciphertext never leaves one module.** `packages/db/src/hr/sensitive.ts` is the only file in the repository that calls `node:crypto`, and `packages/db/src/hr/keys.ts` is the only file that holds key bytes. Both are `packages/db`, not `apps/api`, because 8D's rotation job runs in `apps/worker` and §3.1 forbids an app importing an app.
 
@@ -944,7 +944,7 @@ describe("migration 0081 — employee_sensitive is ciphertext behind a RESTRICTI
     // The case the write-once app_meta.attach_stamp would fail. Under attach_stamp this row's
     // updated_by would still read `holder` after the second write (a NULL -> value transition is the
     // only UPDATE it stamps, and any other change raises ERR_ACTOR_IMMUTABLE), so the column would
-    // name the creator forever while updated_at moved — SAH-044's shape. app.stamp_actor_always()
+    // name the creator forever while updated_at moved — LEGACY-044's shape. app.stamp_actor_always()
     // is what makes the assertion below true, and this case is the only place it is observable.
     const before = await withTenant(db.rw, a.tenant, holder, (tx) => readSensitive(tx, ring, employeeId));
     expect(before?.updatedBy).toBe(holder);
@@ -987,7 +987,7 @@ describe("migration 0081 — employee_sensitive is ciphertext behind a RESTRICTI
     expect(raw!.hex).not.toContain(Buffer.from("SYNTHETIC-ID-0001", "utf8").toString("hex"));
   });
 
-  it("sensitive_gate: a principal WITHOUT the code gets zero rows by direct app_rw SQL (test 32, SAH-033)", async () => {
+  it("sensitive_gate: a principal WITHOUT the code gets zero rows by direct app_rw SQL (test 32, LEGACY-033)", async () => {
     const rows = await withTenant(db.rw, a.tenant, bystander, (tx) =>
       tx<{ employee_id: string }[]>`select employee_id from app.employee_sensitive`);
     expect(rows).toHaveLength(0);
@@ -1042,7 +1042,7 @@ describe("migration 0081 — employee_sensitive is ciphertext behind a RESTRICTI
     const v = await lintSchema(db.admin);
     expect(v).toContainEqual({
       table: "employee_sensitive", rule: "sensitive_gate",
-      detail: "no RESTRICTIVE policy named sensitive_gate (spec:2076 — a permission gate is OR-ed away when permissive, SAH-033)",
+      detail: "no RESTRICTIVE policy named sensitive_gate (spec:2076 — a permission gate is OR-ed away when permissive, LEGACY-033)",
     });
     await db.admin`create policy sensitive_gate on app.employee_sensitive as restrictive
       using (app.actor_has('hr.employee.read_sensitive', (select e.company_id from app.employee e where e.id = employee_id)))`;
@@ -1095,7 +1095,7 @@ call app_meta.attach_audit('app.employee_sensitive', 'tenant_column', 'employee_
 -- entered_by / loaded_by / verified_by, which record one event each. It is WRONG here: this row is
 -- edited -- a bank account changes, and writeSensitive() is an upsert -- so a write-once stamp would
 -- pin updated_by to the CREATOR for the life of the row while updated_at moved, which is a column
--- naming the wrong principal (SAH-044). The trigger below stamps the session's actor on every INSERT
+-- naming the wrong principal (LEGACY-044). The trigger below stamps the session's actor on every INSERT
 -- and every UPDATE. The value still never comes from the caller, which is all §3.3 requires; the
 -- audit_log row images (and their own actor_id) remain the tamper-evident history.
 -- Same signature shape as 0A's app.stamp_actor(): the column name arrives in TG_ARGV, a literal
@@ -1116,7 +1116,7 @@ create trigger stamp_updated_by
 
 -- ── The gate, spec:2076 VERBATIM ────────────────────────────────────────────────────────────────
 -- AS RESTRICTIVE because permissive policies OR together and a permissive gate would be voided by
--- tenant_isolation (SAH-033). No `with check`: PostgreSQL then uses `using` for the write check too,
+-- tenant_isolation (LEGACY-033). No `with check`: PostgreSQL then uses `using` for the write check too,
 -- so one predicate gates read AND write. app.actor_has returns true for the system principal, so
 -- 8C's schedules and 8D's key rotation still run (spec:2076).
 create policy sensitive_gate on app.employee_sensitive as restrictive
@@ -1166,7 +1166,7 @@ and, inside the `for (const t of tables)` loop, immediately after the `extra_per
       const p = policies.find((x) => x.tablename === name && x.policyname === gate);
       if (p === undefined || p.permissive === "PERMISSIVE") {
         v.push({ table: name, rule: "sensitive_gate",
-                 detail: `no RESTRICTIVE policy named ${gate} (spec:2076 — a permission gate is OR-ed away when permissive, SAH-033)` });
+                 detail: `no RESTRICTIVE policy named ${gate} (spec:2076 — a permission gate is OR-ed away when permissive, LEGACY-033)` });
       }
     }
 ```
@@ -1385,7 +1385,7 @@ export { openField, sealField, SENSITIVE_FIELDS, type SensitiveField } from "./s
 export { readSensitive, writeSensitive, type SensitiveRow, type SensitiveValues } from "./employee-sensitive";
 ```
 
-and `packages/db/src/index.ts` gains one line: `export * from "./hr";` — this is the **main** barrel, not the seed barrel, so §3.1's `sah-039` rule is untouched (no `./seed` path appears).
+and `packages/db/src/index.ts` gains one line: `export * from "./hr";` — this is the **main** barrel, not the seed barrel, so §3.1's `legacy-039` rule is untouched (no `./seed` path appears).
 
 - [ ] **Step 6: Write the Drizzle mirror**
 
@@ -1701,7 +1701,7 @@ feat(db): employee_sensitive behind the spec:2076 restrictive gate, sealed with 
 Migration 0081 creates nine ciphertext columns keyed on employee_id (NO_ID_TABLES) with no
 company_id of its own -- the sensitive_gate policy joins app.employee for it, exactly as spec:2076
 writes the policy. AS RESTRICTIVE and with no `with check`, so one predicate gates read and write
-and tenant_isolation cannot OR it away (SAH-033). The envelope is
+and tenant_isolation cannot OR it away (LEGACY-033). The envelope is
 version||nonce||ciphertext||tag with AAD = employee_id:column, so a row moved to another employee
 cannot be opened (ADR 0071, a proposal). key_version records the OLDEST version any column of a row
 still carries, so a partial write cannot hide a row from 8D's rotation scan. AppDeps becomes seven
@@ -2367,7 +2367,7 @@ describe("migration 0082 — the effective-dated statutory profile (⚠️ OD-28
     await db.admin`drop policy compensation_gate on app.employee_statutory_profile`;
     expect(await lintSchema(db.admin)).toContainEqual({
       table: "employee_statutory_profile", rule: "sensitive_gate",
-      detail: "no RESTRICTIVE policy named compensation_gate (spec:2076 — a permission gate is OR-ed away when permissive, SAH-033)",
+      detail: "no RESTRICTIVE policy named compensation_gate (spec:2076 — a permission gate is OR-ed away when permissive, LEGACY-033)",
     });
     await db.admin`create policy compensation_gate on app.employee_statutory_profile as restrictive
       using (app.actor_has('hr.compensation.read', (select e.company_id from app.employee e where e.id = employee_id)))`;
@@ -2769,11 +2769,11 @@ current publication, never invented here". The ellipsis is what is open.
 type (text, whole number, yes/no, date), whether it is required, and the publication and date it
 was read from. That last part is not paperwork: `statutory_rate_table.source` records the same
 three facts for every rate table (§4.12.3), and a profile field with no source is the shape
-SAH-078 describes.
+LEGACY-078 describes.
 
 **What changes when it arrives** — one migration in 8B's range promotes the confirmed fields from
 `extra` to typed columns and backfills them; the payroll run starts refusing a NULL in a required
-field, naming the employee (`ERR_PAYROLL_INPUT_MISSING`, spec:2105 SAH-011). Until then a required
+field, naming the employee (`ERR_PAYROLL_INPUT_MISSING`, spec:2105 LEGACY-011). Until then a required
 field simply is not declared anywhere, and no calculation depends on one.
 
 **No rate, threshold, ceiling or formula belongs in this answer.** Those arrive separately as
@@ -3365,7 +3365,7 @@ human, not an accident.
   the run's period and whose `created_at` is after the run's `calculated_at`.
 - The audit log carries the whole history twice — once as the closed rows, once as before/after
   images. That is redundancy on purpose: the rows answer "what was in force", the audit answers
-  "who changed it and when" (spec:2105, SAH-029/030).
+  "who changed it and when" (spec:2105, LEGACY-029/030).
 - Genuine correction of a mistyped row is a *new* row plus an archived old one, never an UPDATE.
   spec:2049 admits no deletion here.
 
@@ -3415,7 +3415,7 @@ EOF
 
 **One new route module and two sub-paths.** `payComponentRoutes` at `/v1/companies/:companyId/pay-components` is the catalogue (amendment A7, one `PROBES` key); `GET|POST …/employees/{employeeId}/compensation-lines` join 6C's `employees` module and add no key (hazard 31).
 
-**Acceptance test 31's R4 clause is proved here through the API**, not only by direct SQL: spec:2449 says *"a principal cannot alter their own compensation, sensitive data or leave approval"* **"through any path — API, job, or direct SQL as `app_rw`"**. Tasks 1, 3, 5 and 6 proved the SQL path; this task proves the API path for compensation and files the whole R4 set in `tests/regression/sah-045.test.ts` at Task 14.
+**Acceptance test 31's R4 clause is proved here through the API**, not only by direct SQL: spec:2449 says *"a principal cannot alter their own compensation, sensitive data or leave approval"* **"through any path — API, job, or direct SQL as `app_rw`"**. Tasks 1, 3, 5 and 6 proved the SQL path; this task proves the API path for compensation and files the whole R4 set in `tests/regression/legacy-045.test.ts` at Task 14.
 
 **Files:**
 - Create: `apps/api/src/routes/hr/pay-components.ts`, `apps/api/src/routes/hr/compensation.ts`, `packages/contracts/src/hr/pay-component.ts`, `packages/contracts/src/hr/compensation.ts`, `apps/api/test/routes/hr/pay-components.test.ts`, `apps/api/test/routes/hr/compensation.test.ts`
@@ -3749,7 +3749,7 @@ export const OpenCompensationBody = z.object({
  *  **0B's `AuditLogQuery` deliberately is NOT `.strict()` and this is not an inconsistency to
  *  "harmonise" later** (0b:7384): the audit log is §4.2.8 Layer 1's open `parseFilters` surface, whose
  *  whole point is accepting keys the schema does not enumerate, and `.strict()` there would break
- *  `sah-036`'s undeclared-key case. This schema is a Layer 2 literal-key schema, where the enumeration
+ *  `legacy-036`'s undeclared-key case. This schema is a Layer 2 literal-key schema, where the enumeration
  *  IS the contract, so closing it is the correct half of the same rule. */
 export const CompensationQuery = ListQuery.extend({
   "filter[componentId][eq]": UuidSchema.optional(),
@@ -4104,7 +4104,7 @@ EOF
 
 *Compare `app.current_actor()` against `OLD.loaded_by`, never against `NEW.verified_by`.* BEFORE ROW triggers on one table fire in **trigger-name order**, so whether `stamp_verified_by` has already overwritten `NEW.verified_by` by the time this trigger runs depends on nothing more principled than how two names sort — and a rule whose correctness turns on a trigger name breaks the next time one is renamed. Reading the session and the immutable `OLD.loaded_by` is **order-independent**. `loaded_by` cannot move under it: `stamp_actor` raises `ERR_ACTOR_IMMUTABLE` on any change to a non-null `*_by` value (plan0A:2373–2376).
 
-*Freeze the definition once verified.* A table that could be edited after verification would carry a signature for numbers nobody signed — SAH-041's shape applied to statutory data. The same trigger refuses a change to `scheme_id`, `version`, `effective_from`, `source` or `definition` on a row whose `verified_at` is already set.
+*Freeze the definition once verified.* A table that could be edited after verification would carry a signature for numbers nobody signed — LEGACY-041's shape applied to statutory data. The same trigger refuses a change to `scheme_id`, `version`, `effective_from`, `source` or `definition` on a row whose `verified_at` is already set.
 
 **Files:**
 - Create: `packages/db/migrations/0084_create_statutory_scheme_rate_table.sql`, `packages/db/migrations/0084.down.sql`, `packages/db/src/hr/statutory.ts`, `packages/db/src/schema/statutory-scheme.ts`, `packages/db/src/schema/statutory-rate-table.ts`, `packages/db/test/hr/statutory.test.ts`
@@ -4213,7 +4213,7 @@ describe("migration 0084 — schemes as rows, rate tables as verified data", () 
     expect(col!.data_type).toBe("text");
   });
 
-  it("loaded_by is stamped from the session, never from the caller (SAH-044)", async () => {
+  it("loaded_by is stamped from the session, never from the caller (LEGACY-044)", async () => {
     const id = await withTenant(db.rw, a.tenant, loader, (tx) => loadRateTable(tx, {
       schemeId, version: 1, effectiveFrom: "2026-01-01", effectiveTo: "2026-12-31",
       definition: SYNTH_RATE_TABLE_V1, source: "Dulja test fixture / synthetic",
@@ -4249,7 +4249,7 @@ describe("migration 0084 — schemes as rows, rate tables as verified data", () 
       .rejects.toThrow(/ERR_HR_SELF_VERIFY/);
   });
 
-  it("a verified table is frozen — definition, version, effective_from and source cannot change (SAH-041)", async () => {
+  it("a verified table is frozen — definition, version, effective_from and source cannot change (LEGACY-041)", async () => {
     const [row] = await withTenant(db.rw, a.tenant, loader, (tx) => listRateTables(tx, schemeId));
     const verified = row!.verifiedAt === null ? (await withTenant(db.rw, a.tenant, loader, (tx) => listRateTables(tx, schemeId)))[1]! : row!;
     await expect(withTenant(db.rw, a.tenant, verifier, (tx) => tx`
@@ -4257,7 +4257,7 @@ describe("migration 0084 — schemes as rows, rate tables as verified data", () 
       .rejects.toThrow(/ERR_HR_SELF_VERIFY.*frozen/);
   });
 
-  it("rateTableOn returns only a VERIFIED table covering the date (spec:2080, SAH-020)", async () => {
+  it("rateTableOn returns only a VERIFIED table covering the date (spec:2080, LEGACY-020)", async () => {
     expect((await withTenant(db.rw, a.tenant, loader, (tx) => rateTableOn(tx, schemeId, "2026-06-30")))!.version).toBe(1);
     expect(await withTenant(db.rw, a.tenant, loader, (tx) => rateTableOn(tx, schemeId, "2027-06-30"))).toBeNull();   // v2 unverified
     expect(await withTenant(db.rw, a.tenant, loader, (tx) => rateTableOn(tx, schemeId, "2025-01-01"))).toBeNull();
@@ -4317,7 +4317,7 @@ Expected: **FAIL** at import — `Cannot find module '../../src/hr/statutory'`, 
 -- ── 0084_create_statutory_scheme_rate_table.sql ────────────────────────────────────────────────
 -- §3.10.1 "Statutory schemes as data" (spec:2080). A scheme is a ROW, never an enum, so a levy the
 -- owner confirms under OD-14 is data and not a migration. A rate table is version-controlled data
--- with a source and two DIFFERENT principals behind it (SAH-078, SAH-020).
+-- with a source and two DIFFERENT principals behind it (LEGACY-078, LEGACY-020).
 -- THIS FILE STATES NO RATE, THRESHOLD, CEILING OR FORMULA (spec:2080, hazard 1). It states where
 -- one may be stored and who has to sign it.
 
@@ -4347,7 +4347,7 @@ call app_meta.enable_tenant_rls('app.statutory_scheme');
 call app_meta.attach_audit('app.statutory_scheme');
 
 comment on column app.statutory_scheme.rounding_mode is
-  'The FALLBACK rounding for this scheme, applied through the one round() of §4.2.1 when a rate table declares none. It is a SYSTEM default (the same value every other Dulja money path uses), not an authority claim; a table that declares rounding_mode overrides it, which is what SAH-019 asks for ("each scheme''s rounding rule is declared in its table").';
+  'The FALLBACK rounding for this scheme, applied through the one round() of §4.2.1 when a rate table declares none. It is a SYSTEM default (the same value every other Dulja money path uses), not an authority claim; a table that declares rounding_mode overrides it, which is what LEGACY-019 asks for ("each scheme''s rounding rule is declared in its table").';
 comment on column app.statutory_scheme.employer_registration is
   '⚠️ OD-23. The employer''s registration number with this authority. Relational, per scheme -- spec:2088 forbids a blob.';
 
@@ -4385,11 +4385,11 @@ call app_meta.attach_audit('app.statutory_rate_table');
 call app_meta.attach_stamp('app.statutory_rate_table', 'loaded_by');
 call app_meta.attach_stamp('app.statutory_rate_table', 'verified_by');
 
--- ── verified_by <> loaded_by, and a verified table is frozen (spec:2080, 1651-1652; SAH-020, 041) ──
+-- ── verified_by <> loaded_by, and a verified table is frozen (spec:2080, 1651-1652; LEGACY-020, 041) ──
 -- The comparison is app.current_actor() against OLD.loaded_by, NOT against NEW.verified_by. BEFORE
 -- ROW triggers on one table fire in TRIGGER-NAME order, so whether stamp_verified_by has already
 -- replaced NEW.verified_by by now turns on how two names happen to sort, and NEW.verified_by may
--- still hold whatever the caller sent -- the value SAH-044 says never to trust. Reading the session
+-- still hold whatever the caller sent -- the value LEGACY-044 says never to trust. Reading the session
 -- and the immutable loaded_by is order-independent: stamp_actor raises ERR_ACTOR_IMMUTABLE on any
 -- change to a non-null *_by value, so loaded_by cannot move under us.
 create function app.assert_rate_table_verifier() returns trigger language plpgsql as $$
@@ -4409,7 +4409,7 @@ begin
     -- effective_to is deliberately NOT in the list above and the message must not claim it is: a
     -- successor version has to be able to close its predecessor's open window, which is an UPDATE of
     -- effective_to on a verified row. Every other field is frozen.
-    raise exception 'ERR_HR_SELF_VERIFY: rate table version % of scheme % is already verified; its definition, version, effective_from and source are frozen (effective_to may still be closed by a successor). Load a NEW version rather than editing a signed one (SAH-041, spec:2080)',
+    raise exception 'ERR_HR_SELF_VERIFY: rate table version % of scheme % is already verified; its definition, version, effective_from and source are frozen (effective_to may still be closed by a successor). Load a NEW version rather than editing a signed one (LEGACY-041, spec:2080)',
       old.version, old.scheme_id using errcode = 'check_violation';
   end if;
   return new;
@@ -4420,7 +4420,7 @@ create trigger statutory_rate_table_verifier
   for each row execute function app.assert_rate_table_verifier();
 
 comment on table app.statutory_rate_table is
-  'spec:2080. The PRIMARY load path is the seed pull request (packages/db/seed/my/statutory/<scheme>/vN.json), so every change is a reviewed diff (SAH-078); the runtime hr.statutory_table.manage load is BREAK-GLASS (ADR 0073). No file under seed/my/statutory/<scheme>/ exists until OD-23 supplies verified tables.';
+  'spec:2080. The PRIMARY load path is the seed pull request (packages/db/seed/my/statutory/<scheme>/vN.json), so every change is a reviewed diff (LEGACY-078); the runtime hr.statutory_table.manage load is BREAK-GLASS (ADR 0073). No file under seed/my/statutory/<scheme>/ exists until OD-23 supplies verified tables.';
 ```
 
 `packages/db/migrations/0084.down.sql`:
@@ -4489,7 +4489,7 @@ export async function listRateTables(tx: Sql, schemeId: string): Promise<RateTab
   return rows.map(toTable);
 }
 
-/** Only a VERIFIED table covering `on` (spec:2080, SAH-020). 8B's RateTableRef is built from this,
+/** Only a VERIFIED table covering `on` (spec:2080, LEGACY-020). 8B's RateTableRef is built from this,
  *  and 8B's ERR_PAYROLL_RATE_TABLE_UNVERIFIED is what it raises when this returns null. */
 export async function rateTableOn(tx: Sql, schemeId: string, on: string): Promise<RateTableRow | null> {
   const [row] = await tx<RawTable[]>`
@@ -4519,7 +4519,7 @@ export async function loadRateTable(tx: Sql, input: {
 
 /** `verified_by` is written as `app.current_actor()` and would be overwritten with the same value by
  *  `stamp_verified_by` even if a caller had supplied another (plan0A:2373-2376) — the column is
- *  never trusted from a caller (SAH-044). The trigger compares the session's actor to `OLD.loaded_by`
+ *  never trusted from a caller (LEGACY-044). The trigger compares the session's actor to `OLD.loaded_by`
  *  and raises ERR_HR_SELF_VERIFY when they match, and the `where verified_at is null` clause is what
  *  makes a second verification a no-op the caller is told about rather than a silent success. */
 export async function verifyRateTable(tx: Sql, rateTableId: string): Promise<void> {
@@ -4728,9 +4728,9 @@ Migration 0084. A scheme is a ROW with a free-text code, so a levy the owner con
 is data and not a migration (spec:2080). A rate table carries its definition, its source and two
 DIFFERENT principals: app.assert_rate_table_verifier() compares app.current_actor() to OLD.loaded_by
 -- never to NEW.verified_by, which stamp_verified_by has not written yet because BEFORE triggers
-fire in name order and would leave a caller-supplied value in the comparison (SAH-044). A verified
+fire in name order and would leave a caller-supplied value in the comparison (LEGACY-044). A verified
 table is frozen: definition, version, effective_from and source cannot change, so a signature never
-covers numbers nobody signed (SAH-041). effective_to is the one field that may still move, because a
+covers numbers nobody signed (LEGACY-041). effective_to is the one field that may still move, because a
 successor version has to be able to close its predecessor's window. This is test 35's verify-not-load clause, proved by direct app_rw
 SQL because "enforced by the data layer" means the trigger and not the handler. ERR_HR_SELF_VERIFY
 joins ERRORS in this commit because 0084's SQL text raises it. NO STATUTORY FIGURE IS IN THIS FILE.
@@ -4744,7 +4744,7 @@ EOF
 
 ### Task 9: `packages/domain/payroll/`, the rate-table schema and type, the `statutory` sub-pack loader, and ADR 0073
 
-**Four things that are one thing:** the JSON Schema of §4.12.3, the `RateTable` type generated from it and committed, the `statutory` sub-pack loader §3.4.8 assigns 8A, and the seed pack it reads. They land together because a loader that does not validate is the SAH-078 defect with extra steps, and a schema with no generated type means every consumer re-declares the shape.
+**Four things that are one thing:** the JSON Schema of §4.12.3, the `RateTable` type generated from it and committed, the `statutory` sub-pack loader §3.4.8 assigns 8A, and the seed pack it reads. They land together because a loader that does not validate is the LEGACY-078 defect with extra steps, and a schema with no generated type means every consumer re-declares the shape.
 
 **`packages/domain/payroll/` sits beside `src/`, not inside it** (spec:2366 — "`payroll/`: the statutory calculators and the rate-table JSON schema (§3.10); **core never imports HR**"). Amendment A11 adds the `"./payroll"` export subpath so `packages/db` can reach it without either violating that rule or reaching in by relative path.
 
@@ -4817,7 +4817,7 @@ describe("packages/domain/payroll — the rate-table schema (§4.12.3)", () => {
     expect(hits).toHaveLength(0);
   });
 
-  it("source is required with all four of its members — a table with no provenance is refused (SAH-078)", () => {
+  it("source is required with all four of its members — a table with no provenance is refused (LEGACY-078)", () => {
     const { source, ...noSource } = BANDED;
     expect(source).toBeTruthy();
     expect(validateRateTable(noSource).ok).toBe(false);
@@ -5020,7 +5020,7 @@ file are empty on purpose. spec:2080: *"This document states no rate, threshold,
 A rate table enters this repository only when OD-23 delivers it: the current published tables with,
 per `packages/domain/payroll/rate-table.schema.json`, a `source` naming the authority, the
 publication, its URL and the date it was retrieved, and a `verification` block naming the accountant
-who signed it off. The seed pull request is the reviewed diff SAH-078 asks for.
+who signed it off. The seed pull request is the reviewed diff LEGACY-078 asks for.
 
 **`pay_component_scheme` has no rows here either.** "Basic salary is subject to EPF" is a statutory
 applicability claim, and this repository makes none. Those rows arrive in the same pull request as
@@ -5127,7 +5127,7 @@ export const PHASE_0_SUB_PACK_DIRECTORIES: readonly string[] = [
 export { statutoryLoader, loadStatutoryPack, type SchemeSeed, type PayComponentSeed } from "./statutory";
 ```
 
-and `LOADERS` gains `statutoryLoader`. **Nothing is exported from `packages/db/src/index.ts`** — §3.1's `sah-039` rule.
+and `LOADERS` gains `statutoryLoader`. **Nothing is exported from `packages/db/src/index.ts`** — §3.1's `legacy-039` rule.
 
 - [ ] **Step 7: Write the loader test**
 
@@ -5271,7 +5271,7 @@ describe("the statutory sub-pack loader (§3.4.8, ADR 0073)", () => {
       .rejects.toThrow('SYNTH/v1.json declares scheme "OTHER"; the directory says "SYNTH"');
   });
 
-  it("refuses a definition with no source, with a JSON Pointer at the root (SAH-078)", async () => {
+  it("refuses a definition with no source, with a JSON Pointer at the root (LEGACY-078)", async () => {
     const noSource: Record<string, unknown> = { ...SYNTH_RATE_TABLE_V1 };
     delete noSource.source;                         // a destructured `_unused` would trip oxlint
     let caught: unknown;
@@ -5311,7 +5311,7 @@ Slice: 8A
 
 spec:2080 gives two load paths and ranks them: rate tables are "seeded from version-controlled files
 under `packages/db/seed/my/statutory/<scheme>/vN.json` **so every change is a reviewed diff**
-(SAH-078)", and "the seed pull request is the primary load path; the runtime
+(LEGACY-078)", and "the seed pull request is the primary load path; the runtime
 `hr.statutory_table.manage` load is **break-glass**". What "break-glass" means operationally was not
 written down, and a permission with no stated intent becomes an ordinary one.
 
@@ -5350,7 +5350,7 @@ permanent record in the repository.
 
 ## Rejected
 
-- **API-only loading.** No reviewed diff, which is the SAH-078 defect verbatim.
+- **API-only loading.** No reviewed diff, which is the LEGACY-078 defect verbatim.
 - **Seed-only loading.** A statutory change between deployments would mean a deployment, and payroll
   deadlines do not move for a release train.
 - **Letting the seed set `verified_at` when the file carries a `verification` block.** The block
@@ -5763,7 +5763,7 @@ statutorySchemeRoutes.openapi(
       // The trigger is the control (spec:2080). This call raises SQLSTATE 23514 with the token
       // ERR_HR_SELF_VERIFY when the actor is the loader, and fromDatabaseError turns it into the
       // 409 the route test asserts. The handler adds no pre-flight of its own: a second check here
-      // would be a second place to get the rule wrong (SAH-032's shape).
+      // would be a second place to get the rule wrong (LEGACY-032's shape).
       await verifyRateTable(tx, table.id);
       return (await listRateTables(tx, schemeId)).find((t) => t.id === table.id)!;
     });
@@ -5915,7 +5915,7 @@ EOF
 
 **What changes if the owner answers.** `packages/db/seed/my/statutory/schemes.json` gains an `employerRegistration` member per scheme and Task 9's loader writes it; a `company_hr_setting` row is seeded with the confirmed `proration_rule` and `pay_day`. **No migration and no code changes** — that is the point of A3's relational column and A4's dropped blob.
 
-**Amendment A4 in one sentence:** `employer_registrations jsonb` is **not** built. §4.6.1 called it "the display copy" of `statutory_scheme.employer_registration`; spec:2088 says these identifiers are "relational company settings … **never a blob**", and a copy with no rebuild path is SAH-078's shape in miniature. A caller that wants them all reads them with one join.
+**Amendment A4 in one sentence:** `employer_registrations jsonb` is **not** built. §4.6.1 called it "the display copy" of `statutory_scheme.employer_registration`; spec:2088 says these identifiers are "relational company settings … **never a blob**", and a copy with no rebuild path is LEGACY-078's shape in miniature. A caller that wants them all reads them with one join.
 
 **Files:**
 - Create: `packages/db/migrations/0085_create_company_hr_settings.sql`, `packages/db/migrations/0085.down.sql`, `packages/db/src/hr/settings.ts`, `packages/db/src/schema/company-hr-setting.ts`, `packages/db/test/hr/company-hr-setting.test.ts`, `packages/contracts/src/hr/hr-setting.ts`, `apps/api/src/routes/hr/hr-settings.ts`, `apps/api/test/routes/hr/hr-settings.test.ts`, `docs/owner/od-23-employer-registrations.md`
@@ -6031,7 +6031,7 @@ Expected: **FAIL** at import — `Cannot find module '../../src/hr/settings'`.
 -- scheme, on app.statutory_scheme.employer_registration (migration 0084, amendment A3). spec:2088:
 -- "relational company settings supplied by the owner -- never a blob (§4.1)". §4.6.1's
 -- `employer_registrations jsonb` "display copy" is deliberately NOT built (amendment A4): a second
--- store with no rebuild path is SAH-078 in miniature, and one join reads them all.
+-- store with no rebuild path is LEGACY-078 in miniature, and one join reads them all.
 
 create table app.company_hr_setting (
   id             uuid primary key default uuidv7(),
@@ -6339,7 +6339,7 @@ Migration 0085 stores the proration rule (calendar_days | working_days -- CONFIG
 statutory claim, spec:2086) and the pay day. §4.6.1's employer_registrations jsonb "display copy" is
 deliberately NOT built (amendment A4): spec:2088 says these identifiers are relational company
 settings and never a blob, they live one per scheme on statutory_scheme.employer_registration
-(amendment A3), and a second store with no rebuild path is SAH-078 in miniature. ⚠️ OD-23: the
+(amendment A3), and a second store with no rebuild path is LEGACY-078 in miniature. ⚠️ OD-23: the
 numbers are null until the owner supplies them and nothing in 8A refuses to run meanwhile; the
 first consumers are 8C's schedule and 8D's employer return, which name a missing one.
 
@@ -6507,7 +6507,7 @@ This task produces no source change while OD-24 is open. Task 14 records it as t
 **Six `describe` blocks appended, none created.** §3.7.3's ownership rule: the first slice in execution order creates the file, every later slice appends a `describe("… — <slice id>", …)` block and never edits an earlier one. **All six of this slice's files were created by 0B** — 029, 030, 033 and 044 as thin files from the Plan 0A-proven list, 078 as one of 0B's sixteen full files, 045 as one of its six structural files.
 
 **Files:**
-- Modify: `tests/regression/sah-029.test.ts`, `sah-030.test.ts`, `sah-033.test.ts`, `sah-044.test.ts`, `sah-045.test.ts`, `sah-078.test.ts`, `tests/invariants/hr-sensitive-side-channels.test.ts` (Step 4's one appended case)
+- Modify: `tests/regression/legacy-029.test.ts`, `legacy-030.test.ts`, `legacy-033.test.ts`, `legacy-044.test.ts`, `legacy-045.test.ts`, `legacy-078.test.ts`, `tests/invariants/hr-sensitive-side-channels.test.ts` (Step 4's one appended case)
 - Modify **only under the `7C-FIRST` branch of Step 3**: `packages/db/src/export/tables.ts` (three `EXPORT_TABLES` rows and the `NEVER_EXPORTED` narrowing — amendment **A20**)
 - Create: `docs/handoff/8a-to-8b.md`
 
@@ -6520,12 +6520,12 @@ This task produces no source change while OD-24 is open. Task 14 records it as t
 
 | File | Part I heading | What 8A adds that no earlier block covers |
 |---|---|---|
-| `sah-029` | *The audit trail records no actor and is a freely writable table* | Every one of this slice's seven tables writes an `audit_log` row with a **server-supplied** actor: insert one row into each under `withTenant(…, actorId)` and assert seven `audit_log` rows whose `actor_id` is that principal and none other. `employee_sensitive`'s before/after images are **ciphertext**, and the block asserts the plaintext is not in `after` — auditing a sensitive table is only safe because of that. |
-| `sah-030` | *A login parameter switches the audit trail off* | No flag, parameter, header or session setting suppresses an HR audit row: repeat one `PUT …/sensitive` with `?audit=false`, with an `X-Audit: off` header and with `set_config('app.audit', 'off', true)` set inside the transaction, and assert the row count rises by one each time. |
-| `sah-033` | *Confidentiality levels are a read-time display filter with a caller-supplied off switch* | The gate is an **RLS predicate on the actor's permission**, and there is no parameter that changes it: `sensitive_gate` and both `compensation_gate` policies are `RESTRICTIVE` in `pg_policies`; a direct `app_rw` select returns zero rows for a non-holder; and no route accepts a query parameter, header or body field whose name matches `/level|confidential|show.?all|include.?sensitive/i` (scanned over the committed `openapi.json`). |
-| `sah-044` | *Session records are caller-controlled and attributable to the wrong user* | Every `*_by` column this slice adds is stamped **from the session** and none of them is caller-supplied: supply a **different** principal id in each of `updated_by`, `entered_by`, `loaded_by` and `verified_by` on insert and assert the session's actor is stored instead; then attempt to change a non-null **write-once** one — `compensation_line.entered_by` — and assert `ERR_ACTOR_IMMUTABLE`. **`employee_sensitive.updated_by` is deliberately not in that second case**: it is the one always-stamp column (A19), and its own proof — that a second writer's id replaces the first's, and that a supplied one is overwritten — is Task 3's `updated_by names the LAST writer` case. And the one that matters most: the rate-table verifier is read from the **session**, so a caller cannot claim someone else verified their table. |
-| `sah-045` | *Department scoping is a report parameter, not an access control* | R4 in all four places, by **direct `app_rw` SQL** — the API cases live in the route suites and this block is the data-layer twin: a principal cannot write their own `employee.terminated_on`, `employee_sensitive`, `employee_statutory_profile` or `compensation_line` row, each raising `ERR_HR_SELF_PAY`. This is test 31's R4 clause in its filed form. |
-| `sah-078` | *Behaviour-governing configuration lives in opaque blobs* | Statutory rules are **version-controlled data with provenance**: a rate table's `definition` round-trips byte-equal through `jsonb`; an invalid one is refused with a **JSON Pointer** naming the path; `source` with all four members is required by the schema; the pack file is plain reviewable JSON on disk; and `pay_component_scheme` — not a boolean column — is where applicability lives (`information_schema` shows no `subject_to_*` column on `pay_component`). |
+| `legacy-029` | *The audit trail records no actor and is a freely writable table* | Every one of this slice's seven tables writes an `audit_log` row with a **server-supplied** actor: insert one row into each under `withTenant(…, actorId)` and assert seven `audit_log` rows whose `actor_id` is that principal and none other. `employee_sensitive`'s before/after images are **ciphertext**, and the block asserts the plaintext is not in `after` — auditing a sensitive table is only safe because of that. |
+| `legacy-030` | *A login parameter switches the audit trail off* | No flag, parameter, header or session setting suppresses an HR audit row: repeat one `PUT …/sensitive` with `?audit=false`, with an `X-Audit: off` header and with `set_config('app.audit', 'off', true)` set inside the transaction, and assert the row count rises by one each time. |
+| `legacy-033` | *Confidentiality levels are a read-time display filter with a caller-supplied off switch* | The gate is an **RLS predicate on the actor's permission**, and there is no parameter that changes it: `sensitive_gate` and both `compensation_gate` policies are `RESTRICTIVE` in `pg_policies`; a direct `app_rw` select returns zero rows for a non-holder; and no route accepts a query parameter, header or body field whose name matches `/level|confidential|show.?all|include.?sensitive/i` (scanned over the committed `openapi.json`). |
+| `legacy-044` | *Session records are caller-controlled and attributable to the wrong user* | Every `*_by` column this slice adds is stamped **from the session** and none of them is caller-supplied: supply a **different** principal id in each of `updated_by`, `entered_by`, `loaded_by` and `verified_by` on insert and assert the session's actor is stored instead; then attempt to change a non-null **write-once** one — `compensation_line.entered_by` — and assert `ERR_ACTOR_IMMUTABLE`. **`employee_sensitive.updated_by` is deliberately not in that second case**: it is the one always-stamp column (A19), and its own proof — that a second writer's id replaces the first's, and that a supplied one is overwritten — is Task 3's `updated_by names the LAST writer` case. And the one that matters most: the rate-table verifier is read from the **session**, so a caller cannot claim someone else verified their table. |
+| `legacy-045` | *Department scoping is a report parameter, not an access control* | R4 in all four places, by **direct `app_rw` SQL** — the API cases live in the route suites and this block is the data-layer twin: a principal cannot write their own `employee.terminated_on`, `employee_sensitive`, `employee_statutory_profile` or `compensation_line` row, each raising `ERR_HR_SELF_PAY`. This is test 31's R4 clause in its filed form. |
+| `legacy-078` | *Behaviour-governing configuration lives in opaque blobs* | Statutory rules are **version-controlled data with provenance**: a rate table's `definition` round-trips byte-equal through `jsonb`; an invalid one is refused with a **JSON Pointer** naming the path; `source` with all four members is required by the schema; the pack file is plain reviewable JSON on disk; and `pay_component_scheme` — not a boolean column — is where applicability lives (`information_schema` shows no `subject_to_*` column on `pay_component`). |
 
 - [ ] **Step 2: Write the six blocks**
 
@@ -6534,14 +6534,14 @@ Each is `thinRegression` (or `fullRegression`, where a running API is needed) ex
 **The two `fullRegression` blocks build their own API and stop it.** `hrFixture(api, name?)` takes the
 running API rather than starting one (A6), and these blocks must not hand it `ctx.api` — `fullRegression`'s
 `api` is `sharedApi()`, memoised across every full regression file, and `f.api.stop()` in a `finally`
-would stop it for every file that runs after. Each of `sah-030.test.ts` and `sah-033.test.ts` therefore
+would stop it for every file that runs after. Each of `legacy-030.test.ts` and `legacy-033.test.ts` therefore
 adds `import { startApi } from "../../apps/api/test/support/app";` beside its existing imports — the same
 value import 0B's own `tests/invariants/tenant-isolation.test.ts` makes — and passes a distinct `name`,
-so the two `sah-033` cases do not seed one tenant name twice.
+so the two `legacy-033` cases do not seed one tenant name twice.
 
 ```ts
-// tests/regression/sah-029.test.ts — append
-thinRegression("SAH-029", "The audit trail records no actor and is a freely writable table", ["8A T1", "8A T3", "8A T6", "8A T8"], (ctx) => {
+// tests/regression/legacy-029.test.ts — append
+thinRegression("LEGACY-029", "The audit trail records no actor and is a freely writable table", ["8A T1", "8A T3", "8A T6", "8A T8"], (ctx) => {
   it("every 8A table writes an audit row whose actor is the SESSION's, not the caller's claim", async () => {
     const { db, a } = ctx;
     // `seedTenant` grants `s.human` NO permission at all (§4.1, pinned), and the three gated tables
@@ -6553,12 +6553,12 @@ thinRegression("SAH-029", "The audit trail records no actor and is a freely writ
     // with whichever other block happens to run first.
     await grantCodes(db, a, {
       codes: ["hr.employee.read_sensitive", "hr.compensation.read", "hr.compensation.manage"],
-      principalId: a.human, roleCode: "sah029-writer",
+      principalId: a.human, roleCode: "legacy029-writer",
     });
     const before = await db.admin<{ n: string }[]>`select count(*)::text as n from app.audit_log where tenant_id = ${a.tenant}`;
-    const employeeId = await seedEmployee(db, a, { employeeNumber: "E-SAH029" });
-    const componentId = await seedPayComponent(db, a, { code: "SAH029", kind: "earning" });
-    const schemeId = await seedStatutoryScheme(db, a, { code: "SAH029" });
+    const employeeId = await seedEmployee(db, a, { employeeNumber: "E-LEGACY029" });
+    const componentId = await seedPayComponent(db, a, { code: "LEGACY029", kind: "earning" });
+    const schemeId = await seedStatutoryScheme(db, a, { code: "LEGACY029" });
     await seedRateTable(db, a, { schemeId });
     await withTenant(db.rw, a.tenant, a.human, async (tx) => {
       await writeSensitive(tx, RING, employeeId, { national_id: "SYNTHETIC-ID-029" });
@@ -6590,14 +6590,14 @@ thinRegression("SAH-029", "The audit trail records no actor and is a freely writ
 ```
 
 ```ts
-// tests/regression/sah-030.test.ts — append
-fullRegression("SAH-030", "A login parameter switches the audit trail off", ["8A T3", "8A T4"], (ctx) => {
+// tests/regression/legacy-030.test.ts — append
+fullRegression("LEGACY-030", "A login parameter switches the audit trail off", ["8A T3", "8A T4"], (ctx) => {
   const count = async (api: StartedApi, tenant: string): Promise<number> =>
     Number((await api.db.admin<{ n: string }[]>`
       select count(*)::text as n from app.audit_log where tenant_id = ${tenant} and table_name = 'employee_sensitive'`)[0]!.n);
 
   it("no query parameter, header or session setting suppresses an HR audit row", async () => {
-    const f = await hrFixture(await startApi(), "sah-030");
+    const f = await hrFixture(await startApi(), "legacy-030");
     try {
       const target = f.employees[0]!.id;
       const path = `/v1/companies/${f.companyId}/employees/${target}/sensitive`;
@@ -6621,10 +6621,10 @@ fullRegression("SAH-030", "A login parameter switches the audit trail off", ["8A
 ```
 
 ```ts
-// tests/regression/sah-033.test.ts — append
-fullRegression("SAH-033", "Confidentiality levels are a read-time display filter with a caller-supplied off switch", ["8A T3", "8A T4", "8A T5", "8A T6"], () => {
+// tests/regression/legacy-033.test.ts — append
+fullRegression("LEGACY-033", "Confidentiality levels are a read-time display filter with a caller-supplied off switch", ["8A T3", "8A T4", "8A T5", "8A T6"], () => {
   it("all three gates are RESTRICTIVE policies, not display filters", async () => {
-    const f = await hrFixture(await startApi(), "sah-033-a");
+    const f = await hrFixture(await startApi(), "legacy-033-a");
     try {
       const rows = await f.db.admin<{ tablename: string; policyname: string; permissive: string }[]>`
         select tablename, policyname, permissive from pg_policies
@@ -6647,7 +6647,7 @@ fullRegression("SAH-033", "Confidentiality levels are a read-time display filter
   });
 
   it("a non-holder gets zero rows from all three tables by direct app_rw SQL", async () => {
-    const f = await hrFixture(await startApi(), "sah-033-b");
+    const f = await hrFixture(await startApi(), "legacy-033-b");
     try {
       const ctx = { tenantId: f.seed.tenant, actorId: f.outsider, requestId: "00000000-0000-7000-8000-0000000dd033" };
       // Three literal queries, never a table name interpolated into SQL text. postgres.js would accept
@@ -6665,24 +6665,24 @@ fullRegression("SAH-033", "Confidentiality levels are a read-time display filter
 ```
 
 ```ts
-// tests/regression/sah-044.test.ts — append
-thinRegression("SAH-044", "Session records are caller-controlled and attributable to the wrong user", ["8A T3", "8A T5", "8A T6", "8A T8"], (ctx) => {
+// tests/regression/legacy-044.test.ts — append
+thinRegression("LEGACY-044", "Session records are caller-controlled and attributable to the wrong user", ["8A T3", "8A T5", "8A T6", "8A T8"], (ctx) => {
   it("every *_by column 8A adds is stamped from the session, whatever the caller sends", async () => {
     const { db, a } = ctx;
-    // The same reason as sah-029's: three of the four inserts below are into gate-protected tables
+    // The same reason as legacy-029's: three of the four inserts below are into gate-protected tables
     // and `seedTenant` grants `a.human` nothing (§4.1). Distinct role code — one shared database.
     await grantCodes(db, a, {
       codes: ["hr.employee.read_sensitive", "hr.compensation.read", "hr.compensation.manage"],
-      principalId: a.human, roleCode: "sah044-writer",
+      principalId: a.human, roleCode: "legacy044-writer",
     });
     const impostor = await uuidv7(db.admin);
     await withTenant(db.rw, a.tenant, a.human, async (tx) => {
       await tx`insert into app.principal (id, auth_subject, kind, display_name) values (${impostor}, ${`sub-${impostor}`}, 'human', 'Impostor')`;
       await tx`insert into app.membership (tenant_id, principal_id) values (${a.tenant}, ${impostor})`;
     });
-    const employeeId = await seedEmployee(db, a, { employeeNumber: "E-SAH044" });
-    const componentId = await seedPayComponent(db, a, { code: "SAH044", kind: "earning" });
-    const schemeId = await seedStatutoryScheme(db, a, { code: "SAH044" });
+    const employeeId = await seedEmployee(db, a, { employeeNumber: "E-LEGACY044" });
+    const componentId = await seedPayComponent(db, a, { code: "LEGACY044", kind: "earning" });
+    const schemeId = await seedStatutoryScheme(db, a, { code: "LEGACY044" });
     await withTenant(db.rw, a.tenant, a.human, async (tx) => {
       await tx`insert into app.employee_sensitive (employee_id, tenant_id, key_version, updated_by)
                values (${employeeId}, ${a.tenant}, 1, ${impostor})`;
@@ -6713,7 +6713,7 @@ thinRegression("SAH-044", "Session records are caller-controlled and attributabl
 
   it("the rate-table VERIFIER is read from the session, so nobody can claim another principal signed", async () => {
     const { db, a } = ctx;
-    const schemeId = await seedStatutoryScheme(db, a, { code: "SAH044B" });
+    const schemeId = await seedStatutoryScheme(db, a, { code: "LEGACY044B" });
     const id = await seedRateTable(db, a, { schemeId });
     await withTenant(db.rw, a.tenant, a.system, (tx) => tx`
       update app.statutory_rate_table set verified_at = now(), verified_by = ${a.human} where id = ${id}`);
@@ -6724,8 +6724,8 @@ thinRegression("SAH-044", "Session records are caller-controlled and attributabl
 ```
 
 ```ts
-// tests/regression/sah-045.test.ts — append
-thinRegression("SAH-045", "Department scoping is a report parameter, not an access control", ["8A T1", "8A T3", "8A T5", "8A T6"], (ctx) => {
+// tests/regression/legacy-045.test.ts — append
+thinRegression("LEGACY-045", "Department scoping is a report parameter, not an access control", ["8A T1", "8A T3", "8A T5", "8A T6"], (ctx) => {
   it("R4: a principal cannot write their own HR rows by direct app_rw SQL (spec:2175, test 31)", async () => {
     const { db, a } = ctx;
     const self = await uuidv7(db.admin);
@@ -6738,9 +6738,9 @@ thinRegression("SAH-045", "Department scoping is a report parameter, not an acce
     // foreign-key error), and the `employee.terminated_on` attempt below needs no permission at all —
     // `app.employee` carries `tenant_isolation` and, under 6C, `branch_isolation`, but no permission
     // gate, which is why Task 1's own R4 case makes the same update with a membership-only principal.
-    await grantCodes(db, a, { codes: ["hr.employee.read_sensitive", "hr.compensation.read", "hr.compensation.manage"], principalId: self, roleCode: "sah045-self" });
-    const mine = await seedEmployee(db, a, { employeeNumber: "E-SAH045", principalId: self });
-    const componentId = await seedPayComponent(db, a, { code: "SAH045", kind: "earning" });
+    await grantCodes(db, a, { codes: ["hr.employee.read_sensitive", "hr.compensation.read", "hr.compensation.manage"], principalId: self, roleCode: "legacy045-self" });
+    const mine = await seedEmployee(db, a, { employeeNumber: "E-LEGACY045", principalId: self });
+    const componentId = await seedPayComponent(db, a, { code: "LEGACY045", kind: "earning" });
 
     const attempts: [string, () => Promise<unknown>][] = [
       ["employee.terminated_on", () => withTenant(db.rw, a.tenant, self, (tx) => tx`
@@ -6763,9 +6763,9 @@ thinRegression("SAH-045", "Department scoping is a report parameter, not an acce
     // SUCCESS, so a missing grant here would look exactly like R4 firing on the wrong principal.
     await grantCodes(db, a, {
       codes: ["hr.employee.read_sensitive", "hr.compensation.read", "hr.compensation.manage"],
-      principalId: a.human, roleCode: "sah045-other",
+      principalId: a.human, roleCode: "legacy045-other",
     });
-    const [row] = await db.admin<{ id: string }[]>`select id from app.employee where employee_number = 'E-SAH045'`;
+    const [row] = await db.admin<{ id: string }[]>`select id from app.employee where employee_number = 'E-LEGACY045'`;
     await expect(withTenant(db.rw, a.tenant, a.human, (tx) =>
       writeSensitive(tx, RING, row!.id, { bank_account: "SYNTHETIC-ACC-OTHER" }))).resolves.toBeUndefined();
   });
@@ -6773,11 +6773,11 @@ thinRegression("SAH-045", "Department scoping is a report parameter, not an acce
 ```
 
 ```ts
-// tests/regression/sah-078.test.ts — append
-thinRegression("SAH-078", "Behaviour-governing configuration lives in opaque blobs", ["8A T6", "8A T8", "8A T9"], (ctx) => {
+// tests/regression/legacy-078.test.ts — append
+thinRegression("LEGACY-078", "Behaviour-governing configuration lives in opaque blobs", ["8A T6", "8A T8", "8A T9"], (ctx) => {
   it("a rate table's definition round-trips through jsonb byte-equal", async () => {
     const { db, a } = ctx;
-    const schemeId = await seedStatutoryScheme(db, a, { code: "SAH078" });
+    const schemeId = await seedStatutoryScheme(db, a, { code: "LEGACY078" });
     const id = await seedRateTable(db, a, { schemeId });
     const [row] = await withTenant(db.rw, a.tenant, a.human, (tx) =>
       tx<{ definition: unknown }[]>`select definition from app.statutory_rate_table where id = ${id}`);
@@ -6821,7 +6821,7 @@ thinRegression("SAH-078", "Behaviour-governing configuration lives in opaque blo
 
 **Each block appends its own imports to the head of the file it joins** and adds no import an earlier block already has: `grantCodes`, `seedEmployee`, `seedPayComponent`, `seedStatutoryScheme`, `seedRateTable`, `SYNTH_RATE_TABLE_V1` and `uuidv7` from `@dulja/db/test`; `writeSensitive`, `openStatutoryProfile`, `openCompensation`, `upsertHrSetting`, `createHrKeyRing`, `DEV_HR_KEY` and the production `withTenant` from `@dulja/db`; `Money` and `currency` from `@dulja/domain`; `validateRateTable` from `@dulja/domain/payroll`; `repoFile` from `../support/regression`; `hrFixture` from `../invariants/support/hr` in the two `fullRegression` blocks.
 
-**Every block that writes a gated table grants first, with a role code of its own.** `sharedDb()` hands all six thin files ONE database and two `Seed`s (§4.17.1), and §4.1 pins that `seedTenant` grants `s.human` no permission at all — no `role`, no `role_permission`, no `role_assignment`. `sensitive_gate` and both `compensation_gate` policies are `AS RESTRICTIVE` with no `with check`, so their predicate gates writes as well as reads and an ungranted `a.human` is refused with SQLSTATE 42501 on every one of these inserts. File execution order is not fixed, so a block may not rely on another's grant; and because `app.role` carries `unique (company_id, code)`, two blocks reaching for one role code collide. Hence `sah029-writer`, `sah044-writer`, `sah045-self` and `sah045-other` — four codes, one per grant, none shared.
+**Every block that writes a gated table grants first, with a role code of its own.** `sharedDb()` hands all six thin files ONE database and two `Seed`s (§4.17.1), and §4.1 pins that `seedTenant` grants `s.human` no permission at all — no `role`, no `role_permission`, no `role_assignment`. `sensitive_gate` and both `compensation_gate` policies are `AS RESTRICTIVE` with no `with check`, so their predicate gates writes as well as reads and an ungranted `a.human` is refused with SQLSTATE 42501 on every one of these inserts. File execution order is not fixed, so a block may not rely on another's grant; and because `app.role` carries `unique (company_id, code)`, two blocks reaching for one role code collide. Hence `legacy029-writer`, `legacy044-writer`, `legacy045-self` and `legacy045-other` — four codes, one per grant, none shared.
 
 - [ ] **Step 3: Close test 32's export channel — three `EXPORT_TABLES` rows behind the 7C branch (amendment A20)**
 
@@ -7019,8 +7019,8 @@ deleting it. Expected under **`8A-FIRST`**: 4 passing and **1 skipped**, nothing
 | Test | Clause 8A re-runs | Where | Command |
 |---|---|---|---|
 | **12** Tenant isolation | seven new tables; three new route modules; one new job | `packages/db/test/hr/*.test.ts` (a two-tenant case each), `tests/invariants/tenant-isolation.test.ts` | `bun run --cwd tests test -- invariants/tenant-isolation.test.ts` |
-| **13** Audit completeness | every HR write audited, chain verifies | `tests/regression/sah-029.test.ts`, `tests/invariants/audit-chain.test.ts` | `bun run --cwd tests test -- invariants/audit-chain.test.ts` |
-| **31** Segregation of duties | the **R4 clause** — "a principal cannot alter their own compensation, sensitive data or leave approval" (the leave half is 8D's ⚠️) | `tests/regression/sah-045.test.ts` (SQL), `apps/api/test/routes/hr/{sensitive,compensation}.test.ts` (API) | `bun run --cwd tests test -- regression/sah-045.test.ts` |
+| **13** Audit completeness | every HR write audited, chain verifies | `tests/regression/legacy-029.test.ts`, `tests/invariants/audit-chain.test.ts` | `bun run --cwd tests test -- invariants/audit-chain.test.ts` |
+| **31** Segregation of duties | the **R4 clause** — "a principal cannot alter their own compensation, sensitive data or leave approval" (the leave half is 8D's ⚠️) | `tests/regression/legacy-045.test.ts` (SQL), `apps/api/test/routes/hr/{sensitive,compensation}.test.ts` (API) | `bun run --cwd tests test -- regression/legacy-045.test.ts` |
 | **32** Sensitive fields have no side channel | **owned** — all five channels | `apps/api/test/routes/hr/sensitive.test.ts`, `tests/invariants/hr-sensitive-side-channels.test.ts` | `bun run --cwd tests test -- invariants/hr-sensitive-side-channels.test.ts` |
 | **35** YTD rebuild and recalculation | the **verify-not-load clause** — "a rate table can be verified only by a principal other than the one who loaded it"; 8C owns the other two clauses | `packages/db/test/hr/statutory.test.ts`, `apps/api/test/routes/hr/statutory-schemes.test.ts` | `bun run --cwd packages/db test -- test/hr/statutory.test.ts` |
 | **36** Role catalogue integrity | the six new codes are each evaluated by a handler and each held by the right seeded role | `packages/db/test/permission-catalogue.test.ts`, `bun run lint:rules` | `bun run lint:rules` |
@@ -7104,20 +7104,20 @@ is the slice's one incomplete task).
 - [ ] **Step 7: Commit**
 
 ```bash
-git add tests/regression/sah-029.test.ts tests/regression/sah-030.test.ts tests/regression/sah-033.test.ts \
-        tests/regression/sah-044.test.ts tests/regression/sah-045.test.ts tests/regression/sah-078.test.ts \
+git add tests/regression/legacy-029.test.ts tests/regression/legacy-030.test.ts tests/regression/legacy-033.test.ts \
+        tests/regression/legacy-044.test.ts tests/regression/legacy-045.test.ts tests/regression/legacy-078.test.ts \
         tests/invariants/hr-sensitive-side-channels.test.ts docs/handoff/8a-to-8b.md
 # and, ONLY under the 7C-FIRST branch of Step 3, the file that branch touches:
 #   git add packages/db/src/export/tables.ts
 git commit -m "$(cat <<'EOF'
 test(regression): append the six 8A blocks and hand off to 8B [8A T14]
 
-sah-029/030 (every HR write audited under a server-supplied actor, no flag suppresses it, and the
-sensitive table's before/after images are ciphertext), sah-033 (the gate is an RLS predicate on the
+legacy-029/030 (every HR write audited under a server-supplied actor, no flag suppresses it, and the
+sensitive table's before/after images are ciphertext), legacy-033 (the gate is an RLS predicate on the
 actor's permission and no parameter changes it -- checked over the committed OpenAPI document too),
-sah-044 (every *_by column stamped from the session and immutable after; the rate-table verifier
-above all), sah-045 (R4 in all four places by direct app_rw SQL -- test 31's R4 clause in its filed
-form), sah-078 (statutory rules as version-controlled data with provenance, refused with a JSON
+legacy-044 (every *_by column stamped from the session and immutable after; the rate-table verifier
+above all), legacy-045 (R4 in all four places by direct app_rw SQL -- test 31's R4 clause in its filed
+form), legacy-078 (statutory rules as version-controlled data with provenance, refused with a JSON
 Pointer, and applicability in a join table rather than a boolean column). All six files were
 created by 0B; this slice appends and edits no earlier block.
 

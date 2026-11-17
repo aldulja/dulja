@@ -242,7 +242,7 @@ describe("applyMovements — the full body (contracts §4.7.2; spec:1216-1226)",
     expect(counts).toEqual({ invalid_layers: 2, valid_layers: 0 });
   });
 
-  it("a back-dated document posted with no JobClient fail-closes rather than skipping the recost (SAH-005)", async () => {
+  it("a back-dated document posted with no JobClient fail-closes rather than skipping the recost (LEGACY-005)", async () => {
     await expect(
       postInventoryDocument(db, s, {
         documentTypeId: receiptType,

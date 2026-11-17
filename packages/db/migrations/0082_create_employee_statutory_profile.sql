@@ -36,7 +36,7 @@ call app_meta.attach_stamp('app.employee_statutory_profile', 'entered_by');
 -- The compensation gate, the same shape as spec:2076's sensitive_gate and for the same reason:
 -- test 32 (spec:2450) requires "no employee_statutory_profile rows … by direct app_rw query under
 -- withTenant" for a principal without hr.compensation.read, and a route check cannot satisfy that.
--- AS RESTRICTIVE so tenant_isolation cannot OR it away (SAH-033); no `with check`, so the same
+-- AS RESTRICTIVE so tenant_isolation cannot OR it away (LEGACY-033); no `with check`, so the same
 -- predicate gates the write.
 create policy compensation_gate on app.employee_statutory_profile as restrictive
   using (app.actor_has('hr.compensation.read', (select e.company_id from app.employee e where e.id = employee_id)));

@@ -61,7 +61,7 @@ beforeAll(async () => {
       },
     ],
   });
-  // …and one OUTSIDE the quarter, which must not appear in any box (SAH-059).
+  // …and one OUTSIDE the quarter, which must not appear in any box (LEGACY-059).
   await postTaxedDocument(db, f, {
     typeCode: "SALES_INVOICE",
     effectiveDate: "2026-04-02",
@@ -100,7 +100,7 @@ describe("tax returns (§4.9.2, the Phase 5 DoD)", () => {
     await expect(again).rejects.toThrow(`overlaps tax return ${returnId} (2026-01-01..2026-03-31`);
   });
 
-  it("generate fills every box from tax_transaction, excluding the out-of-period document (SAH-059)", async () => {
+  it("generate fills every box from tax_transaction, excluding the out-of-period document (LEGACY-059)", async () => {
     const { row, boxes } = await prodWithTenant(db.rw, ctx(), (tx) =>
       generateTaxReturn(tx, ctx(), returnId),
     );

@@ -8,7 +8,7 @@
 
 **Tech Stack.** TypeScript on Bun (apps and packages) with Vitest on Node 24 for tests (D5); PostgreSQL 18 through `postgres.js` tagged templates; Drizzle ORM mirrors for reads and as the migration diff source (ADR-0002, contracts §3.4.9); Hono + `@hono/zod-openapi` for routes; `decimal.js` behind `Money` (0D); Ajv (JSON Schema draft 2020-12) for policy validation; `json-schema-to-typescript` (dev) for the committed `PostingPolicy` type; Testcontainers for every database test. No package version appears in any source file — the lockfile owns versions (spec:104).
 
-**Spec.** `docs/spec/rebuild-spec.md` v1.2 — §0.2 (spec:97–106), §0.4 glossary rows Muniment/Bill/Voucher/Account (spec:152–156), §3.1 #3 (spec:1075), §3.3 DocumentType/Document/DocumentLine/Party (spec:1169, 1185–1192), §3.5 (spec:1234–1236), §3.8 document tables (spec:1693–1780) and the posting-policy definition (spec:2006–2031), §3.9 (spec:2039–2051), §3.10.3 (spec:2101), §4.2 (spec:2138) and §4.2.1–§4.2.2 (spec:2146–2179), §4.11 (spec:2262–2267), Part V phase 2 row (spec:2288), Part VI tests 15 and 28 (spec:2433, 2446), Part I SAH-013, SAH-072, SAH-078. Contracts: `docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md` (2026-09-07).
+**Spec.** `docs/spec/rebuild-spec.md` v1.2 — §0.2 (spec:97–106), §0.4 glossary rows Muniment/Bill/Voucher/Account (spec:152–156), §3.1 #3 (spec:1075), §3.3 DocumentType/Document/DocumentLine/Party (spec:1169, 1185–1192), §3.5 (spec:1234–1236), §3.8 document tables (spec:1693–1780) and the posting-policy definition (spec:2006–2031), §3.9 (spec:2039–2051), §3.10.3 (spec:2101), §4.2 (spec:2138) and §4.2.1–§4.2.2 (spec:2146–2179), §4.11 (spec:2262–2267), Part V phase 2 row (spec:2288), Part VI tests 15 and 28 (spec:2433, 2446), Part I LEGACY-013, LEGACY-072, LEGACY-078. Contracts: `docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md` (2026-09-07).
 
 ---
 
@@ -20,7 +20,7 @@
 - **Interfaces consumed:** §4.1 (the whole Plan 0A surface), §4.2.1 `Money`/`Quantity`/`toBase`, §4.2.2 `withTenant`/`TenantContext`, §4.2.3 `AppEnv`/`RequestContext`, §4.2.4 `AppError`/`ERRORS`/`Problem`/`PostingError`, §4.2.5 `PERMISSION`/`requirePermission`/`PermissionCode`, §4.2.7 `RouteModule`/`buildRoutes`/`IdempotencyHeader`/`PROBES`, §4.2.8 the common Zod schemas and the cursor codec, §4.2.9 the idempotency header, §4.2.12 `startApi`, §4.3.1 the posting barrel, §4.3.2 the fixed algorithm, §4.3.4 `document_line`, §4.3.6 numbering, §4.3.7 the seed envelope and `loadDocumentTypes`, §4.17/§4.17.1 the fixture registers.
 - **Interfaces produced:** §4.4.1 **in full** (`packages/domain/posting-policy.schema.json`, same `$id` `urn:dulja:posting-policy:1`, same `"version": { "const": 1 }`); §4.4.2 in full (`evaluatePolicy` over every `for`, `when`, `account`, `amount` and `dimensions` member of the schema, **with the sign normalisation of amendment A9** — a negative resolved amount emits the rule's opposite side at `amount.abs()`, so `PlannedLedgerLine.amount` is never negative and `app.ledger_entry`'s `check (debit >= 0)`/`check (credit >= 0)` can be satisfied by a reversal); §4.5.7 verbatim (`app.party` and the deferred `document.party_id` FK); §4.3.4's 2A row verbatim (the ten `document_line` columns) and its `document_type` additions (`module`, `archived_at`); §4.5.4's `requireDocumentPermission(stage)` and `DOCUMENT_STAGE_CODES`; §3.6.2's one `accounting.party.manage` code; §4.17's `seedParty` and `seedDocumentType`.
 - **Owner decisions:** **OD-24** → Task 15 (isolated); default: the screen task is blocked, the slice is not. No other owner decision touches this slice.
-- **Part VI tests owned / re-run:** owned — **none exclusively**. Re-run — **15** (the numbers/posts/reverses clauses on a configured type; 2C owns the test and adds prints/reports), **28**'s BRANCH-refusal mechanism (F-9; 8B re-runs it on PAYROLL), **12** and **13** and **36** for `party`, `document_type` and `posting_policy`. **§3.0.4 rows owned:** spec:1066 — BRANCH mandatory on every revenue, COGS and staff-cost ledger line, "a posting-policy `requires`" (8B contributes PAYROLL). **Regression files created / appended:** created — none; appended — `sah-013`, `sah-072`, `sah-078` (all three created by 0B, §3.7.3).
+- **Part VI tests owned / re-run:** owned — **none exclusively**. Re-run — **15** (the numbers/posts/reverses clauses on a configured type; 2C owns the test and adds prints/reports), **28**'s BRANCH-refusal mechanism (F-9; 8B re-runs it on PAYROLL), **12** and **13** and **36** for `party`, `document_type` and `posting_policy`. **§3.0.4 rows owned:** spec:1066 — BRANCH mandatory on every revenue, COGS and staff-cost ledger line, "a posting-policy `requires`" (8B contributes PAYROLL). **Regression files created / appended:** created — none; appended — `legacy-013`, `legacy-072`, `legacy-078` (all three created by 0B, §3.7.3).
 - **Shared namespaces this slice writes into:** document-type codes (§4.14) — **`POLICY_TEST`** and **`POLICY_TEST_2`** (both module `accounting`, test only, never seeded into a pack), registered by amendment A1 below, and **`CONSIGNMENT_RETURN`** — already registered to **2C** in §4.14 and used here only as a request-body literal in Task 10's, Task 13's and Task 14's API tests, never written into `packages/db/seed/my/document-types/`; 2C still owns the code, its seed file and test 15. **No other document-type code literal appears anywhere in this slice** — a test that needs "a second type" uses `POLICY_TEST_2`, and a test that needs "a `producesType` this company does not have" names `POLICY_TEST_2` in a company where only `POLICY_TEST` is seeded (contracts §5 item 32). Account codes (§4.15) — **none seeded**; consumed but seeded elsewhere: `1200` Trade receivables and `2100` Trade payables (0C), used as `seedParty`'s defaults per §4.17 and created by that fixture when a bare `seedTenant` tenant has no chart, and `5920` FX rounding (0C, wired by 1A's `seedTenantV2`). Report codes (§4.16.1) and `DatasetId` members (§4.16.2) — **none**. `fixtures.ts` helpers (§4.17) — **`seedParty`, `seedDocumentType`, and no others**; shared test helpers (§4.17.1) — **none**.
 - **Never re-decide:** D1–D27 (spec:114–142); every name in the contracts document is frozen — a needed change goes to that document first.
 - **Contracts version:** 2026-09-07.
@@ -31,22 +31,22 @@ contracts:1261 says a plan implements §4's blocks **verbatim** and "may add mem
 
 | # | § | Amendment | Task |
 |---|---|---|---|
-| **A1** | 4.14 | Register **two** test-only codes, both module `accounting`, direction internal, inventory none, `approval.post: accounting.journal.post`, **test only, never seeded into a pack**: `POLICY_TEST` (series `PT`, `reversal.producesType: "POLICY_TEST"`) and `POLICY_TEST_2` (series `PT2`, `reversal.producesType: "POLICY_TEST_2"`). Contracts §5 item 32 makes an unregistered document-type code a review-blocking finding, and this slice's re-runs of tests 15 and 28 both need a type that is not JOURNAL. **Two are needed, not one:** T9 needs a second type whose only policy version is effective *after* the document's date (the `ERR_POLICY_NOT_FOUND` case), T10 needs a second type to archive without archiving the one its other cases use, T8 needs a `reversal.producesType` naming a code that is registered but *not seeded in that company*, and T14's `sah-078` needs a second type in its own tenant. The two series differ so the two test types never share a numbering series. | T6 |
+| **A1** | 4.14 | Register **two** test-only codes, both module `accounting`, direction internal, inventory none, `approval.post: accounting.journal.post`, **test only, never seeded into a pack**: `POLICY_TEST` (series `PT`, `reversal.producesType: "POLICY_TEST"`) and `POLICY_TEST_2` (series `PT2`, `reversal.producesType: "POLICY_TEST_2"`). Contracts §5 item 32 makes an unregistered document-type code a review-blocking finding, and this slice's re-runs of tests 15 and 28 both need a type that is not JOURNAL. **Two are needed, not one:** T9 needs a second type whose only policy version is effective *after* the document's date (the `ERR_POLICY_NOT_FOUND` case), T10 needs a second type to archive without archiving the one its other cases use, T8 needs a `reversal.producesType` naming a code that is registered but *not seeded in that company*, and T14's `legacy-078` needs a second type in its own tenant. The two series differ so the two test types never share a numbering series. | T6 |
 | **A2** | 4.2.8 | Register two contracts modules: `packages/contracts/src/accounting/party.ts` (`PartySchema`, `PartyKindSchema`, `CreatePartyBody`, `UpdatePartyBody`, `PartyQuery`, `PartyList`) and `packages/contracts/src/admin/document-type.ts` (`DocumentTypeSchema`, `CreateDocumentTypeBody`, `DocumentTypeQuery`, `DocumentTypeList`, `PostingPolicySchema`, `CreatePostingPolicyBody`, `PostingPolicyList`, `DocumentTypeModuleSchema`). **And three names added to 1A's `packages/contracts/src/accounting/document.ts`** — `DocumentTypeCodeSchema`, `DocumentLineKindSchema` and `DocumentLineInput` (the line as *accepted*, replacing 1A's inline object; 3A and 5A each add their own field to it in the PR that adds their foreign key). All four are exported from `@dulja/contracts` and imported by 2C, 3A, 4A and 6A, so none is a name internal to one slice (contracts:1263). | T9, T10, T11 |
 | **A3** | 4.2.7 | Register two `RouteModule` paths: `/v1/companies/:companyId/document-types` (`documentTypeRoutes`, gate `admin.company.manage`) and `/v1/companies/:companyId/parties` (`partyRoutes`, gate `accounting.party.manage`), with sub-paths `POST …/document-types/{documentTypeId}/policies`, `POST …/document-types/{documentTypeId}/archive`, `POST …/parties/{partyId}/archive`. | T10, T11 |
 | **A4** | 4.5.4 | `requireDocumentPermission` and `DOCUMENT_STAGE_CODES` are created by **2A**, not 2B, and ship with **all six** `DocumentStage` members mapped. 1A's Task 12 states twice that "2A replaces both static gates with `policy.approval.create` / `policy.approval.post` resolved from the effective policy"; 2B then *uses* the middleware for its `submitted`/`approved` transitions and edits the file only to add its own `RouteModule` permissions, never the stage map. The file also exports **`POLICY_RESOLVED_CODES`** — the `PERMISSION[...]` references that keep the bidirectional `permission-catalogue` lint (§3.6.3) satisfied for gates resolved from *data*, which no source scan can see; `DOCUMENT_STAGE_CODES` is initialised from it and every type-seeding slice appends to it. | T9 |
 | **A5** | 4.4.2, 4.3.2 | `evaluatePolicy` emits a planned line whose `amount` reference is `line.cost` or `line.variance_value` and whose `LineSnapshot.cost` is `null` as `Money.zero`, and **exempts it from the zero-drop of §4.3.2 step 6** — `null` (not yet costed) and `Money.zero` (costed at zero) are different, which is why `LineSnapshot.cost` is `Money \| null`. Without the exemption step 9's `applyMovements`, which "fills `value` on the plan", would have no line left to fill and 3B could not exist. Until 3B ships, `postDocument` fail-closes on any surviving zero-amount non-`fx_rounding` planned line with `ERR_POLICY_REQUIRES_MISSING`; 3B replaces that guard with the `applyMovements` call at step 9. | T6, T7 |
 | **A6** | 4.4.1 | Fix the resolution paths the schema names but §4.4.2 does not map: `when["document.kind"]` resolves from `snapshot.header.customFields["kind"]` (a document has no `kind` column and 8B's `payroll_run.kind` is a 1:1 extension, so the custom-field bag is the only place a kind can live in core); `amountRef` `line.total_excl_tax` is the same field as `line.amount` (§4.3.4 defines `amount` as "excl. tax"); `line.variance_value` is `LineSnapshot.cost` under A5's rules and 3D fixes its accounting meaning. | T6 |
 | **A7** | 2.2 (2A card), 3.6.2 | The 2A card's Delivers ends "…; `accounting.document.reverse` handler", but §3.6.2 introduces `accounting.document.reverse` in **2B**, §4.5.4 puts `POST …/documents/{documentId}/reverse` beside 2B's transitions route, and 1A's Self-Review records that it deliberately shipped no reversal endpoint "so 2B's route is one handler over a function that is already green". Handler and code must land together or the bidirectional `permission-catalogue` check (§3.6.3) fails on whichever slice is missing its half. **Resolution: 2A generalises `reverseDocument` (the service) and ships no reversal route and no reversal permission code; 2B ships both.** The card sentence is amended to read "…; `reverseDocument` generalised to the new `document_line` columns (the HTTP route and `accounting.document.reverse` are 2B's)". | T8 |
-| **A8** | 4.3.1 | State that `reverseDocument` reads `policy.reversal` from the policy **pinned on the original document** (`app.document.posting_policy_id`, spec:1753) and not from `resolvePolicy(documentTypeId, original.effective_date)`. 1A shipped the second form, which was safe while a policy version could only arrive through a seed file; 2A's `POST …/document-types/{documentTypeId}/policies` makes a **back-dated** `effective_from` an ordinary API call, and a version whose `effective_from` is on or before an already-posted document's `effective_date` would then change what that document's reversal produces. That is SAH-013 verbatim — "reversal reads *current* flags, not those originally applied" — and 2A is both the slice that opens the door and the slice that appends to `sah-013`. The signature, the return and the error codes are unchanged. | T8, T14 |
+| **A8** | 4.3.1 | State that `reverseDocument` reads `policy.reversal` from the policy **pinned on the original document** (`app.document.posting_policy_id`, spec:1753) and not from `resolvePolicy(documentTypeId, original.effective_date)`. 1A shipped the second form, which was safe while a policy version could only arrive through a seed file; 2A's `POST …/document-types/{documentTypeId}/policies` makes a **back-dated** `effective_from` an ordinary API call, and a version whose `effective_from` is on or before an already-posted document's `effective_date` would then change what that document's reversal produces. That is LEGACY-013 verbatim — "reversal reads *current* flags, not those originally applied" — and 2A is both the slice that opens the door and the slice that appends to `legacy-013`. The signature, the return and the error codes are unchanged. | T8, T14 |
 | **A9** | 4.4.2 | **`evaluatePolicy` normalises the sign of every planned ledger line: a rule whose resolved amount is negative emits the rule's *opposite* side with `amount.abs()`.** `PlannedLedgerLine.amount` is therefore never negative, and `side` alone carries the direction. This is not a convenience — it is the only shape `app.ledger_entry` accepts: plan0A:2012–2013 declares `check (debit >= 0)` and `check (credit >= 0)`, and 1A's `insertLedger` writes `const debit = line.side === "debit" ? line.amount.toString() : "0.0000"` (1a:3176–3179), so a negative planned amount dies on `ledger_entry_debit_check` at the insert. A reversal document carries **negated** signed magnitudes on its lines (T8), which is exactly how one policy produces both directions — and it only works because the negative amount flips the side here. The rule applies in both emit paths (`each_line`/`document` through `push`, and the `each_tax` group). `PlannedTaxLine.amount` is **not** normalised: 5A's tax ledger wants the signed magnitude. | T6, T8 |
-| **A10** | 4.2.4 | Strike "`ERR_VALIDATION_FAILED` only" from the `Problem.errors` comment: **`ERR_POLICY_INVALID` also carries `errors[]`**, each entry a JSON Pointer into the rejected policy definition plus the validator's message. `AppError`'s `extra?: Partial<Problem>` and `ProblemSchema`'s optional `errors` already permit it structurally; this makes the registry say it. The reason is SAH-078 itself — "an invalid rule is refused at configuration time, **naming the JSON path**" — and T10's and T14's assertions read `problem.errors[].path`. No other code gains the member. | T10 |
+| **A10** | 4.2.4 | Strike "`ERR_VALIDATION_FAILED` only" from the `Problem.errors` comment: **`ERR_POLICY_INVALID` also carries `errors[]`**, each entry a JSON Pointer into the rejected policy definition plus the validator's message. `AppError`'s `extra?: Partial<Problem>` and `ProblemSchema`'s optional `errors` already permit it structurally; this makes the registry say it. The reason is LEGACY-078 itself — "an invalid rule is refused at configuration time, **naming the JSON path**" — and T10's and T14's assertions read `problem.errors[].path`. No other code gains the member. | T10 |
 
 ---
 
 ## Global Constraints
 
-**Never** (spec:97–104, restated because each task must be able to stand alone): write to a ledger or movement table outside the posting service; represent money as a float anywhere, TypeScript included; build SQL by string concatenation (SAH-036/037/069); issue DDL from application code (SAH-053); disable an invariant, constraint or trigger "temporarily" (SAH-027, 041, 053); gate an audit write on any flag (SAH-030); hard-code a package version into a source file — the lockfile owns versions.
+**Never** (spec:97–104, restated because each task must be able to stand alone): write to a ledger or movement table outside the posting service; represent money as a float anywhere, TypeScript included; build SQL by string concatenation (LEGACY-036/037/069); issue DDL from application code (LEGACY-053); disable an invariant, constraint or trigger "temporarily" (LEGACY-027, 041, 053); gate an audit write on any flag (LEGACY-030); hard-code a package version into a source file — the lockfile owns versions.
 
 **Always**, for every new table (spec:106 unioned with the Plan 0A linter, contracts §3.3): `tenant_id`; RLS enabled **and forced** through `call app_meta.enable_tenant_rls('app.<name>')`; the policy named exactly `tenant_isolation`; `id uuid primary key default uuidv7()` unless the table is in `NO_ID_TABLES`; `created_at timestamptz not null default now()`; `call app_meta.attach_audit('app.<name>')` unless the table is in `AUDIT_EXEMPT`; `call app_meta.attach_stamp('app.<name>', '<col>_by')` for every `*_by` column; composite FKs `(tenant_id, <parent>_id)` to every tenant-scoped parent; a migration with a hand-written down; a Drizzle mirror in `packages/db/src/schema/`; and a test that a second tenant cannot see it. `lintSchema` must report **zero** violations after every migration. This slice's one new table, `app.party`, joins **no** linter set (contracts §3.5.3).
 
@@ -168,9 +168,9 @@ apps/api/
 tests/
 ├─ invariants/probes.ts                              two new PROBES entries                 T10, T11
 └─ regression/
-   ├─ sah-013.test.ts                                append "— 2A"                             T14
-   ├─ sah-072.test.ts                                append "— 2A"                             T14
-   └─ sah-078.test.ts                                append "— 2A"                             T14
+   ├─ legacy-013.test.ts                                append "— 2A"                             T14
+   ├─ legacy-072.test.ts                                append "— 2A"                             T14
+   └─ legacy-078.test.ts                                append "— 2A"                             T14
 
 docs/adr/
 ├─ 0026-posting-policy-schema.md                     PROPOSAL (spec:95, spec:2006)             T5
@@ -212,7 +212,7 @@ import { lintSchema } from "../src/lint-schema";
 import { seedParty, seedTenant, type Seed } from "./fixtures";
 import { startDb, uuidv7, withTenant, type Db } from "./harness";
 
-describe("app.party — contracts §4.5.7, spec:1169 (SAH-072: one discriminator, not twenty Is* flags)", () => {
+describe("app.party — contracts §4.5.7, spec:1169 (LEGACY-072: one discriminator, not twenty Is* flags)", () => {
   let db: Db; let a: Seed; let b: Seed;
   beforeAll(async () => { db = await startDb(); a = await seedTenant(db, "Alpha"); b = await seedTenant(db, "Beta"); });
   afterAll(async () => { await db.stop(); });
@@ -260,7 +260,7 @@ describe("app.party — contracts §4.5.7, spec:1169 (SAH-072: one discriminator
     expect(updated.count).toBe(0);
   });
 
-  it("every write is audited with the acting principal (spec:106, SAH-030)", async () => {
+  it("every write is audited with the acting principal (spec:106, LEGACY-030)", async () => {
     const id = await seedParty(db, a, { code: "AUD" });
     const rows = await withTenant(db.rw, a.tenant, a.human, (tx) =>
       tx<{ op: string; actor_id: string }[]>`
@@ -300,7 +300,7 @@ Expected: **FAIL** — `relation "app.party" does not exist` on the first `selec
 
 ```sql
 -- ── 1. app.party — the entity spec:1169 splits out of the legacy Account's twenty Is* flags ───
--- Party is a SINGLE table with one `kind` discriminator (SAH-072: "one discriminator, not 30 booleans").
+-- Party is a SINGLE table with one `kind` discriminator (LEGACY-072: "one discriminator, not 30 booleans").
 -- `student` and `dealer` are reserved so a later module is data, not a migration (contracts §4.5.7, F-16).
 create table app.party (
   id                     uuid primary key default uuidv7(),
@@ -331,7 +331,7 @@ create table app.party (
 call app_meta.enable_tenant_rls('app.party');
 call app_meta.attach_audit('app.party');
 
--- ── 3. The lookups the party API and the posting snapshot make (SAH-070: index what filters) ──
+-- ── 3. The lookups the party API and the posting snapshot make (LEGACY-070: index what filters) ──
 create index party_company_kind_idx on app.party (company_id, kind) where archived_at is null;
 
 -- app_rw receives select, insert, update through default privileges (plan0A). No DELETE grant:
@@ -439,7 +439,7 @@ git commit -m "$(cat <<'EOF'
 feat(db): app.party — one entity with one kind discriminator [2A T1]
 
 spec:1169 splits the legacy Account's twenty Is* flags into a GL-only Account
-and a Party; SAH-072 is what a discriminator replaces. The receivable and
+and a Party; LEGACY-072 is what a discriminator replaces. The receivable and
 payable links are what the posting policy's party.receivable_account and
 party.payable_account references resolve against (contracts §4.4.1). Archived,
 never deleted (spec:2049); no DELETE grant, so §3.5.4's pinned list is unchanged.
@@ -769,7 +769,7 @@ alter table app.document_line
 alter table app.document_line
   add constraint document_line_kind_check check (kind in ('account', 'item', 'tax', 'text'));
 
--- ── 3. The lookups the snapshot and the reports make (SAH-070) ───────────────
+-- ── 3. The lookups the snapshot and the reports make (LEGACY-070) ───────────────
 create index document_line_item_idx on app.document_line (item_id) where item_id is not null;
 
 -- No branch key: a line is isolated through its parent document's own branch_isolation policy
@@ -1255,7 +1255,7 @@ The failure mode to expect while writing this: if the case fails with two long s
 
 ## Context
 
-The legacy system encoded document behaviour as ~35 boolean flags on `Muniments` plus XML options (SAH-013, SAH-072, SAH-078). Nothing declared which combinations were legal, the rules lived in client code and trigger branches, and a reversal read the *current* flags rather than the ones originally applied. spec:1075 states the replacement: "Document types are data; posting rules are versioned policy objects — declarative, validated, tested, and *pinned to each posted document* so history is never re-interpreted."
+The legacy system encoded document behaviour as ~35 boolean flags on `Muniments` plus XML options (LEGACY-013, LEGACY-072, LEGACY-078). Nothing declared which combinations were legal, the rules lived in client code and trigger branches, and a reversal read the *current* flags rather than the ones originally applied. spec:1075 states the replacement: "Document types are data; posting rules are versioned policy objects — declarative, validated, tested, and *pinned to each posted document* so history is never re-interpreted."
 
 1A shipped `packages/domain/posting-policy.schema.json` at the subset the JOURNAL type needs, so `postDocument` had a type to compile against and the seed had a schema to validate. That subset cannot express a sales invoice, a payroll run or a POS ticket.
 
@@ -1277,15 +1277,15 @@ The schema is `additionalProperties: false` at every level. A document-type seed
 
 ## Alternatives considered
 
-- **A DSL or a small expression language for `amount`.** Rejected: an expression language is a parser, an evaluator and an injection surface, and spec:2053/SAH-036 exists because the legacy system built behaviour out of strings. A closed `amountRef` enum is checkable by CI, diffable in review, and exhaustively switchable in TypeScript.
-- **Per-document-type schemas.** Rejected: `validatePolicy` would have to pick a schema by document type, which is the flag-dispatch SAH-013 describes, one level up.
+- **A DSL or a small expression language for `amount`.** Rejected: an expression language is a parser, an evaluator and an injection surface, and spec:2053/LEGACY-036 exists because the legacy system built behaviour out of strings. A closed `amountRef` enum is checkable by CI, diffable in review, and exhaustively switchable in TypeScript.
+- **Per-document-type schemas.** Rejected: `validatePolicy` would have to pick a schema by document type, which is the flag-dispatch LEGACY-013 describes, one level up.
 - **A `version: 2` schema now.** Rejected: 1A's committed policies and the `PostingPolicy` type would need a migration for a change that removes nothing.
 
 ## Consequences
 
 - `evaluatePolicy` must handle every member the schema admits or the schema promises what the engine cannot do; 2A Task 6 does that, and its test file has one case per enum label.
 - A reference whose backing table does not exist yet (`item.*` is 3A's, `tax_code.*` is 5A's, `line.component.*`/`line.scheme.*` are 8A/8B's) resolves through the structural `ItemRef`/`TaxCodeRef`/`PayComponentRef`/`SchemeRef` shapes declared in core (contracts §4.4.2, spec:2366 — "core never imports HR"), and yields `ERR_POLICY_REQUIRES_MISSING` naming the reference until its slice populates `snapshot.refs`.
-- Every seeded policy is a reviewed diff of a version-controlled file (SAH-078), and every posted document pins the `posting_policy_id` that produced it (SAH-013).
+- Every seeded policy is a reviewed diff of a version-controlled file (LEGACY-078), and every posted document pins the `posting_policy_id` that produced it (LEGACY-013).
 ```
 
 - [ ] **Step 6: Run the tests to verify they pass**
@@ -1791,7 +1791,7 @@ function dimensionsFor(rule: PolicyLine, line: LineSnapshot | null, snapshot: Do
     if (source === "document.branch") out["BRANCH"] = snapshot.header.branchId;
     if (source === "line.employee" && line?.payroll) out["EMPLOYEE"] = line.payroll.employeeDimensionValueId;
   }
-  // The header's BRANCH always wins over a value a client put in the line's own bag (SAH-042, SAH-050).
+  // The header's BRANCH always wins over a value a client put in the line's own bag (LEGACY-042, LEGACY-050).
   if (from.includes("document.branch")) out["BRANCH"] = snapshot.header.branchId;
   return out;
 }
@@ -2338,7 +2338,7 @@ EOF
 
 ### Task 8: `reverseDocument` over a generalised line
 
-D13 fixes one correction mechanism for the whole system: a reversal is a **new document** of `policy.reversal.producesType`, with the sides swapped, posted through the same `postDocument`, after which the original becomes `reversed`. 1A shipped exactly that for a journal — five columns copied. A document with item lines, tax and cost has ten more, and a reversal that dropped them would post a credit note with no quantity, no tax and no cost, which is SAH-013 arriving through the back door: the reversal would not mirror what was originally applied.
+D13 fixes one correction mechanism for the whole system: a reversal is a **new document** of `policy.reversal.producesType`, with the sides swapped, posted through the same `postDocument`, after which the original becomes `reversed`. 1A shipped exactly that for a journal — five columns copied. A document with item lines, tax and cost has ten more, and a reversal that dropped them would post a credit note with no quantity, no tax and no cost, which is LEGACY-013 arriving through the back door: the reversal would not mirror what was originally applied.
 
 This task widens the two `insert … select` statements and adds the refusals the generalised policy makes possible. **It ships no HTTP route:** `POST …/documents/{documentId}/reverse` and the `accounting.document.reverse` code are 2B's (contracts §3.6.2, §4.5.4; 1A's Self-Review records the same split). See amendment A7.
 
@@ -2493,7 +2493,7 @@ describe("reverseDocument on a generalised line — D13, contracts §4.3.1", () 
       .rejects.toThrow(/ERR_POLICY_REQUIRES_MISSING.*POLICY_TEST_2/s);
   });
 
-  it("reads `reversal` from the PINNED policy, not from whatever is effective today (SAH-013, amendment A8)", async () => {
+  it("reads `reversal` from the PINNED policy, not from whatever is effective today (LEGACY-013, amendment A8)", async () => {
     const source = await postItemDocument({ amount: "9.0000", quantity: "1.000000" });
 
     // A back-dated version 2 lands AFTER the original posted — which Task 10's
@@ -2546,7 +2546,7 @@ Expected: **FAIL** — the first case returns `kind: "account", item_id: null, q
   // mirrored ledger lines with no second rule set (D13). `cost` is NOT copied: the reversal is its own
   // document and the costing engine answers for its own effective date (3B). `kind`, `item_id`, `unit_price`,
   // `tax_code_id`, `dimensions` and `custom_fields` carry over unchanged — a reversal that dropped them would
-  // stop mirroring what was originally applied, which is SAH-013 by another route.
+  // stop mirroring what was originally applied, which is LEGACY-013 by another route.
   await tx`
     insert into app.document_line (tenant_id, company_id, document_id, line_no, description, account_id,
                                    debit, credit, dimensions, custom_fields,
@@ -2562,7 +2562,7 @@ Expected: **FAIL** — the first case returns `kind: "account", item_id: null, q
 
 `-l.quantity` on a NULL quantity is NULL, which is what an account line needs; PostgreSQL's unary minus on `numeric` is exact, so no rounding enters here.
 
-- [ ] **Step 2b: Read the `reversal` block from the pinned policy (amendment A8, SAH-013)**
+- [ ] **Step 2b: Read the `reversal` block from the pinned policy (amendment A8, LEGACY-013)**
 
 In the same file, replace 1A's one policy-resolution line
 
@@ -2573,7 +2573,7 @@ In the same file, replace 1A's one policy-resolution line
 with a read of the policy the original **pinned**:
 
 ```ts
-  // SAH-013 is exactly "reversal reads CURRENT document-type flags instead of what was originally applied",
+  // LEGACY-013 is exactly "reversal reads CURRENT document-type flags instead of what was originally applied",
   // and `app.document.posting_policy_id` is the column spec:1753 pins so that it cannot happen ("PINNED at
   // post time; never re-read"). A posted document always has one — contracts §4.3.2 step 13 writes it — so
   // the reversal block is read from THAT row. resolvePolicy by the original's effective_date was safe while a
@@ -2614,7 +2614,7 @@ Nothing else in the function changes: the `for update` row lock, the `status !==
 - [ ] **Step 3: Run the tests to verify they pass**
 
 Run: `bun run --cwd packages/db test -- test/posting/reverse.test.ts`
-Expected: **PASS** (1A's 7 cases plus 6). If the ledger mirror case fails with `new row for relation "ledger_entry" violates check constraint "ledger_entry_debit_check"`, **amendment A9 is missing or Task 6's `normalise` was not written** — a negated `line.amount` is reaching `insertLedger` as a negative number; fix Task 6, not this test. If it shows the reversal with the *same* sides as the original, the `l.credit, l.debit` swap was written as `l.debit, l.credit`. If one of **1A's own** seven cases goes red on `ERR_POLICY_NOT_FOUND … pins no posting policy`, that case reached `reverseDocument` on a document whose `posting_policy_id` is null — which means it was posted by a raw `insert into app.document … status = 'posted'` rather than through `postDocument`. Fix the fixture to post through `postDocument`; do **not** relax the guard, because a document with no pinned policy is precisely the SAH-013 state.
+Expected: **PASS** (1A's 7 cases plus 6). If the ledger mirror case fails with `new row for relation "ledger_entry" violates check constraint "ledger_entry_debit_check"`, **amendment A9 is missing or Task 6's `normalise` was not written** — a negated `line.amount` is reaching `insertLedger` as a negative number; fix Task 6, not this test. If it shows the reversal with the *same* sides as the original, the `l.credit, l.debit` swap was written as `l.debit, l.credit`. If one of **1A's own** seven cases goes red on `ERR_POLICY_NOT_FOUND … pins no posting policy`, that case reached `reverseDocument` on a document whose `posting_policy_id` is null — which means it was posted by a raw `insert into app.document … status = 'posted'` rather than through `postDocument`. Fix the fixture to post through `postDocument`; do **not** relax the guard, because a document with no pinned policy is precisely the LEGACY-013 state.
 
 Run: `bun run --cwd packages/db test && bun run typecheck && bun run lint`
 Expected: PASS — 1A's acceptance test 3 (re-key a posting) still holds: `sum(account_balance) = sum(ledger_entry)` because a reversal only ever adds rows.
@@ -2636,7 +2636,7 @@ The `reversal` block is now read from the policy the ORIGINAL pinned
 (document.posting_policy_id, spec:1753) instead of resolvePolicy at the original's
 effective date. 1A's form was safe while versions arrived only through seed PRs;
 T10's POST .../policies makes a back-dated effective_from an ordinary API call, and
-that is SAH-013 by the front door. Amendment A8.
+that is LEGACY-013 by the front door. Amendment A8.
 
 No HTTP route here: POST .../documents/{id}/reverse and accounting.document.reverse
 are 2B's (contracts §3.6.2, §4.5.4; 1A shipped no reversal endpoint for the same
@@ -3076,7 +3076,7 @@ The `PUT …/documents/{documentId}/lines` route takes `requireDocumentPermissio
       if (!type) throw new AppError("ERR_NOT_FOUND", `no document type ${body.documentTypeCode} in company ${companyId}`);
 
       // The series comes from the policy so a draft already shows the series it will be numbered in; the
-      // number itself is assigned at issue and never by the client (SAH-051). 1A's text, unchanged.
+      // number itself is assigned at issue and never by the client (LEGACY-051). 1A's text, unchanged.
       const [policy] = await tx<{ definition: { numbering: { series: string } } }[]>`
         select definition from app.posting_policy
          where document_type_id = ${type.id} and effective_from <= ${body.effectiveDate}::date
@@ -3633,7 +3633,7 @@ documentTypeRoutes.openapi(createRoute({
   const report = validatePolicy(body.definition, CATALOGUE);
   if (!report.ok) {
     // `errors` carries the JSON Pointer into the rejected definition. §4.2.4's comment reserved the member
-    // for ERR_VALIDATION_FAILED; amendment A10 extends it to ERR_POLICY_INVALID, because SAH-078's claim is
+    // for ERR_VALIDATION_FAILED; amendment A10 extends it to ERR_POLICY_INVALID, because LEGACY-078's claim is
     // that an invalid rule is refused at configuration time *naming the JSON path*, and `detail` alone makes
     // a caller parse prose. `detail` carries the same paths so a human-readable message loses nothing.
     throw new AppError("ERR_POLICY_INVALID",
@@ -3727,7 +3727,7 @@ and add the probe to `tests/invariants/probes.ts`:
 ## Context
 
 `app.posting_policy` is keyed `unique (document_type_id, version)` and every posted document pins the
-`posting_policy_id` that produced it (spec:1753, SAH-013). The legacy system's failure was that a reversal read
+`posting_policy_id` that produced it (spec:1753, LEGACY-013). The legacy system's failure was that a reversal read
 the *current* document-type flags rather than the ones originally applied.
 
 Pinning the id is necessary but not sufficient: if the row a pinned id points at can be rewritten, the pin
@@ -3746,7 +3746,7 @@ raises SQLSTATE 23505 → `ERR_CONFLICT_UNIQUE`. A correction is a new version w
 update set definition = …, effective_from = …`, and which is deliberately the *only* path that rewrites a
 version. Its reason is stated there: a placeholder policy seeded on staging in an early phase would otherwise
 silently survive the real definition arriving later, and the phase's tests would pass locally and fail on
-staging. That path is a reviewed diff of a version-controlled file under an operator's hand (SAH-078); the API
+staging. That path is a reviewed diff of a version-controlled file under an operator's hand (LEGACY-078); the API
 path is a tenant's admin clicking a button.
 
 ## Alternatives considered
@@ -3930,7 +3930,7 @@ Expected: **FAIL** — every case 404s; the route module does not exist.
 import { z } from "@hono/zod-openapi";
 import { CurrencySchema, ListEnvelope, ListQuery, TimestampSchema, UuidSchema } from "../common";
 
-/** spec:1169 — one entity with one discriminator, replacing the legacy Account's twenty Is* flags (SAH-072).
+/** spec:1169 — one entity with one discriminator, replacing the legacy Account's twenty Is* flags (LEGACY-072).
  *  `student` and `dealer` are reserved names carried so a later module is data, not a migration. */
 export const PartyKindSchema = z.enum(["customer", "vendor", "employee", "student", "dealer"]);
 
@@ -4008,7 +4008,7 @@ const toDto = (r: PartyRow) => ({
 
 // The column list is written out in each of the five statements below. There is no `const COLUMNS` string and
 // no `tx.unsafe(COLUMNS)`: contracts §3.3 gives `sql.unsafe` exactly three homes and none of them is in this
-// slice, and the `no-sql-concat` lint (test 27) is what keeps SAH-036/037/069 closed. Five repetitions of one
+// slice, and the `no-sql-concat` lint (test 27) is what keeps LEGACY-036/037/069 closed. Five repetitions of one
 // line is the price, and it is the right price.
 
 partyRoutes.openapi(createRoute({
@@ -4531,7 +4531,7 @@ describe("zero code: a document type created through the API numbers, posts and 
 
     const posted = await read(id);
     expect(posted.status).toBe("posted");
-    expect(await pinnedPolicyOf(id)).not.toBeNull();                // SAH-013: the rule is pinned on the row
+    expect(await pinnedPolicyOf(id)).not.toBeNull();                // LEGACY-013: the rule is pinned on the row
 
     // 1A's `LedgerEntryQuery` is flat — `documentId`, `accountId`, `fiscalPeriodId`, `from`, `to` — not the
     // `filter[x][eq]` form this slice's own two configuration routes use. Consume it as 1A shipped it.
@@ -4617,7 +4617,7 @@ describe("zero code: a document type created through the API numbers, posts and 
   it("a policy version added later takes effect from its own effective_from and never re-interprets history", async () => {
     // The zero-code claim includes CHANGING a type without code. Version 2 sends both legs to `1000` from
     // 2026-01-20; the 2026-01-15 documents above keep the rows version 1 produced, because the effective
-    // policy is chosen by the document's effective_date and pinned at post (spec:1075, SAH-013).
+    // policy is chosen by the document's effective_date and pinned at post (spec:1075, LEGACY-013).
     //
     // Both dates sit inside 2026-01, which is the ONLY open period `seedTenant` creates — §4.1 pins the three
     // as "2026-01 open, 2026-02 closed, 2026-03 locked". A February document would be refused at §4.3.2
@@ -4748,22 +4748,22 @@ EOF
 
 ---
 
-### Task 14: The three regression appends — SAH-013, SAH-072, SAH-078
+### Task 14: The three regression appends — LEGACY-013, LEGACY-072, LEGACY-078
 
-spec:2059 requires one `tests/regression/sah-NNN.test.ts` per Part I defect touched, and contracts §3.7.3 fixes the ownership rule: **the first slice in execution order creates the file; every later slice appends a `describe("… — <slice id>", …)` block and never edits an earlier one.** All three files this slice touches were created by **0B** — `sah-013` and `sah-072` as *thin* files (0B Task 14), `sah-078` as a *full* one. This slice **creates nothing** and appends exactly three blocks.
+spec:2059 requires one `tests/regression/legacy-NNN.test.ts` per Part I defect touched, and contracts §3.7.3 fixes the ownership rule: **the first slice in execution order creates the file; every later slice appends a `describe("… — <slice id>", …)` block and never edits an earlier one.** All three files this slice touches were created by **0B** — `legacy-013` and `legacy-072` as *thin* files (0B Task 14), `legacy-078` as a *full* one. This slice **creates nothing** and appends exactly three blocks.
 
 **What each block has to prove that 0B's could not.**
 
 | File | 0B's block asserts | 2A's block asserts |
 |---|---|---|
-| `sah-013` — "Reversal reads *current* document-type flags, not those originally applied" | `ledger_entry.posting_policy_id` is `NOT NULL` and both rows of a posted document carry the seeded policy id — the *column* exists and is filled | that **`reverseDocument` reads the pinned row**: a back-dated policy version inserted after the original posted does not change what the reversal produces (amendment A8) |
-| `sah-072` — "Zero CHECK constraints; 544 booleans encoding exclusive states" | `app.account` has one boolean and its five states are an enum; the schema has CHECKs and no float | that this slice's **three** new closed vocabularies are named CHECKs that refuse a sixth label — `party_kind_check`, `document_type_module_check`, `document_line_kind_check` — and that `app.party` and `app.document_line` add **no** boolean at all |
-| `sah-078` — "Behaviour-governing configuration lives in opaque blobs" | `permission.code` is text, the catalogue equals the file, `posting_policy.definition` is `jsonb` | that a policy version is **schema-validated JSON that round-trips byte-equal**, is refused with a JSON-Pointer path when it does not validate, and is listable and diffable — the configuration that governs posting arrives as reviewable text, never as a blob |
+| `legacy-013` — "Reversal reads *current* document-type flags, not those originally applied" | `ledger_entry.posting_policy_id` is `NOT NULL` and both rows of a posted document carry the seeded policy id — the *column* exists and is filled | that **`reverseDocument` reads the pinned row**: a back-dated policy version inserted after the original posted does not change what the reversal produces (amendment A8) |
+| `legacy-072` — "Zero CHECK constraints; 544 booleans encoding exclusive states" | `app.account` has one boolean and its five states are an enum; the schema has CHECKs and no float | that this slice's **three** new closed vocabularies are named CHECKs that refuse a sixth label — `party_kind_check`, `document_type_module_check`, `document_line_kind_check` — and that `app.party` and `app.document_line` add **no** boolean at all |
+| `legacy-078` — "Behaviour-governing configuration lives in opaque blobs" | `permission.code` is text, the catalogue equals the file, `posting_policy.definition` is `jsonb` | that a policy version is **schema-validated JSON that round-trips byte-equal**, is refused with a JSON-Pointer path when it does not validate, and is listable and diffable — the configuration that governs posting arrives as reviewable text, never as a blob |
 
 The `describe` heading text is 0B's, verbatim, with `— 2A` in place of `— 0B`: §3.7.3's rule is that the *defect heading* stays constant across blocks so a reader greps one string and finds every slice that touched it.
 
 **Files:**
-- Modify: `tests/regression/sah-013.test.ts`, `tests/regression/sah-072.test.ts`, `tests/regression/sah-078.test.ts`
+- Modify: `tests/regression/legacy-013.test.ts`, `tests/regression/legacy-072.test.ts`, `tests/regression/legacy-078.test.ts`
 
 **Interfaces:**
 - Produces: no source. Three `describe` blocks appended to three existing files.
@@ -4771,18 +4771,18 @@ The `describe` heading text is 0B's, verbatim, with `— 2A` in place of `— 0B
 
 **These files run in the `tests` workspace, which uses the production `withTenant(sql, ctx, fn)`.** Hazard 15: the four-argument test helper is `packages/db/test/harness.ts`'s and belongs to `packages/db/test/**` only. `sharedDb()` returns `{ db, rw, a, b }` where `rw` is the production `createDb` pool (§4.17.1) — pass `rw`, not `db.rw`, and pass a `TenantContext` object, not two ids.
 
-- [ ] **Step 1: Append the `— 2A` block to `tests/regression/sah-013.test.ts`**
+- [ ] **Step 1: Append the `— 2A` block to `tests/regression/legacy-013.test.ts`**
 
-Add to the **end** of the file. Do not touch the `thinRegression("SAH-013", …)` call above it. Add `describe`, `it` and `expect` to the `vitest` import if the file does not already import them (0B's version imports only `thinRegression`, which wraps them internally, so all three are new here), and add the two `@dulja/db` / `@dulja/db/test` imports.
+Add to the **end** of the file. Do not touch the `thinRegression("LEGACY-013", …)` call above it. Add `describe`, `it` and `expect` to the `vitest` import if the file does not already import them (0B's version imports only `thinRegression`, which wraps them internally, so all three are new here), and add the two `@dulja/db` / `@dulja/db/test` imports.
 
 ```ts
-// tests/regression/sah-013.test.ts — append
+// tests/regression/legacy-013.test.ts — append
 import { describe, expect, it } from "vitest";
 import { postDocument, reverseDocument, withTenant } from "@dulja/db";
 import { seedDocumentType, seedTenantV2, uuidv7 } from "@dulja/db/test";
 import { sharedDb } from "../support/regression";
 
-describe("SAH-013 Reversal reads *current* document-type flags instead of what was originally applied — 2A", () => {
+describe("LEGACY-013 Reversal reads *current* document-type flags instead of what was originally applied — 2A", () => {
   const POLICY = {
     version: 1, documentType: "POLICY_TEST", direction: "internal", requires: [],
     lines: [
@@ -4798,9 +4798,9 @@ describe("SAH-013 Reversal reads *current* document-type flags instead of what w
 
   it("a policy version back-dated after the post does not change what the reversal produces", async () => {
     const { db, rw } = await sharedDb();
-    const s = await seedTenantV2(db, "SAH013-2A");
+    const s = await seedTenantV2(db, "LEGACY013-2A");
     const typeId = await seedDocumentType(db, s, { code: "POLICY_TEST", policy: POLICY, effectiveFrom: "2026-01-01" });
-    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "sah013-2a" };
+    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "legacy013-2a" };
 
     const doc = await withTenant(rw, ctx, async (tx) => {
       const id = await uuidv7(db.admin);
@@ -4824,7 +4824,7 @@ describe("SAH-013 Reversal reads *current* document-type flags instead of what w
     });
 
     const { reversalDocumentId } = await withTenant(rw, ctx, (tx) =>
-      reverseDocument(tx, ctx, { documentId: doc, effectiveDate: "2026-01-25", reason: "sah-013" }));
+      reverseDocument(tx, ctx, { documentId: doc, effectiveDate: "2026-01-25", reason: "legacy-013" }));
     expect(reversalDocumentId).toMatch(/^[0-9a-f-]{8}-[0-9a-f-]{4}-7[0-9a-f-]{3}-[0-9a-f-]{4}-[0-9a-f]{12}$/);
 
     // And the original's ledger rows still name version 1 — nothing was re-interpreted (spec:1753).
@@ -4837,7 +4837,7 @@ describe("SAH-013 Reversal reads *current* document-type flags instead of what w
 
   it("the reversal mirrors every generalised line column, so it reflects what was applied and not a subset", async () => {
     const { db, rw } = await sharedDb();
-    const s = await seedTenantV2(db, "SAH013-2Ab");
+    const s = await seedTenantV2(db, "LEGACY013-2Ab");
     const itemPolicy = {
       ...POLICY,
       lines: [
@@ -4846,7 +4846,7 @@ describe("SAH-013 Reversal reads *current* document-type flags instead of what w
       ],
     };
     const typeId = await seedDocumentType(db, s, { code: "POLICY_TEST", policy: itemPolicy });
-    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "sah013-2ab" };
+    const ctx = { tenantId: s.tenant, actorId: s.human, requestId: "legacy013-2ab" };
     const itemId = await uuidv7(db.admin);
 
     const doc = await withTenant(rw, ctx, async (tx) => {
@@ -4862,7 +4862,7 @@ describe("SAH-013 Reversal reads *current* document-type flags instead of what w
     });
 
     const { reversalDocumentId } = await withTenant(rw, ctx, (tx) =>
-      reverseDocument(tx, ctx, { documentId: doc, effectiveDate: "2026-01-25", reason: "sah-013 mirror" }));
+      reverseDocument(tx, ctx, { documentId: doc, effectiveDate: "2026-01-25", reason: "legacy-013 mirror" }));
 
     const [line] = await withTenant(rw, ctx, (tx) => tx<Record<string, string | null>[]>`
       select kind, item_id, quantity::text as quantity, unit_price::text as unit_price,
@@ -4880,14 +4880,14 @@ describe("SAH-013 Reversal reads *current* document-type flags instead of what w
 });
 ```
 
-- [ ] **Step 2: Append the `— 2A` block to `tests/regression/sah-072.test.ts`**
+- [ ] **Step 2: Append the `— 2A` block to `tests/regression/legacy-072.test.ts`**
 
 ```ts
-// tests/regression/sah-072.test.ts — append
+// tests/regression/legacy-072.test.ts — append
 import { describe, expect, it } from "vitest";
 import { sharedDb } from "../support/regression";
 
-describe("SAH-072 Zero CHECK constraints across 460 tables, and 544 boolean columns encoding mutually exclusive states — 2A", () => {
+describe("LEGACY-072 Zero CHECK constraints across 460 tables, and 544 boolean columns encoding mutually exclusive states — 2A", () => {
   it("every closed vocabulary this slice adds is a NAMED CHECK, and 6A and 8B drop two of them by name", async () => {
     const { db } = await sharedDb();
     const rows = await db.admin<{ conname: string; def: string }[]>`
@@ -4925,7 +4925,7 @@ describe("SAH-072 Zero CHECK constraints across 460 tables, and 544 boolean colu
 
   it("the vocabulary refuses a value outside it, at the database, whatever the caller is", async () => {
     const { db, rw, a } = await sharedDb();
-    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "sah072-2a" };
+    const ctx = { tenantId: a.tenant, actorId: a.human, requestId: "legacy072-2a" };
     // Not through the API, not through a fixture: straight at app_rw, which is the only proof that matters.
     await expect(withTenantInsert(rw, ctx, a, "supplier")).rejects.toThrow(/party_kind_check/);
   });
@@ -4940,25 +4940,25 @@ async function withTenantInsert(
 ): Promise<void> {
   await withTenant(rw, ctx, (tx) => tx`
     insert into app.party (tenant_id, company_id, kind, code, name_en)
-    values (${a.tenant}, ${a.company}, ${kind}, ${`SAH072-${kind}`}, 'Bad kind')`);
+    values (${a.tenant}, ${a.company}, ${kind}, ${`LEGACY072-${kind}`}, 'Bad kind')`);
 }
 ```
 
 Add `import { withTenant } from "@dulja/db";` to the file's imports for the helper above.
 
-- [ ] **Step 3: Append the `— 2A` block to `tests/regression/sah-078.test.ts`**
+- [ ] **Step 3: Append the `— 2A` block to `tests/regression/legacy-078.test.ts`**
 
 0B's block is a `fullRegression(...)` call, so this append is a plain `describe` using `sharedApi()` directly (§4.17.1 — the `Seed`s there live in a different database from `sharedDb()`'s).
 
-**Each case seeds its own tenant, and that is not tidiness.** `sharedApi()`'s `Seed`s are shared across every regression file, and `app.document_type` is `unique (company_id, code)` — so a document type created into `a.company` here collides with whichever later slice's regression append creates the same code in the same shared seed, and the failure lands on whichever file happens to run second. `seedTenantV2(api.db, "SAH078-2A")` plus `grantAdmin` costs one tenant and removes the coupling entirely; Task 14's `sah-013` block already works this way. **2C's writer: this block owns no code in `a.company`, so nothing here constrains what you create there.**
+**Each case seeds its own tenant, and that is not tidiness.** `sharedApi()`'s `Seed`s are shared across every regression file, and `app.document_type` is `unique (company_id, code)` — so a document type created into `a.company` here collides with whichever later slice's regression append creates the same code in the same shared seed, and the failure lands on whichever file happens to run second. `seedTenantV2(api.db, "LEGACY078-2A")` plus `grantAdmin` costs one tenant and removes the coupling entirely; Task 14's `legacy-013` block already works this way. **2C's writer: this block owns no code in `a.company`, so nothing here constrains what you create there.**
 
 ```ts
-// tests/regression/sah-078.test.ts — append
+// tests/regression/legacy-078.test.ts — append
 import { describe, expect, it } from "vitest";
 import { seedTenantV2 } from "@dulja/db/test";
 import { grantAdmin, problemOf, sharedApi } from "../support/api";
 
-describe("SAH-078 Behaviour-governing configuration lives in opaque blobs — 2A", () => {
+describe("LEGACY-078 Behaviour-governing configuration lives in opaque blobs — 2A", () => {
   const POLICY = {
     version: 1, documentType: "CONSIGNMENT_RETURN", direction: "inbound", requires: [],
     lines: [
@@ -4974,7 +4974,7 @@ describe("SAH-078 Behaviour-governing configuration lives in opaque blobs — 2A
 
   it("a posting rule is schema-validated JSON that round-trips byte-equal — reviewable text, not a blob", async () => {
     const { api } = await sharedApi();
-    const s = await seedTenantV2(api.db, "SAH078-2A");            // own tenant: no shared-seed code collision
+    const s = await seedTenantV2(api.db, "LEGACY078-2A");            // own tenant: no shared-seed code collision
     await grantAdmin(api, s);
     const base = `/v1/companies/${s.company}/document-types`;
     const created = await api.request({ method: "POST", path: base, as: s.human,
@@ -5000,7 +5000,7 @@ describe("SAH-078 Behaviour-governing configuration lives in opaque blobs — 2A
 
   it("an invalid rule is refused at configuration time, naming the JSON path — not accepted and failed at post", async () => {
     const { api } = await sharedApi();
-    const s = await seedTenantV2(api.db, "SAH078-2Ab");           // own tenant again, for the same reason
+    const s = await seedTenantV2(api.db, "LEGACY078-2Ab");           // own tenant again, for the same reason
     await grantAdmin(api, s);
     const base = `/v1/companies/${s.company}/document-types`;
     // POLICY_TEST_2 is §4.14's second test-only code (amendment A1). `COST_ADJUSTMENT` would be wrong twice
@@ -5043,8 +5043,8 @@ describe("SAH-078 Behaviour-governing configuration lives in opaque blobs — 2A
 
 - [ ] **Step 4: Run the three files and the whole regression tier**
 
-Run: `bun run --cwd tests test -- regression/sah-013.test.ts regression/sah-072.test.ts regression/sah-078.test.ts`
-Expected: **PASS** — 0B's blocks plus this slice's **eight** cases (2 in `sah-013`, 3 in `sah-072`, 3 in `sah-078`). If `sah-013`'s first case fails with `ERR_DOC_STATUS_ILLEGAL: policy for POLICY_TEST does not allow reversal`, Task 8 Step 2b was not applied and `reverseDocument` is still resolving the reversal block by date — that is the defect this block exists to catch, so fix Task 8, not this test.
+Run: `bun run --cwd tests test -- regression/legacy-013.test.ts regression/legacy-072.test.ts regression/legacy-078.test.ts`
+Expected: **PASS** — 0B's blocks plus this slice's **eight** cases (2 in `legacy-013`, 3 in `legacy-072`, 3 in `legacy-078`). If `legacy-013`'s first case fails with `ERR_DOC_STATUS_ILLEGAL: policy for POLICY_TEST does not allow reversal`, Task 8 Step 2b was not applied and `reverseDocument` is still resolving the reversal block by date — that is the defect this block exists to catch, so fix Task 8, not this test.
 
 Run: `bun run --cwd tests test`
 Expected: PASS — every invariant and regression file, 0B's forty-odd and 1A's sixteen included.
@@ -5052,14 +5052,14 @@ Expected: PASS — every invariant and regression file, 0B's forty-odd and 1A's 
 Run: `bun run lint && bun run format:check && bun run typecheck && bun run test`
 Expected: PASS at the repository root.
 
-Note: `tests/` is deliberately outside `scripts/lint/run.ts`'s `ROOTS` (§3.7.5), so the raw `insert into app.document_line` in the `sah-013` block does not trip `posting-only-tables` — and it is not a ledger table in any case. Do **not** add `tests` to `ROOTS`.
+Note: `tests/` is deliberately outside `scripts/lint/run.ts`'s `ROOTS` (§3.7.5), so the raw `insert into app.document_line` in the `legacy-013` block does not trip `posting-only-tables` — and it is not a ledger table in any case. Do **not** add `tests` to `ROOTS`.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add tests/regression/sah-013.test.ts tests/regression/sah-072.test.ts tests/regression/sah-078.test.ts
+git add tests/regression/legacy-013.test.ts tests/regression/legacy-072.test.ts tests/regression/legacy-078.test.ts
 git commit -m "$(cat <<'EOF'
-test(regression): SAH-013, SAH-072 and SAH-078 blocks for 2A [2A T14]
+test(regression): LEGACY-013, LEGACY-072 and LEGACY-078 blocks for 2A [2A T14]
 
 Three appends, no new file: contracts §3.7.3 makes 0B the creator of all three and
 a later slice appends a describe block and never edits an earlier one.
@@ -5085,7 +5085,7 @@ EOF
 
 > **This task is isolated for owner decision OD-24** (contracts §2.12: "Screenshots + operator description before any screen"; spec:79 and spec:108 — "the UI is not specified"; spec:2408). It is the **only** task in this plan that depends on an owner decision, and dropping it changes nothing else: no task before it and no later slice imports anything it produces.
 >
-> **Owner provides:** screenshots of the legacy Sahlisoft customer/vendor master screen — the list, the entry form and whatever dialog sets the control accounts and credit terms — plus a two-minute description of how a clerk actually uses each (what they type first, what they never touch, which field they tab to twenty times a day).
+> **Owner provides:** screenshots of the legacy customer/vendor master screen — the list, the entry form and whatever dialog sets the control accounts and credit terms — plus a two-minute description of how a clerk actually uses each (what they type first, what they never touch, which field they tab to twenty times a day).
 > **Verify:** `ls docs/ui/od-24-party.md docs/ui/od-24-party-*.png` lists the description and at least one screenshot, and the description is attached to the task of whichever slice ships the screen before that task is executed.
 > **Until provided:** nothing in this slice blocks. **2A ships no screen at all** — its File Structure contains no `apps/desktop/**` path, and the Delivers block of the 2A card names none. This task's whole content is to record what 2A froze for a party screen and exactly what changes if the owner's material contradicts it.
 
@@ -5238,7 +5238,7 @@ EOF
 | this slice's share of the DoD: the mechanism behind "a new document type is added with zero code" | T5, T6, T7, T10, T11; proved end to end in **T13** | 2C proves the sentence (test 15) with prints and reports on top of T13's fixture |
 | Part VI: none owned; re-runs 15, 28's BRANCH mechanism (F-9), 12, 13, 36 | T13 (15), T12 (28's mechanism), T10/T11 probes + `tests/invariants` (12), T1's audit case (13), T4 (36) | |
 | §3.0.4 row spec:1066 owned | T12 | proven in the pure evaluator (T6), through `postDocument` as `app_rw`, and through the transitions endpoint |
-| Regression: appends to sah-013, sah-072, sah-078; creates none | T14 | three `describe("… — 2A")` blocks; no earlier block edited (§3.7.3) |
+| Regression: appends to legacy-013, legacy-072, legacy-078; creates none | T14 | three `describe("… — 2A")` blocks; no earlier block edited (§3.7.3) |
 | Owner gate OD-24 | T15 | one isolated task; nothing else depends on it; **2A ships no screen** |
 
 Migration range 0017–0020 — four files, the four names the card expects, four PRs. ADR range 0026–0028 — **two** written (0026, 0027 — both proposals), **0028 left unused** per §3.4.1's rule applied to ADR numbers. Target size 13–15 tasks: **15**.
@@ -5249,7 +5249,7 @@ Migration range 0017–0020 — four files, the four names the card expects, fou
 
 ### Issues found while reviewing, and fixed inline
 
-1. **`reverseDocument` re-read the *current* policy — SAH-013, by the front door.** 1A resolves the reversal block with `resolvePolicy(tx, source.document_type_id, source.effective_date)`, which was safe while a policy version could arrive only through a reviewed seed PR. **This slice ships the API that breaks it**: `POST …/document-types/{documentTypeId}/policies` (T10) accepts any `effective_from`, ADR 0027 constrains only *overwriting*, and `resolvePolicy`'s `order by effective_from desc, version desc` means a version back-dated to on-or-before an already-posted document's `effective_date` becomes that document's answer — so a reversal written months later could produce a different type, or refuse outright, with no write to the document. That is the Part I heading verbatim. **Fixed in T8 Step 2b**: the `reversal` block is read from `app.document.posting_policy_id`, the column spec:1753 pins for exactly this reason; `resolvePolicy` still governs the reversal document's *own* posting at its *own* effective date, which is why the two documents legitimately pin different policies. Recorded as **amendment A8**, tested in T8 Step 1's sixth case and in T14's `sah-013` block, and the T8 run step now says what to do if one of 1A's own seven cases goes red on the new guard.
+1. **`reverseDocument` re-read the *current* policy — LEGACY-013, by the front door.** 1A resolves the reversal block with `resolvePolicy(tx, source.document_type_id, source.effective_date)`, which was safe while a policy version could arrive only through a reviewed seed PR. **This slice ships the API that breaks it**: `POST …/document-types/{documentTypeId}/policies` (T10) accepts any `effective_from`, ADR 0027 constrains only *overwriting*, and `resolvePolicy`'s `order by effective_from desc, version desc` means a version back-dated to on-or-before an already-posted document's `effective_date` becomes that document's answer — so a reversal written months later could produce a different type, or refuse outright, with no write to the document. That is the Part I heading verbatim. **Fixed in T8 Step 2b**: the `reversal` block is read from `app.document.posting_policy_id`, the column spec:1753 pins for exactly this reason; `resolvePolicy` still governs the reversal document's *own* posting at its *own* effective date, which is why the two documents legitimately pin different policies. Recorded as **amendment A8**, tested in T8 Step 1's sixth case and in T14's `legacy-013` block, and the T8 run step now says what to do if one of 1A's own seven cases goes red on the new guard.
 2. **Three API tests imported `tests/support/api` one directory too high.** `apps/api/test/routes/accounting/parties.test.ts`, `.../accounting/documents.branch.test.ts` and `.../admin/document-types.test.ts` all sit five levels below the repository root, and all three wrote `../../../../tests/support/api`, which resolves to `apps/tests/support/api`. 1B's frozen precedent is exact: `../../../../` from `apps/worker/test/handlers/` (four levels) and `../../../../../` from `apps/api/test/routes/accounting/` (five). All three corrected to five. Every one of those files would have failed at import time, before a single assertion ran.
 3. **Twelve task headings used an em dash where the house form is a colon.** Normalised to `### Task N: <title>`. The batch is **not** uniform — 2C already uses three hashes with a colon, 2B uses three hashes with an em dash and 9A uses **two** hashes with a colon — so this is a normalisation toward the stated form rather than a match to a sibling, and it is the form a reviewer's `grep -c "^### Task "` count depends on. No cross-reference broke: every reference in this plan is by number or `T<n>`.
 4. **The File Structure block listed no file for T15 and did not account for ADR 0028.** Added `docs/ui/phase-2a-party-api-surface.md`, and a paragraph recording that 0028 is allocated to this slice and **stays unused** — §3.4.1's rule for migration numbers applied to ADR numbers, so 2B may not borrow it.
@@ -5259,7 +5259,7 @@ Migration range 0017–0020 — four files, the four names the card expects, fou
 8. **T13 first asserted `postingPolicyId` on the document read, and 1A's `DocumentSchema` has no such field.** 1A exposes `postingPolicyId` on `LedgerEntrySchema` and deliberately not on `DocumentSchema` — the pin is an internal fact, not a client concern. Two assertions were rewritten to read `app.document.posting_policy_id` through the production `withTenant` as `app_rw` (`pinnedPolicyOf`), which keeps the claim and avoids a §4.2.8 amendment this slice has no reason to make. An implementer typing the original would have got `Property 'postingPolicyId' does not exist` from `tsc`, not a test failure.
 9. **T13 queried the ledger with `?filter[documentId][eq]=`, which 1A's route does not accept.** 1A's `LedgerEntryQuery` is flat — `accountId`, `fiscalPeriodId`, `documentId`, `from`, `to` — while this slice's own two configuration routes (T10, T11) use the `filter[x][eq]` form. Corrected to `?documentId=`, with the difference stated in a comment so the next reader does not “fix” it back. The two spellings coexisting across route modules is a real inconsistency in §4.2.8's list conventions and is worth one architect-level decision, but not one this slice may make unilaterally, and not one worth churning 1A's frozen route for.
 10. **T14 claimed “seven cases” for eight `it`s** (2 + 3 + 3). Counted and corrected; a run step whose expected count is wrong trains an implementer to ignore run steps.
-11. **The reversal's negated amounts could not reach the ledger at all.** T8 negates `amount`, `discount`, `tax_amount`, `total_incl_tax` and `quantity` on the mirror line and claimed the policy's own `each_line` rules would then "produce the mirrored ledger entries without a second set of rules". They would not: `evaluatePolicy` put the resolved amount into `PlannedLedgerLine.amount` unchanged and 1A's `insertLedger` writes it straight into the column named by `side` (1a:3176–3179), so a reversal of a document whose policy uses `amount: "line.amount"` inserts `debit = '-28.5000'` and dies on `ledger_entry_debit_check` (plan0A:2012). T8's first two cases and T14's `sah-013` mirror case were all unreachable, and the second expected `[["0.0000","40.0000"],["40.0000","0.0000"]]` — positive magnitudes with **swapped** sides, which negation alone can never produce. **Fixed by adding the sign normalisation to `evaluatePolicy`** (amendment **A9**): a negative resolved amount emits the rule's opposite side at `amount.abs()`, in both emit paths, with `PlannedTaxLine` exempt. That makes all three expectations true as written, and T6 gained a case asserting it directly. T13 escaped only because `CONSIGNMENT_RETURN`'s policy uses `line.debit`/`line.credit`, whose values are swapped rather than negated.
+11. **The reversal's negated amounts could not reach the ledger at all.** T8 negates `amount`, `discount`, `tax_amount`, `total_incl_tax` and `quantity` on the mirror line and claimed the policy's own `each_line` rules would then "produce the mirrored ledger entries without a second set of rules". They would not: `evaluatePolicy` put the resolved amount into `PlannedLedgerLine.amount` unchanged and 1A's `insertLedger` writes it straight into the column named by `side` (1a:3176–3179), so a reversal of a document whose policy uses `amount: "line.amount"` inserts `debit = '-28.5000'` and dies on `ledger_entry_debit_check` (plan0A:2012). T8's first two cases and T14's `legacy-013` mirror case were all unreachable, and the second expected `[["0.0000","40.0000"],["40.0000","0.0000"]]` — positive magnitudes with **swapped** sides, which negation alone can never produce. **Fixed by adding the sign normalisation to `evaluatePolicy`** (amendment **A9**): a negative resolved amount emits the rule's opposite side at `amount.abs()`, in both emit paths, with `PlannedTaxLine` exempt. That makes all three expectations true as written, and T6 gained a case asserting it directly. T13 escaped only because `CONSIGNMENT_RETURN`'s policy uses `line.debit`/`line.credit`, whose values are swapped rather than negated.
 12. **T9 persisted none of the ten new line columns.** Step 3 item 3 was one sentence of prose and no step touched 1A's `insertLines`/`upsertLines`, whose INSERT column list is nine columns and whose parameter type names five members (1a:4924–4938) — so `kind`, `quantity`, `unitPrice`, `discount`, `amount`, `taxAmount`, `totalInclTax` and `customFields` were all silently discarded, the `party_id` the cross-tenant-FK case asserts on was never written, and the item-line case passed on a bare `expect(ok.status).toBe(201)`. Step 3 is now seven written-out edits — the create handler, both line writers, the `PUT …/lines` zeroing UPDATE widened to reset all fifteen client-writable columns, `readDocument`'s tombstone predicate, `lineColumns`/`toDocument`, and the `ROUTES` entry — and the item-line case reads the row back through `GET …/documents/{id}`.
 13. **`DocumentLineInput` reversed three deliberate 1A constraints.** It dropped 1A's non-negative `Amount` for a signed regex, made `accountId` optional unconditionally, dropped the debit-or-credit `.refine`, and dropped `.min(1)` and the two `.openapi(…)` component names. Consequences: a body with `debit: "-5.0000"` or both sides positive reached `document_line_debit_check` as SQLSTATE 23514, which `fromDatabaseError` maps to **ERR_INTERNAL 500** rather than a 400; and an `account` line with no `accountId` is exactly the tombstone shape `readDocument` filters out — 1A's own self-review says the filter is safe "because `LineInput.accountId` is required" (1a:6281). All four are restored, `accountId` is required **conditionally on `kind === "account"`**, and `readDocument`'s predicate gained `kind = 'account'` so a legitimate item line with no account is visible while a tombstone is not. The **returned** `DocumentLineSchema` uses a separate `SignedAmount`, because a reversal's magnitudes genuinely are negative and a non-negative response schema would fail wire validation on every `GET` of a reversal.
 14. **`readDocument`'s tombstone filter and the generator script are 1A files this slice now edits beyond what the original tasks stated.** Both are named explicitly — the filter in T9 Step 3 item 6 (one predicate, in a file T9 already modifies) and `packages/domain/scripts/generate-policy-type.ts` in T5 Step 4 (two inline constants lifted into `scripts/policy-type-options.ts` so the drift test and the script cannot disagree about them). Neither changes a §4 signature; both are listed in the tasks' *Files → Modify*.
@@ -5267,8 +5267,8 @@ Migration range 0017–0020 — four files, the four names the card expects, fou
 16. **Two joins named a column that does not exist.** T12's `branch-required.test.ts` and T13's `zero-code.test.ts` both wrote `join app.ledger_entry l on l.id = d.ledger_entry_id` against `app.ledger_entry_dimension`, whose columns are `(tenant_id, entry_id, dimension_type_id, dimension_value_id)` (plan0A:2041–2046). Both corrected to `d.entry_id`. The two assertions that close coverage row spec:1066 and the BRANCH clause of the zero-code proof would otherwise never have run.
 17. **T13's "later policy version" case posted into a closed period and passed vacuously.** It drafted at `2026-02-10`, and §4.1 pins `seedTenant`'s periods as "2026-01 open, 2026-02 **closed**, 2026-03 locked" — so `postDocument` refused at step 5 with `ERR_PERIOD_NOT_OPEN`, the transition's status was never asserted, `febRows` came back empty and `[].every(…)` is `true`. The one assertion behind "a type can be *changed* with zero code" was green while proving nothing. Version 2 is now effective from `2026-01-20` and the document is dated `2026-01-25` — both inside the open period — both transitions assert `200`, and `lateRows` is asserted non-empty before the `every`.
 18. **Three run steps and two helper names were wrong.** T1 said 8 tests for nine `it`s and T6 said 16 for seventeen (now nineteen, with A9's case and the zero-amount `each_tax` group's). T9's Step 1 called `seedPrincipal(api, a, …)` and `grantCodes(api, a, …)`, and its prose claimed both were "the two local helpers 1A's own `documents.test.ts` already defines" — 1A defines **neither**: it has one `grant(s, principalId, ...codes)` scoped inside its own `describe` and an inline principal insert in its `beforeAll`. Both helpers are now written out in full in T9 Step 1 and the prose says why they cannot be imported. T7's and T8's appended blocks called the **four**-argument test `withTenant` with a three-argument production signature in twelve places, passing a `TenantContext` object where a `tenantId` string belongs; every one is now `prodWithTenant(db.rw, ctx(s), …)`, matching 1a:2766 and 1a:3383, and the local `const ctx = { … }` declarations that shadowed 1A's file-level `ctx` helper are gone.
-19. **Two document-type codes were in no register and one belonged to another slice.** T9 created `LATE_TYPE`, T10 created `TO_ARCHIVE`, T8 named `ABSENT_TYPE`, and T14's `sah-078` created `COST_ADJUSTMENT` — which §4.14 assigns to **3B**. Contracts §5 item 32 makes an unregistered code a review-blocking finding, and the Assumptions block and the hazard-32 line both claimed only two codes existed. All four sites now use `POLICY_TEST_2`, registered alongside `POLICY_TEST` by the extended **A1** with its own series `PT2`; `ABSENT_TYPE`'s case works better for it, since the point is a code that is registered but *not seeded in that company*.
-20. **T14's `sah-078` block wrote two document types into the shared regression API seed.** `sharedApi()`'s `Seed`s are shared across every regression file and `app.document_type` is `unique (company_id, code)`, so 2C's or 3B's own appends creating either code would fail on whichever file ran second. Both cases now seed their own tenant with `seedTenantV2(api.db, "SAH078-2A"/"SAH078-2Ab")` + `grantAdmin`, the way the `sah-013` block already did, and the block's comment says so for 2C's writer.
+19. **Two document-type codes were in no register and one belonged to another slice.** T9 created `LATE_TYPE`, T10 created `TO_ARCHIVE`, T8 named `ABSENT_TYPE`, and T14's `legacy-078` created `COST_ADJUSTMENT` — which §4.14 assigns to **3B**. Contracts §5 item 32 makes an unregistered code a review-blocking finding, and the Assumptions block and the hazard-32 line both claimed only two codes existed. All four sites now use `POLICY_TEST_2`, registered alongside `POLICY_TEST` by the extended **A1** with its own series `PT2`; `ABSENT_TYPE`'s case works better for it, since the point is a code that is registered but *not seeded in that company*.
+20. **T14's `legacy-078` block wrote two document types into the shared regression API seed.** `sharedApi()`'s `Seed`s are shared across every regression file and `app.document_type` is `unique (company_id, code)`, so 2C's or 3B's own appends creating either code would fail on whichever file ran second. Both cases now seed their own tenant with `seedTenantV2(api.db, "LEGACY078-2A"/"LEGACY078-2Ab")` + `grantAdmin`, the way the `legacy-013` block already did, and the block's comment says so for 2C's writer.
 21. **T6's null-cost case asserted one warning where the loop produced one per rule.** The warning `push` sits inside `for (const line of snapshot.lines)` within `for (const rule of policy.lines)`, so two `line.cost` rules over one line produced two identical strings and `toEqual` on an array is length-sensitive. Deduped in the implementation, keyed on `line ${lineNo}:` — a policy that names `line.cost` twice describes one uncomputed cost, so one sentence is the right answer and `plan.warnings` now grows with the facts rather than with the rule count.
 22. **T11 printed a forbidden `tx.unsafe(COLUMNS)` inside a code block and forbade it in the paragraph below.** An implementer working top-to-bottom types the violation and the `no-sql-concat` lint (test 27) then fails the build. The code block now carries the compliant `returning` list, the `COLUMNS` constant and the correcting paragraph are gone, and a comment beside `toDto` records why the list is repeated five times.
 23. **T11's duplicate-code case read a Problem envelope out of a 201.** `problemOf(res)` on a `PartySchema` body returns an object with no `status`, so `expect(undefined).toBe(201)` failed before the line below it could exercise the actual conflict. Corrected to `expect((await create({ code: "DUP" })).status).toBe(201)`.
@@ -5279,7 +5279,7 @@ Migration range 0017–0020 — four files, the four names the card expects, fou
 28. **T6's `each_tax` zero-drop was correct but unpinned, and nothing in the task said why the order mattered.** The body already dropped a zero-amount group before calling `resolveAccount`, and 5A's five golden tax documents depend on it totally — a zero-rated, exempt or out-of-scope tax code carries no output and no input account, so resolving first refuses an ordinary zero-rated sale with `ERR_POLICY_REQUIRES_MISSING` naming an account that is right to be absent. No test covered it, so a later refactor swapping two statements would have gone green here and gone red three slices away. T6 now carries a "Read this before writing the `each_tax` path" paragraph, an in-body comment saying the order is load-bearing and that the `taxLines.push` sits deliberately outside the drop, and a nineteenth case asserting that a zero group plans no ledger line, resolves no account and still contributes its base as a `PlannedTaxLine`. Behaviour is unchanged; the run-step counts and both diagnostic sentences were updated with it.
 
 29. **T9 turned two of 1A's own cases red and edited neither, while its run step promised green.** Deleting the static `accounting.journal.create` gate has a consequence the task had mis-stated: `JOURNAL_POLICY_V1` declares **no `approval.create`** (contracts §4.4.1, round-2 correction — the prose once said otherwise and the correction is explicit), so after T9 every JOURNAL stage resolves to `accounting.journal.post`, and 1A's `drafter`, granted only `accounting.journal.create` at 1a:4460, could no longer create — its create returned 403, `doc.id` came back `undefined`, and the follow-up transition hit `/documents/undefined/transitions`. Separately, 1a:4475 `it("refuses any documentTypeCode but JOURNAL at Phase 1 (2A lifts this)")` went red the moment Step 4 removed the `z.literal("JOURNAL")` pin: Zod accepts `SALES_INVOICE` and the middleware answers 404, not 400. **T9 Step 1 now opens with both edits written out in full** — the grant widened to both codes in 2B Task 7 Step 2's own wording (so 2B finds it already made), the drafter case rewritten to assert create **and** post with spec:2158's separation moved to the POLICY_TEST case where the policy genuinely names two codes, and the pin case deleted in favour of T9's own 404 case. Step 1's FAIL sentence and Step 5's expected counts were rewritten with it, and the commit body records both edits.
-30. **T14's `sah-078` append had two errors that stop the file compiling or running.** The `ERR_POLICY_INVALID` case's `api.request({ … })` call closed `inventory`, `definition` and `body` and then the call paren, never closing the request-argument object — a syntax error, so no step of T14 could run. And its final assertion read `as: a.human` where the block seeds its tenant as `s`, which is either `Cannot find name 'a'` at typecheck or a cross-tenant 403 whose body has no `items`. Both fixed; the sibling case six lines above shows the correct brace count.
+30. **T14's `legacy-078` append had two errors that stop the file compiling or running.** The `ERR_POLICY_INVALID` case's `api.request({ … })` call closed `inventory`, `definition` and `body` and then the call paren, never closing the request-argument object — a syntax error, so no step of T14 could run. And its final assertion read `as: a.human` where the block seeds its tenant as `s`, which is either `Cannot find name 'a'` at typecheck or a cross-tenant 403 whose body has no `items`. Both fixed; the sibling case six lines above shows the correct brace count.
 31. **Seven smaller corrections, each verified against the source it cites.** T5's catalogue comment said "four codes" over a six-element array (the payroll fixture needs all three `hr.payroll.*`). T9's `POLICY_RESOLVED_CODES` doc-comment claimed JOURNAL's policy "names these two" — it names one, and the comment now gives the real reason `accounting.journal.create` stays in the constant (Step 3 item 2 deletes its last source reference and §3.6.3's bidirectional check needs one). T8 Step 2 called the `document` insert an edit when it is byte-identical to 1a:3614–3621; the step is retitled and the paragraph now scopes the replacement to the `document_line` insert. T11's party-account case was titled "not this company's" while §4.5.7's key is tenant-composite only — retitled to match T1's equivalent case, with a comment saying what the schema does and does not guarantee. T11's probe calls `seedParty` and the step never said to import it. T13's commit body said "effective from February" after review item 17 moved the boundary to 2026-01-20 (2026-02 is a closed period). The hazard-32 line called `X1` the one further literal; `NOT_A_TYPE` is a second, and both are named now. The Task 12 → Task 13 boundary was missing its `---`, and the amendment table listed A8 above A7.
 
 ### Discrepancies between the card's prose and §3/§4, resolved in favour of §3/§4
@@ -5311,7 +5311,7 @@ Migration range 0017–0020 — four files, the four names the card expects, fou
 
 **The ten amendments land first.** contracts:1261 makes a §4 addition an amendment to the contracts document, not a plan decision. Each row of *The ten amendments this plan needs* is one PR by the **architect** against `docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md`, ahead of the task named in its right-hand column. Execution of a task does not start until its amendment row has landed: **A1** before T6, **A2** before T9, **A3** before T10, **A4** before T9, **A5** before T6, **A6** before T6, **A7** before T8, **A8** before T8, **A9** before T6 (and T8 depends on it landing), **A10** before T10.
 
-**Two of the ten are the ones an executor must not skip.** **A9** (§4.4.2 sign normalisation) is a *behavioural* addition, not a registry tidy-up: without it T8's mirror cases and T14's `sah-013` mirror case fail on `ledger_entry_debit_check`, because a reversal's negated `amount` reaches `insertLedger` as a negative number and `app.ledger_entry` refuses it (plan0A:2012). **A10** (§4.2.4 `errors[]` on `ERR_POLICY_INVALID`) is what T10's and T14's JSON-Pointer assertions read; structurally the member already fits, so a missing A10 shows up as a documentation contradiction rather than a red test — which is exactly the kind that survives to the next slice.
+**Two of the ten are the ones an executor must not skip.** **A9** (§4.4.2 sign normalisation) is a *behavioural* addition, not a registry tidy-up: without it T8's mirror cases and T14's `legacy-013` mirror case fail on `ledger_entry_debit_check`, because a reversal's negated `amount` reaches `insertLedger` as a negative number and `app.ledger_entry` refuses it (plan0A:2012). **A10** (§4.2.4 `errors[]` on `ERR_POLICY_INVALID`) is what T10's and T14's JSON-Pointer assertions read; structurally the member already fits, so a missing A10 shows up as a documentation contradiction rather than a red test — which is exactly the kind that survives to the next slice.
 
 **The one earlier slice's test file this plan edits, and what 2B will find.** T9 Step 1 makes two edits inside 1A's `apps/api/test/routes/accounting/documents.test.ts` — it is the only file belonging to a merged slice whose *existing* cases this plan changes, and both changes are forced by the gate T9 replaces. (1) 1A's `drafter` grant becomes `await grant(a, drafter, "accounting.journal.create", "accounting.journal.post");` and its case now asserts that the drafter creates **and** posts a JOURNAL, because JOURNAL's policy names one code at every stage (§4.4.1's round-2 correction); spec:2158's "the clerk may not post" is asserted instead on `POLICY_TEST`, whose policy declares `approval.create`. (2) 1A's `refuses any documentTypeCode but JOURNAL at Phase 1 (2A lifts this)` case is deleted, replaced by T9's 404 case. **2B's Task 7 Step 2 "edit one" is therefore already made** — 2B's own text anticipates this ("if 2A did not already make it … check `beforeAll` before editing"), so 2B's executor should find the grant line as this slice leaves it and skip that edit. **What 2B must still check for itself:** its state machine and its R1/R8 SoD rules land on the same rewritten case, which now expects `posted.status === 200` for the creating principal on a `draft → posted` transition. If 2B's matrix or an SoD rule stops the creator from posting, that assertion is 2B's to move — a grant edit alone will not do it. Reported upward rather than pre-empted here, because 2A ships with no SoD rule and must be green on its own head.
 

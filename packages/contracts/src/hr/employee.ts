@@ -74,7 +74,7 @@ export const TerminateEmployeeBody = z
  *     `@hono/zod-openapi` would stop generating query parameters from it.
  *
  *  **0B's own `AuditLogQuery` is correctly NOT `.strict()`** (0b:7384) — the audit log is §4.2.8 Layer 1's
- *  open `parseFilters` surface and `sah-036` sends undeclared keys expecting them stripped. This is a Layer 2
+ *  open `parseFilters` surface and `legacy-036` sends undeclared keys expecting them stripped. This is a Layer 2
  *  literal-key schema, where the enumeration IS the contract. Not an inconsistency to "harmonise". */
 export const EmployeeQuery = ListQuery.extend({
   "filter[homeBranchId][eq]": UuidSchema.optional(),

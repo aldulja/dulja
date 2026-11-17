@@ -212,7 +212,7 @@ describe("the master-data loaders (contracts §4.13.2, §5.1 #3, #8)", () => {
       loader: "lot",
       sourceTable: "MATBATCHES",
       sourceKey: "9001",
-      reason: "material 999 has no imported item; the batch is an orphan (SAH-073)",
+      reason: "material 999 has no imported item; the batch is an orphan (LEGACY-073)",
     };
     expect(first.skips.filter((k) => k.loader === "lot")).toEqual([orphan]);
     // A map skip is not recorded, so the orphan is reported again on every run until the source is corrected.
@@ -322,7 +322,7 @@ describe("the master-data loaders (contracts §4.13.2, §5.1 #3, #8)", () => {
 
 describe("what the master loaders refuse, report or keep apart", () => {
   it("links an account whose unused ACCOPENBAL is NULL, so its AccTotals balance opens (2026-11-15 review, HRP-21)", async () => {
-    const fresh = await seedLoadableTenant(db, "master-sah007");
+    const fresh = await seedLoadableTenant(db, "master-legacy007");
     const rows = loadCorpus("cut-over").tables["ACCOUNTS"]!.rows.map((r) =>
       r["ACCCODE"] === "1101" ? { ...r, ACCOPENBAL: null } : r,
     );

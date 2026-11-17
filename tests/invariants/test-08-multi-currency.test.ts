@@ -24,7 +24,7 @@ import {
 import { arApFixture, postFromPack, type ArApFixture } from "./support/ar-ap";
 
 /**
- * Acceptance test 8 (spec:2426; SAH-011, 012, 014) — "Multi-currency round-trip. Invoice EUR, part-pay USD,
+ * Acceptance test 8 (spec:2426; LEGACY-011, 012, 014) — "Multi-currency round-trip. Invoice EUR, part-pay USD,
  * settle in base, revalue at period end. FX gain/loss posts correctly; party balance correct in all three
  * currencies; `base = round(value × rate)` holds on every line."
  *
@@ -110,7 +110,7 @@ afterAll(async () => {
   await db?.stop();
 });
 
-describe("acceptance test 8 — multi-currency round-trip (spec:2426; SAH-011, 012, 014)", () => {
+describe("acceptance test 8 — multi-currency round-trip (spec:2426; LEGACY-011, 012, 014)", () => {
   it("1. a EUR 1,000 invoice at 5.0000 carries base 5,000 and ages in EUR", async () => {
     ({ documentId: invoiceId } = await postFromPack(db, s, {
       code: "SALES_INVOICE",
@@ -337,7 +337,7 @@ describe("acceptance test 8 — multi-currency round-trip (spec:2426; SAH-011, 0
     });
   });
 
-  it("7. base = round(value × rate, 4) holds on EVERY ledger line of the fixture (SAH-012)", async () => {
+  it("7. base = round(value × rate, 4) holds on EVERY ledger line of the fixture (LEGACY-012)", async () => {
     await withTenant(db.rw, await ctxFor(), async (tx) => {
       const [bad] = await tx<{ n: number }[]>`
         select count(*)::int as n from app.ledger_entry
@@ -357,7 +357,7 @@ describe("acceptance test 8 — multi-currency round-trip (spec:2426; SAH-011, 0
     });
   });
 
-  it("8. every ORIGINATING document of the fixture records its rate SOURCE (SAH-012, spec:1762)", async () => {
+  it("8. every ORIGINATING document of the fixture records its rate SOURCE (LEGACY-012, spec:1762)", async () => {
     await withTenant(db.rw, await ctxFor(), async (tx) => {
       const [missing] = await tx<{ n: number }[]>`
         select count(*)::int as n from app.document

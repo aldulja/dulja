@@ -22,7 +22,7 @@ export interface TaxCodeDef {
   readonly regimeId: string;
   readonly code: string;
   /** Decimal fraction at RATE_SCALE (8 dp), represented as a decimal string rather than a number —
-   *  `no-number-money` (§3.7.5) matches /rate|tax/i and a float rate is SAH-019's arithmetic. */
+   *  `no-number-money` (§3.7.5) matches /rate|tax/i and a float rate is LEGACY-019's arithmetic. */
   readonly rate: string;
   readonly kind: "output" | "input" | "exempt" | "zero" | "out_of_scope";
   readonly roundingMode: RoundingMode;
@@ -50,7 +50,7 @@ export interface TaxEngine {
   /** Pure. Applies each code's rate with its own declared rounding mode (spec:2228) and refuses a code whose
    *  regime is not the document's regime, or whose effective range falls outside the regime's window —
    *  which has an OPEN upper bound while `regime.effectiveTo` is null, so successive rates inside one live
-   *  regime are accepted and only a code past a CLOSED regime's end is refused (SAH-020, spec:2227). */
+   *  regime are accepted and only a code past a CLOSED regime's end is refused (LEGACY-020, spec:2227). */
   compute(regime: TaxRegime, lines: TaxLineInput[]): TaxLineResult[];
 }
 
@@ -126,7 +126,7 @@ function assertRegime(regime: TaxRegime, line: TaxLineInput): void {
  * independently would leave a residue on every line, which is what makes an inclusive invoice fail to balance.
  *
  * `Money.multiply` / `Money.divide` require an explicit `RoundingMode` (§4.2.1) and are symmetric across
- * sign, so SAH-019's `+6 -> 10 / -6 -> -5` asymmetry cannot recur and a negative credit-note line produces
+ * sign, so LEGACY-019's `+6 -> 10 / -6 -> -5` asymmetry cannot recur and a negative credit-note line produces
  * exactly the negated figures of its positive twin.
  */
 export function computeTaxLine(line: TaxLineInput): TaxLineResult {

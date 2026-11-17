@@ -34,7 +34,7 @@ function cell(value: unknown): string {
 /**
  * RFC 4180, CRLF, with a UTF-8 BOM. The BOM is not decoration: these files carry Arabic master-data names, and
  * Excel on Windows — which is what the owner will open them in — decodes a BOM-less UTF-8 CSV as the system code
- * page and renders every Arabic name as mojibake. SAH-085 is the same defect in the other direction.
+ * page and renders every Arabic name as mojibake. LEGACY-085 is the same defect in the other direction.
  *
  * The CSV is for a person (ADR 0083), so a cell a spreadsheet would run as a formula is prefixed with `'` — the
  * 7A report-CSV rule (`packages/db/src/hr/csv-cell.ts`), restated here because this package may not import

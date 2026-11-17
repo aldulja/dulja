@@ -44,7 +44,7 @@ describe("app.item / app.unit_of_measure / app.unit_conversion — migration 002
     expect(accounts.expenseAccountId).not.toBeNull();
   });
 
-  it("a missing default code is named, never silently nulled (hazard 33, SAH-064)", async () => {
+  it("a missing default code is named, never silently nulled (hazard 33, LEGACY-064)", async () => {
     // Tenant B has no 1300/5000/5900 rows.
     await expect(
       withTenant(db.rw, b.tenant, b.human, (tx) =>
@@ -79,7 +79,7 @@ describe("app.item / app.unit_of_measure / app.unit_conversion — migration 002
     expect(row.archivedAt).toBeNull();
   });
 
-  it("unit_conversion refuses a zero denominator and a non-positive numerator (spec:2043, SAH-063)", async () => {
+  it("unit_conversion refuses a zero denominator and a non-positive numerator (spec:2043, LEGACY-063)", async () => {
     const { itemId, unitId } = await withTenant(db.rw, a.tenant, a.human, async (tx) => {
       const unit = await createUnit(tx, { companyId: a.company, code: "CTN", nameEn: "Carton" });
       const [item] = await tx<

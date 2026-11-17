@@ -15,7 +15,7 @@ export const bandedContribution: SchemeCalculator = {
     const value = base.toDecimal();
     const band = table.table.bands.find((b) => within(value, b));
     if (band === undefined) {
-      // A gap in the table is a gap, never a zero contribution. SAH-011 is exactly the failure where an absent
+      // A gap in the table is a gap, never a zero contribution. LEGACY-011 is exactly the failure where an absent
       // input becomes 0 and the figure is wrong for ever.
       throw new PayrollCalculationError(
         "ERR_PAYROLL_INPUT_MISSING",

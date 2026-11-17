@@ -21,7 +21,7 @@ here is per-tenant data in Dulja — it is customer data from a system Dulja is 
 
 1. **Every report is written as `<name>.json`** (machine-readable, the shape a later task consumes) **and, where a
    person reads it, as `<name>.csv`** — UTF-8 **with a BOM**, RFC 4180, CRLF, so Excel on Windows renders Arabic
-   master-data names instead of mojibake (SAH-085 in reverse). Because the CSV is for a person, a cell a
+   master-data names instead of mojibake (LEGACY-085 in reverse). Because the CSV is for a person, a cell a
    spreadsheet would evaluate as a formula (a leading `=`, `+`, `-`, `@`, tab or CR — OWASP "CSV injection") is
    prefixed with `'`, the 7A report-CSV rule (`packages/db/src/hr/csv-cell.ts`), restated in
    `packages/importer/src/artefacts.ts` because this package may not import `@dulja/db`. A plain signed decimal

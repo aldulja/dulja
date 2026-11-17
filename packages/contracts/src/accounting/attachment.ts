@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ListEnvelope, TimestampSchema, UuidSchema } from "../common";
 
-/** contracts §4.5.8. `objectKey` is '<tenant_id>/<id>' — server-derived (SAH-038) — and is returned so a
+/** contracts §4.5.8. `objectKey` is '<tenant_id>/<id>' — server-derived (LEGACY-038) — and is returned so a
  *  support engineer can find the object without a second query. */
 export const AttachmentSchema = z.object({
   id: UuidSchema,

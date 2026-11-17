@@ -139,7 +139,7 @@ async function docFacts(
  * The document's own rate, as the `ExchangeRate` `toBase` takes. **Every base conversion in this file goes
  * through `toBase`** (Global Constraint 5): `toBase` is `round(value × rate, 4)` HALF_AWAY_FROM_ZERO,
  * byte-for-byte the identity `ledger_entry`'s CHECK enforces (spec:1816, §4.2.1). A second spelling of that
- * arithmetic here would be a second answer, which is SAH-019 in a new place.
+ * arithmetic here would be a second answer, which is LEGACY-019 in a new place.
  */
 function rateOf(facts: DocFacts): ExchangeRate {
   return {
@@ -169,7 +169,7 @@ function sideOf(facts: DocFacts): -1 | 0 | 1 {
  * `remainingBase` 115 and "realised" a 5.0000 FX difference on a base-currency, rate-1 settlement; one keyed at
  * 0 could never be allocated at all. A document that has not moved the control account (not yet posted) has
  * no ledger figure, and its magnitude is its total — in base through `toBase`, at its own rate (spec:1816,
- * SAH-012). A foreign-currency document whose control legs are base-currency cost legs is measured on its
+ * LEGACY-012). A foreign-currency document whose control legs are base-currency cost legs is measured on its
  * own-currency exposure — its keyed total, at its own rate (`docFacts`, 0129) — so its price-versus-cost
  * difference is never part of what it settles (MON-11).
  *
@@ -489,7 +489,7 @@ export async function allocateSettlement(
 
 /**
  * Reverses one LIVE allocation of the settlement `settlementDocumentId` of `companyId`: sets `unallocated_at`,
- * `unallocated_by` and `unallocation_reason`. Never touches a ledger entry (spec:2457, SAH-041). Bound to the
+ * `unallocated_by` and `unallocation_reason`. Never touches a ledger entry (spec:2457, LEGACY-041). Bound to the
  * settlement as well as the company, because the route's gate cleared THAT document's authority and an
  * allocation id alone would reach another settlement's row.
  *
@@ -548,7 +548,7 @@ export async function unallocate(
  * negated before it is compared with a control-account balance; 4B's `ageingTieOut` reads the control account
  * directly and must not be routed through this function unconverted.**
  *
- * A party with nothing posted owes `0.0000` in base and names no currency — never NULL (SAH-011).
+ * A party with nothing posted owes `0.0000` in base and names no currency — never NULL (LEGACY-011).
  */
 export async function partyBalance(
   tx: Sql,

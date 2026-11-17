@@ -69,7 +69,7 @@ detail, with the plan's catalogue of till codes and `ERR_INTERNAL` for anything 
 registry's existing code, is now also raised by the till's PIN lockout (ADR 0060's PR 12 amendment).
 `ERR_TERMINAL_ENROLMENT_INVALID`, 6A's refusal of an expired, used or unknown enrolment code, is passed through
 from the server as its own code (2026-10-23), so the enrol screen says the code was not accepted, and to check
-it before asking for a new one (the server answers alike for a mistyped, expired or used code, SAH-025), instead
+it before asking for a new one (the server answers alike for a mistyped, expired or used code, LEGACY-025), instead
 of the general fault. Every other failure of the server call (`enrolDevice`), an unreachable server included,
 stays `ERR_INTERNAL`; the till's own refusals before it (a code that is not 32 characters of A–Z and 2–7, an
 enrolment already running, an open shift or unsent work) are `ERR_VALIDATION_FAILED`, as

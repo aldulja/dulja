@@ -86,7 +86,7 @@ const itemRule = (side: string, account: Record<string, string>, amount: string)
   when: { "line.kind": "item" },
 });
 
-describe("deterministic projections — acceptance test 2 (spec:2420; SAH-001, 002, 013, 049, 050)", () => {
+describe("deterministic projections — acceptance test 2 (spec:2420; LEGACY-001, 002, 013, 049, 050)", () => {
   let db: Db;
   let a: Seed;
   let b: Seed;
@@ -177,7 +177,7 @@ describe("deterministic projections — acceptance test 2 (spec:2420; SAH-001, 0
     expect(await check(a)).toEqual([]);
   });
 
-  it("Beta's postings never enter Alpha's rebuild (SAH-001 — the tenant key is RLS, not a column in the query)", async () => {
+  it("Beta's postings never enter Alpha's rebuild (LEGACY-001 — the tenant key is RLS, not a column in the query)", async () => {
     await postJournal(db, b, [
       { account: b.cash, debit: "5000.0000" },
       { account: b.sales, credit: "5000.0000" },
@@ -186,7 +186,7 @@ describe("deterministic projections — acceptance test 2 (spec:2420; SAH-001, 0
     expect(await check(b)).toEqual([]);
   });
 
-  it("a hand-edited amount is reported as amount_differs, naming the column and both values (SAH-002)", async () => {
+  it("a hand-edited amount is reported as amount_differs, naming the column and both values (LEGACY-002)", async () => {
     const ctx = await ctxFor(a);
     await withTenant(
       db.rw,
@@ -269,7 +269,7 @@ describe("deterministic projections — acceptance test 2 (spec:2420; SAH-001, 0
     expect(await check(a)).toEqual([]);
   });
 
-  it("the check never repairs — running it twice leaves account_balance byte-identical (SAH-079)", async () => {
+  it("the check never repairs — running it twice leaves account_balance byte-identical (LEGACY-079)", async () => {
     const before = await snapshot(a);
     await check(a);
     await check(a);

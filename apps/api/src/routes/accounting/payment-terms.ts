@@ -168,7 +168,7 @@ paymentTermRoutes.openapi(
       400: problem("Invalid body, or a discount window the stored term cannot take"),
       404: problem("Not found"),
       409: problem(
-        "The days or discount of a term a non-draft document pins (ERR_CONFLICT_REFERENCE, SAH-013) — create a new term",
+        "The days or discount of a term a non-draft document pins (ERR_CONFLICT_REFERENCE, LEGACY-013) — create a new term",
       ),
     },
   }),

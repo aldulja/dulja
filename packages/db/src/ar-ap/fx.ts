@@ -8,7 +8,7 @@
 // Both FX documents carry BASE amounts in the base currency at exchange_rate 1.00000000, so the ledger_entry
 // CHECK base = round(value × rate, 4) holds by construction. The one place a rate is applied is `toBase`
 // (§4.2.1: round(value × rate, 4), HALF_AWAY_FROM_ZERO — the arithmetic the CHECK itself uses); no product of
-// an amount and a rate is spelled anywhere else in this file (SAH-012, SAH-019).
+// an amount and a rate is spelled anywhere else in this file (LEGACY-012, LEGACY-019).
 //
 // One direction rule for both halves, in DEBIT-POSITIVE terms on the subject account: a positive delta debits
 // the subject account and credits the result account, a negative one does the reverse, and
@@ -438,7 +438,7 @@ export interface RevaluationResult {
  *
  * Refused: a period not of the company (ERR_PERIOD_NOT_FOUND); an exposed currency with no `app.rate_for`
  * row on or before `ends_on` (ERR_RATE_NOT_FOUND naming the pair — never 1, never the previous row's rate:
- * SAH-012, SAH-014); a period that is not open (postDocument's ERR_PERIOD_NOT_OPEN).
+ * LEGACY-012, LEGACY-014); a period that is not open (postDocument's ERR_PERIOD_NOT_OPEN).
  */
 export async function revalueAtPeriodEnd(
   tx: Sql,
@@ -600,7 +600,7 @@ export async function revalueAtPeriodEnd(
       select rate::text as rate, to_char(effective_from, 'YYYY-MM-DD') as effective_from, source
         from app.rate_for(${input.companyId}, ${e.currency}, ${baseCode}, ${asOf}::date)`;
     if (!rate?.rate) {
-      // SAH-012/SAH-014: never assume 1 and never reuse another currency's or an earlier loop's rate.
+      // LEGACY-012/LEGACY-014: never assume 1 and never reuse another currency's or an earlier loop's rate.
       throw new PostingError(
         "ERR_RATE_NOT_FOUND",
         `no exchange_rate row for ${e.currency} → ${baseCode} effective on or before ${asOf} (company ${input.companyId}); enter one before revaluing`,
@@ -613,7 +613,7 @@ export async function revalueAtPeriodEnd(
       effectiveFrom: rate.effective_from ?? asOf,
       source: rate.source ?? "",
     };
-    // The ONE conversion (§4.2.1, SAH-019): round(value × rate, 4), HALF_AWAY_FROM_ZERO — toBase.
+    // The ONE conversion (§4.2.1, LEGACY-019): round(value × rate, 4), HALF_AWAY_FROM_ZERO — toBase.
     const revaluedBase = toBase(e.amountCcy, quote);
     const delta = revaluedBase.subtract(e.carriedBase);
     detail.push({

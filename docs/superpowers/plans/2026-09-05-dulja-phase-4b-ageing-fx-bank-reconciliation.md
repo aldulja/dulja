@@ -8,7 +8,7 @@
 
 **Tech Stack:** Bun 1.4 (install, scripts, the API entrypoint) · Node 24 LTS (runs Vitest) · TypeScript strict · PostgreSQL 18 (Testcontainers `postgres:18`) · `postgres` (postgres.js) tagged templates for every write and every projection read · Drizzle ORM mirrors for typed reads and as the migration diff source (ADR-0002) · Hono + `@hono/zod-openapi` · Zod · `decimal.js` behind `@dulja/domain`'s `Money` · pg-boss for `accounting.projection.rebuild` (0D) · React 19 + `@dulja/ui` + i18next (the OD-24 screens) · Vitest + Testcontainers · Playwright (the both-directions re-run of test 23) · oxlint + oxfmt · Turborepo. No package version appears in any source file — the lockfile owns versions (spec:104).
 
-**Spec:** `docs/spec/rebuild-spec.md` v1.2 — §0.2 the never/always lists (spec:97–108), §3.0.3 the **Purchase in foreign currency** and **Customer credit control** rows (spec:1023, 1026), §3.0.4 rows **1043 Bank reconciliation**, **1044 Post-dated cheques ⚠️**, **1045 Multi-currency** and 1042/1047 (spec:1042–1047), §3.3 asynchronous projections (spec:1204), §3.8 `document.currency`/`exchange_rate`/`rate_source` (spec:1760–1762), the `ledger_entry` base checks (spec:1816), the FX-rounding-line comment (spec:1866–1869) and `company.fx_rounding_account_id` (spec:1691, 2001), §3.9 Money/Time/Deletion/Error codes (spec:2037–2053), §4.2.1 `accounting.bank.reconcile` and the `accountant`/`auditor` rows (spec:2147, 2157, 2163), §4.7 rounding (spec:2228), §4.11 engineering practice (spec:2258–2266), Part V the Phase 4 row and the continuous-reporting clause (spec:2290, 2300), Part VI tests **2**, **7**, **8**, **39** (spec:2420, 2425, 2426, 2457), Part VII **#15** (spec:2479), Part I **SAH-011** (spec:311), **SAH-012** (spec:320), **SAH-014** (spec:340), **SAH-019** (spec:381), **SAH-031** (spec:490), **SAH-041** (spec:567).
+**Spec:** `docs/spec/rebuild-spec.md` v1.2 — §0.2 the never/always lists (spec:97–108), §3.0.3 the **Purchase in foreign currency** and **Customer credit control** rows (spec:1023, 1026), §3.0.4 rows **1043 Bank reconciliation**, **1044 Post-dated cheques ⚠️**, **1045 Multi-currency** and 1042/1047 (spec:1042–1047), §3.3 asynchronous projections (spec:1204), §3.8 `document.currency`/`exchange_rate`/`rate_source` (spec:1760–1762), the `ledger_entry` base checks (spec:1816), the FX-rounding-line comment (spec:1866–1869) and `company.fx_rounding_account_id` (spec:1691, 2001), §3.9 Money/Time/Deletion/Error codes (spec:2037–2053), §4.2.1 `accounting.bank.reconcile` and the `accountant`/`auditor` rows (spec:2147, 2157, 2163), §4.7 rounding (spec:2228), §4.11 engineering practice (spec:2258–2266), Part V the Phase 4 row and the continuous-reporting clause (spec:2290, 2300), Part VI tests **2**, **7**, **8**, **39** (spec:2420, 2425, 2426, 2457), Part VII **#15** (spec:2479), Part I **LEGACY-011** (spec:311), **LEGACY-012** (spec:320), **LEGACY-014** (spec:340), **LEGACY-019** (spec:381), **LEGACY-031** (spec:490), **LEGACY-041** (spec:567).
 
 ## Assumptions and contracts (from docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md)
 
@@ -27,7 +27,7 @@
 - **Interfaces consumed:** §4.1 (the whole Plan 0A surface), §4.2.1 (`Money`, `currency`, `round`, `toBase`, `ExchangeRate`, `UNIT_RATE`), §4.2.2 (`withTenant`, `TenantContext`, `systemContext`, `createDb`), §4.2.3 (`AppEnv`, `RequestContext`, `Logger`, the middleware order), §4.2.4 (`Problem`, `ERRORS`, `AppError`, `fromDatabaseError`, `PostingError` — and `ERR_BANK_MATCH_AMOUNT`, this slice's one registry row), §4.2.5 (`PERMISSION`, `requirePermission`, `ROLES`, `INCOMPATIBLE_PAIRS`, `assertRouteGates`), §4.2.6 (`JOBS`, `JobName`, `JobPayload`, `JobEnvelope`, `JobClient`, `registerHandler`, `runJob`, `eachTenant`, `JOB_PROBES`), §4.2.7 (`RouteModule`, `buildRoutes`, `IdempotencyHeader`, `createApp`, `PROBES`, `TENANT_FREE`), §4.2.8 (the common schemas, the list envelope, the cursor codec, **the one list-filter convention — `parseFilters` is named there as the mechanism 4B's ageing route uses**), §4.2.9 (`idempotency`, `RECLAIM_AFTER_SECONDS`), §4.2.10 (`app.rate_for`, `app.exchange_rate`, `app.currency`), §4.2.12 (`startApi`, `ApiRequest`, `StartedApi`), §4.2.13 (`readPackFile`, `SubPack`), §4.3.1 (`postDocument`, `loadSnapshot`, `resolvePolicy`, `reverseDocument`, `transitionDocument`), §4.3.2 (the fixed algorithm — steps 5, 6, 10, 12, **14**), §4.3.3 (`account_balance` and its `MERGE`), §4.3.4 (`document_line` and the `document` header additions), §4.3.5 (`posting_seq`), §4.3.6 (numbering at issue), §4.3.7 (the seed envelope and `loadDocumentTypes`), §4.4.1 (`posting-policy.schema.json` — consumed **unchanged**, same `$id`, same `"version": 1`), §4.4.2 (`evaluatePolicy`, `DocumentSnapshot`, `LineSnapshot`, `PlannedLedgerLine`, **sign normalisation A9**), §4.5.1 (legal transitions), §4.5.2 (`document_event`), §4.5.4 (`requireDocumentPermission`, `DOCUMENT_STAGE_CODES`), §4.5.7 (`app.party` and 4A's three additions), §4.6.1 (the register rows for `party_ageing`, `item_profitability`, `bank_statement`, `bank_statement_line`, `bank_match`, `pdc`), §4.7.3 (`inventory_movement`, `cost_layer`, `cost_consumption`), §4.8.1 (`app.allocation`, `allocateSettlement`, `openBalance`, `partyBalance`), §4.11.1 (`ReportDefinition` — only for the shape 7C re-expresses `accounting.ageing` into), §4.14 (document-type codes), §4.15 (account codes), §4.16.1 / §4.16.2 / §4.16.3 (report codes, the closed `DatasetId` registry, the Phase 1 report surface and the `ProjectionCheck` registry), §4.17 / §4.17.1 (the two helper registers), §5 (all thirty-five hazards), §6.1 rows 2, 7, 8, 39, §6.2 rows 1043, 1044, 1045.
 - **Interfaces produced:** §4.8.2 in full (`party_ageing` rebuilt by `accounting.projection.rebuild`, buckets from `document.effective_date + payment_term.due_days`, the ageing report under **`accounting.ageing`**, the Σ-buckets-to-control-account tie-out); §4.8.3 in full (`app.bank_statement`, `app.bank_statement_line`, `app.bank_match` with both stamps, `Reconcilable`, `ReconcilableSource`, `registerReconcilableSource`, `importStatement`, `CsvMapping`, `match`, `unmatch`, `reconciledBalance`); §4.6.1's `party_ageing`, `item_profitability`, `bank_statement`, `bank_statement_line`, `bank_match` and ⚠️ `pdc` rows verbatim; §4.14's `FX_REVALUATION` row and ⚠️ its `PDC_RECEIPT`/`PDC_DEPOSIT` rows; §3.6.2's one code `accounting.bank.reconcile`; §4.2.6's one 4B-owned `JOBS` entry `accounting.projection.rebuild`; §4.2.4's `ERR_BANK_MATCH_AMOUNT`; §4.16.1's `accounting.ageing`. Everything else is listed under **Contract additions** in the Self-Review and lands through **Task 0**.
 - **Owner decisions:** **OD-09** (post-dated cheques — spec:1044, 2479; Part VII #15) → **Tasks 9 and 10**, the two isolated tasks §2.5's card names; default **not built**, and the two tasks are dropped whole with migration 0051, the `4b-pdc.json` chart file, the two document types, the `pdc` route module and its `PROBES` key. **This is also the discharge of OD-05 for this slice**: OD-05 is "confirmation of every ⚠️ row in §3.0.3 and §3.0.4" and 4B's scope contains exactly one ⚠️ row — spec:1044, post-dated cheques — which is OD-09's own subject, so Task 9 Step 1 records both ids against one decision record rather than creating a second gate for the same sentence (hazard 6 asks for one task per decision, not one task per id pointing at one decision). **OD-24** (screenshots + a two-minute operator description before any screen) → **Task 11**, isolated; default: the screen task is blocked, the slice is not.
-- **Part VI tests owned / re-run:** **owns 8** (multi-currency round-trip — Task 5) and **39** (bank reconciliation — **Task 7**, not Task 8. §6.1's row 39 reads "statement import; match/unmatch; unreconciled list; reconciled = ledger **(T8)**", and that task column is §6.1's own declared **indicative** pointer, not an assignment: all four clauses are proved in **Task 7 Step 5**, `tests/invariants/test-39-bank-reconciliation.test.ts`, which is where the acceptance test file lives. Task 8 adds route-level coverage over the same four clauses and owns none of them. No amendment is made for this — §6.1 says the column is indicative — but a reader following the pointer should land on Task 7; 6D re-runs the till-banking clause and 8C the payroll-batch clause through `registerReconcilableSource`, which is why the registry and not a type list is the seam). **Re-runs:** **2** (deterministic projections, over `party_ageing` and `item_profitability` — Tasks 3 and 4), **7** (the revenue half of "valuation and profit tie to the cent", which 3D could prove on cost only — Task 4), **12**, **13** and **36** (tenant isolation, audit completeness and the permission catalogue over this slice's five tables, one code and one route module — Tasks 1, 2, 8 and 12), **27** (no SQL text across the API — Task 12). **§3.0.4 rows owned:** spec:**1043** Bank reconciliation, spec:**1044** Post-dated cheques ⚠️, spec:**1045** Multi-currency (0D contributed the rate tables and 1A `base = value × rate`); spec:1042's ageing half and spec:1047's Phase 4 report. **Regression files created / appended:** **creates none.** **Appends** a `— 4B` block to `tests/regression/sah-011.test.ts`, `sah-012.test.ts`, `sah-014.test.ts`, `sah-019.test.ts`, `sah-031.test.ts` and `sah-041.test.ts` — all six are 0B's thin files (§3.7.3's Plan 0A-proven list plus 0B's structural set), and this slice never edits an earlier block.
+- **Part VI tests owned / re-run:** **owns 8** (multi-currency round-trip — Task 5) and **39** (bank reconciliation — **Task 7**, not Task 8. §6.1's row 39 reads "statement import; match/unmatch; unreconciled list; reconciled = ledger **(T8)**", and that task column is §6.1's own declared **indicative** pointer, not an assignment: all four clauses are proved in **Task 7 Step 5**, `tests/invariants/test-39-bank-reconciliation.test.ts`, which is where the acceptance test file lives. Task 8 adds route-level coverage over the same four clauses and owns none of them. No amendment is made for this — §6.1 says the column is indicative — but a reader following the pointer should land on Task 7; 6D re-runs the till-banking clause and 8C the payroll-batch clause through `registerReconcilableSource`, which is why the registry and not a type list is the seam). **Re-runs:** **2** (deterministic projections, over `party_ageing` and `item_profitability` — Tasks 3 and 4), **7** (the revenue half of "valuation and profit tie to the cent", which 3D could prove on cost only — Task 4), **12**, **13** and **36** (tenant isolation, audit completeness and the permission catalogue over this slice's five tables, one code and one route module — Tasks 1, 2, 8 and 12), **27** (no SQL text across the API — Task 12). **§3.0.4 rows owned:** spec:**1043** Bank reconciliation, spec:**1044** Post-dated cheques ⚠️, spec:**1045** Multi-currency (0D contributed the rate tables and 1A `base = value × rate`); spec:1042's ageing half and spec:1047's Phase 4 report. **Regression files created / appended:** **creates none.** **Appends** a `— 4B` block to `tests/regression/legacy-011.test.ts`, `legacy-012.test.ts`, `legacy-014.test.ts`, `legacy-019.test.ts`, `legacy-031.test.ts` and `legacy-041.test.ts` — all six are 0B's thin files (§3.7.3's Plan 0A-proven list plus 0B's structural set), and this slice never edits an earlier block.
 - **Shared namespaces this slice writes into:** **document-type codes (§4.14)** — **`FX_REVALUATION`** (`module: "accounting"`, series `FXR`, `direction: internal`, `inventory.effect: "none"`, `approval.post: "accounting.journal.post"`), seeded as `packages/db/seed/my/document-types/FX_REVALUATION.json`; ⚠️ **`PDC_RECEIPT`** (`accounting`, `PDC`) and ⚠️ **`PDC_DEPOSIT`** (`accounting`, `PDD`) only if OD-09. **This slice registers no test-only document-type code.** Every type its tests configure is a 4A / 3C / 3D **pack envelope read off disk** by `seedTypeFromPack`, and the ageing's due dates are varied through `party.payment_term_id` and `seedPaymentTerm` — which is where `due_days` lives (amendment 3) — not through a document type of this slice's own. An earlier draft allocated a test-only code for that job; Task 3's tests use `SALES_INVOICE`, `PURCHASE_INVOICE` and `RECEIPT` and never reach for it, so nothing is registered in §4.14 beyond the three rows above (hazard 32 cuts both ways — an unused registration is a name another slice must then avoid for nothing). **Account codes (§4.15)** — **seeds none in the unconditional slice.** Consumed and asserted-not-reseeded, each with its seeding slice: **`1200` trade receivables (0C)**, **`2100` trade payables (0C)**, **`4900` FX gain (0C)**, **`5910` FX loss (0C)**, **`5920` FX rounding (0C)**, **`1100` Bank (0C)**, `4000` Sales / `5000` COGS / `1300` Inventory control / `5900` Other operating expense (0C), `1250` goods delivered not invoiced (**3D**), `2150` goods received not invoiced (**3C**) and `5100` inventory write-off — expiry loss (**3C**) reached only through 3C's, 3D's and 4A's own policies. **The last three matter to the fixture and not only to the register:** Task 4 posts a `GOODS_RECEIPT` (policy `account: { code: "2150" }`, phase-3c:2302), a `DELIVERY_ORDER` (`{ code: "1250" }`, phase-3d:2028) and an `EXPIRY_WRITE_OFF` (`{ code: "5100" }`, phase-3d:4143), and `seedTenantV2` creates none of them — so `arApFixture` creates all three with `seedAccount` beside the other nine, and never re-seeds a pack file. Task 2 Step 5 asserts all six of the first group resolve for the seeded company and Task 5 Step 1 re-asserts the FX three, which is the card's "its first FX task asserts the three resolve". ⚠️ **One conditional addition: `1150` Cheques in hand (asset), seeded by 4B in `packages/db/seed/my/chart-of-accounts/4b-pdc.json` only if OD-09 = yes** — a §4.15 amendment made in Task 0 amendment 8 and dropped with Task 9. **Report codes (§4.16.1)** — **`accounting.ageing`** only, shipped as a `GET` on 1B's `reports` module over a named read function under §4.16.3's rules; 7C re-expresses it at `version = 2` under the same code. **`accounting.unreconciled_items` and ⚠️ `accounting.pdc_register` are 7C's rows and this slice ships neither** — the unreconciled list is `reconciledBalance().unreconciled` behind a `GET` on the bank-statements module, not a `ReportCode` (see Task 8 Step 4). **`DatasetId` members (§4.16.2) — none:** 7A creates `datasets.ts` with `party_ageing`, `item_profitability`, `bank_statement_line`, `bank_match` and `pdc` already in its ≤ 0058 set, and this slice adds no member and never edits that file. **`fixtures.ts` helpers (§4.17) — none added.** §4.17 assigns 4B no row and hazard 9 forbids inventing one beside the register; every row this slice's tests need comes from `seedTenantV2`, `seedAccount`, `seedParty`, `seedDocumentType`, `seedPaymentTerm`, `seedCurrency`, `seedRate`, `seedBranch`, `grantCodes`, `seedItem`, `seedUnit`, `seedWarehouse`, `seedLot`, 3C's `draftTypedDocument`, 3B's `ensureOpenPeriods`/`postInventoryDocument`, 3D's `secondPrincipal`, or a **file-local** function this plan writes out in full. **Shared test helpers (§4.17.1) — one new file, registered by Task 0 amendment 9:** `tests/invariants/support/ar-ap.ts` with `PACK_DIR`, `seedTypeFromPack`, `packApproval`, `postFromPack`, `ArApFixture` and `arApFixture` — the helpers Tasks 3, 4, 5, 7 and 12 all need, and the reason they are shared rather than file-local is that `seedTypeFromPack` reads **4A's own shipped envelope** off disk instead of restating a policy this plan has never seen, and five files copying that read is hazard 9.
 - **Six `Seed`, fixture and register facts every test in this plan depends on, stated once because getting one wrong is a silent failure.** (1) **`Seed` has no `branch` member.** It is `{ tenant; system; human; company; period; closedPeriod; lockedPeriod; cash; sales; docType; policy; branchType; hq }` (§4.1); `app.document.branch_id` is NOT NULL, so every `branchId:` in this plan is `<seed>.hq` unless a second value came from `seedBranch`. (2) **`seedTenant` grants `s.human` nothing** (§4.1, pinned) and 2B's R2 evaluates `policy.approval.post` *inside* the posting transaction, so **every posting test calls `grantCodes` first**. (3) **`seedTenantV2` creates `1000 Cash`, `4000 Sales` and `5920 FX rounding` — and nothing else.** (`5920` comes with it because `seedTenantV2`'s whole job beyond `seedTenant` is that account wired to `company.fx_rounding_account_id`, phase-1a:2424; this slice therefore never seeds `5920` and only asserts it resolves.) Every other account this slice's tests touch — `1100`, `1200`, `1250`, `1300`, `2100`, `2150`, `4900`, `5000`, `5100`, `5900`, `5910`, and ⚠️ `1150` — is created in the test by 1A's `seedAccount(db, s, { code, nameEn, type })` with `type ∈ ('asset','liability','equity','income','expense')`, through `arApFixture`'s `ACCOUNTS` list (Task 3 Step 4). (4) **Plan 0A seeds exactly three fiscal periods and only 2026-01 is open** (`s.period` open, `s.closedPeriod` = 2026-02 **closed**, `s.lockedPeriod` = 2026-03 **locked**); every test in this plan that posts outside January calls **3B's `ensureOpenPeriods(db, s, 2026)`** first, and Task 12's period-lock case closes one deliberately to prove `assert_period_open` still governs. (5) **`app.document` has no `custom_fields` column** — only `document_line` does (§4.3.4), and `DocumentSnapshot.header.customFields` is assembled by `loadSnapshot` from `app.custom_field_value` (§4.2.11). Every marker this slice writes on an FX document therefore lives in **`document_line.custom_fields`**, under the key **`fxKind`**, and Task 0 amendment 5 records why. (6) **`app_rw` holds DELETE on exactly five tables** (§3.5.4: `document`, `document_line`, `idempotency_key`, `role_assignment_branch`, `role_permission`) and **2B is the only slice that ever extends that list**, so **no rebuild in this slice deletes a projection row**: both rebuilds `MERGE` and then zero the stale keys of the same scope, exactly as `account_balance` and `stock_valuation` do.
 - **Never re-decide:** D1–D27 (spec:114–142); every name in the contracts document is frozen — a needed change goes to that document first (that is what Task 0 is).
@@ -37,16 +37,16 @@
 
 Copied verbatim from the spec and the contracts document; every task's requirements implicitly include this section.
 
-1. **Never**, at any phase, for any reason (spec:97–104): write to a ledger or movement table outside the posting service; represent money as a float, anywhere, including in TypeScript; build SQL by string concatenation (SAH-036/037/069); issue DDL from application code (SAH-053); disable an invariant, constraint or trigger "temporarily" (SAH-027, 041, 053); gate an audit write on any flag (SAH-030); hard-code a package version into a source file — the lockfile owns versions.
+1. **Never**, at any phase, for any reason (spec:97–104): write to a ledger or movement table outside the posting service; represent money as a float, anywhere, including in TypeScript; build SQL by string concatenation (LEGACY-036/037/069); issue DDL from application code (LEGACY-053); disable an invariant, constraint or trigger "temporarily" (LEGACY-027, 041, 053); gate an audit write on any flag (LEGACY-030); hard-code a package version into a source file — the lockfile owns versions.
 2. **Always**, for every new table (spec:106): `tenant_id`, an RLS policy named exactly `tenant_isolation`, `created_at`, a migration with a hand-written down, and a test that a second tenant cannot see it. For every new endpoint: Zod schema, OpenAPI entry, idempotency on unsafe methods, and a tenant-isolation test. For every UI screen: verified in both text directions before merge. **This slice creates five tables** (four unconditionally, `pdc` behind OD-09) and every one of them carries the §3.3 binding form and a two-tenant test in the same task.
 3. **Nothing outside `packages/db/src/posting/` and `packages/db/src/costing/` writes `ledger_entry`, `ledger_entry_dimension`, `inventory_movement`, `cost_layer`, `cost_consumption`, `account_balance`, `stock_on_hand` or `tax_transaction`** (§4.3.2, the `posting-only-tables` lint, hazard 22). Every FX and PDC service in this slice writes `document` and `document_line` rows and then calls `postDocument`. **The two projections `party_ageing` and `item_profitability` are deliberately *not* on that lint's list** (§3.7.5 says so by name) — they are rebuilt by their pg-boss job, and `packages/db/src/ar-ap/ageing.ts` and `packages/db/src/projections/item-profitability.ts` are their only writers.
 4. **Money** is `numeric(19,4)` in Postgres and the opaque `Money` type in `@dulja/domain` in TypeScript; no `number` ever holds a monetary value (spec:2041, §3.7.5 `no-number-money`). Every wire amount is `{ amount, currency }`; every rate is an 8-dp string; every date `YYYY-MM-DD`. **Every tie-out in this slice sums through `Money.add` or through SQL `sum(...)::text` — never through `Number()` and never through `.toFixed()`.**
 5. **`Money.toBase` rounds `HALF_AWAY_FROM_ZERO` at scale 4** (hazard 23, spec:1816), the only mode satisfying `base_debit = round(debit * exchange_rate, 4)`. The FX services in this slice compute *base* amounts and post them at `exchange_rate = 1`, so the CHECK holds by construction; the one place a rate is applied is `toBase`/SQL `round(value * rate, 4)`, and both are the same arithmetic.
 6. **`PlannedLedgerLine.amount` is never negative and `side` is the sole carrier of direction** (§4.4.2 A9); `PlannedTaxLine.amount` stays signed and this slice plans no tax line. **No line of this slice reads the sign of a planned amount to decide a ledger direction.** The three places a sign *is* read are drafting decisions over stored figures, declared in the Self-Review: `allocation.fx_difference`'s sign chooses which side of a `document_line` the control leg goes on (Task 5), a revaluation delta's sign does the same (Task 5), and a statement line's sign chooses which `Reconcilable` kinds may match it (Task 7). In all three the resulting `document_line.debit`/`credit` and `bank_match.amount` are non-negative magnitudes.
 7. **Every query, reads included, runs inside `withTenant`** (spec:2053). `db.` is a lint violation; only a `tx` obtained from `withTenant` may tag SQL. `sql.unsafe` has exactly three homes and none is in this slice (§3.3, hazard 21). The CSV parser in Task 6 takes a `string` and returns rows; it never builds SQL.
-8. **One migration per PR** (spec:2057); each file runs whole in one transaction (so no `create index concurrently`); every statement carries a comment naming the SAH-/spec reference it serves; SQL keywords lowercase; section banners `-- ── N. title ───`; a hand-written `NNNN.down.sql` that drops only what the up added, in reverse dependency order (§3.4.5).
+8. **One migration per PR** (spec:2057); each file runs whole in one transaction (so no `create index concurrently`); every statement carries a comment naming the LEGACY-/spec reference it serves; SQL keywords lowercase; section banners `-- ── N. title ───`; a hand-written `NNNN.down.sql` that drops only what the up added, in reverse dependency order (§3.4.5).
 9. **No enum label is added** (§3.4.4, hazard 11); every new closed vocabulary in this slice is `text` + a named `check` — `party_ageing.bucket`, `bank_match.reconcilable_kind`, ⚠️ `pdc.status`.
-10. **Deletion** (spec:2049): financial rows never — correction is a reversal; master data is `archived_at`. §3.5.4's pinned `app_rw` DELETE list is **unchanged** by this slice and Task 12 re-asserts it as an equality. `bank_match` is *unmatched*, never deleted (`unmatched_at`, §4.8.3) — that is the whole of SAH-041's fix applied to reconciliation.
+10. **Deletion** (spec:2049): financial rows never — correction is a reversal; master data is `archived_at`. §3.5.4's pinned `app_rw` DELETE list is **unchanged** by this slice and Task 12 re-asserts it as an equality. `bank_match` is *unmatched*, never deleted (`unmatched_at`, §4.8.3) — that is the whole of LEGACY-041's fix applied to reconciliation.
 11. **Error codes** are `ERR_<DOMAIN>_<REASON>` enumerated in `packages/contracts/src/errors.ts`, and a code no code raises fails the build (spec:2051). **This slice adds exactly one row to `ERRORS`: `ERR_BANK_MATCH_AMOUNT` (422), allocated by §4.2.4 to 4B, added in the PR that raises it (Task 7).** Everything else it raises is already shipped: `ERR_VALIDATION_FAILED`, `ERR_NOT_FOUND`, `ERR_RBAC_FORBIDDEN`, `ERR_RLS_DENIED`, `ERR_CONFLICT_UNIQUE`, `ERR_DOC_STATUS_ILLEGAL`, `ERR_DOC_NO_LINES`, `ERR_POLICY_NOT_FOUND`, `ERR_POLICY_REQUIRES_MISSING`, `ERR_PERIOD_NOT_FOUND`, `ERR_PERIOD_NOT_OPEN`, `ERR_LEDGER_UNBALANCED`, `ERR_RATE_NOT_FOUND`, `ERR_INTERNAL`. **This list is closed: a token in any test of this slice that is not on it is either a typo or an unregistered code, and both fail the `error-codes` lint.**
 12. **The permission vocabulary and module list are closed** (§3.6.1, hazard 26). This slice seeds exactly the one code §3.6.2 assigns it — `accounting.bank.reconcile`, `mutating: true` — and invents none.
 13. **No plan invents a literal in a shared namespace** (hazard 32). Document-type codes, account codes, report codes, `DatasetId` members, `fixtures.ts` helper names and `ERR_*` names all come from the registers; **Task 0 amends a register before any task writes a literal into it**, and the one conditional account code (`1150`) is amended there and dropped with its task.
@@ -209,12 +209,12 @@ tests/
 ├─ invariants/audit-chain.test.ts            EDIT the same array                              T4
 ├─ invariants/test-08-multi-currency.test.ts NEW  acceptance test 8                           T5
 ├─ invariants/test-39-bank-reconciliation.test.ts  NEW  acceptance test 39                    T7
-├─ regression/sah-011.test.ts   EDIT append a `— 4B` block (no NULL reaches an ageing bucket) T3
-├─ regression/sah-012.test.ts   EDIT append a `— 4B` block (base = value × rate on FX lines)  T5
-├─ regression/sah-014.test.ts   EDIT append a `— 4B` block (neither rate is discarded)        T5
-├─ regression/sah-019.test.ts   EDIT append a `— 4B` block (one rounding function)            T5
-├─ regression/sah-031.test.ts   EDIT append a `— 4B` block (a locked period refuses a match)  T7
-├─ regression/sah-041.test.ts   EDIT append a `— 4B` block (matching never alters an entry)   T7
+├─ regression/legacy-011.test.ts   EDIT append a `— 4B` block (no NULL reaches an ageing bucket) T3
+├─ regression/legacy-012.test.ts   EDIT append a `— 4B` block (base = value × rate on FX lines)  T5
+├─ regression/legacy-014.test.ts   EDIT append a `— 4B` block (neither rate is discarded)        T5
+├─ regression/legacy-019.test.ts   EDIT append a `— 4B` block (one rounding function)            T5
+├─ regression/legacy-031.test.ts   EDIT append a `— 4B` block (a locked period refuses a match)  T7
+├─ regression/legacy-041.test.ts   EDIT append a `— 4B` block (matching never alters an entry)   T7
 └─ e2e/ar-ap-screens.spec.ts    NEW  test 23 re-run, both directions                          T11
 ```
 
@@ -243,7 +243,7 @@ Each is one edit, in the section named. **Do not proceed to Task 1 until all twe
 | # | § | Amendment |
 |---|---|---|
 | **1** | 4.2.6 | **`JobPayload` gains the one 4B-owned key: `"accounting.projection.rebuild": { companyId?: string; asOf?: string }`, and `JOB_PROBES` gains an entry for it** (hazard 31). The shape is 3B's `inventory.projection.rebuild` key verbatim, deliberately: both are "rebuild this company's async projections as of this date", the two handlers are twins, and a reader who has seen one has seen both. **`JOBS` itself is not edited** — the name and its `"0 3 * * *"` schedule are already in 0B's closed sixteen-name const with `owner: "4B"`. |
-| **2** | 4.3.2 | **Step 14's `accounting.projection.rebuild` clause is realised here, and it does *not* fail closed.** After step 13, `postDocument` enqueues `accounting.projection.rebuild` with `singletonKey = companyId` and `startAfterSeconds = 60` when the document has a `party_id` **or** the plan carried movements. **When `input.jobs` is absent it pushes a warning onto `PostResult.warnings` and skips the enqueue** — the opposite of 3B's fail-closed step-14 branch, and the difference is the severity of the omission: a missed cost replay leaves a *wrong* number in the ledger for ever (SAH-005), while a missed projection enqueue leaves a *stale as-of snapshot* that the nightly `accounting.projection.rebuild` recomputes and the nightly compare would flag. Throwing here would break every 4A call site that supplies no `JobClient`. |
+| **2** | 4.3.2 | **Step 14's `accounting.projection.rebuild` clause is realised here, and it does *not* fail closed.** After step 13, `postDocument` enqueues `accounting.projection.rebuild` with `singletonKey = companyId` and `startAfterSeconds = 60` when the document has a `party_id` **or** the plan carried movements. **When `input.jobs` is absent it pushes a warning onto `PostResult.warnings` and skips the enqueue** — the opposite of 3B's fail-closed step-14 branch, and the difference is the severity of the omission: a missed cost replay leaves a *wrong* number in the ledger for ever (LEGACY-005), while a missed projection enqueue leaves a *stale as-of snapshot* that the nightly `accounting.projection.rebuild` recomputes and the nightly compare would flag. Throwing here would break every 4A call site that supplies no `JobClient`. |
 | **3** | 4.8.2 | **The ageing arithmetic is one SQL function, `app.party_ageing_rows(p_company uuid, p_as_of date)`, created by migration 0048**, and the projection table, the report and the rebuild-and-compare all read it. Its contract: one row per `(party, currency, bucket)` with a non-zero open figure; `amount` in the document's currency and `base_amount` at each open document's **own** rate; buckets cut on `document.effective_date + coalesce(payment_term.due_days, 0)` resolved through `party.payment_term_id`; a party's control account chosen by `kind` (`vendor` → `coalesce(payable, receivable)`, otherwise `coalesce(receivable, payable)`) with the vendor side sign-flipped so an open figure is positive in both directions; a settlement document's consumption measured as `allocation.base_amount + allocation.fx_difference` (the settlement base), which is what makes the tie-out hold once the realised FX difference has posted. **The DoD tie-out is stated in base only** — see amendment 4. |
 | **4** | 4.8.2 | **The tie-out is base-only, and per-currency equality is not claimed.** §4.8.2 says "Σ buckets per party to the AR/AP control-account balance"; in a cross-currency settlement that equality is *false* per currency and *true* in base. A EUR invoice part-paid by a USD receipt leaves the control account with a EUR debit row and a USD credit row in `account_balance`, while the ageing shows the invoice's residual EUR and nothing in USD — the two views agree on base and cannot agree per currency, because `allocation.amount` is denominated in the **settled** document's currency and no column denominates it in the settlement's. The registered tie-out is therefore `Σ base_amount == ledger base of the control account − outstanding unrealised revaluation on it`, computed by `ageingTieOut` (Task 3), and **`account_balance`'s per-currency rows on a party control account are not an open-item view; no report reads them as one.** A same-currency month satisfies the per-currency equality as well, and Task 3 Step 8 asserts that case separately. |
 | **5** | 4.14 (`FX_REVALUATION` row) | **Realised and unrealised FX share the one registered code, and the marker is `document_line.custom_fields.fxKind ∈ 'realised' \| 'unrealised'` on every line of the document.** `app.document` has **no** `custom_fields` column (plan0A's DDL) and §4.4.1 A6's `when["document.kind"]` reads *header* custom fields, which are `app.custom_field_value` rows needing a `custom_field_definition` per company — machinery a job cannot create. The line bag needs neither, is already `jsonb not null default '{}'`, and is copied by `reverseDocument` along with the rest of the line. The key is spelled `fxKind`, not `kind`, so it can never be confused with `document_line.kind` (a column) or with 6A's `custom_fields.method`. **Only the unrealised document is reversed at period start**; a realised difference is never reversed on its own — reversing the settlement is what undoes it. A realised document additionally carries `settlementDocumentId`, `settledDocumentId` and `partyId` on its lines, and an `app.document_link` row (`link_kind = 'settles'`, source = the FX document, target = the settlement) is its idempotency key. |
@@ -615,7 +615,7 @@ PostgresError: relation "app.party_ageing" does not exist
 -- The two ASYNCHRONOUS projections spec:1204 names beside stock_valuation: "Asynchronous ones
 -- (party_ageing, item_profitability, stock_valuation history) are pg-boss jobs. All of them are rebuilt
 -- from ledger_entry/inventory_movement into scratch tables nightly and compared row for row; a mismatch
--- is an incident."  Derived, never hand-edited (SAH-001, 002, 013, 049, 050).
+-- is an incident."  Derived, never hand-edited (LEGACY-001, 002, 013, 049, 050).
 --
 -- Neither table is written by the posting service, so neither joins the posting-only-tables lint
 -- (contracts §3.7.5 names all three async projections as exclusions); their only writers are
@@ -629,15 +629,15 @@ create table app.party_ageing (
   currency     char(3) not null,
   as_of        date not null,
   bucket       text not null,
-  -- SAH-011: every monetary column is NOT NULL DEFAULT 0. One NULL in an accumulation nulled a whole
+  -- LEGACY-011: every monetary column is NOT NULL DEFAULT 0. One NULL in an accumulation nulled a whole
   -- period's balance in the old system and only a table rebuild recovered it.
   amount       numeric(19,4) not null default 0,      -- the open document's own currency
-  base_amount  numeric(19,4) not null default 0,      -- SAH-012: base = value × rate, at each open document's OWN rate
+  base_amount  numeric(19,4) not null default 0,      -- LEGACY-012: base = value × rate, at each open document's OWN rate
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now(),
   constraint party_ageing_bucket_check
     check (bucket in ('current', '1_30', '31_60', '61_90', 'over_90')),
-  primary key (company_id, party_id, currency, as_of, bucket),   -- the full natural key the MERGE targets (SAH-002/049)
+  primary key (company_id, party_id, currency, as_of, bucket),   -- the full natural key the MERGE targets (LEGACY-002/049)
   foreign key (tenant_id, company_id) references app.company(tenant_id, id),
   foreign key (tenant_id, party_id)   references app.party(tenant_id, id)
 );
@@ -1159,7 +1159,7 @@ on conflict (code) do update
        description = excluded.description;
 ```
 
-`packages/db/migrations/0052.down.sql`. **§3.4.5 (round-3 correction) binds this file and requires the task that ships it to state the precondition on its rollback command**, so the sentence is written twice — once in the file, where an operator running `bun run migrate down` reads it, and once here. The reason is structural and not an omission: `app.role_permission.permission_code references app.permission(code)` carries no `on delete` action (plan0A:1325) and RI checks bypass RLS, so on a database where `--only roles` has granted this code to `accountant`, the `delete` raises SQLSTATE **23503**; the down cannot remove the grant itself either, because `app.role_permission` is `FORCE ROW LEVEL SECURITY` and a migration with no `set_config('app.tenant_id', …)` sees zero rows, and it cannot even enumerate the tenants to set a context for, because `app.tenant` is policy-guarded the same way. **Never "fix" this by dropping or disabling the policy** — Global Constraint 1, SAH-027/041/053. 6A's `0062.down.sql` and 6B's `0063.down.sql` are the two other written instances and carry the same paragraph.
+`packages/db/migrations/0052.down.sql`. **§3.4.5 (round-3 correction) binds this file and requires the task that ships it to state the precondition on its rollback command**, so the sentence is written twice — once in the file, where an operator running `bun run migrate down` reads it, and once here. The reason is structural and not an omission: `app.role_permission.permission_code references app.permission(code)` carries no `on delete` action (plan0A:1325) and RI checks bypass RLS, so on a database where `--only roles` has granted this code to `accountant`, the `delete` raises SQLSTATE **23503**; the down cannot remove the grant itself either, because `app.role_permission` is `FORCE ROW LEVEL SECURITY` and a migration with no `set_config('app.tenant_id', …)` sees zero rows, and it cannot even enumerate the tenants to set a context for, because `app.tenant` is policy-guarded the same way. **Never "fix" this by dropping or disabling the policy** — Global Constraint 1, LEGACY-027/041/053. 6A's `0062.down.sql` and 6B's `0063.down.sql` are the two other written instances and carry the same paragraph.
 
 ```sql
 -- 0052.down.sql — delete exactly the code this file inserted (§3.6.3).
@@ -1173,7 +1173,7 @@ on conflict (code) do update
 -- context for. The operator therefore removes the per-tenant grants first, as a seed-tier act with
 -- set_config('app.tenant_id', <tenant>, false), then runs this down, and re-runs
 --   bun run seed --tenant <id> --only roles
--- after re-migrating. Never disable or drop the policy to make this file pass (SAH-027, 041, 053).
+-- after re-migrating. Never disable or drop the policy to make this file pass (LEGACY-027, 041, 053).
 delete from app.permission where code = 'accounting.bank.reconcile';
 ```
 
@@ -1272,7 +1272,7 @@ The first half of the Phase 4 definition of done: *"Ageing report reconciles to 
 - Create: `apps/worker/src/handlers/accounting-projection-rebuild.ts`
 - Create: `docs/adr/0046-ageing-and-item-profitability-projection-shapes.md`
 - Create: `packages/db/test/ar-ap/ageing.test.ts`, `apps/worker/test/handlers/accounting-projection-rebuild.test.ts`, `apps/api/test/routes/accounting/ageing-report.test.ts`
-- Modify: `packages/db/src/ar-ap/index.ts` (**4A's barrel — append one export block; never rewrite the file**), `tests/invariants/support/ar-ap.ts` (fill it — amendment 9), `packages/db/src/jobs/payloads.ts` (one key — amendment 1), `packages/db/src/index.ts` (one re-export line for `./reports/ageing`; `./ar-ap` is already re-exported by 4A), `packages/contracts/src/accounting/reports.ts` (`ReportCodeSchema` + the ageing DTOs), `apps/api/src/routes/accounting/reports.ts` (one `GET`), `tests/invariants/probes.ts` (one `JOB_PROBES` entry), `tests/regression/sah-011.test.ts` (append a `— 4B` block)
+- Modify: `packages/db/src/ar-ap/index.ts` (**4A's barrel — append one export block; never rewrite the file**), `tests/invariants/support/ar-ap.ts` (fill it — amendment 9), `packages/db/src/jobs/payloads.ts` (one key — amendment 1), `packages/db/src/index.ts` (one re-export line for `./reports/ageing`; `./ar-ap` is already re-exported by 4A), `packages/contracts/src/accounting/reports.ts` (`ReportCodeSchema` + the ageing DTOs), `apps/api/src/routes/accounting/reports.ts` (one `GET`), `tests/invariants/probes.ts` (one `JOB_PROBES` entry), `tests/regression/legacy-011.test.ts` (append a `— 4B` block)
 
 **Interfaces**
 
@@ -1536,7 +1536,7 @@ describe("party_ageing — the buckets (§4.8.2, spec:1042)", () => {
     expect(current.amount).toBe("910.0000");     // 1000 invoice − 90 on account
   });
 
-  it("SAH-011: a party with NO payment term and a document with no control-account leg yield 0, never NULL", async () => {
+  it("LEGACY-011: a party with NO payment term and a document with no control-account leg yield 0, never NULL", async () => {
     const rows = await withTenant(db.rw, s.tenant, s.human, (tx) =>
       ageingRows(tx, { companyId: s.company, asOf: "2026-03-31" }));
     for (const r of rows) {
@@ -2292,7 +2292,7 @@ export async function outstandingRevaluation(
 | `1200` | asset | `+1` | `4000` | `4400` | `400` | `4000 − (+1)(4400 − 400) = 0` |
 | `2100` | liability | `−1` | `2500` | `−2750` | `−250` | `2500 − (−1)(−2750 − (−250)) = 0` |
 
-Multiplying `ageing_base` by `sign` as well — the shape this function had before review — reads `−1 × (2500 + 2750 − 250) = −5000` for `2100`, and passes only on the asset side. That is precisely the class of defect SAH-011 was: arithmetic that is correct in the one case its author exercised. The **liability** row of Step 2's DoD test is what pins it, and it is the reason that test asserts `2100` and not only `1200`.
+Multiplying `ageing_base` by `sign` as well — the shape this function had before review — reads `−1 × (2500 + 2750 − 250) = −5000` for `2100`, and passes only on the asset side. That is precisely the class of defect LEGACY-011 was: arithmetic that is correct in the one case its author exercised. The **liability** row of Step 2's DoD test is what pins it, and it is the reason that test asserts `2100` and not only `1200`.
 
 - [ ] **Step 6: Write `packages/db/src/reports/ageing.ts`**
 
@@ -2605,12 +2605,12 @@ reportsRoutes.openapi(
 
 `reportsRouteModule.permissions` already contains `accounting.report.read` (1B), so it is unchanged.
 
-- [ ] **Step 9: Append the `— 4B` block to `tests/regression/sah-011.test.ts`**
+- [ ] **Step 9: Append the `— 4B` block to `tests/regression/legacy-011.test.ts`**
 
-SAH-011 is "NULL arithmetic irreversibly nulls balances and tax boxes" (spec:311). 0B created the thin file; this slice appends and never edits an earlier block (§3.7.3).
+LEGACY-011 is "NULL arithmetic irreversibly nulls balances and tax boxes" (spec:311). 0B created the thin file; this slice appends and never edits an earlier block (§3.7.3).
 
 ```ts
-describe("SAH-011 NULL arithmetic irreversibly nulls balances and tax boxes — 4B", () => {
+describe("LEGACY-011 NULL arithmetic irreversibly nulls balances and tax boxes — 4B", () => {
   it("every monetary column of both async projections is NOT NULL DEFAULT 0", async () => {
     const { rw } = await sharedDb();
     const rows = await rw<{ table_name: string; column_name: string; is_nullable: string; column_default: string | null }[]>`
@@ -2648,7 +2648,7 @@ describe("SAH-011 NULL arithmetic irreversibly nulls balances and tax boxes — 
 bun run --cwd packages/db test -- ar-ap/ageing
 bun run --cwd apps/worker test -- accounting-projection-rebuild
 bun run --cwd apps/api test -- accounting/ageing-report
-bun run --cwd tests test -- regression/sah-011
+bun run --cwd tests test -- regression/legacy-011
 bun run --cwd tests test -- invariants/tenant-isolation     # the new JOB_PROBES entry
 bun run lint && bun run lint:rules && bun run format:check && bun run typecheck && bun run test
 ```
@@ -2661,7 +2661,7 @@ git add docs/adr/0046-ageing-and-item-profitability-projection-shapes.md \
         packages/db/src/jobs/payloads.ts apps/worker/src/handlers/accounting-projection-rebuild.ts \
         packages/contracts/src/accounting/reports.ts apps/api/src/routes/accounting/reports.ts \
         tests/invariants/support/ar-ap.ts tests/invariants/probes.ts \
-        tests/regression/sah-011.test.ts \
+        tests/regression/legacy-011.test.ts \
         packages/db/test/ar-ap/ageing.test.ts \
         apps/worker/test/handlers/accounting-projection-rebuild.test.ts \
         apps/api/test/routes/accounting/ageing-report.test.ts
@@ -2856,7 +2856,7 @@ describe("item_profitability — the attribution (§4.6.1, amendments 6 and 7)",
 
     // The delivery's own line carries amount 250.0000 and a unit price. If revenue were read from
     // `document_line` rather than anchored to a REVENUE LEDGER ROW, this would rise by 250 — which is
-    // the double-count amendment 7 exists to prevent, and the defect SAH-012 is the ledger analogue of.
+    // the double-count amendment 7 exists to prevent, and the defect LEGACY-012 is the ledger analogue of.
     expect(after[0]!.revenueBase).toBe(before[0]!.revenueBase);
 
     // …while quantity and cost DO move, because the movement and its cost_consumption are real.
@@ -3228,7 +3228,7 @@ Nothing else in those three files changes. **If a fourth site turns up, add it h
     } else {
       // Deliberately a WARNING and not a throw — the opposite of 3B's back-dated branch above, and the
       // difference is the severity of the omission. A missed cost replay leaves a WRONG number in the
-      // ledger for ever (SAH-005). A missed projection enqueue leaves a STALE as-of snapshot that the
+      // ledger for ever (LEGACY-005). A missed projection enqueue leaves a STALE as-of snapshot that the
       // nightly accounting.projection.rebuild recomputes and the nightly compare would flag. Throwing
       // here would break every 4A call site that supplies no JobClient (amendment 2).
       warnings.push(
@@ -3285,7 +3285,7 @@ IntegrityReport.projections.checked becomes ["account_balance", "cost_layer", "d
 "item_profitability", "stock_on_hand"] and the three pinned assertions move in this PR.
 
 Step 14 warns and skips without a JobClient rather than throwing: a stale as-of snapshot that
-the nightly job rebuilds is not SAH-005, and throwing would break 4A's call sites.
+the nightly job rebuilds is not LEGACY-005, and throwing would break 4A's call sites.
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
@@ -3297,11 +3297,11 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 **Files:**
 - Create: `packages/db/seed/my/document-types/FX_REVALUATION.json`, `packages/db/src/ar-ap/fx.ts`, `packages/contracts/src/accounting/fx.ts`, `docs/adr/0047-realised-and-unrealised-fx-in-one-document-type.md`
 - Create: `packages/db/test/ar-ap/fx.test.ts`, `tests/invariants/test-08-multi-currency.test.ts`, `apps/api/test/routes/accounting/revaluation.test.ts`
-- Modify: `packages/db/src/posting/errors.ts` (**one line** — `PostingErrorCode` gains `"ERR_RATE_NOT_FOUND"`, Task 0 amendment 11), `packages/db/src/ar-ap/index.ts`, `apps/api/src/routes/accounting/documents.ts` (one `POST` sub-path **and** one call-site change inside 4A's allocation handler — the file Task 0's gate named), `tests/regression/sah-012.test.ts`, `sah-014.test.ts`, `sah-019.test.ts` (append a `— 4B` block to each)
+- Modify: `packages/db/src/posting/errors.ts` (**one line** — `PostingErrorCode` gains `"ERR_RATE_NOT_FOUND"`, Task 0 amendment 11), `packages/db/src/ar-ap/index.ts`, `apps/api/src/routes/accounting/documents.ts` (one `POST` sub-path **and** one call-site change inside 4A's allocation handler — the file Task 0's gate named), `tests/regression/legacy-012.test.ts`, `legacy-014.test.ts`, `legacy-019.test.ts` (append a `— 4B` block to each)
 
 **Why one document type and not two.** §4.14 registers **one** row for 4B — `FX_REVALUATION`, series `FXR` — and §2.5's card says "FX difference on settlement **and** period-end revaluation as an `FX_REVALUATION` document". They are distinguished by `document_line.custom_fields.fxKind` (amendment 5) because `app.document` has no `custom_fields` column and §4.4.1 A6's header custom fields need a `custom_field_definition` per company that a job cannot create.
 
-**The one-line widening of `PostingErrorCode`, and why it belongs here.** `revalueAtPeriodEnd` raises `ERR_RATE_NOT_FOUND` when `app.rate_for` returns no row for an exposed currency (SAH-012/SAH-014: never assume 1, never reuse the previous row's rate). It must raise it as a **`PostingError`**, because `packages/db` may not import `@dulja/contracts` and therefore cannot construct `AppError` (§3.1, restated by 1A at phase-1a:2197-2200) — and 1A's union has nine members, not ten (phase-1a:2204-2213). So **Task 0 amendment 11** widens §4.2.4's declaration and this task makes the matching one-line edit:
+**The one-line widening of `PostingErrorCode`, and why it belongs here.** `revalueAtPeriodEnd` raises `ERR_RATE_NOT_FOUND` when `app.rate_for` returns no row for an exposed currency (LEGACY-012/LEGACY-014: never assume 1, never reuse the previous row's rate). It must raise it as a **`PostingError`**, because `packages/db` may not import `@dulja/contracts` and therefore cannot construct `AppError` (§3.1, restated by 1A at phase-1a:2197-2200) — and 1A's union has nine members, not ten (phase-1a:2204-2213). So **Task 0 amendment 11** widens §4.2.4's declaration and this task makes the matching one-line edit:
 
 ```ts
 // packages/db/src/posting/errors.ts — the tenth member. §4.3.8 (contracts:2294) has listed
@@ -3767,7 +3767,7 @@ describe("revalueAtPeriodEnd and reverseRevaluation — the unrealised half", ()
     expect(result).toMatchObject({ documentId: null, lines: [] });
   });
 
-  it("a missing rate for an exposed currency raises ERR_RATE_NOT_FOUND naming the pair (SAH-012)", async () => {
+  it("a missing rate for an exposed currency raises ERR_RATE_NOT_FOUND naming the pair (LEGACY-012)", async () => {
     // The GBP exposure below has no exchange_rate row at all: the revaluation must refuse, never assume 1.
     const gbp = await seedTenantV2(db, "fx-norate");
     const g = await arApFixture(db, gbp);
@@ -4164,12 +4164,12 @@ export async function revalueAtPeriodEnd(
     const [rate] = await tx<{ rate: string }[]>`
       select rate::text from app.rate_for(${input.companyId}, ${e.currency}, ${base}, ${asOf}::date)`;
     if (!rate?.rate) {
-      // SAH-012/SAH-014: never assume 1 and never reuse the previous row's rate. Refuse and name the pair.
+      // LEGACY-012/LEGACY-014: never assume 1 and never reuse the previous row's rate. Refuse and name the pair.
       throw new PostingError("ERR_RATE_NOT_FOUND",
         `no exchange_rate row for ${e.currency} → ${base} effective on or before ${asOf} (company ${input.companyId})`);
     }
     // The SAME arithmetic Money.toBase and the ledger_entry CHECK use: round(value × rate, 4),
-    // HALF_AWAY_FROM_ZERO (spec:1816, hazard 23, SAH-019 — one rounding function, explicit mode).
+    // HALF_AWAY_FROM_ZERO (spec:1816, hazard 23, LEGACY-019 — one rounding function, explicit mode).
     const revaluedBase = round(e.amountCcy.times(new D(rate.rate)), 4, "HALF_AWAY_FROM_ZERO");
     const delta = revaluedBase.minus(e.carriedBase);
     detail.push({
@@ -4339,7 +4339,7 @@ const controlBase = async (): Promise<string> =>
     return row!.base;
   });
 
-describe("acceptance test 8 — multi-currency round-trip (spec:2426; SAH-011, 012, 014)", () => {
+describe("acceptance test 8 — multi-currency round-trip (spec:2426; LEGACY-011, 012, 014)", () => {
   it("1. a EUR 1,000 invoice at 5.0000 carries base 5,000 and ages in EUR", async () => {
     ({ documentId: invoiceId } = await postFromPack(db, s, {
       code: "SALES_INVOICE", effectiveDate: "2026-01-05", partyId: f.partyIds.customer,
@@ -4445,7 +4445,7 @@ describe("acceptance test 8 — multi-currency round-trip (spec:2426; SAH-011, 0
     });
   });
 
-  it("7. base = round(value × rate, 4) holds on EVERY ledger line of the fixture (SAH-012)", async () => {
+  it("7. base = round(value × rate, 4) holds on EVERY ledger line of the fixture (LEGACY-012)", async () => {
     await withTenant(db.rw, await ctxFor(), async (tx) => {
       const [bad] = await tx<{ n: number }[]>`
         select count(*)::int as n from app.ledger_entry
@@ -4459,7 +4459,7 @@ describe("acceptance test 8 — multi-currency round-trip (spec:2426; SAH-011, 0
     });
   });
 
-  it("8. every ORIGINATING document of the fixture records its rate SOURCE (SAH-012, spec:1762)", async () => {
+  it("8. every ORIGINATING document of the fixture records its rate SOURCE (LEGACY-012, spec:1762)", async () => {
     await withTenant(db.rw, await ctxFor(), async (tx) => {
       const [missing] = await tx<{ n: number }[]>`
         select count(*)::int as n from app.document
@@ -4495,10 +4495,10 @@ describe("acceptance test 8 — multi-currency round-trip (spec:2426; SAH-011, 0
 
 - [ ] **Step 9: Append the three regression blocks**
 
-`tests/regression/sah-012.test.ts` — "base amounts never derived from value × rate; the rate never validated":
+`tests/regression/legacy-012.test.ts` — "base amounts never derived from value × rate; the rate never validated":
 
 ```ts
-describe("SAH-012 Base amounts never derived from value × rate — 4B", () => {
+describe("LEGACY-012 Base amounts never derived from value × rate — 4B", () => {
   it("the revaluation applies round(value × rate, 4) and nothing else — one rounding call, one mode", async () => {
     const source = repoFile("packages/db/src/ar-ap/fx.ts");
     expect(source).toContain('round(e.amountCcy.times(new D(rate.rate)), 4, "HALF_AWAY_FROM_ZERO")');
@@ -4506,16 +4506,16 @@ describe("SAH-012 Base amounts never derived from value × rate — 4B", () => {
     expect(source).not.toMatch(/times\([^)]*rate[^)]*\)\.toFixed/);
   });
 
-  it("a missing rate REFUSES rather than assuming 1 — the SAH-012 failure was ItmEqu = 1 with a foreign amount", async () => {
+  it("a missing rate REFUSES rather than assuming 1 — the LEGACY-012 failure was ItmEqu = 1 with a foreign amount", async () => {
     expect(repoFile("packages/db/src/ar-ap/fx.ts")).toContain("ERR_RATE_NOT_FOUND");
   });
 });
 ```
 
-`tests/regression/sah-014.test.ts` — "`procSumVouItems` silently discards the caller's exchange rate":
+`tests/regression/legacy-014.test.ts` — "`procSumVouItems` silently discards the caller's exchange rate":
 
 ```ts
-describe("SAH-014 The caller's exchange rate is never discarded — 4B", () => {
+describe("LEGACY-014 The caller's exchange rate is never discarded — 4B", () => {
   it("the ageing values each open item at ITS OWN rate, and the revaluation at the period-end rate", async () => {
     const { rw } = await sharedDb();
     const [fn] = await rw<{ prosrc: string }[]>`
@@ -4530,10 +4530,10 @@ describe("SAH-014 The caller's exchange rate is never discarded — 4B", () => {
 });
 ```
 
-`tests/regression/sah-019.test.ts` — "rounding configured everywhere, applied nowhere, and the function wrong":
+`tests/regression/legacy-019.test.ts` — "rounding configured everywhere, applied nowhere, and the function wrong":
 
 ```ts
-describe("SAH-019 One rounding function, explicit mode, symmetric across sign — 4B", () => {
+describe("LEGACY-019 One rounding function, explicit mode, symmetric across sign — 4B", () => {
   it("this slice rounds through @dulja/domain's round() with an explicit mode, never with toFixed alone", () => {
     const source = repoFile("packages/db/src/ar-ap/fx.ts");
     expect(source).toContain('from "@dulja/domain"');
@@ -4556,7 +4556,7 @@ describe("SAH-019 One rounding function, explicit mode, symmetric across sign �
 ```bash
 bun run --cwd packages/db test -- ar-ap/fx
 bun run --cwd tests test -- invariants/test-08-multi-currency
-bun run --cwd tests test -- regression/sah-012 regression/sah-014 regression/sah-019
+bun run --cwd tests test -- regression/legacy-012 regression/legacy-014 regression/legacy-019
 bun run --cwd apps/api test -- accounting/revaluation
 bun run lint && bun run lint:rules && bun run format:check && bun run typecheck && bun run test
 ```
@@ -4570,7 +4570,7 @@ git add docs/adr/0047-realised-and-unrealised-fx-in-one-document-type.md \
         packages/contracts/src/accounting/fx.ts apps/api/src/routes/accounting/documents.ts \
         packages/db/test/ar-ap/fx.test.ts tests/invariants/test-08-multi-currency.test.ts \
         apps/api/test/routes/accounting/revaluation.test.ts \
-        tests/regression/sah-012.test.ts tests/regression/sah-014.test.ts tests/regression/sah-019.test.ts
+        tests/regression/legacy-012.test.ts tests/regression/legacy-014.test.ts tests/regression/legacy-019.test.ts
 git commit -m "feat(db): FX on settlement and at period end as FX_REVALUATION; acceptance test 8 [4B T5]
 
 One registered code, two kinds, distinguished by document_line.custom_fields.fxKind — app.document
@@ -4593,7 +4593,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 ### Task 6: Migration 0049 — `bank_statement`, `bank_statement_line` and the CSV import
 
-**PR 3 of 5.** The import half of §4.8.3. Statement lines are **facts about the bank**, not about the ledger: nothing in this task or the next writes a `ledger_entry`, and that is the whole of SAH-041's fix applied to reconciliation (ADR 0048).
+**PR 3 of 5.** The import half of §4.8.3. Statement lines are **facts about the bank**, not about the ledger: nothing in this task or the next writes a `ledger_entry`, and that is the whole of LEGACY-041's fix applied to reconciliation (ADR 0048).
 
 **Files:**
 - Create: `packages/db/migrations/0049_create_bank_statement.sql`, `packages/db/migrations/0049.down.sql`
@@ -4688,8 +4688,8 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 spec:1043 requires "statement import (CSV), match/unmatch against receipts, payments, payroll batches and
 till bankings; unreconciled-items report", and acceptance test 39 adds "matching never alters a ledger
 entry; the reconciled balance equals the bank account's ledger balance". The legacy system's equivalent
-did the opposite: SAH-031 shows a direct `UPDATE "VouItems"` on a signed, locked, closed-period voucher
-silently rewriting `AccTotals` to match, and SAH-041 shows the anti-tampering triggers shipped inactive.
+did the opposite: LEGACY-031 shows a direct `UPDATE "VouItems"` on a signed, locked, closed-period voucher
+silently rewriting `AccTotals` to match, and LEGACY-041 shows the anti-tampering triggers shipped inactive.
 
 ## Decision
 
@@ -4698,7 +4698,7 @@ writes, updates or deletes a `ledger_entry`, an `account_balance` or a `document
 is outside `posting/` and `costing/`, so the `posting-only-tables` lint (§3.7.5) makes that mechanical
 rather than a promise. **A match in a locked period therefore succeeds** — there is nothing for
 `assert_period_open` to refuse — and the locked period's ledger rows are byte-identical afterwards, which
-is what the sah-031 regression block asserts.
+is what the legacy-031 regression block asserts.
 
 **Unmatching sets `unmatched_at`; nothing is deleted.** §3.5.4's `app_rw` DELETE list is pinned to five
 tables and 2B is its only extender, so a `bank_match` row survives its own reversal and the audit trigger
@@ -4807,7 +4807,7 @@ describe("migration 0049 — bank_statement and bank_statement_line (§4.8.3)", 
     }
   });
 
-  it("imported_by is stamped, so a supplied value cannot win (SAH-044)", async () => {
+  it("imported_by is stamped, so a supplied value cannot win (LEGACY-044)", async () => {
     const triggers = await db.admin<{ tgname: string }[]>`
       select tgname from pg_trigger where tgrelid = 'app.bank_statement'::regclass and not tgisinternal`;
     expect(triggers.map((t) => t.tgname)).toContain("stamp_imported_by");
@@ -4867,7 +4867,7 @@ describe("importStatement (§4.8.3, ADR 0048)", () => {
     expect(rows[0]!.currency).toBe(company!.base_currency);
   });
 
-  it("refuses a statement that does not add up, naming the difference (SAH-011's discipline)", async () => {
+  it("refuses a statement that does not add up, naming the difference (LEGACY-011's discipline)", async () => {
     const bad = { ...MAPPING, statement: { ...MAPPING.statement, closingBalance: "300.0000",
                                            statementDate: "2026-02-28" } };
     await expect(prodWithTenant(db.rw, ctx, (tx) =>
@@ -4924,8 +4924,8 @@ SyntaxError: The requested module '../../src' does not provide an export named '
 -- 0049_create_bank_statement.sql
 -- §3.0.4 row 1043 "Bank reconciliation — statement import (CSV)…"; contracts §4.8.3.
 -- A statement line is a fact about the BANK. Nothing in this slice writes a ledger_entry from one:
--- SAH-031's failure was a direct UPDATE on a locked voucher silently rewriting the balances, and
--- SAH-041's was hard deletion with the anti-tampering triggers shipped inactive (ADR 0048).
+-- LEGACY-031's failure was a direct UPDATE on a locked voucher silently rewriting the balances, and
+-- LEGACY-041's was hard deletion with the anti-tampering triggers shipped inactive (ADR 0048).
 
 -- ── 1. app.bank_statement ───
 create table app.bank_statement (
@@ -4934,7 +4934,7 @@ create table app.bank_statement (
   company_id                uuid not null,
   bank_account_id           uuid not null,                        -- the app.account of the bank (1100 by default)
   statement_date            date not null,
-  opening_balance           numeric(19,4) not null,               -- SAH-011: not null, and the import proves it adds up
+  opening_balance           numeric(19,4) not null,               -- LEGACY-011: not null, and the import proves it adds up
   closing_balance           numeric(19,4) not null,
   currency                  char(3) not null,                     -- coalesce(account.currency, company.base_currency)
   source_file_attachment_id uuid,                                 -- 2C's attachment holding the original CSV
@@ -4948,7 +4948,7 @@ create table app.bank_statement (
 );
 call app_meta.enable_tenant_rls('app.bank_statement');
 call app_meta.attach_audit('app.bank_statement');
-call app_meta.attach_stamp('app.bank_statement', 'imported_by');   -- server-supplied actor, never a payload (SAH-044)
+call app_meta.attach_stamp('app.bank_statement', 'imported_by');   -- server-supplied actor, never a payload (LEGACY-044)
 
 -- ── 2. app.bank_statement_line ───
 create table app.bank_statement_line (
@@ -5033,8 +5033,8 @@ export const bankStatementLine = app.table("bank_statement_line", {
 //
 // Slice 4B, contracts §4.8.3. The import half (Task 6) and the matching half (Task 7). NOTHING in this
 // file writes, updates or deletes a ledger_entry, an account_balance or a document row — the
-// posting-only-tables lint (§3.7.5) makes that mechanical, and it is the whole of SAH-031's and
-// SAH-041's fix applied to reconciliation (ADR 0048).
+// posting-only-tables lint (§3.7.5) makes that mechanical, and it is the whole of LEGACY-031's and
+// LEGACY-041's fix applied to reconciliation (ADR 0048).
 // Same rule as fx.ts: no file under packages/db/src imports decimal.js (§4.2.1 D11, phase-4a:35,
 // 3b:1124). `D` is 0D's cloned precision-40 constructor, exported from the domain barrel (0d:443).
 import { D, Money, currency, type CurrencyCode } from "@dulja/domain";
@@ -5418,7 +5418,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 **Files:**
 - Create: `packages/db/migrations/0050_create_bank_match.sql`, `packages/db/migrations/0050.down.sql`
 - Create: `packages/db/src/schema/bank-match.ts`, `packages/db/test/ar-ap/bank-match.test.ts`, `tests/invariants/test-39-bank-reconciliation.test.ts`, `docs/runbooks/bank-reconciliation.md`
-- Modify: `packages/db/src/ar-ap/reconciliation.ts` (the matching half), `packages/db/src/ar-ap/index.ts`, `packages/contracts/src/errors.ts` (`ERR_BANK_MATCH_AMOUNT`), `packages/contracts/src/accounting/bank.ts`, `tests/regression/sah-031.test.ts`, `tests/regression/sah-041.test.ts`
+- Modify: `packages/db/src/ar-ap/reconciliation.ts` (the matching half), `packages/db/src/ar-ap/index.ts`, `packages/contracts/src/errors.ts` (`ERR_BANK_MATCH_AMOUNT`), `packages/contracts/src/accounting/bank.ts`, `tests/regression/legacy-031.test.ts`, `tests/regression/legacy-041.test.ts`
 
 **Interfaces**
 
@@ -5656,7 +5656,7 @@ describe("match and unmatch (§4.8.3, ADR 0048)", () => {
       amount: Money.of("1000.0000", MYR) }))).rejects.toThrow(/ERR_BANK_MATCH_AMOUNT.*already matched/);
   });
 
-  it("unmatch sets unmatched_at and the row SURVIVES — nothing is deleted (spec:2049, SAH-041)", async () => {
+  it("unmatch sets unmatched_at and the row SURVIVES — nothing is deleted (spec:2049, LEGACY-041)", async () => {
     const [row] = await withTenant(db.rw, s.tenant, s.human, (tx) => tx<{ id: string }[]>`
       select id from app.bank_match where unmatched_at is null and reconcilable_kind = 'payment'`);
     await prodWithTenant(db.rw, ctx, (tx) =>
@@ -5719,8 +5719,8 @@ SyntaxError: The requested module '../../src' does not provide an export named '
 ```sql
 -- 0050_create_bank_match.sql
 -- §4.8.3. A match is a row HERE and nowhere else: no ledger_entry, no account_balance and no document
--- row is written, updated or deleted by matching or unmatching (ADR 0048, acceptance test 39). SAH-031's
--- failure was a direct UPDATE on a locked voucher rewriting the balances; SAH-041's was hard deletion.
+-- row is written, updated or deleted by matching or unmatching (ADR 0048, acceptance test 39). LEGACY-031's
+-- failure was a direct UPDATE on a locked voucher rewriting the balances; LEGACY-041's was hard deletion.
 
 create table app.bank_match (
   id                       uuid primary key default uuidv7(),
@@ -5960,7 +5960,7 @@ export async function match(
   return { matchId: row!.id };
 }
 
-/** Sets `unmatched_at`; never alters a ledger entry and never deletes the row (spec:2457, SAH-041). */
+/** Sets `unmatched_at`; never alters a ledger entry and never deletes the row (spec:2457, LEGACY-041). */
 export async function unmatch(
   tx: Sql, ctx: TenantContext, input: { matchId: string; reason: string },
 ): Promise<void> {
@@ -6072,7 +6072,7 @@ let statementId: string;
 
 const ctxFor = async () => ({ tenantId: s.tenant, actorId: s.human, requestId: await uuidv7(db.admin) });
 
-/** A per-document sha256 of every ledger_entry column that could be tampered with (SAH-031, SAH-041). */
+/** A per-document sha256 of every ledger_entry column that could be tampered with (LEGACY-031, LEGACY-041). */
 const ledgerFingerprint = async (): Promise<string> =>
   withTenant(db.rw, await ctxFor(), async (tx) => {
     const [row] = await tx<{ h: string }[]>`
@@ -6103,7 +6103,7 @@ beforeAll(async () => {
 }, 300_000);
 afterAll(async () => { await db?.stop(); });
 
-describe("acceptance test 39 — bank reconciliation (spec:2457; SAH-031, SAH-041, RC-2)", () => {
+describe("acceptance test 39 — bank reconciliation (spec:2457; LEGACY-031, LEGACY-041, RC-2)", () => {
   let before = "";
 
   it("1. a month's statement imports and adds up", async () => {
@@ -6165,7 +6165,7 @@ describe("acceptance test 39 — bank reconciliation (spec:2457; SAH-031, SAH-04
     expect(result.statement.equals(result.ledger)).toBe(true);      // the DoD sentence
   });
 
-  it("4. matching NEVER altered a ledger entry — the fingerprint is byte-identical (SAH-031, SAH-041)", async () => {
+  it("4. matching NEVER altered a ledger entry — the fingerprint is byte-identical (LEGACY-031, LEGACY-041)", async () => {
     expect(await ledgerFingerprint()).toBe(before);
   });
 
@@ -6196,7 +6196,7 @@ describe("acceptance test 39 — bank reconciliation (spec:2457; SAH-031, SAH-04
 
 - [ ] **Step 6: Append the two regression blocks**
 
-`tests/regression/sah-031.test.ts` — "period locks live on a sibling table, are per-privilege-tier, and do not reach the line items". It is 0B's thin file; this slice **appends** the block below and edits no earlier one (§3.7.3). The block needs these imports added at the top of the file, and nothing else in it changes:
+`tests/regression/legacy-031.test.ts` — "period locks live on a sibling table, are per-privilege-tier, and do not reach the line items". It is 0B's thin file; this slice **appends** the block below and edits no earlier one (§3.7.3). The block needs these imports added at the top of the file, and nothing else in it changes:
 
 ```ts
 import { Money, currency } from "@dulja/domain";
@@ -6209,7 +6209,7 @@ import { arApFixture, postFromPack } from "../invariants/support/ar-ap";
 ```
 
 ```ts
-describe("SAH-031 Period locks reach the lines, and reconciliation does not touch them — 4B", () => {
+describe("LEGACY-031 Period locks reach the lines, and reconciliation does not touch them — 4B", () => {
   it("a match against a document in a LOCKED period succeeds and that period's ledger rows are byte-identical", async () => {
     // The old system's failure was the opposite: a direct UPDATE on a signed, locked, closed-period
     // voucher changed the amount and silently rewrote AccTotals. Here matching writes only bank_match,
@@ -6219,7 +6219,7 @@ describe("SAH-031 Period locks reach the lines, and reconciliation does not touc
     // `ensureOpenPeriods`, which REOPENS 2026-01..03 (phase-3b:2416-2421), and doing that to a shared
     // seed would break every other regression file that reads `a.lockedPeriod` as locked.
     const { db } = await sharedDb();
-    const s = await seedTenantV2(db, "sah031-4b");
+    const s = await seedTenantV2(db, "legacy031-4b");
     const f = await arApFixture(db, s);
     const ctx = { tenantId: s.tenant, actorId: s.human, requestId: await uuidv7(db.admin) };
 
@@ -6284,10 +6284,10 @@ describe("SAH-031 Period locks reach the lines, and reconciliation does not touc
 });
 ```
 
-`tests/regression/sah-041.test.ts` — "documents are hard-deleted and the anti-tampering controls are shipped disabled":
+`tests/regression/legacy-041.test.ts` — "documents are hard-deleted and the anti-tampering controls are shipped disabled":
 
 ```ts
-describe("SAH-041 Nothing in reconciliation is deleted, and no control is optional — 4B", () => {
+describe("LEGACY-041 Nothing in reconciliation is deleted, and no control is optional — 4B", () => {
   it("app_rw holds no DELETE on any of this slice's five tables", async () => {
     const { rw } = await sharedDb();
     const rows = await rw<{ table_name: string }[]>`
@@ -6349,7 +6349,7 @@ describe("SAH-041 Nothing in reconciliation is deleted, and no control is option
 ```bash
 bun run --cwd packages/db test -- ar-ap/bank-match
 bun run --cwd tests test -- invariants/test-39-bank-reconciliation
-bun run --cwd tests test -- regression/sah-031 regression/sah-041
+bun run --cwd tests test -- regression/legacy-031 regression/legacy-041
 bun run --cwd packages/db test -- privileges
 bun run lint && bun run lint:rules && bun run format:check && bun run typecheck && bun run test
 ```
@@ -6363,12 +6363,12 @@ git add packages/db/migrations/0050_create_bank_match.sql packages/db/migrations
         packages/contracts/src/accounting/bank.ts docs/runbooks/bank-reconciliation.md \
         packages/db/test/ar-ap/bank-match.test.ts \
         tests/invariants/test-39-bank-reconciliation.test.ts \
-        tests/regression/sah-031.test.ts tests/regression/sah-041.test.ts
+        tests/regression/legacy-031.test.ts tests/regression/legacy-041.test.ts
 git commit -m "feat(db): bank_match, the Reconcilable registry and acceptance test 39 [4B T7]
 
 The second half of the Phase 4 DoD. A match is a row in app.bank_match and nothing else: test 39
 clause 4 takes a per-document sha256 of every tamperable ledger_entry column before the first
-match and asserts it byte-identical after the last unmatch, which is SAH-031 and SAH-041 stated
+match and asserts it byte-identical after the last unmatch, which is LEGACY-031 and LEGACY-041 stated
 as a test rather than as a promise.
 
 4B registers the receipt and payment sources itself — §4.8.3 assigns them to 4A, which had no
@@ -7539,7 +7539,7 @@ export async function depositPdc(
  * `reversal.allowed: false`, and the cheque still exists as a claim on the party. And it does not
  * unallocate whatever receivable the receipt settled: that is the operator's separate decision through
  * 4A's `unallocate`, made with knowledge this function does not have (whether the customer will
- * re-issue, whether it goes to collections). Deciding it here would be the SAH-013 mistake — a
+ * re-issue, whether it goes to collections). Deciding it here would be the LEGACY-013 mistake — a
  * reversal reading current state and acting on it.
  */
 export async function bouncePdc(
@@ -7994,7 +7994,7 @@ interface CurrencyTotal {
  * Two rules, and both are Global Constraint 4 rather than presentation taste. Every addition goes
  * through `Money.add` and every accumulator starts at `Money.zero(ccy)` — never `0`, never
  * `Number(r.total)`: a screen that adds 1,234.5600 and 0.0001 in a float and shows a figure the ledger
- * does not hold is SAH-019 with a browser in front of it. And amounts of different currencies are never
+ * does not hold is LEGACY-019 with a browser in front of it. And amounts of different currencies are never
  * added to each other, which is why this returns a row per currency instead of one grand total. A single
  * "total" across MYR and EUR is not a smaller number, it is a meaningless one.
  */
@@ -8434,7 +8434,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 **Nine things the SECOND review pass changed.** These were defects in code the plan had already written out in full, which is the point of writing it out: six of them would have failed on first run, and two of those were the DoD tests themselves.
 
-1. **`ageingTieOut` was wrong for every liability account, and the `2100` clause of its own DoD test would have failed.** `party_ageing_rows` already returns a party-oriented figure, but the function multiplied *that* column by `sign` as well as the ledger's, computing `sign × (g − l + r)`: for `2100` that reads `−1 × (2500 + 2750 − 250) = −5000`. `sign` now brings only the **ledger** columns into the ageing's orientation, and the corrected shape is stated with the worked table for both directions. Assets passed either way, which is what made it survive the first pass — the same class of defect as SAH-011.
+1. **`ageingTieOut` was wrong for every liability account, and the `2100` clause of its own DoD test would have failed.** `party_ageing_rows` already returns a party-oriented figure, but the function multiplied *that* column by `sign` as well as the ledger's, computing `sign × (g − l + r)`: for `2100` that reads `−1 × (2500 + 2750 − 250) = −5000`. `sign` now brings only the **ledger** columns into the ageing's orientation, and the corrected shape is stated with the worked table for both directions. Assets passed either way, which is what made it survive the first pass — the same class of defect as LEGACY-011.
 2. **The `rev` CTE and `outstandingRevaluation` both fanned out.** `join app.document_line ol` multiplied every ledger row by the number of marked lines, and a revaluation posts a *pair*, so `revaluationBase` read **800** where 400 was posted and test 8's clause 3 would have failed. Both are now `exists`, and the note says why the two must stay identical.
 3. **`postFromPack` silently dropped two options its own callers passed.** `PostFromPackOptions` had no `jobs`, so Task 4's step-14 case would have observed zero enqueues from a `postDocument` call that never received a job client; and `GOODS_RECEIPT`/`DELIVERY_ORDER` resolve `inventory.warehouse: "header.warehouse"` and would have raised a `PostingError` on the fixture's first post. Both are threaded now. *(The third pass then removed the `UPDATE` this item had introduced for `warehouseId` — 3C's `draftTypedDocument` already declares the option and already writes the column. See third-pass item 3.)*
 4. **Task 4's fixture issued the same stock twice.** It posted a `DELIVERY_ORDER` *and* a `SALES_INVOICE` for the same 30 units with the comment "no movement — linked to the delivery", but nothing called `linkFulfilment` and `SALES_INVOICE` is `outbound / issue`: `quantitySold` would have been 60 and `cogsBase` 600. The base case is now the single unlinked invoice, and amendment 7's actual claim — a delivery contributes quantity and cost but never revenue — is proved as a **delta** case that needs no link semantics, which is a stronger test than the original was.
@@ -8452,7 +8452,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 4. **`new PostingError("ERR_RATE_NOT_FOUND", …)` did not compile.** 1A's `PostingErrorCode` has nine members (phase-1a:2204–2213) and no plan had widened it, while §4.3.8 has listed the code since the registry was written and `ERRORS` has carried the row since 0D. **Task 0 amendment 11** widens the union by one member and Task 5 makes the matching one-line edit to `packages/db/src/posting/errors.ts`. No cast, no second error class, no `ERRORS` change.
 5. **`AgeingRowSchema` used an identifier that exists nowhere.** `MoneyAmount` is in no plan and in no register; §4.2.8's `common.ts` exports `MoneySchema`. The seven bucket columns now use a file-local `AgeingAmount` regex — 1A's own `DocumentLineSchema` already ships exactly that form (phase-1a:4638), and this slice's `accounting/bank.ts` was already using it unregistered — and **Task 0 amendment 12** registers the practice instead of leaving two undeclared deviations.
 6. **`ImportError` and `BankMatchError` were unexported, code-less `Error` subclasses**, so Task 8's `422`/`ERR_BANK_MATCH_AMOUNT` assertions would have received `ERR_INTERNAL` 500 from 0B's fall-through — and `apps/api/src/problem.ts` appeared in no task's Files list, so the branch the comment promised was never going to be written. Both are exported with a `readonly code` that is a literal member of `ErrCode`, re-exported from `ar-ap/index.ts`, and translated by one private `rethrowAsAppError` in the route module — **3C's shipped pattern** (`LandedCostError`, phase-3c:2984 and 4501), which keeps `problem.ts` untouched.
-7. **The sah-031 block replaced its own body with an ellipsis** and, as written, hashed `ledger_entry`, did nothing, hashed it again and asserted equality — a test that cannot fail, in the block whose whole job is the SAH-031 claim. It now seeds its own tenant inside the shared container (touching `arApFixture`'s `ensureOpenPeriods` to a shared seed would unlock `a.lockedPeriod` for every other regression file), posts a receipt into 2026-03, **locks the period after the post**, matches, and asserts both that the `bank_match` row is live and that the locked period's fingerprint is byte-identical — with `expect(before).not.toBeNull()` so the receipt's presence in the locked period is itself proven.
+7. **The legacy-031 block replaced its own body with an ellipsis** and, as written, hashed `ledger_entry`, did nothing, hashed it again and asserted equality — a test that cannot fail, in the block whose whole job is the LEGACY-031 claim. It now seeds its own tenant inside the shared container (touching `arApFixture`'s `ensureOpenPeriods` to a shared seed would unlock `a.lockedPeriod` for every other regression file), posts a receipt into 2026-03, **locks the period after the post**, matches, and asserts both that the `bank_match` row is live and that the locked period's fingerprint is byte-identical — with `expect(before).not.toBeNull()` so the receipt's presence in the locked period is itself proven.
 8. **`app.party_ageing_rows`'s `applied` CTE had no as-of guard on the settled document**, so any allocation whose settlement is dated inside the window and whose settled document is dated after it — the ordinary deposit-then-invoice sequence, and any earlier month re-run after a later allocation — was subtracted from the settlement's open figure and never added back, and the DoD `difference` was non-zero by that amount. The guard is now the mirror of `charged_off`'s, and Task 3's tie-out block ends with a case that allocates a 2026-03-25 receipt against a 2026-04-05 invoice on its **own** party (so no absolute figure elsewhere moves) and asserts `difference === "0.0000"`.
 9. **Hazard 33's account assertions were self-fulfilling.** Task 2's case seeded the six accounts and then proved they resolved, and Task 5's compared `resolveFxAccounts` against ids `arApFixture` had just created — neither could detect 0C dropping a row from `0c-base.json`, which is the one failure the hazard exists to prevent. Task 2 Step 5 now reads that pack file through 0C's own `readPackFile` and checks the six codes, their types and §4.15's first-digit rule; Task 5 Step 1 points at it rather than copying it.
 10. **`BankStatementLineQuery` declared a flat `unmatchedOnly` parameter**, which §4.2.8 Layer 1 forbids outright ("no slice introduces a new flat filter parameter"), and the backoffice then hand-built `?unmatchedOnly=true` outside its own `filterQuery`. It is `filter[matched][eq]` as a literal key now, with `.strict()` (1B's stated reason) and `z.enum(["true","false"])` rather than `z.coerce.boolean()` — which would have read `"false"` as `true`. The runbook's two query strings were corrected with it.
@@ -8462,7 +8462,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 **Ten things the FOURTH review pass changed, after an independent audit read this plan against the contracts document, plan 0A, the spec and 4A's now-written plan.** Two were blockers that would have broken the build for every consumer of `@dulja/db`; one shipped a fabricated currency to the wire; the rest are consistency repairs.
 
 1. **`packages/db/src/ar-ap/index.ts` was written as a Create, and 4A already owns it.** The File Structure marked it NEW, Task 3's Files list said *Create*, and Task 3 Step 7 wrote the file whole with only the five ageing exports, carrying the comment *"`allocation.ts` is 4A's and is re-exported from `packages/db/src/index.ts` by 4A; this barrel does not re-export it"*. 4A's written plan contradicts both halves: it creates this file in its Task 1 (phase-4a:556, :932 — *"the barrel; later tasks add their lines to it and nothing else"*), appends `./credit`, `./invoice`, `./credit-note`, `./allocation` and `./settlement` to it (phase-4a:2100, :3580, :4261, :5130, :5597), and modifies `packages/db/src/index.ts` **only** to `export * from "./ar-ap"` (phase-4a:562, :942). `allocateSettlement`, `unallocate`, `openBalance`, `partyBalance` and `listAllocations` therefore reach `@dulja/db` **through** this barrel. Writing it whole would have deleted 4A's entire AR/AP surface from the package, and `tests/invariants/support/ar-ap.ts` and `fx.ts` would both have failed to compile on their `@dulja/db` imports. It is now **Modify** in the File Structure, in Task 3's Files list and in the Contract-additions list; Step 7 appends a block below 4A's lines and says in the file's own comment that it must not be rewritten; and the gate script gained a **seventeenth** `need_repo` line on `packages/db/src/ar-ap/index.ts` for `export * from "./allocation"`, so the shape is proved before Task 3 runs rather than discovered by it.
-2. **`fx.ts` and `reconciliation.ts` imported `decimal.js`, which `packages/db` does not depend on and is forbidden from importing.** 0D adds the package to **one** workspace (`bun add --cwd packages/domain decimal.js`, 0d:212; `packages/domain/package.json … deps: decimal.js`, 0d:88); 4A states the rule for this exact directory (*"no file under `packages/db/src` in this slice imports `decimal.js`. It is `packages/domain`'s dependency (§4.2.1, D11) and is not declared in `packages/db/package.json`"*, phase-4a:35) and 3B fixed it first for `packages/db/src/costing` (3b:1124). Even where workspace hoisting made the bare specifier resolve, `new Decimal(...)` would compute at the library default precision instead of 0D's **cloned constructor at precision 40**, which 0D's Global Constraint 11 forbids. Both files now `import { D, … } from "@dulja/domain"` (0D's `export { D } from "./money/decimal";`, 0d:443), every one of the twenty-six `new Decimal(x)` sites is `new D(x)`, and each file declares `type Dec = InstanceType<typeof D>` for the type positions, because 0D exports the **value** `D` and not decimal.js's type. The `sah-012` block's source assertion was updated to the new text in the same pass, so it still binds. **No `package.json` was touched** — adding `decimal.js` to `packages/db` would contradict a constraint 3B and 4A have both shipped.
+2. **`fx.ts` and `reconciliation.ts` imported `decimal.js`, which `packages/db` does not depend on and is forbidden from importing.** 0D adds the package to **one** workspace (`bun add --cwd packages/domain decimal.js`, 0d:212; `packages/domain/package.json … deps: decimal.js`, 0d:88); 4A states the rule for this exact directory (*"no file under `packages/db/src` in this slice imports `decimal.js`. It is `packages/domain`'s dependency (§4.2.1, D11) and is not declared in `packages/db/package.json`"*, phase-4a:35) and 3B fixed it first for `packages/db/src/costing` (3b:1124). Even where workspace hoisting made the bare specifier resolve, `new Decimal(...)` would compute at the library default precision instead of 0D's **cloned constructor at precision 40**, which 0D's Global Constraint 11 forbids. Both files now `import { D, … } from "@dulja/domain"` (0D's `export { D } from "./money/decimal";`, 0d:443), every one of the twenty-six `new Decimal(x)` sites is `new D(x)`, and each file declares `type Dec = InstanceType<typeof D>` for the type positions, because 0D exports the **value** `D` and not decimal.js's type. The `legacy-012` block's source assertion was updated to the new text in the same pass, so it still binds. **No `package.json` was touched** — adding `decimal.js` to `packages/db` would contradict a constraint 3B and 4A have both shipped.
 3. **`ledgerLegSource` minted every `Reconcilable.amount` in a fabricated `"XXX"`.** The query deliberately joined `app.company` for `c.base_currency`, but the declared row type omitted the column and the mapper read `currency(r.currency ?? "XXX")`. `app.account.currency` is nullable (plan0A:1495, *"null = any currency"*) and 1A's `seedAccount(db, s, { code, nameEn, type })` sets none, so `arApFixture`'s `1100` row has it null and **every** unreconciled item carried `XXX` — disagreeing with the two sibling readers in the same file, `reconciledBalance` (`currency(account.currency ?? account.base_currency)`) and `importStatement` (`coalesce(account.currency, company.base_currency)`), whose agreement Task 6's own case asserts. Any `Money` arithmetic between `reconciledBalance().statement` and an entry in `.unreconciled` would have raised `ERR_MONEY_CURRENCY_MISMATCH`, and Task 8 would have shipped the fabricated code to the OD-24 screen through `ReconcilableSchema.amount`. The row type now declares `currency: string | null; base_currency: string`, the mapper coalesces, and Task 7 Step 1's `reconciledBalance` case asserts all three readers agree **and** adds the two `Money` values together, so they cannot drift apart silently again.
 4. **Task 2's `0052.down.sql` carried no §3.4.5 precondition.** §3.4.5's round-3 correction ends *"The task that ships such a migration states the precondition on its rollback command"*, and 6A's `0062.down.sql` and 6B's `0063.down.sql` are the two written instances that do. Task 2 Step 3 now states it twice — as a comment block in the file, naming the 23503 the delete raises on a seeded database, why the file can remove neither the grant (forced RLS) nor discover the tenants (`app.tenant` is policy-guarded), and the operator's sequence ending in `bun run seed --tenant <id> --only roles`; and in the step's prose, with the "never disable the policy" line §3.4.5 attaches to it.
 5. **The File Structure omitted Task 2's test file and mis-attributed `bank-statements.ts`.** `packages/db/test/seed/permission-phase4b.test.ts` appeared in Task 2's Files list and nowhere in the tree; and `apps/api/src/routes/accounting/bank-statements.ts` was marked `T8` although **Task 2** creates it with `BANK_PERMISSION` only, which is what makes `permission-catalogue` pass inside Task 2's own commit. Both rows are corrected, the second to `T2,T8` with the reason on the row.
@@ -8486,14 +8486,14 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 - `packages/db/src/posting/errors.ts` — **one member added** to `PostingErrorCode`, `"ERR_RATE_NOT_FOUND"` (amendment 11), and nothing else in that file. `apps/api/src/routes/accounting/bank-statements.ts` — `BANK_PERMISSION`, `bankStatementRoutes`, `bankStatementRouteModule`, the private `requiredFilter` and `rethrowAsAppError` (**`apps/api/src/problem.ts` gains no branch**); ⚠️ `pdc.ts` — `pdcRoutes`, `pdcRouteModule`.
 - `apps/worker/src/handlers/accounting-projection-rebuild.ts` — `accountingProjectionRebuild`.
 - ⚠️ Backoffice (OD-24, dropped with Task 11): `apps/backoffice/src/lib/ar-ap-api.ts` — `fetchAgeing`, `AgeingResponse`, `fetchStatements`, `fetchStatementLines`, `fetchReconciliation`, `ReconciliationResponse`, `postMatch`, `postUnmatch`, and the private `filterQuery` (**the one place in the backoffice that composes §4.2.8's filter grammar**); `src/routes/accounting/ageing.tsx` and `bank-reconciliation.tsx` each export the TanStack `Route` and keep `pivot`, `footer` and their row types file-local. **`ageing.tsx` reads five `@dulja/ui` components (`DataGrid`, `DateField`, `MoneyText`, `SegmentedControl`, `Toolbar`) and the reconciliation screen three more (`AccountPicker`, `ProblemAlert`, `SelectList`) — 0E owns all eight and this slice adds none**; any that 0E did not ship is a 0E reconciliation, not a component invented here.
-- Test tier: **`tests/invariants/support/ar-ap.ts`** with **`PACK_DIR`**, `DocumentTypeEnvelope`, the private `readEnvelope`, `seedTypeFromPack`, **`PackApproval` / `packApproval`** and the private `approverFor` (the approval path), `PostFromPackOptions` (including its `jobs` and `warehouseId` members), `postFromPack`, `ArApFixture`, `arApFixture` (§4.17.1, amendment 9). **This file is 4B's and 4A's `tests/invariants/support/post-ar.ts` is 4A's; Task 0's RELATIONSHIP note says which task calls which and why both exist.** the file-local `seedArApAccounts`, `ledgerFingerprint` and `ctxFor` repeated where needed. **`ledgerFingerprint` appears in test 39 and in the sah-031 and sah-041 blocks and is a §4.17.1 candidate the catalogue should place** — it is named here rather than invented as a shared helper, because hazard 9 assigns that decision to the register.
+- Test tier: **`tests/invariants/support/ar-ap.ts`** with **`PACK_DIR`**, `DocumentTypeEnvelope`, the private `readEnvelope`, `seedTypeFromPack`, **`PackApproval` / `packApproval`** and the private `approverFor` (the approval path), `PostFromPackOptions` (including its `jobs` and `warehouseId` members), `postFromPack`, `ArApFixture`, `arApFixture` (§4.17.1, amendment 9). **This file is 4B's and 4A's `tests/invariants/support/post-ar.ts` is 4A's; Task 0's RELATIONSHIP note says which task calls which and why both exist.** the file-local `seedArApAccounts`, `ledgerFingerprint` and `ctxFor` repeated where needed. **`ledgerFingerprint` appears in test 39 and in the legacy-031 and legacy-041 blocks and is a §4.17.1 candidate the catalogue should place** — it is named here rather than invented as a shared helper, because hazard 9 assigns that decision to the register.
 - Documents: `docs/decisions/od-09-4b-post-dated-cheques.md`, `docs/runbooks/bank-reconciliation.md`, `docs/review/2026-09-05-phase-4-exit.md`, `docs/owner/od-24/4b/`, `scripts/check/contracts-4b-amendments.sh`.
 
 **Against the never/always lists.** Five tables are created (four unconditional, `pdc` behind OD-09) and every one carries `tenant_id`, forced RLS, a policy named exactly `tenant_isolation`, `created_at`, a hand-written down and a two-tenant test in its own task; the two projections join `NO_ID_TABLES` and `AUDIT_EXEMPT` to exactly §3.5.3's state and nothing else in `lint-schema.ts` moves. Every endpoint has a Zod schema, an OpenAPI entry regenerated in the same commit, idempotency on every unsafe method and a probe on the one new module. No `ledger_entry`, movement, layer, `account_balance`, `stock_on_hand` or `tax_transaction` write happens outside `posting/` and `costing/` — every FX and PDC service drafts `document` + `document_line` and calls `postDocument`, and the two projection rebuilds write only their own tables, which §3.7.5 excludes from `posting-only-tables` by name. No `number` holds money; every tie-out sums through `Money.add` or SQL `sum(...)::text`. No `sql.unsafe`, no string-concatenated SQL, no DDL from application code, no disabled invariant, no enum label added. Every commit message carries the trailer.
 
 **Against §4.4.2's A9.** No line of this slice reads the sign of a **planned** amount to choose a direction — this slice plans no ledger line at all: the evaluator does, from `document_line.debit`/`credit` that the drafting services write as non-negative magnitudes. The three places a sign *is* read are drafting decisions over stored figures, each named in Global Constraint 6: `allocation.fx_difference`'s sign and a revaluation delta's sign choose which side of a `document_line` the subject account goes on (`fxPair`), and a statement line's sign chooses which `reconcilable_kind` may match it (`RECONCILABLE_DIRECTION`). `bank_match.amount` carries `check (amount > 0)` for the same reason `ledger_entry.debit` does. `PlannedTaxLine` stays signed and this slice plans no tax line — `FX_REVALUATION` and both PDC types declare `tax.applies: false`.
 
-**Against the hazards.** **1** and **2**: no statutory rate and no MyInvois detail appears; every rate in every fixture is an invented round figure with `source: 'manual:test'`. **4**: `accounting.ageing` ships here rather than being deferred to Phase 7, and `item_profitability` backs the report 3D and 4A shipped under one code. **5**: Task 12 Step 4 is the owner-account pattern with its exact command and its local equivalent. **6**: OD-09 is two isolated tasks and OD-24 one, all three droppable without renumbering a neighbour's interface. **8** and **9**: every 0A helper is cited by its exact name; `fixtures.ts` gains **nothing**; §4.17.1 gains one registered file. **11**: three new closed vocabularies, all `text` + a named CHECK. **13**: `lint-schema.ts` is edited once, to exactly §3.5.3's state. **14**: all five allocated migration numbers are used and none is borrowed. **15**: root `tests/` and every service use the production `withTenant`; only `packages/db/test` uses the 4-argument one. **20**: the job runs as the system principal through `systemContext`, one company per transaction. **22**: see the never-list paragraph. **23**: every base conversion is `round(value × rate, 4)` `HALF_AWAY_FROM_ZERO`, and the sah-019 block asserts no local `round` exists. **24**: no handler inserts a `document_event`; the FX reversal goes through `reverseDocument`. **25**: the DELETE list is re-asserted as an equality in Task 12. **26**: one code, from the register. **29**: Task 11 begins with OD-24 and states its two keyboard additions so a reviewer can compare them to the owner's material. **31**: one new route module, one new `PROBES` key, one new `JOB_PROBES` entry; the ageing `GET` and the revaluation `POST` are sub-paths and inherit existing keys. **32** and **33**: every literal comes from a register; the six accounts this slice consumes are asserted, never re-seeded, and `1150` is a Task 0 amendment dropped with its task. **34**: all three seed files are envelopes with `module` outside `policy`. **35**: every task has exact paths, real code, a failing test first and a commit — with the one stated exception of **Task 12**, a phase-exit task whose only new assertion is a re-assertion of an existing pinned equality, said so in its own Interfaces block rather than left for a reviewer to notice.
+**Against the hazards.** **1** and **2**: no statutory rate and no MyInvois detail appears; every rate in every fixture is an invented round figure with `source: 'manual:test'`. **4**: `accounting.ageing` ships here rather than being deferred to Phase 7, and `item_profitability` backs the report 3D and 4A shipped under one code. **5**: Task 12 Step 4 is the owner-account pattern with its exact command and its local equivalent. **6**: OD-09 is two isolated tasks and OD-24 one, all three droppable without renumbering a neighbour's interface. **8** and **9**: every 0A helper is cited by its exact name; `fixtures.ts` gains **nothing**; §4.17.1 gains one registered file. **11**: three new closed vocabularies, all `text` + a named CHECK. **13**: `lint-schema.ts` is edited once, to exactly §3.5.3's state. **14**: all five allocated migration numbers are used and none is borrowed. **15**: root `tests/` and every service use the production `withTenant`; only `packages/db/test` uses the 4-argument one. **20**: the job runs as the system principal through `systemContext`, one company per transaction. **22**: see the never-list paragraph. **23**: every base conversion is `round(value × rate, 4)` `HALF_AWAY_FROM_ZERO`, and the legacy-019 block asserts no local `round` exists. **24**: no handler inserts a `document_event`; the FX reversal goes through `reverseDocument`. **25**: the DELETE list is re-asserted as an equality in Task 12. **26**: one code, from the register. **29**: Task 11 begins with OD-24 and states its two keyboard additions so a reviewer can compare them to the owner's material. **31**: one new route module, one new `PROBES` key, one new `JOB_PROBES` entry; the ageing `GET` and the revaluation `POST` are sub-paths and inherit existing keys. **32** and **33**: every literal comes from a register; the six accounts this slice consumes are asserted, never re-seeded, and `1150` is a Task 0 amendment dropped with its task. **34**: all three seed files are envelopes with `module` outside `policy`. **35**: every task has exact paths, real code, a failing test first and a commit — with the one stated exception of **Task 12**, a phase-exit task whose only new assertion is a re-assertion of an existing pinned equality, said so in its own Interfaces block rather than left for a reviewer to notice.
 
 **Seven things a reviewer should check that this plan cannot prove on its own.** (1) **4A's `allocation.fx_difference`.** Every figure in Task 5 and test 8 assumes 4A stores "settlement base − settled base"; the *tie-out* holds for any value (ADR 0047's table), but the specific `40.0000` and `80.0000` assertions do not. If they fail by a consistent figure, read `allocateSettlement` and reconcile with 4A — never adjust `postSettlementFxDifference`, which correctly posts whatever is stored. (2) **4A's `partyBalance().byCurrency`.** Test 8 clause 6 asserts the ageing's per-currency view and 4A's `base` member only, because a ledger-derived `byCurrency` legitimately disagrees with an open-item one in a cross-currency month (ADR 0046). If 4A's plan claims `byCurrency` is an open-item view, that is a 4A/4B reconciliation and this plan's clause 6 is the more conservative half. (3) **Whether 4A's allocation route exists.** Task 5 Step 7 edits the handler Task 0's gate names; if the gate found none, raise rather than adding a second settlement endpoint. (4) **3C's `document_link` triggers.** Task 0's second informational line says whether migration 0037 put a trigger on that table; if it did, Task 5's direct `'settles'` insert must go and the `fxKind` probe stands alone — the idempotency behaviour is unchanged either way. (5) **What shape 4A's `PACK_ROOT` actually is.** 4A ships `packages/db/test/ar-ap/_support.ts` with a `PACK_ROOT` of its own (phase-4a:137, :3044) and this file registers **`PACK_DIR`** at `tests/invariants/support/ar-ap.ts` (amendment 9). The two names differ because the two **values** differ: 4A's is the relative `"seed/my"` that `readPackFile` resolves, 4B's is an absolute directory with a trailing separator that `readFileSync` and `readdirSync` consume directly. The RELATIONSHIP note after Task 0's script spells out why importing 4A's into `ar-ap.ts` would fail as a **missing file at run time** and not as a compile error. **Confirm 4A's spelling before writing `ar-ap.ts`** — if 4A's constant turns out to be absolute after all, say so in the PR body and let §4.17.1 collapse the two; do not silently rename 4B's, because Task 4's exhaustiveness guard globs `PACK_DIR` and Task 3's `readEnvelope` concatenates onto it. **The neighbouring question is `postArDocument` and it is already answered:** 4A's helper takes a resolved `documentTypeId` and an opt-in `twoPrincipal` flag and has no `jobs`, `warehouseId` or `allocate`, so `postFromPack` is not it and neither replaces the other — the RELATIONSHIP note says which task calls which. (6) **Whether 2A's `seedDocumentType` is idempotent.** `seedTypeFromPack`'s select-or-insert makes it not matter, and Task 0's third informational line records which it was — the guard stays either way, because `postFromPack` calls it on every post and a future 2A change must not be able to break every fixture in this slice. (7) ⚠️ **Whether 0B's `RequestContext` carries `branchId`** (OD-09 only). Task 10's `POST /pdc` reads `c.var.ctx.branchId` because `draftPdcReceipt` needs a `branch_id` for §4.3.2 step 10's `BRANCH` tag. If 0B does not carry it, `CreatePdcBody` gains a required `branchId` and the screen sends it. This is deliberately **not** gated in Task 0: Tasks 9 and 10 do not run unless OD-09 returns yes, and if it does, the typecheck finds this before any test runs.
 

@@ -82,7 +82,7 @@ function adjustmentNotes(source: string, samePeriod: boolean): string {
 /**
  * §4.7.2's job handler. Replays movements forward from the earliest invalidation in bounded batches,
  * rewrites layers and consumptions, and posts one `COST_ADJUSTMENT` per (fiscal period, branch) whose
- * COGS total moved (spec:1224). Idempotent and restartable (SAH-054): every write is a formula over
+ * COGS total moved (spec:1224). Idempotent and restartable (LEGACY-054): every write is a formula over
  * committed state, so a crash mid-run leaves the next run computing the same resume point.
  *
  * **Where the restart state lives (code review 2, C1 and C2; migration 0115).** Not in the consumption rows
@@ -113,7 +113,7 @@ export async function replay(
   const companyId = job.payload.companyId;
 
   // ── 1. What needs work, and from where ──────────────────────────────────────────────────────────
-  // "Needs work" is structural, never a boolean somebody remembered to set (SAH-005): a layer that is
+  // "Needs work" is structural, never a boolean somebody remembered to set (LEGACY-005): a layer that is
   // invalidated, or an issue whose booking row says its consumption set must be recomputed (0115) — the
   // posting statements that invalidate a movement write that row. The third branch reads data written before
   // 0115, which has no booking row: there, as before, a movement whose only consumptions are invalidated.
@@ -527,7 +527,7 @@ async function recompute(run: Run, start: Key): Promise<number> {
 
         // An issue: recompute the consumption set. `allowShortfall` is true here and only here — the
         // movement is already posted and its override, if any, was authorised at post time; refusing now
-        // would abort a correction over a historical excursion, which is SAH-054 exactly.
+        // would abort a correction over a historical excursion, which is LEGACY-054 exactly.
         const cancellation = await purchaseCancellation(tx, {
           companyId,
           documentId: m.documentId,
@@ -746,7 +746,7 @@ async function book(
     sql,
     ctx,
     // Groups in period order, then branch — an ordering of (period, branch) pairs, not of movements, so it
-    // names the period's start rather than any part of the chronological key (SAH-010's check).
+    // names the period's start rather than any part of the chronological key (LEGACY-010's check).
     (tx) => tx<{ fiscal_period_id: string; branch_id: string }[]>`
       select d.fiscal_period_id::text as fiscal_period_id, w.branch_id::text as branch_id
         from app.cost_booking b

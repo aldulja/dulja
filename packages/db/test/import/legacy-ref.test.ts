@@ -18,7 +18,7 @@ afterAll(async () => {
   await db?.stop();
 });
 
-describe("migration 0101 — legacy_ref (contracts §4.13.3; spec:2333 §5.1 #8, SAH-051)", () => {
+describe("migration 0101 — legacy_ref (contracts §4.13.3; spec:2333 §5.1 #8, LEGACY-051)", () => {
   it("adds a nullable text column to exactly the six tables §4.13.3 names, and to no other", async () => {
     const rows = await db.admin<{ table_name: string; data_type: string; is_nullable: string }[]>`
       select table_name, data_type, is_nullable
@@ -29,7 +29,7 @@ describe("migration 0101 — legacy_ref (contracts §4.13.3; spec:2333 §5.1 #8,
     expect(rows.every((r) => r.data_type === "text" && r.is_nullable === "YES")).toBe(true);
   });
 
-  it("indexes each one on (company_id, legacy_ref), partially, and NEVER uniquely — SAH-051 says duplicates exist", async () => {
+  it("indexes each one on (company_id, legacy_ref), partially, and NEVER uniquely — LEGACY-051 says duplicates exist", async () => {
     const rows = await db.admin<{ indexname: string; indexdef: string }[]>`
       select indexname, indexdef from pg_indexes
        where schemaname = 'app' and indexname like '%\_legacy\_ref\_idx' order by indexname`;
@@ -41,7 +41,7 @@ describe("migration 0101 — legacy_ref (contracts §4.13.3; spec:2333 §5.1 #8,
     }
   });
 
-  it("accepts two rows with the same legacy_ref — the legacy numbering is not unique (SAH-051)", async () => {
+  it("accepts two rows with the same legacy_ref — the legacy numbering is not unique (LEGACY-051)", async () => {
     const a = await uuidv7(db.admin);
     const b = await uuidv7(db.admin);
     await withTenant(db.rw, s.tenant, s.human, async (tx) => {
@@ -66,7 +66,7 @@ describe("migration 0101 — legacy_ref (contracts §4.13.3; spec:2333 §5.1 #8,
     expect(await lintSchema(db.admin)).toEqual([]);
   });
 
-  it("document.number stays bigint — a legacy number is never written into it (SAH-051)", async () => {
+  it("document.number stays bigint — a legacy number is never written into it (LEGACY-051)", async () => {
     const [col] = await db.admin<{ data_type: string }[]>`
       select data_type from information_schema.columns
        where table_schema = 'app' and table_name = 'document' and column_name = 'number'`;

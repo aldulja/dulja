@@ -33,7 +33,7 @@ async function post(
   }
 }
 
-describe("the ledger — spec §3.8 (SAH-003, 012, 031, 041, 042, 044)", () => {
+describe("the ledger — spec §3.8 (LEGACY-003, 012, 031, 041, 042, 044)", () => {
   let db: Db;
   let a: Seed;
   let b: Seed;

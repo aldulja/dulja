@@ -10,7 +10,7 @@ import {
 import { sourceFiles } from "../support/source";
 
 /**
- * SAH-046 without a container (6B T0 Step 4). `tests/regression/sah-046.test.ts` pins the one `export function`
+ * LEGACY-046 without a container (6B T0 Step 4). `tests/regression/legacy-046.test.ts` pins the one `export function`
  * too, but it runs under `fullRegression`, whose every case awaits the PostgreSQL-backed harness; this file proves
  * the one-spelling claim anywhere `bun run test` runs.
  *
@@ -18,7 +18,7 @@ import { sourceFiles } from "../support/source";
  * re-exports `@dulja/sync`'s function, so that identity is a tautology, and the test tier reaches `apps/api` only
  * through `createApp()` and `./routes` (§3.1). The second and third cases make the claim from the source instead.
  */
-describe("SAH-046 — there is exactly one canonical sync signature string", () => {
+describe("LEGACY-046 — there is exactly one canonical sync signature string", () => {
   it("is four newline-separated fields, in order, over every shape the two ends send", () => {
     const cases = [
       {
@@ -80,7 +80,7 @@ describe("SAH-046 — there is exactly one canonical sync signature string", () 
   it("no source file outside packages/sync/src/signing.ts composes the string itself", () => {
     // A file that interpolates two fields across a newline in a template literal — or joins fields with a
     // newline — beside a mention of the terminal signature is a second spelling even if it agrees today, and
-    // "agrees today" is what SAH-046 is. Unlike sah-046's scan, the first interpolation need not name `method`,
+    // "agrees today" is what LEGACY-046 is. Unlike legacy-046's scan, the first interpolation need not name `method`,
     // and a call such as `at.toISOString()` counts. The one other exemption is signing.ts's own spec, which
     // writes the expected string out independently on purpose: a golden value is not a signer.
     const exempt = new Set(["packages/sync/src/signing.ts", "packages/sync/test/signing.test.ts"]);

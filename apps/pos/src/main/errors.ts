@@ -16,7 +16,7 @@ export type TillErrorCode = Extract<
   | "ERR_NOT_FOUND"
   | "ERR_RBAC_FORBIDDEN"
   | "ERR_MONEY_CURRENCY_MISMATCH"
-  // 0C's "wait for the window and retry" code, raised by `authenticateCashier`'s PIN lockout (SAH-028). The
+  // 0C's "wait for the window and retry" code, raised by `authenticateCashier`'s PIN lockout (LEGACY-028). The
   // same reasoning as the line above: the registry already has the meaning, so the till does not mint a second.
   | "ERR_RATE_LIMITED"
   // 6A's refusal of an expired, used or unknown enrolment code, passed through from the server rather than

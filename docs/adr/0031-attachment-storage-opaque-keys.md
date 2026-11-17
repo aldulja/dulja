@@ -4,11 +4,11 @@
 **Date:** 2026-09-05
 **Deciders:** owner (pending), architect
 **Slice:** 2C
-**Spec:** §3.2.2 R2 row (spec:1138), §3.3 Attachment (spec:1192), §3.0.4 Attachments (spec:1067), Part I SAH-038 (spec:545)
+**Spec:** §3.2.2 R2 row (spec:1138), §3.3 Attachment (spec:1192), §3.0.4 Attachments (spec:1067), Part I LEGACY-038 (spec:545)
 
 ## Context
 
-SAH-038 is a path traversal to arbitrary file write: `ProcCopyExternalFile.sql` concatenated a caller-supplied
+LEGACY-038 is a path traversal to arbitrary file write: `ProcCopyExternalFile.sql` concatenated a caller-supplied
 `vDstID` into a filesystem path and handed it to a native `BlobToFile` UDF running as the Firebird service
 account. The prefix itself came from an unprotected `Options` table, so both halves of the path were
 attacker-influenceable. The same shape reached file deletion.
@@ -37,7 +37,7 @@ attacker-influenceable. The same shape reached file deletion.
 ## Consequences
 
 - A traversal payload cannot be expressed: the function's domain is two uuids.
-- `tests/regression/sah-038.test.ts` additionally scans `apps/**` and `packages/**` for any other line that
+- `tests/regression/legacy-038.test.ts` additionally scans `apps/**` and `packages/**` for any other line that
   composes an object key or joins a request-supplied name into a path, so a second spelling fails the build.
 - The four R2 values are secrets and never enter the repository or a committed `.env` (spec:2273).
 - **Asked:** is direct container-to-R2 access acceptable, or must attachment bytes traverse the edge Worker?

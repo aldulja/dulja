@@ -1,6 +1,6 @@
 # Dulja
 
-Dulja is a **Windows-only** replacement for Sahlisoft Accounting — decision D1 (spec:116), settled in §3.0 (spec:977) as "Windows only for v1. No macOS, no Linux desktop, no mobile", with macOS, Linux and mobile considered and rejected. `apps/desktop/electron-builder.yml` carries one `win:` target and the two `dist` scripts both pass `--win`; the Linux in this repository is server-side only and is the same section's choice — Cloudflare Containers for the API and workers, Supabase for the database. Version 1 covers Accounting, Inventory, HR & Payroll, and POS. The target is a multi-tenant, auditable system whose financial and security invariants are enforced in the data layer.
+Dulja is a **Windows-only** replacement for a legacy accounting system — decision D1 (spec:116), settled in §3.0 (spec:977) as "Windows only for v1. No macOS, no Linux desktop, no mobile", with macOS, Linux and mobile considered and rejected. `apps/desktop/electron-builder.yml` carries one `win:` target and the two `dist` scripts both pass `--win`; the Linux in this repository is server-side only and is the same section's choice — Cloudflare Containers for the API and workers, Supabase for the database. Version 1 covers Accounting, Inventory, HR & Payroll, and POS. The target is a multi-tenant, auditable system whose financial and security invariants are enforced in the data layer.
 
 ## Current phase
 
@@ -23,7 +23,7 @@ What stands between each phase and its exit, as its own record states it:
 | 6 POS                 | `docs/reports/phase-6.md`                | OD-11, OD-12, OD-18; ADRs 0054–0064; the Windows packaged run; staging                                        |
 | 7 Reporting           | `docs/reports/phase-7.md`                | ADRs 0065–0070 and contracts A2/A11; OD-24 parity, OD-27; staging                                             |
 | 8 HR and payroll      | `docs/reports/phase-8.md`                | OD-23 (the parallel run — the first DoD clause is unmet), OD-14, OD-28, OD-24 parity; ADRs 0071–0080; staging |
-| 9 Migration           | `docs/reports/phase-9.md`                | OD-17 (no live Sahlisoft byte has been read), OD-16, OD-25, OD-26, OD-27, OD-23; ADRs 0081–0086; staging      |
+| 9 Migration           | `docs/reports/phase-9.md`                | OD-17 (no live legacy byte has been read), OD-16, OD-25, OD-26, OD-27, OD-23; ADRs 0081–0086; staging         |
 | Full review           | `docs/review/2026-11-15-full-review.md`  | CI on `main` (BASE-02); ADRs 0089–0097; OPS-01, ORCH-01                                                       |
 
 Every owner-gated half is verified against its local equivalent only — Testcontainers, the container image, `wrangler dev`, synthetic corpora and fixture values — and never against a deployed system, a real payroll, the live legacy database or real statutory rates.
@@ -39,7 +39,7 @@ The standing records that outlive a phase are in **`docs/status/current-state.md
 
 The short form of what is open:
 
-- **Owner gates:** OD-04 role names · OD-05 the ⚠️ rows of §3.0.3/§3.0.4 · OD-06 the costing method (AVCO is the default) · OD-08 BOM, consignment, commissions, project costing (not built) · OD-09 post-dated cheques (not built; migration `0051` reserved) · OD-11 cashier alias domain · OD-12 cashier list · OD-14 four HR facts · OD-15 tax-return publication and MyInvois · OD-16 historical POS data · OD-17 the live Sahlisoft database · OD-18 code-signing certificate · OD-19 Supabase · OD-20 Cloudflare · OD-21 owner login, legal name, currency, fiscal year · OD-22 Sentry · OD-23 the payroll parallel run · OD-24 legacy screenshots and an operator walkthrough before any screen · OD-25 cut-over date and `3900` · OD-26 legacy passwords · OD-27 legacy report templates and five Part VII answers · OD-28 statutory layouts (built on defaults). OD-01 and OD-02 are unconfirmed and block nothing. Answered: OD-03 and OD-07 **no**, OD-10 **yes**, OD-13 **build**.
+- **Owner gates:** OD-04 role names · OD-05 the ⚠️ rows of §3.0.3/§3.0.4 · OD-06 the costing method (AVCO is the default) · OD-08 BOM, consignment, commissions, project costing (not built) · OD-09 post-dated cheques (not built; migration `0051` reserved) · OD-11 cashier alias domain · OD-12 cashier list · OD-14 four HR facts · OD-15 tax-return publication and MyInvois · OD-16 historical POS data · OD-17 the live legacy database · OD-18 code-signing certificate · OD-19 Supabase · OD-20 Cloudflare · OD-21 owner login, legal name, currency, fiscal year · OD-22 Sentry · OD-23 the payroll parallel run · OD-24 legacy screenshots and an operator walkthrough before any screen · OD-25 cut-over date and `3900` · OD-26 legacy passwords · OD-27 legacy report templates and five Part VII answers · OD-28 statutory layouts (built on defaults). OD-01 and OD-02 are unconfirmed and block nothing. Answered: OD-03 and OD-07 **no**, OD-10 **yes**, OD-13 **build**.
 - **ADRs:** most ADRs written since Phase 2 are _Proposed_ and implemented ahead of approval; the list is under "ADRs awaiting the owner". Treat a proposed ADR as the code's current behaviour, not as the owner's decision.
 - **One known failure belongs to this build container, not to any phase:** test 15's PDF (`tests/invariants/zero-code-document-type.test.ts`, "prints: a PDF in each direction") loses its hyphens under the container's Chromium.
 - Three `tests/invariants` files (`lint-rules`, `logical-properties`, `type-resolution`), the four `tests/lint` files and `tests/golden` need no container and run anywhere.
@@ -51,7 +51,7 @@ Keep this file short. A new standing record — a defect left unfixed, a gate, a
 - `docs/spec/rebuild-spec.md` v1.2 is the product and architecture authority. Start with §0.2, §0.3, and §0.4; then follow §0's reading order.
 - `docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md` version 2026-09-07 freezes cross-slice names, ownership, migration ranges, ADR ranges, and shared interfaces for work after Plan 0A. Read it before any plan.
 - The active slice plan supplies executable, checkbox-based tasks and names the exact spec sections required for that slice. Do not treat SQL or test results described inside a plan as proof that the workspace has implemented them. Plans describe the intended implementation and prior design verification. The four phase reports say, per clause, what was proved and at what strength; read them the same way.
-- The legacy-system dossier (`sahlisoft-accounting-analysis.md`) is kept out of this public repository; where a document cites it, read the rebuild specification instead. It was evidence about the legacy system, never authority for Dulja's target architecture.
+- The legacy-system dossier (`legacy-system-analysis.md`) is kept out of this public repository; where a document cites it, read the rebuild specification instead. It was evidence about the legacy system, never authority for Dulja's target architecture.
 - `docs/review/2026-09-04-dulja-docs-review.md` records the review history and why earlier specification corrections were made.
 - `CONTRIBUTING.md` carries the spec's §0.2 and §3.9 verbatim for human contributors.
 - `docs/status/current-state.md` and `docs/status/phase-history.md` hold the standing records and the per-phase history this file summarises (ADR 0088, amended 2026-11-17). `docs/agents/` holds the role briefs and templates of the feature workflow below.
@@ -64,7 +64,7 @@ Use the `docs/spec/` paths above; do not maintain duplicate copies. When documen
 1. Confirm the previous slice or phase dependency is green; follow the dependency graph in Plan Contracts §6.3.
 2. Read the active plan's assumptions, owner gates, required spec sections, and definition of done before editing.
 3. Execute one unchecked task at a time, test-first, and keep changes within that task's stated files and migration/ADR ranges.
-4. Add a regression test for every `SAH-###` defect the work touches.
+4. Add a regression test for every `LEGACY-###` defect the work touches.
 5. Run the root quality checks and the active task's focused tests. Report the slice against its definition of done.
 6. Update **Current phase** and **Current State** — this file's short form and the full records in `docs/status/` — only after the slice's implementation and its definition of done are present in this workspace and verified; the slice that closes a phase rewrites **Current phase** (Plan Contracts §3.8) and that phase's entry in `docs/status/phase-history.md`. Recording what is _not_ proven — an open owner gate, a suite CI cannot run, a phase gate still unmet — is always in scope and waits on nothing.
 
@@ -173,7 +173,7 @@ The implementation is one Bun-workspace/Turborepo monorepo:
 - `packages/db` — Drizzle schema, handwritten SQL migrations, seed packs, linter, and database tests.
 - `packages/contracts` — Zod schemas, the permission catalogue (`permissions.ts`) and the committed OpenAPI document (`openapi.json`, generated from the API's routes and diffed in CI). The generated client the spec plans does not exist yet; `apps/backoffice` calls the API through a handwritten wrapper.
 - `packages/sync`, `packages/ui`, `packages/i18n` — POS sync, shared UI, and English/Arabic localization.
-- `packages/importer` — the Sahlisoft importer (Plans 9A and 9B): the legacy Firebird reader, its profiling and reconciliation reports, and the loaders and cut-over reconciliation, run as the `bun run legacy` CLI and, in the worker, as the `admin.import.run` job.
+- `packages/importer` — the legacy-data importer (Plans 9A and 9B): the legacy Firebird reader, its profiling and reconciliation reports, and the loaders and cut-over reconciliation, run as the `bun run legacy` CLI and, in the worker, as the `admin.import.run` job.
 - `infra` — the runtime container image (one image, two entrypoints), `wrangler.jsonc`, and Renovate.
 - `tests/regression`, `tests/invariants`, `tests/golden`, `tests/e2e`, `tests/lint`, `tests/staging` — cross-workspace acceptance suites and the Phase 0 exit-gate suite.
 
@@ -210,7 +210,7 @@ Always:
 - Decisions affecting money semantics, security, the data model, or the sync protocol require an ADR proposal and owner approval before implementation. Low-risk implementation choices may be recorded in an ADR and executed.
 - **Cash rounding at the till uses `app.branch_pos_policy.rounding_increment`; `app.currency.pos_rounding_increment` is display-only.** That is Phase 6's settlement, a proposal in ADR 0059, of the question ADR 0020's second resolution recorded. Migration `0066` creates the branch column with a `0.05` default under a `rounding_increment > 0` check, and `verifyCashRounding` (`packages/db/src/sync/cash-rounding.ts`) falls back to the same `0.05` for a branch with no policy row. `bootstrapCompany` (`packages/db/src/seed/owner.ts:12`) still seeds the base currency on the column defaults of `packages/db/migrations/0005_create_currency_exchange_rate.sql:8`, so the currency column is `0.0100`, and nothing computes with it. **Do not hard-code an increment into the seed**; a shop's increment is its branch policy, set in the back office.
 - **Migration 0010's forward-only audit hashing is free only while no database holds audit rows anyone must verify.** Rows written before it do not verify under the canonicalised preimage, and rehashing them needs UPDATE on `app.audit_log`, which `audit_log_immutable` (`packages/db/migrations/0001_foundations.sql:481`) exists to refuse. The window shuts the first time staging is seeded — OD-19 and OD-20 — and after that the same change costs a `hash_version` column or a recorded `seq` cutover, with `packages/db/src/audit/verify-chain.ts` recomputing each row under the formula in force when that row was written.
-- Before any UI task, obtain screenshots of the equivalent Sahlisoft screen and a short operator walkthrough. Preserve or improve keyboard speed.
+- Before any UI task, obtain screenshots of the equivalent legacy screen and a short operator walkthrough. Preserve or improve keyboard speed.
 
 ## Change Discipline
 
@@ -219,6 +219,7 @@ Always:
 - Record reusable decisions in `docs/adr/`; amend Plan Contracts before changing a frozen cross-slice contract.
 - A branch that is not a slice — a remediation, a review fix, a security patch — has **no migration or ADR range of its own**, and the register's rules are all written for slices. Plan Contracts §3.4.1 now carries a ⚠️ **proposal** for how such a branch allocates a number, and §3.9 applies the same rule to ADRs; it is the owner's to approve or replace, not settled text. Until it is settled: amend the register in the same PR before taking any number, and never take one a slice has marked _reserved_. The phase-0 review branch took 0C's and 0E's reserved `0009` and `0010` plus ADR `0020`, and §3.4.1's "never renumbers" means that cannot now be repaired — the register records the occupants instead.
 - Re-pin a golden fixture only through `GOLDEN_WRITE=1` (`tests/package.json`'s `golden:costing`), then review the diff line by line: every changed figure must be an intended formula change (spec:2264, `tests/golden/costing.test.ts`). Never regenerate a fixture to make it pass.
+- **Do not name the legacy vendor or product in this repository** (the owner's direction, 2026-11-17; `docs/decisions/2026-11-17-legacy-naming.md`). Write "the legacy system"; its defects are `LEGACY-###` (spec Part I), each tested in `tests/regression/legacy-NNN.test.ts`. The legacy database's own table and column names stay, because the importer reads them.
 - Never report a phase complete from document review alone. Completion requires the implementation, its stated tests, and the phase gate to pass in the workspace/CI.
 
 ## Phase Execution Rule

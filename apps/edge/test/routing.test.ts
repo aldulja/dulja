@@ -11,7 +11,7 @@ const good = `Bearer ${b64({ alg: "RS256" })}.${b64({ iss: ISSUER, exp: Math.flo
 /** Passes the pre-check and is signed by nobody: `sig` is a literal. Any `sub` a caller likes. */
 const forged = (sub: string) =>
   `Bearer ${b64({ alg: "RS256" })}.${b64({ iss: ISSUER, exp: Math.floor(Date.now() / 1000) + 60, sub })}.sig`;
-// IPv6 documentation addresses: SAH-082 forbids IPv4 literals in source (see rate-limit.test.ts).
+// IPv6 documentation addresses: LEGACY-082 forbids IPv4 literals in source (see rate-limit.test.ts).
 // Two origins in DIFFERENT /64s — an IPv6 client is keyed on its prefix, so two addresses inside one /64
 // would (rightly) share a bucket and prove nothing about origin separation.
 const ORIGIN_A = "2001:db8:1::a";
@@ -115,7 +115,7 @@ describe("apps/edge/src/router — routing (spec §3.2.1, §5.2)", () => {
     expect(forward).not.toHaveBeenCalled();
   });
 
-  it("strips client-supplied identity headers before forwarding — the edge never asserts identity (SAH-026)", async () => {
+  it("strips client-supplied identity headers before forwarding — the edge never asserts identity (LEGACY-026)", async () => {
     const { env, deps, forward } = harness();
     await handleFetch(
       new Request("https://api.example/v1/companies", {

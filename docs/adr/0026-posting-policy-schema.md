@@ -7,7 +7,7 @@
 
 ## Context
 
-The legacy system encoded document behaviour as ~35 boolean flags on `Muniments` plus XML options (SAH-013, SAH-072, SAH-078). Nothing declared which combinations were legal, the rules lived in client code and trigger branches, and a reversal read the *current* flags rather than the ones originally applied. spec:1075 states the replacement: "Document types are data; posting rules are versioned policy objects — declarative, validated, tested, and *pinned to each posted document* so history is never re-interpreted."
+The legacy system encoded document behaviour as ~35 boolean flags on `Muniments` plus XML options (LEGACY-013, LEGACY-072, LEGACY-078). Nothing declared which combinations were legal, the rules lived in client code and trigger branches, and a reversal read the *current* flags rather than the ones originally applied. spec:1075 states the replacement: "Document types are data; posting rules are versioned policy objects — declarative, validated, tested, and *pinned to each posted document* so history is never re-interpreted."
 
 1A shipped `packages/domain/posting-policy.schema.json` at the subset the JOURNAL type needs, so `postDocument` had a type to compile against and the seed had a schema to validate. That subset cannot express a sales invoice, a payroll run or a POS ticket.
 
@@ -29,12 +29,12 @@ The schema is `additionalProperties: false` at every level. A document-type seed
 
 ## Alternatives considered
 
-- **A DSL or a small expression language for `amount`.** Rejected: an expression language is a parser, an evaluator and an injection surface, and spec:2053/SAH-036 exists because the legacy system built behaviour out of strings. A closed `amountRef` enum is checkable by CI, diffable in review, and exhaustively switchable in TypeScript.
-- **Per-document-type schemas.** Rejected: `validatePolicy` would have to pick a schema by document type, which is the flag-dispatch SAH-013 describes, one level up.
+- **A DSL or a small expression language for `amount`.** Rejected: an expression language is a parser, an evaluator and an injection surface, and spec:2053/LEGACY-036 exists because the legacy system built behaviour out of strings. A closed `amountRef` enum is checkable by CI, diffable in review, and exhaustively switchable in TypeScript.
+- **Per-document-type schemas.** Rejected: `validatePolicy` would have to pick a schema by document type, which is the flag-dispatch LEGACY-013 describes, one level up.
 - **A `version: 2` schema now.** Rejected: 1A's committed policies and the `PostingPolicy` type would need a migration for a change that removes nothing.
 
 ## Consequences
 
 - `evaluatePolicy` must handle every member the schema admits or the schema promises what the engine cannot do; 2A Task 6 does that, and its test file has one case per enum label.
 - A reference whose backing table does not exist yet (`item.*` is 3A's, `tax_code.*` is 5A's, `line.component.*`/`line.scheme.*` are 8A/8B's) resolves through the structural `ItemRef`/`TaxCodeRef`/`PayComponentRef`/`SchemeRef` shapes declared in core (contracts §4.4.2, spec:2366 — "core never imports HR"), and yields `ERR_POLICY_REQUIRES_MISSING` naming the reference until its slice populates `snapshot.refs`.
-- Every seeded policy is a reviewed diff of a version-controlled file (SAH-078), and every posted document pins the `posting_policy_id` that produced it (SAH-013).
+- Every seeded policy is a reviewed diff of a version-controlled file (LEGACY-078), and every posted document pins the `posting_policy_id` that produced it (LEGACY-013).

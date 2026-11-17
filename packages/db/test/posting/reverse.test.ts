@@ -37,7 +37,7 @@ async function draftWithLines(
   return id;
 }
 
-describe("reverseDocument and voidDocument — D13, spec:1745, SAH-002/041/051", () => {
+describe("reverseDocument and voidDocument — D13, spec:1745, LEGACY-002/041/051", () => {
   let db: Db;
   let a: Seed;
 
@@ -162,7 +162,7 @@ describe("reverseDocument and voidDocument — D13, spec:1745, SAH-002/041/051",
       select (base_debit - base_credit)::text as net from app.account_balance
        where account_id = ${wrong} and fiscal_period_id = ${a.period} and currency = 'MYR'`,
     );
-    // The mis-keyed account nets to nothing (SAH-002).
+    // The mis-keyed account nets to nothing (LEGACY-002).
     expect(wrongBalance!.net).toBe("0.0000");
     const [neverBalance] = await withTenant(
       db.rw,
@@ -226,7 +226,7 @@ describe("reverseDocument and voidDocument — D13, spec:1745, SAH-002/041/051",
     ).rejects.toMatchObject({ code: "ERR_PERIOD_NOT_OPEN" });
   });
 
-  it("voids an issued document and records the number so the gap is explained (SAH-051)", async () => {
+  it("voids an issued document and records the number so the gap is explained (LEGACY-051)", async () => {
     const doc = await draftWithLines(db, a, [
       { account: a.cash, debit: "9.0000" },
       { account: a.sales, credit: "9.0000" },
@@ -549,7 +549,7 @@ describe("reverseDocument on a generalised line — D13, contracts §4.3.1", () 
     ).rejects.toThrow(/ERR_POLICY_REQUIRES_MISSING.*POLICY_TEST_2/s);
   });
 
-  it("reads `reversal` from the PINNED policy, not from whatever is effective today (SAH-013, amendment A8)", async () => {
+  it("reads `reversal` from the PINNED policy, not from whatever is effective today (LEGACY-013, amendment A8)", async () => {
     const source = await postItemDocument({ amount: "9.0000", quantity: "1.000000" });
 
     // A back-dated version 3 lands AFTER the original posted — which 2A's

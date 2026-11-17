@@ -1,7 +1,7 @@
 -- ── 0074. app.report_definition — the report builder's stored definition ───────
 -- contracts §4.11.2. spec:1240 wants an end-user report designer that is "text-defined, diffable,
 -- version-controlled"; spec:1246 puts "Delphi-serialised report files" on the explicit do-NOT-carry-over
--- list and SAH-077 is the defect that follows from them (report definitions as MEMO blobs in customer
+-- list and LEGACY-077 is the defect that follows from them (report definitions as MEMO blobs in customer
 -- databases, so no static analysis can ever tell whether a procedure is live). A definition here is
 -- validated JSON seeded from a version-controlled file, and a tenant's edit is a NEW version row.
 
@@ -27,7 +27,7 @@ create table app.report_definition (
 );
 
 -- ── 2. the index the definition list and the run route filter on ──────────────
--- SAH-070: index coverage was thin on exactly the columns reports filter by. Every read of this table is
+-- LEGACY-070: index coverage was thin on exactly the columns reports filter by. Every read of this table is
 -- "the live definitions of this company for this code", so the index carries all three and excludes archived rows.
 create index report_definition_lookup_idx on app.report_definition (company_id, code, version desc)
   where archived_at is null;

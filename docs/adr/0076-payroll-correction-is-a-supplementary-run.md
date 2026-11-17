@@ -9,7 +9,7 @@
 ## Context
 
 spec:2081 says "Correction after posting is a reversal plus a supplementary run; nothing is edited in place
-(SAH-041)". The `PAYROLL` policy must declare a `reversal` block — the schema requires it — and the value decides
+(LEGACY-041)". The `PAYROLL` policy must declare a `reversal` block — the schema requires it — and the value decides
 which of the two halves of that sentence the system actually offers.
 
 ## Decision
@@ -25,7 +25,7 @@ Two independent mechanics forbid the reversal path, and either alone is decisive
    the effective policy has `approval.required = false`. PAYROLL's is `true` (spec:2172 R1), so the inner post raises
    `ERR_DOC_STATUS_ILLEGAL` — the tree's recorded limit "no approval-required type can be reversed" (AGENTS.md).
    Setting `approval.required = false` to make reversal work would delete maker ≠ checker for the highest-risk
-   document in the system (SAH-032); letting the reversal skip the trigger is SAH-027.
+   document in the system (LEGACY-032); letting the reversal skip the trigger is LEGACY-027.
 2. **The extension rows.** `reverseDocument` copies `document_line` columns and knows nothing of `app.payroll_line`.
    Every mirrored payroll line would resolve `line.component.kind` and `line.share` to `null`, match no policy rule,
    plan zero ledger lines for it, and the mirror could not reproduce the original.
@@ -33,7 +33,7 @@ Two independent mechanics forbid the reversal path, and either alone is decisive
 ## Consequences
 
 - The supplementary run is a first-class `payroll_run.kind` (§4.12.6), not a workaround. The original run's posted
-  lines, its `pinned_tables` and its ledger rows are never touched (SAH-041; acceptance test 29).
+  lines, its `pinned_tables` and its ledger rows are never touched (LEGACY-041; acceptance test 29).
 - The half of spec:2081 that says "a reversal" is **not** offered for PAYROLL. If the owner wants it, the cost is
   stated rather than hidden: `reverseDocument` gains a payroll-extension copy step, and the state machine gains a
   rule admitting a reversal of an `approval.required` type straight to `issued` under the *original* document's

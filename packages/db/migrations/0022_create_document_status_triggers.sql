@@ -1,6 +1,6 @@
 -- 0022_create_document_status_triggers.sql ────────────────────────────────────────────────────────────────
 -- The document state machine, in the data layer. spec:2172-2173; contracts §4.5.1; ADR 0029.
--- SAH-032: a user could raise a document's approval level above their own because the check lived in the UI.
+-- LEGACY-032: a user could raise a document's approval level above their own because the check lived in the UI.
 -- Here it lives in a BEFORE UPDATE OF status trigger, so the API, a pg-boss job and psql as app_rw are all
 -- governed identically (acceptance tests 10 and 31).
 
@@ -95,7 +95,7 @@ begin
     end if;
   end if;
 
-  -- ── 2c. R2 authority at transition time (spec:2173). NULL branch never fails open (SAH-042, SAH-050). ─
+  -- ── 2c. R2 authority at transition time (spec:2173). NULL branch never fails open (LEGACY-042, LEGACY-050). ─
   if new.status = 'approved' then
     v_gate := coalesce(v_approve, v_post);          -- for approval.required = false types approve is null
   elsif new.status in ('posted', 'void') then

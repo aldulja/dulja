@@ -80,7 +80,7 @@ afterAll(async () => {
   await db.stop();
 });
 
-describe("branch_isolation (§4.5.6; spec:2166; SAH-042, 045)", () => {
+describe("branch_isolation (§4.5.6; spec:2166; LEGACY-042, 045)", () => {
   it("migration 68 is applied and every policy is RESTRICTIVE (a permissive gate is OR-ed away)", async () => {
     expect(await listApplied(db.migrator)).toContain(68);
     const rows = await db.admin<{ tablename: string; permissive: string }[]>`

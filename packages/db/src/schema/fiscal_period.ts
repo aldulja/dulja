@@ -18,7 +18,7 @@ export const fiscalPeriod = app.table(
     reopenReason: text("reopen_reason"),
   },
   (table) => [
-    // 1B, migration 0016 (SAH-070) — accounting.period.month_end scans (company_id, status, ends_on);
+    // 1B, migration 0016 (LEGACY-070) — accounting.period.month_end scans (company_id, status, ends_on);
     // nothing on this table serves a scalar `ends_on < $1`.
     index("fiscal_period_company_status_ends_idx").on(table.companyId, table.status, table.endsOn),
   ],

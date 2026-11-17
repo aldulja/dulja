@@ -1,7 +1,7 @@
 -- 0012_create_account_balance.sql — the only projection Phase 1 maintains (contracts §4.3.3; spec:2031).
 -- The legacy system's aggregate tables were keyed on less than the grain they aggregated, so two tenants'
--- rows collided (SAH-001) and a concurrent upsert silently lost an amount (SAH-049); its upsert never fired
--- on UPDATE, so re-keying a posting destroyed the balance (SAH-002). The key here IS the grain, the write is
+-- rows collided (LEGACY-001) and a concurrent upsert silently lost an amount (LEGACY-049); its upsert never fired
+-- on UPDATE, so re-keying a posting destroyed the balance (LEGACY-002). The key here IS the grain, the write is
 -- one MERGE, and 1B's integrity job rebuilds the table from ledger_entry and compares row for row.
 
 -- ── 1. the projection ─────────────────────────────────────────────────────────────────────────────────
@@ -17,7 +17,7 @@ create table app.account_balance (
   base_credit       numeric(19,4) not null default 0,
   created_at        timestamptz not null default now(),
   updated_at        timestamptz not null default now(),
-  primary key (company_id, account_id, fiscal_period_id, currency),   -- the full key the MERGE targets (SAH-002/049)
+  primary key (company_id, account_id, fiscal_period_id, currency),   -- the full key the MERGE targets (LEGACY-002/049)
   foreign key (tenant_id, company_id)       references app.company(tenant_id, id),
   foreign key (tenant_id, account_id)       references app.account(tenant_id, id),
   foreign key (tenant_id, fiscal_period_id) references app.fiscal_period(tenant_id, id),

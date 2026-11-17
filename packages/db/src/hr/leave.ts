@@ -6,7 +6,7 @@ import type { Sql } from "postgres";
  *   · a principal may not approve their own leave      → the leave_record_no_self_approve trigger (R4, 8A's
  *                                                         app.forbid_self_pay; spec:2175, test 31)
  *   · a record is inserted requested and decided once   → app.guard_leave_record (ERR_TABLE_IMMUTABLE)
- *   · requested ⇔ no decider; the decider is the session → the CHECK + app.stamp_actor (SAH-044)
+ *   · requested ⇔ no decider; the decider is the session → the CHECK + app.stamp_actor (LEGACY-044)
  *   · another tenant sees nothing; another branch's     → RLS: tenant_isolation, and employee_parent_visibility /
  *     employee's leave is invisible                       public_holiday's Form B branch_isolation (8D A8)
  * What this file adds is the COMPANY bind: RLS bounds the tenant, so every write names the path company and joins the

@@ -133,7 +133,7 @@ describe("app.inventory_movement / app.stock_on_hand — migration 0031 (contrac
     ).rejects.toThrow(/inventory_movement_document_id_movement_no_key/);
   });
 
-  it("movement_no must be positive, and lot_id is NOT NULL (SAH-050, ADR 0034)", async () => {
+  it("movement_no must be positive, and lot_id is NOT NULL (LEGACY-050, ADR 0034)", async () => {
     const doc = await draftDocument(db, a);
     await expect(
       withTenant(db.rw, a.tenant, a.human, (tx) =>
@@ -163,7 +163,7 @@ describe("app.inventory_movement / app.stock_on_hand — migration 0031 (contrac
     ).rejects.toThrow(/lot_id/);
   });
 
-  it("value is mandatory — a movement without one is rejected at write time (SAH-007)", async () => {
+  it("value is mandatory — a movement without one is rejected at write time (LEGACY-007)", async () => {
     const doc = await draftDocument(db, a);
     await expect(
       withTenant(
@@ -209,7 +209,7 @@ describe("app.inventory_movement / app.stock_on_hand — migration 0031 (contrac
     expect(AUDIT_EXEMPT.has("inventory_movement")).toBe(true);
   });
 
-  it("an issue beyond available stock is refused with ERR_STOCK_INSUFFICIENT (test 18, SAH-048)", async () => {
+  it("an issue beyond available stock is refused with ERR_STOCK_INSUFFICIENT (test 18, LEGACY-048)", async () => {
     const wh = await seedWarehouse(db, a, { code: "SHORT" });
     const doc = await draftDocument(db, a);
     await withTenant(db.rw, a.tenant, a.human, (tx) =>

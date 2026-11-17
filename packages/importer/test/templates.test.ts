@@ -93,7 +93,7 @@ describe("templateStem — the near-duplicate rule, checked against the dossier'
   });
 });
 
-describe("catalogueTemplates — §5.1 #9 / SAH-077", () => {
+describe("catalogueTemplates — §5.1 #9 / LEGACY-077", () => {
   it("writes every blob out byte-for-byte and hashes what it wrote", async () => {
     const { dir, writer, driver } = run();
     const catalogue = await catalogueTemplates(driver, writer);

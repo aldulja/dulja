@@ -89,7 +89,7 @@ type Tx = Parameters<Parameters<AppEnv["Variables"]["withTenant"]>[0]>[0];
  * The column list the five statements below return. A nested postgres.js fragment — the shape
  * `documents.ts`'s `header(tx)` and `payment-term.ts`'s `COLUMNS(tx)` use — never a string and never
  * `tx.unsafe(...)`: contracts §3.3 gives `sql.unsafe` exactly three homes and none of them is here, and the
- * `no-sql-concat` lint (test 27) is what keeps SAH-036/037/069 closed. 2A wrote the list out five times; 4A's
+ * `no-sql-concat` lint (test 27) is what keeps LEGACY-036/037/069 closed. 2A wrote the list out five times; 4A's
  * four columns and the company's base currency made that five copies of a two-line list, so it is one.
  */
 const COLUMNS = (tx: Tx) =>

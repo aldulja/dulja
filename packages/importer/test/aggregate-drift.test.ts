@@ -12,7 +12,7 @@ describe("AGGREGATE_RULES — every recomputed figure carries its own derivation
   it("labels each rule verified, hypothesis or not_derivable, and never silently guesses", () => {
     for (const rule of AGGREGATE_RULES) {
       expect(rule.derivation.length).toBeGreaterThan(20);
-      expect(rule.sah.length).toBeGreaterThan(0);
+      expect(rule.legacyDefects.length).toBeGreaterThan(0);
       if (rule.confidence === "not_derivable") expect(rule.sourceTable).toBeNull();
       else expect(rule.sourceTable).not.toBeNull();
     }
@@ -113,7 +113,7 @@ describe("reconcile('aggregate_drift') — §5.1 #1, do not trust stored aggrega
 
   it("reads a NULL stored figure as zero against the recomputed one — the poison 9A T10 counts", async () => {
     const report = await reconcile(await reader(), "aggregate_drift");
-    // ACCTOTALS' account 11 CREDIT is NULL in the corpus (SAH-011); VOUITEMS recomputes 100.0000.
+    // ACCTOTALS' account 11 CREDIT is NULL in the corpus (LEGACY-011); VOUITEMS recomputes 100.0000.
     expect(report.rows).toContainEqual(
       expect.objectContaining({
         rule: "ACCTOTALS.CREDIT",

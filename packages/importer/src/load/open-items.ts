@@ -48,7 +48,7 @@ const COLUMNS: readonly SourceColumn[] = [
     name: "BILNUMBER",
     required: true,
     confidence: "hypothesis",
-    note: "the number printed on the customer's copy — preserved as a STRING in document.legacy_ref, duplicates included (SAH-051)",
+    note: "the number printed on the customer's copy — preserved as a STRING in document.legacy_ref, duplicates included (LEGACY-051)",
   },
   {
     name: "BILACC",
@@ -66,7 +66,7 @@ const COLUMNS: readonly SourceColumn[] = [
     name: "BILOPEN",
     required: true,
     confidence: "hypothesis",
-    note: "the unsettled amount as at the freeze — recomputed by 9A, never the stored aggregate (§5.1 #1); a NULL is refused, never zero (SAH-007)",
+    note: "the unsettled amount as at the freeze — recomputed by 9A, never the stored aggregate (§5.1 #1); a NULL is refused, never zero (LEGACY-007)",
   },
   {
     name: "BILKIND",
@@ -93,7 +93,7 @@ const TREATMENT = { receivable: "ar_control", payable: "ap_control" } as const;
  * than posting a figure no party's ageing would hold, which is the one way §4.8.2's "to the cent" could fail.
  *
  * `document.legacy_ref` carries the printed number; `document.number` is issued by the posting service in the `OB`
- * series and is gapless (round 20 C1). That pairing is SAH-051's fix: the historical string is preserved, duplicates
+ * series and is gapless (round 20 C1). That pairing is LEGACY-051's fix: the historical string is preserved, duplicates
  * and all, and the new numbering starts clean. Paged like any per-row loader (one document per row, one transaction per
  * page); `dependsOn` is `party`, the one table `map` resolves into.
  */
@@ -123,7 +123,7 @@ export const openItemLoader: Loader<LegacyRow, OpenItemTarget> = {
     const partyId = await refs.byLegacyRef("party", `ACC:${accountKey}`);
     if (!partyId)
       return {
-        skip: `account ${accountKey} has no imported party; the open item ${legacyNumber} is an orphan (SAH-073)`,
+        skip: `account ${accountKey} has no imported party; the open item ${legacyNumber} is an orphan (LEGACY-073)`,
       };
     if (amount.isZero())
       return {

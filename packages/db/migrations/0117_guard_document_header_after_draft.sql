@@ -1,7 +1,7 @@
 -- ── 0117 · app.document's header is frozen once the document leaves draft ─────────────────────────────
 -- Phase 4 code-review pass 3 (not a slice); number registered in Plan Contracts §3.4.1's tail.
 --
--- spec:574 (SAH-041) "issued financial documents are immutable"; spec:501 and 2223 (SAH-031) "immutability is
+-- spec:574 (LEGACY-041) "issued financial documents are immutable"; spec:501 and 2223 (LEGACY-031) "immutability is
 -- enforced on the whole document aggregate (header + lines + projections)"; spec:2049 "Financial rows: never —
 -- reversal only"; spec:2173 makes the data layer, not the handler, the control. 0113 froze the LINES of a
 -- non-draft document; the header stayed writable to any app_rw session. A posted invoice's effective_date,

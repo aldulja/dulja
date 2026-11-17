@@ -8,7 +8,7 @@
 
 ## Context
 
-SAH-025 (`procQuickLogin`) derives identity from stored credentials; SAH-026 trusts client-writable session context. SAH-046 requires one canonical name for each operation-mode concept and a single place to check it. A till must have an auditable identity independent of the human cashier and a device credential that can be revoked without changing that cashier's account (spec:1322).
+LEGACY-025 (`procQuickLogin`) derives identity from stored credentials; LEGACY-026 trusts client-writable session context. LEGACY-046 requires one canonical name for each operation-mode concept and a single place to check it. A till must have an auditable identity independent of the human cashier and a device credential that can be revoked without changing that cashier's account (spec:1322).
 
 ## Decision
 

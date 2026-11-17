@@ -33,7 +33,7 @@ call app_meta.attach_audit('app.employee_sensitive', 'tenant_column', 'employee_
 -- verified_by, which record one event each. It is WRONG here: this row is edited -- a bank account
 -- changes, and writeSensitive() is an upsert -- so a write-once stamp would pin updated_by to the
 -- CREATOR for the life of the row while updated_at moved, a column naming the wrong principal
--- (SAH-044). The trigger below stamps the session's actor on every INSERT and every UPDATE; the
+-- (LEGACY-044). The trigger below stamps the session's actor on every INSERT and every UPDATE; the
 -- value never comes from the caller, which is all §3.3 requires. The column name arrives in
 -- TG_ARGV, a literal written in this file, and the row is rebuilt with jsonb_populate_record rather
 -- than format(), so no identifier is ever assembled from text.
@@ -52,7 +52,7 @@ create trigger stamp_updated_by
 
 -- ── The gate, spec:2076 VERBATIM ────────────────────────────────────────────────────────────────
 -- AS RESTRICTIVE because permissive policies OR together and a permissive gate would be voided by
--- tenant_isolation (SAH-033). No `with check`: PostgreSQL then uses `using` for the write check too,
+-- tenant_isolation (LEGACY-033). No `with check`: PostgreSQL then uses `using` for the write check too,
 -- so one predicate gates read AND write. app.actor_has returns true for the system principal, so
 -- 8C's schedules and 8D's key rotation still run (spec:2076).
 create policy sensitive_gate on app.employee_sensitive as restrictive

@@ -26,7 +26,7 @@ export interface ValuationRow {
 /**
  * THE valuation read (spec:1228). Every consumer — this slice's route, 3D's `inventory.valuation` report,
  * 4B's `item_profitability`, 7B's re-expression and Task 11's `stock_valuation` rebuild — calls this
- * function. None re-derives it, which is the whole answer to SAH-009.
+ * function. None re-derives it, which is the whole answer to LEGACY-009.
  *
  * As-of, in two clauses:
  *   1. a layer counts only if ITS OWN movement's `effective_date <= asOf` — a receipt dated after the
@@ -178,7 +178,7 @@ interface DriftRow {
 
 /**
  * Rebuilds `app.stock_valuation` for one company at one date, **from `valuationAsOf`** — not from a second
- * query that happens to compute the same thing. Two derivations of one figure is SAH-009, and this function
+ * query that happens to compute the same thing. Two derivations of one figure is LEGACY-009, and this function
  * exists to be the one place a stored snapshot and a live report cannot diverge.
  *
  * Compares the QUANTITY half to `sum(inventory_movement.quantity)` as at the date; a difference is a

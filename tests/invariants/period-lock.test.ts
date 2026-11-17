@@ -42,7 +42,7 @@ const silentLogger = ((): Logger => {
   return logger;
 })();
 
-describe("period lock — acceptance test 9, the background-job path (spec:2427; SAH-031, 041)", () => {
+describe("period lock — acceptance test 9, the background-job path (spec:2427; LEGACY-031, 041)", () => {
   let db: Db;
   let a: Seed;
 

@@ -33,8 +33,8 @@ the tests for both clauses and executed neither.
 | 13 audit completeness | `packages/db/test/attachment.test.ts`, `document-event.test.ts`, `party.test.ts` (audit rows on insert) | 2A–2C | written, unrun |
 | **15 new document type, zero code** | above | **2C** | written, unrun |
 | 16 numbering | above | 2B | written, unrun |
-| 23 RTL/LTR parity, for PDFs | `apps/api/test/routes/accounting/print.test.ts` (12), `tests/regression/sah-085.test.ts` 2C block; the pipeline behind them was **run here without a database** (below) | 2C | route suite unrun; pipeline verified |
-| **25 zero-downtime migration** | `packages/db/test/expand-contract.test.ts` (6), `tests/regression/sah-080.test.ts` 2C block (2) | **2C** | written, unrun |
+| 23 RTL/LTR parity, for PDFs | `apps/api/test/routes/accounting/print.test.ts` (12), `tests/regression/legacy-085.test.ts` 2C block; the pipeline behind them was **run here without a database** (below) | 2C | route suite unrun; pipeline verified |
+| **25 zero-downtime migration** | `packages/db/test/expand-contract.test.ts` (6), `tests/regression/legacy-080.test.ts` 2C block (2) | **2C** | written, unrun |
 | 27 no SQL text across the API | `scripts/lint/rules/no-sql-concat.ts`, `no-bare-db` | 0B | **green** (11 rules, 462 files, 0 violations) |
 | 36 role catalogue integrity | `tests/invariants/role-catalogue.test.ts`; this phase adds two permission codes and touches two roles | 0D, 2A, 2B | written, unrun |
 

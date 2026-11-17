@@ -15,7 +15,7 @@ Four read functions in `packages/db/src/integrity/`, each usable on its own, com
 `runIntegrityCheck` into one `IntegrityReport`. Projections join through
 `registerProjectionCheck({ name, run })` — the same registry shape as `registerReconcilableSource`
 (contracts §4.8.3) — so no later slice edits this slice's file. The job never writes to a projection:
-it detects and records an incident. SAH-079's root cause is a system that repaired instead of detecting.
+it detects and records an incident. LEGACY-079's root cause is a system that repaired instead of detecting.
 
 The audit-chain half restates no formula: migration 0010 canonicalised the preimage through
 `jsonb_build_array`, and its header warns that a recomputation one field out of step reports every row in
@@ -39,7 +39,7 @@ PostgreSQL's `MERGE` can raise a **unique violation (23505)** when two transacti
 the `when not matched then insert` branch for the *same brand-new* key. §4.3.3's `account_balance`
 MERGE has that shape and §4.2.2's `withTenant` retries only `40P01`/`40001`. The warm-key path — two
 posts to a key that already exists — takes `when matched then update`, locks the row and is safe, and
-that is the path SAH-049 describes. The cold-start race is nevertheless real for the first document
+that is the path LEGACY-049 describes. The cold-start race is nevertheless real for the first document
 ever posted to an (account, period, currency) from two connections at once. **This ADR proposes no
 change** (spec:95 — a money-semantics change is proposed and asked, never implemented first): the
 proposal is either to add `23505` to the `withTenant` retry set in contracts §4.2.2, or to have

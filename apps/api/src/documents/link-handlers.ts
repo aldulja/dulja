@@ -141,7 +141,7 @@ export const openQuantityRoute = createRoute({
   method: "get",
   path: "/{documentId}/open-quantity",
   tags: ["accounting"],
-  summary: "Ordered, linked and open quantity per line (SAH-017, SAH-018)",
+  summary: "Ordered, linked and open quantity per line (LEGACY-017, LEGACY-018)",
   request: { params: PathParams },
   responses: {
     200: {

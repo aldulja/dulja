@@ -148,8 +148,8 @@ const CODES_AFTER_0B = [
 
 describe("Phase 0B contracts", () => {
   // Not repeated here, because they already live in the root `tests/` workspace: the per-code title/remedy and
-  // `ERR_<DOMAIN>_<REASON>` naming loop is `tests/regression/sah-084.test.ts`, and the per-code 4xx/5xx status
-  // loop is `tests/regression/sah-083.test.ts` (which also spot-checks 0B's twenty-five names, but not the
+  // `ERR_<DOMAIN>_<REASON>` naming loop is `tests/regression/legacy-084.test.ts`, and the per-code 4xx/5xx status
+  // loop is `tests/regression/legacy-083.test.ts` (which also spot-checks 0B's twenty-five names, but not the
   // later additions and not the total — both of which the next test pins).
   it("defines the complete shipped error-code subset, by name", () => {
     // plan0B Task 3 Step 2 asserted `Object.keys(ERRORS).sort()` *equals* the twenty-five 0B names. That equality
@@ -204,7 +204,7 @@ describe("Phase 0B contracts", () => {
       message: 'could not serialize access due to concurrent update of "app.principal"',
     });
     expect(unknown.code).toBe("ERR_INTERNAL");
-    expect(unknown.detail).not.toContain("app.principal"); // never echo the driver's text (SAH-083)
+    expect(unknown.detail).not.toContain("app.principal"); // never echo the driver's text (LEGACY-083)
     expect(unknown.extra?.sqlstate).toBe("40001"); // …but keep it for the log line
   });
 
@@ -225,7 +225,7 @@ describe("Phase 0B contracts", () => {
       expect(e.code, state).toBe("ERR_VALIDATION_FAILED");
       expect(e.status, state).toBe(400);
       expect(e.extra?.sqlstate, state).toBe(state); // still on the log line, so a real defect is not hidden
-      // never echo the driver's text (SAH-083) — it quotes the rejected value straight back
+      // never echo the driver's text (LEGACY-083) — it quotes the rejected value straight back
       expect(e.detail, state).not.toMatch(/nope|not-a-date|2024-13-01|\+99|99999999999999999999/);
     }
   });
@@ -237,7 +237,7 @@ describe("Phase 0B contracts", () => {
       expect(fromDatabaseError({ code: state, message: "x" }).code, state).toBe("ERR_INTERNAL");
   });
 
-  it("a check_violation with no token is ERR_INTERNAL, not a silently swallowed success (SAH-083)", () => {
+  it("a check_violation with no token is ERR_INTERNAL, not a silently swallowed success (LEGACY-083)", () => {
     expect(
       fromDatabaseError({ code: "23514", message: 'new row violates check constraint "chk_x"' })
         .code,

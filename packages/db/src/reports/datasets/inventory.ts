@@ -5,7 +5,7 @@ import { defineDataset, type Dataset, type DatasetColumn } from "../query";
  * tagged template, dates and timestamps leave SQL as strings, numerics stay postgres.js strings.
  *
  * Stock ageing and stock valuation read `cost_layer` / `cost_consumption` / `stock_valuation` and NEVER
- * recompute a cost (spec:1222, 1228; SAH-055): these datasets expose the stored layer columns and 7B's
+ * recompute a cost (spec:1222, 1228; LEGACY-055): these datasets expose the stored layer columns and 7B's
  * definitions group them; nothing here divides a value by a quantity. `item_profitability` is 4B's async
  * projection and is read, never re-derived (§4.6.1).
  *
@@ -278,7 +278,7 @@ export const stockOnHandDataset: Dataset = defineDataset({
   defaultOrder: (tx) => tx`it.code asc, w.code asc, lo.code asc`,
 });
 
-// ── cost_layer — read as stored. SAH-055: stock ageing reads layers, it never recomputes a cost ──────
+// ── cost_layer — read as stored. LEGACY-055: stock ageing reads layers, it never recomputes a cost ──────
 const COST_LAYER_COLUMNS: readonly DatasetColumn[] = [
   { field: "layer_id", kind: "uuid", ref: (tx) => tx`cl.id` },
   { field: "item_id", kind: "uuid", ref: (tx) => tx`cl.item_id` },

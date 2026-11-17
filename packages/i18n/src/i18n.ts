@@ -29,7 +29,7 @@ export async function createI18n(opts: CreateI18nOptions = {}): Promise<i18n> {
   await instance.use(ICU).init({
     lng: opts.locale ?? DEFAULT_LOCALE,
     supportedLngs: [...LOCALES],
-    fallbackLng: false, // SAH-085: a missing Arabic string must show as missing, never as English
+    fallbackLng: false, // LEGACY-085: a missing Arabic string must show as missing, never as English
     returnNull: false,
     resources: Object.fromEntries(
       LOCALES.map((locale) => [locale, { translation: catalogues[locale] }]),

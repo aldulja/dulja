@@ -134,7 +134,7 @@ describe("migration 0081 — employee_sensitive is ciphertext behind a RESTRICTI
 
   it("updated_by names the LAST writer, not the first — the A19 always-stamp", async () => {
     // Under the write-once app_meta.attach_stamp this row's updated_by would still read `holder` after the
-    // second write, so the column would name the creator forever while updated_at moved — SAH-044's shape.
+    // second write, so the column would name the creator forever while updated_at moved — LEGACY-044's shape.
     const before = await withTenant(db.rw, a.tenant, holder, (tx) =>
       readSensitive(tx, ring, employeeId),
     );
@@ -202,7 +202,7 @@ describe("migration 0081 — employee_sensitive is ciphertext behind a RESTRICTI
     expect(raw!.hex).not.toContain(Buffer.from("SYNTHETIC-ID-0001", "utf8").toString("hex"));
   });
 
-  it("sensitive_gate: a principal WITHOUT the code gets zero rows by direct app_rw SQL (test 32, SAH-033)", async () => {
+  it("sensitive_gate: a principal WITHOUT the code gets zero rows by direct app_rw SQL (test 32, LEGACY-033)", async () => {
     // The bystander can see the EMPLOYEE (a live role in the company) and still sees no sensitive row.
     const employees = await withTenant(
       db.rw,
@@ -316,7 +316,7 @@ describe("migration 0081 — employee_sensitive is ciphertext behind a RESTRICTI
       table: "employee_sensitive",
       rule: "sensitive_gate",
       detail:
-        "no RESTRICTIVE policy named sensitive_gate (spec:2076 — a permission gate is OR-ed away when permissive, SAH-033)",
+        "no RESTRICTIVE policy named sensitive_gate (spec:2076 — a permission gate is OR-ed away when permissive, LEGACY-033)",
     });
     await db.admin`drop policy sensitive_gate on app.employee_sensitive`;
     const v = await lintSchema(db.admin);
@@ -324,7 +324,7 @@ describe("migration 0081 — employee_sensitive is ciphertext behind a RESTRICTI
       table: "employee_sensitive",
       rule: "sensitive_gate",
       detail:
-        "no RESTRICTIVE policy named sensitive_gate (spec:2076 — a permission gate is OR-ed away when permissive, SAH-033)",
+        "no RESTRICTIVE policy named sensitive_gate (spec:2076 — a permission gate is OR-ed away when permissive, LEGACY-033)",
     });
     await db.admin`create policy sensitive_gate on app.employee_sensitive as restrictive
       using (app.actor_has('hr.employee.read_sensitive', (select e.company_id from app.employee e where e.id = employee_id)))`;

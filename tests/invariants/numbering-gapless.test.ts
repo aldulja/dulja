@@ -59,7 +59,7 @@ const ctx = (s: Seed): TenantContext => ({
 
 /**
  * Acceptance test 16 (spec:2434) and the Phase 2 DoD clause "issued numbers are unique and gapless-provable"
- * (spec:2288). SAH-051 is the defect: a race on the first document of a new series, no uniqueness constraint,
+ * (spec:2288). LEGACY-051 is the defect: a race on the first document of a new series, no uniqueness constraint,
  * numbers assigned at insert rather than at issue, and no way to demonstrate the sequence is unbroken.
  *
  * The mechanism is spread across three slices and this file is where the sentence becomes a gate:
@@ -139,7 +139,7 @@ describe("acceptance test 16 — numbering is unique, gapless-provable and undel
     });
     const left = await draft(raceType, "RC", ngPeriod, "2029-01-10");
     const right = await draft(raceType, "RC", ngPeriod, "2029-01-10");
-    expect(await counter("RC", ngPeriod)).toEqual([]); // the counter row does not exist yet — SAH-051
+    expect(await counter("RC", ngPeriod)).toEqual([]); // the counter row does not exist yet — LEGACY-051
 
     // Two real connections, max: 1 each — the interleaving spec:2266 asks for, not two promises on one pool.
     const one = postgres(api.db.url("app_rw"), { max: 1, prepare: false });
@@ -193,7 +193,7 @@ describe("acceptance test 16 — numbering is unique, gapless-provable and undel
       transitionDocument(tx, ctx(a), { documentId: first, to: "issued" }),
     );
     const impostor = await draft(ngType, "NG", ngPeriod, "2029-01-12");
-    // app_rw, writing the number by hand — the SAH-051 "a client supplying its own number" path.
+    // app_rw, writing the number by hand — the LEGACY-051 "a client supplying its own number" path.
     await expect(
       testWithTenant(
         api.db.rw,

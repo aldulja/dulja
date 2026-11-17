@@ -5,7 +5,7 @@ import { lintSchema } from "../../src/lint-schema";
 import { seedTenant, type Seed } from "../fixtures";
 import { startDb, withTenant, type Db } from "../harness";
 
-describe("app.warehouse — migration 0029 (contracts §4.6.1, SAH-071)", () => {
+describe("app.warehouse — migration 0029 (contracts §4.6.1, LEGACY-071)", () => {
   let db: Db;
   let a: Seed;
   let b: Seed;
@@ -35,7 +35,7 @@ describe("app.warehouse — migration 0029 (contracts §4.6.1, SAH-071)", () => 
     expect(row.parentId).toBeNull();
   });
 
-  it("branch_id is NOT NULL, so no warehouse can be branch-less (spec:1023, SAH-050 in the other direction)", async () => {
+  it("branch_id is NOT NULL, so no warehouse can be branch-less (spec:1023, LEGACY-050 in the other direction)", async () => {
     await expect(
       withTenant(
         db.rw,
@@ -61,7 +61,7 @@ describe("app.warehouse — migration 0029 (contracts §4.6.1, SAH-071)", () => 
     ).rejects.toThrow(/warehouse_kind_check/);
   });
 
-  it("a cycle in the tree is refused in ONE indexed check, not a procedure per row (SAH-071)", async () => {
+  it("a cycle in the tree is refused in ONE indexed check, not a procedure per row (LEGACY-071)", async () => {
     const { parent, child } = await withTenant(db.rw, a.tenant, a.human, async (tx) => {
       const p = await createWarehouse(tx, {
         companyId: a.company,

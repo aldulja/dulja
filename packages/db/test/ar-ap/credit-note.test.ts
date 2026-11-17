@@ -326,7 +326,7 @@ describe("SALES_CREDIT_NOTE — spec:2024, §4.14, ADR 0044 and ADR 0045", () =>
     ]);
   });
 
-  it("crediting more than the invoiced quantity is refused with ERR_DOC_LINK_OVER_FULFILLED (SAH-018)", async () => {
+  it("crediting more than the invoiced quantity is refused with ERR_DOC_LINK_OVER_FULFILLED (LEGACY-018)", async () => {
     const inv = await invoice("2026-01-17");
     const [invLine] = await lineIdsOf(inv.documentId);
     await expect(

@@ -180,7 +180,7 @@ export async function reverseDocument(
     );
   }
 
-  // SAH-013 is exactly "reversal reads CURRENT document-type flags instead of what was originally applied",
+  // LEGACY-013 is exactly "reversal reads CURRENT document-type flags instead of what was originally applied",
   // and `app.document.posting_policy_id` is the column spec:1753 pins so that it cannot happen ("PINNED at
   // post time; never re-read"). A posted document always has one — contracts §4.3.2 step 13 writes it — so
   // the reversal block is read from THAT row. Resolving by the original's effective_date was safe while a
@@ -261,7 +261,7 @@ export async function reverseDocument(
   }
 
   const snapshot = await loadSnapshot(tx, input.documentId);
-  // 4A's `payment_term_id` is COPIED too (Phase 4 review B4): the term is pinned on the document (SAH-013)
+  // 4A's `payment_term_id` is COPIED too (Phase 4 review B4): the term is pinned on the document (LEGACY-013)
   // and a reversal that is itself an open item — the re-deposit of a reversed receipt — ages from it.
   // 3A's header `warehouse_id` / `to_warehouse_id` are references and are COPIED, like `branch_id` and
   // `party_id`: a policy that `requires: ["warehouse"]` (GOODS_RECEIPT, SHIPMENT, DELIVERY_ORDER, …) validates
@@ -288,7 +288,7 @@ export async function reverseDocument(
   // (amendment A9), which turns a negative resolved amount into the opposite side at its absolute value.
   // `kind`, `item_id`, `unit_price`, `tax_code_id`, `dimensions` and `custom_fields`
   // carry over unchanged — a reversal that dropped them would stop mirroring what was originally applied,
-  // which is SAH-013 by another route. `-l.quantity` on a NULL quantity is NULL, which an account line needs.
+  // which is LEGACY-013 by another route. `-l.quantity` on a NULL quantity is NULL, which an account line needs.
   // 3A / 0032: `warehouse_id`, `lot_id` and `unit_id` are references and are COPIED; `unit_quantity` is a
   // signed magnitude and is NEGATED, exactly like `quantity`, `discount` and `amount` (§4.4.2's
   // sign-normalisation section). The 0032 trigger then re-derives `quantity` from the negated pair and,
@@ -333,7 +333,7 @@ export async function reverseDocument(
 /**
  * spec:1745 — "Voiding an issued document sets status = 'void' AND inserts document_number_void in the same
  * transaction". The number is never re-issued; the row is what turns a gap in the series into an explained
- * gap (SAH-051). `voided_by` is stamped from the session by app.stamp_actor.
+ * gap (LEGACY-051). `voided_by` is stamped from the session by app.stamp_actor.
  */
 export async function voidDocument(
   tx: Sql,

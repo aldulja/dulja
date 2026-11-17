@@ -4,21 +4,21 @@
 
 **Goal:** Ship the buy side of Phase 3 as configuration on top of 3A's item/movement model and 3B's costing engine: four document types (`PURCHASE_ORDER`, `SHIPMENT`, `GOODS_RECEIPT`, `PURCHASE_RETURN`) seeded as posting policies with no application code of their own, one link table (`app.document_link`) with open quantity as a **derived view** rather than a stored counter, one allocation table (`app.landed_cost_allocation`) with three allocation methods that carry freight, duty and clearance into `cost_layer.unit_cost`, the goods-received-not-invoiced accrual, and the three chart-of-accounts rows (`2150`, `1310`, `5100`) the rest of Phase 3 posts to.
 
-**Architecture:** Nothing in this slice is a new posting path. `postDocument` (1A, generalised by 2A) already reads a policy and emits ledger lines and movements; `applyMovements` (3A provisional, 3B complete) already writes `inventory_movement`, `cost_layer` and `cost_consumption`. 3C adds exactly **three seams**. (1) **Fulfilment** — `app.document_link` is an append-only row per (source order line × target fulfilment line); open quantity is `app.document_open_quantity`, a `security_invoker` **view** computing `ordered − Σ linked`, so no quantity is ever incremented in place (SAH-017) and no fulfilled or returned quantity is ever a stored column (SAH-018); a BEFORE INSERT OR UPDATE trigger on the link refuses over-fulfilment with `ERR_DOC_LINK_OVER_FULFILLED`. (2) **Landed cost** — a route on the shipment computes `landed_cost_allocation` rows with `Money.allocate` (exact, Σ = the cost lines' total, largest-remainder residue to the first weight), and one function in `packages/db/src/costing/landed-cost.ts` is the single place a *receipt* movement's value is decided: `value = toBase(line.amount + Σ allocated, rate)`. Because the value is what `costingEngine` turns into a layer, the freight lands in `cost_layer.unit_cost` and therefore in every downstream margin, which is this slice's clause of the Phase 3 definition of done. (3) **Accrual** — the `GOODS_RECEIPT` and `SHIPMENT` policies credit `2150` GRNI for the goods portion and each freight/duty/clearance line's own accrual account for its portion, debiting `item.inventory_account` and `1300` respectively, so the document balances rule by rule and the *sum* debited to inventory is the landed cost that reaches the layer; 4A's `PURCHASE_INVOICE` then has an accrual to clear. `PURCHASE_ORDER` is the one type in the system that is **issued and never posted**: its policy plans zero ledger lines, so `postDocument` would raise `ERR_DOC_NO_LINES` by design, and its open quantity is what a `GOODS_RECEIPT` consumes.
+**Architecture:** Nothing in this slice is a new posting path. `postDocument` (1A, generalised by 2A) already reads a policy and emits ledger lines and movements; `applyMovements` (3A provisional, 3B complete) already writes `inventory_movement`, `cost_layer` and `cost_consumption`. 3C adds exactly **three seams**. (1) **Fulfilment** — `app.document_link` is an append-only row per (source order line × target fulfilment line); open quantity is `app.document_open_quantity`, a `security_invoker` **view** computing `ordered − Σ linked`, so no quantity is ever incremented in place (LEGACY-017) and no fulfilled or returned quantity is ever a stored column (LEGACY-018); a BEFORE INSERT OR UPDATE trigger on the link refuses over-fulfilment with `ERR_DOC_LINK_OVER_FULFILLED`. (2) **Landed cost** — a route on the shipment computes `landed_cost_allocation` rows with `Money.allocate` (exact, Σ = the cost lines' total, largest-remainder residue to the first weight), and one function in `packages/db/src/costing/landed-cost.ts` is the single place a *receipt* movement's value is decided: `value = toBase(line.amount + Σ allocated, rate)`. Because the value is what `costingEngine` turns into a layer, the freight lands in `cost_layer.unit_cost` and therefore in every downstream margin, which is this slice's clause of the Phase 3 definition of done. (3) **Accrual** — the `GOODS_RECEIPT` and `SHIPMENT` policies credit `2150` GRNI for the goods portion and each freight/duty/clearance line's own accrual account for its portion, debiting `item.inventory_account` and `1300` respectively, so the document balances rule by rule and the *sum* debited to inventory is the landed cost that reaches the layer; 4A's `PURCHASE_INVOICE` then has an accrual to clear. `PURCHASE_ORDER` is the one type in the system that is **issued and never posted**: its policy plans zero ledger lines, so `postDocument` would raise `ERR_DOC_NO_LINES` by design, and its open quantity is what a `GOODS_RECEIPT` consumes.
 
 **Tech Stack:** Bun 1.4 (install, scripts, the API entrypoint) · Node 24 LTS (runs Vitest) · TypeScript strict · PostgreSQL 18 (Testcontainers `postgres:18`) · `postgres` (postgres.js) tagged templates · Drizzle ORM mirrors for reads · Hono + `@hono/zod-openapi` · Zod · `decimal.js` behind `@dulja/domain`'s `Money` / `Quantity` · Vitest + Testcontainers + fast-check · oxlint + oxfmt · Turborepo.
 
-**Spec:** `docs/spec/rebuild-spec.md` v1.2 — §0.2 the never/always lists (spec:97–108), §3.0.3 Landed cost and Purchase in foreign currency (spec:1020, 1023), §3.0.4 rows 1049–1050 and 1055 (spec:1049–1050, 1055), §3.3 the document-type list (spec:1186–1187), §3.4 costing in full and layers per receipt (spec:1208–1228), §3.9 conventions (spec:2037–2063), §4.2.1 `accounting.purchase.*` / `inventory.receipt.*` and the `warehouse` and `user`/`accountant` role rows (spec:2147–2148, 2159), §4.11 golden-file and concurrency practice (spec:2258–2266), Part V Phase 3 row (spec:2289), Part VI tests 5, 7, 14, 15 (spec:2423, 2425, 2432, 2433), Part I SAH-005 (spec:2491), SAH-017 (spec:2503), SAH-049 (spec:2535).
+**Spec:** `docs/spec/rebuild-spec.md` v1.2 — §0.2 the never/always lists (spec:97–108), §3.0.3 Landed cost and Purchase in foreign currency (spec:1020, 1023), §3.0.4 rows 1049–1050 and 1055 (spec:1049–1050, 1055), §3.3 the document-type list (spec:1186–1187), §3.4 costing in full and layers per receipt (spec:1208–1228), §3.9 conventions (spec:2037–2063), §4.2.1 `accounting.purchase.*` / `inventory.receipt.*` and the `warehouse` and `user`/`accountant` role rows (spec:2147–2148, 2159), §4.11 golden-file and concurrency practice (spec:2258–2266), Part V Phase 3 row (spec:2289), Part VI tests 5, 7, 14, 15 (spec:2423, 2425, 2432, 2433), Part I LEGACY-005 (spec:2491), LEGACY-017 (spec:2503), LEGACY-049 (spec:2535).
 
 ## Assumptions and contracts (from docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md)
 
 - **Slice:** 3C — Purchasing: purchase orders, import shipment and landed cost, goods receipt with GRNI, purchase returns. **Phase:** 3. **Phase gate:** this plan starts only when **3B** is merged (and with it 3A, 2C, 2B, 2A, 1B, 1A) and Phase 2's definition of done is green in CI (spec:87). 3B is a hard gate, not a soft one: this slice's DoD clause is about `cost_layer.unit_cost`, and before 3B there are no layers.
-- **Depends on (merged):** **Plan 0A** by exact name — `startDb`, `Db`, `Seed`, `withTenant` (the 4-argument **test** helper), `uuidv7`, `seedTenant`, `draftDocument`, `schemaFingerprint`, `lintSchema`, `AUDIT_EXEMPT`, `IMMUTABLE`, `up`, `down`, `listApplied`, `discover`, `app_meta.enable_tenant_rls`, `app_meta.attach_audit`, `app_meta.attach_stamp`, `app.actor_has`, `app.current_tenant`, `app.current_actor`, `app.forbid_change`. **0B** — `createApp`, `AppDeps`, `buildRoutes`, `ROUTES`, `RouteModule`, `IdempotencyHeader`, `requirePermission`, `assertRouteGates`, `AppError`, `ERRORS`, `Problem`, `fromDatabaseError`, `createLogger`, the production `withTenant(sql, ctx, fn)`, `systemContext`, `startApi`, `TEST_ISSUER`, `PROBES`, `TENANT_FREE`, `sharedDb`, `thinRegression`, `sharedApi`, `grantAdmin`, `problemOf`, `fullRegression`, `repoFile`, `REPO_ROOT`, `sourceFiles`, `encodeCursor`, `decodeCursor`, `ListEnvelope`, `ListQuery`. **0D** — `Money`, `currency`, `Quantity`, `rational`, `round`, `toBase`, `UNIT_RATE`, `MONEY_SCALE`, `QUANTITY_SCALE`, `PERMISSIONS`, `PERMISSION`, `ROLES`, `seedBranch`, `seedCurrency`, `seedRate`, `startWorker`, the `permission-catalogue` and `role-seed` lints. **0C** — `SubPack`, `SUB_PACKS`, `PackLoader`, `LoaderContext`, `readPackFile`, `assertPackShape`, `PHASE_0_SUB_PACK_DIRECTORIES`, the seed CLI and its four exit codes, `packages/db/seed/my/chart-of-accounts/0c-base.json`. **1A** — `postDocument`, `loadSnapshot`, `resolvePolicy`, `issueDocument`, `reverseDocument`, `voidDocument`, `PostingError`, `PostingErrorCode`, `documentRoutes`, `seedTenantV2`, `seedJournalPolicy`, `JOURNAL_POLICY_V1`, `seedAccount`, `loadDocumentTypes`, `documentTypesLoader`, `app.posting_seq`. **1B** — `trialBalance`, `accountLedger`, `accountOpeningBalance`, `postJournal`, `registerProjectionCheck`, `projectionChecks`, `ProjectionCheck`. **2A** — `evaluatePolicy`, `validatePolicy`, `parsePolicy`, `validateDocumentTypeSeed`, `PostingPolicy`, `DocumentSnapshot`, `LineSnapshot`, `PlannedLedgerLine`, `PlannedMovement`, `PostingPlan`, `ItemRef`, `balanceInBase`, `requireDocumentPermission`, `DocumentStage`, `DOCUMENT_STAGE_CODES`, `POLICY_RESOLVED_CODES`, `seedParty`, `seedDocumentType`, `DocumentLineInput`, `document_type.module`. **2B** — `transitionDocument`, `recordOverride`, `setEventContext`, `listDocumentEvents`, `stageCode`, `grantCodes`, `app.principal_has`, `app.effective_policy`, `app.series_gaps`, `app.document_event`. **2C** — `MODULE_READ_CODE`, `requireDocumentModuleRead`, `requireAttachmentRead`, `readableModules`, `ObjectStore`, `pdfText`. **The first four live in `apps/api/src/middleware/require-attachment-read.ts`** (2c:1794, 2c:4591 "the same file — one map, one home", and 2c:2144/2c:5013 import them from there), **not** in `apps/api/src/routes/accounting/attachments.ts` as §4.5.8's prose says. The frozen plan is the authority for what is on disk; Task 0 Step 6 records the discrepancy so the next slice does not import a path that does not exist. **3A** — `app.item`, `app.unit_of_measure`, `app.unit_conversion`, `app.warehouse`, `app.lot` (with the per-item `NONE` sentinel), `app.variant`, `app.price_list`, `app.inventory_movement`, `app.stock_on_hand`, `app.assert_stock_available`, `app.pick_lots_fefo`, `applyMovements`, the `document_line` inventory columns (`warehouse_id`, `lot_id`, `unit_id`, `unit_quantity`) and the `document` header columns (`warehouse_id`, `to_warehouse_id`), the `inventory` row of `MODULE_READ_CODE`, `seedUnit`, `seedItem`, `seedWarehouse`, `seedLot`, `seedPriceList`. **3B** — `costingEngine`, `CostingEngine`, `Layer`, `Consumption`, `CostingInput`, `CostingOutput`, `CostingMethod`, `app.cost_layer`, `app.cost_consumption`, `app.stock_valuation`, `company.costing_method`, the full `applyMovements` body, `invalidateFrom`, `replay`, the `inventory.cost.replay` job, `COST_ADJUSTMENT`, `valuationAsOf` with `ValuationParams`/`ValuationRow` and `openLayersFor` (amendment A19), and the test-tier helpers `postInventoryDocument`, `postOverriddenIssue`, `recordingJobs`, `ensureOpenPeriods`, `STOCK_ISSUE_COST_POLICY` (`tests/invariants/support/post-inventory.ts`, amendment A11) and **`costingContext(sah)` / `CostingFixture`** (`tests/regression/support/costing.ts`, amendment A21(a)) — the per-file regression tenant Task 14's three blocks build on.
+- **Depends on (merged):** **Plan 0A** by exact name — `startDb`, `Db`, `Seed`, `withTenant` (the 4-argument **test** helper), `uuidv7`, `seedTenant`, `draftDocument`, `schemaFingerprint`, `lintSchema`, `AUDIT_EXEMPT`, `IMMUTABLE`, `up`, `down`, `listApplied`, `discover`, `app_meta.enable_tenant_rls`, `app_meta.attach_audit`, `app_meta.attach_stamp`, `app.actor_has`, `app.current_tenant`, `app.current_actor`, `app.forbid_change`. **0B** — `createApp`, `AppDeps`, `buildRoutes`, `ROUTES`, `RouteModule`, `IdempotencyHeader`, `requirePermission`, `assertRouteGates`, `AppError`, `ERRORS`, `Problem`, `fromDatabaseError`, `createLogger`, the production `withTenant(sql, ctx, fn)`, `systemContext`, `startApi`, `TEST_ISSUER`, `PROBES`, `TENANT_FREE`, `sharedDb`, `thinRegression`, `sharedApi`, `grantAdmin`, `problemOf`, `fullRegression`, `repoFile`, `REPO_ROOT`, `sourceFiles`, `encodeCursor`, `decodeCursor`, `ListEnvelope`, `ListQuery`. **0D** — `Money`, `currency`, `Quantity`, `rational`, `round`, `toBase`, `UNIT_RATE`, `MONEY_SCALE`, `QUANTITY_SCALE`, `PERMISSIONS`, `PERMISSION`, `ROLES`, `seedBranch`, `seedCurrency`, `seedRate`, `startWorker`, the `permission-catalogue` and `role-seed` lints. **0C** — `SubPack`, `SUB_PACKS`, `PackLoader`, `LoaderContext`, `readPackFile`, `assertPackShape`, `PHASE_0_SUB_PACK_DIRECTORIES`, the seed CLI and its four exit codes, `packages/db/seed/my/chart-of-accounts/0c-base.json`. **1A** — `postDocument`, `loadSnapshot`, `resolvePolicy`, `issueDocument`, `reverseDocument`, `voidDocument`, `PostingError`, `PostingErrorCode`, `documentRoutes`, `seedTenantV2`, `seedJournalPolicy`, `JOURNAL_POLICY_V1`, `seedAccount`, `loadDocumentTypes`, `documentTypesLoader`, `app.posting_seq`. **1B** — `trialBalance`, `accountLedger`, `accountOpeningBalance`, `postJournal`, `registerProjectionCheck`, `projectionChecks`, `ProjectionCheck`. **2A** — `evaluatePolicy`, `validatePolicy`, `parsePolicy`, `validateDocumentTypeSeed`, `PostingPolicy`, `DocumentSnapshot`, `LineSnapshot`, `PlannedLedgerLine`, `PlannedMovement`, `PostingPlan`, `ItemRef`, `balanceInBase`, `requireDocumentPermission`, `DocumentStage`, `DOCUMENT_STAGE_CODES`, `POLICY_RESOLVED_CODES`, `seedParty`, `seedDocumentType`, `DocumentLineInput`, `document_type.module`. **2B** — `transitionDocument`, `recordOverride`, `setEventContext`, `listDocumentEvents`, `stageCode`, `grantCodes`, `app.principal_has`, `app.effective_policy`, `app.series_gaps`, `app.document_event`. **2C** — `MODULE_READ_CODE`, `requireDocumentModuleRead`, `requireAttachmentRead`, `readableModules`, `ObjectStore`, `pdfText`. **The first four live in `apps/api/src/middleware/require-attachment-read.ts`** (2c:1794, 2c:4591 "the same file — one map, one home", and 2c:2144/2c:5013 import them from there), **not** in `apps/api/src/routes/accounting/attachments.ts` as §4.5.8's prose says. The frozen plan is the authority for what is on disk; Task 0 Step 6 records the discrepancy so the next slice does not import a path that does not exist. **3A** — `app.item`, `app.unit_of_measure`, `app.unit_conversion`, `app.warehouse`, `app.lot` (with the per-item `NONE` sentinel), `app.variant`, `app.price_list`, `app.inventory_movement`, `app.stock_on_hand`, `app.assert_stock_available`, `app.pick_lots_fefo`, `applyMovements`, the `document_line` inventory columns (`warehouse_id`, `lot_id`, `unit_id`, `unit_quantity`) and the `document` header columns (`warehouse_id`, `to_warehouse_id`), the `inventory` row of `MODULE_READ_CODE`, `seedUnit`, `seedItem`, `seedWarehouse`, `seedLot`, `seedPriceList`. **3B** — `costingEngine`, `CostingEngine`, `Layer`, `Consumption`, `CostingInput`, `CostingOutput`, `CostingMethod`, `app.cost_layer`, `app.cost_consumption`, `app.stock_valuation`, `company.costing_method`, the full `applyMovements` body, `invalidateFrom`, `replay`, the `inventory.cost.replay` job, `COST_ADJUSTMENT`, `valuationAsOf` with `ValuationParams`/`ValuationRow` and `openLayersFor` (amendment A19), and the test-tier helpers `postInventoryDocument`, `postOverriddenIssue`, `recordingJobs`, `ensureOpenPeriods`, `STOCK_ISSUE_COST_POLICY` (`tests/invariants/support/post-inventory.ts`, amendment A11) and **`costingContext(legacyDefect)` / `CostingFixture`** (`tests/regression/support/costing.ts`, amendment A21(a)) — the per-file regression tenant Task 14's three blocks build on.
 - **Migration numbers:** **0037–0039** — `0037_create_document_link.sql` (the link table, the `document_open_quantity` view and the over-fulfilment guard), `0038_create_landed_cost_allocation.sql`, `0039_seed_permission_phase3c.sql`, each with its hand-written `NNNN.down.sql`. **ADR numbers:** 0040–0041 — **0040** `docs/adr/0040-fulfilment-links-and-derived-open-quantity.md` (the link row, the view, and why open quantity is never a column); **0041** `docs/adr/0041-landed-cost-allocation-and-purchase-return-valuation.md`, written **as a proposal** because it touches money semantics (spec:95).
 - **Interfaces consumed:** §4.1 (the whole Plan 0A surface), §4.2.1 (`Money`, `Quantity`, `toBase`, `round`, `RoundingMode`), §4.2.2 (`withTenant`, `TenantContext`, `systemContext`, `createDb`), §4.2.3 (`AppEnv`, `RequestContext`, `Logger`), §4.2.4 (`Problem`, `ERRORS`, `ErrCode`, `AppError`, `fromDatabaseError`, `PostingError`), §4.2.5 (`PERMISSIONS`, `PERMISSION`, `PermissionCode`, `requirePermission`, `ScopeSource`, `assertRouteGates`), §4.2.7 (`RouteModule`, `buildRoutes`, `ROUTES`, `IdempotencyHeader`, `createApp`, `AppDeps`, `PROBES`, `IsolationProbe`), §4.2.8 (`UuidSchema`, `DateSchema`, `QuantitySchema`, `TimestampSchema`, `CurrencySchema`, `ListEnvelope`, `ListQuery`, `ProblemSchema`, the one list-filter convention, **and the money-string exception Task 0 Step 5 registers** — this slice consumes `MoneySchema` nowhere), §4.2.9 (`idempotency`, `IdempotencyHeader`), §4.2.11 (custom fields — the `weight_kg` input), §4.2.12 (`startApi`, `StartedApi`, `ApiRequest`, `TEST_ISSUER`), §4.2.13 (`SubPack`, `SUB_PACKS`, `PackLoader`, `readPackFile`, `assertPackShape`), §4.3.1 (`postDocument`, `loadSnapshot`, `resolvePolicy`, `issueDocument`, `reverseDocument`, `transitionDocument`), §4.3.2 (the fixed algorithm — steps 6, 8, 9, 10, 12, 14), §4.3.4 (`document_line` and its per-slice additions, the `document` header additions), §4.3.5 (`posting_seq` as the chronological key), §4.3.6 (numbering at issue), §4.3.7 (the document-type seed envelope and `loadDocumentTypes`), §4.4.1 (the widened `posting-policy.schema.json` — `accountRef`, `amountRef`, `inventory`, `approval`, `requires`), §4.4.2 (`DocumentSnapshot`, `LineSnapshot`, `PlannedLedgerLine`, `PlannedMovement`, `PostingPlan`, `ItemRef`, `evaluatePolicy`, `balanceInBase`, **the sign-normalisation contract**), §4.5.1 (legal transitions), §4.5.2 (`document_event`), §4.5.4 (`requireDocumentPermission`, `DocumentStage`, `stageCode`, `DOCUMENT_STAGE_CODES`, `POLICY_RESOLVED_CODES`), §4.5.6 (the five `branch_isolation` forms — none applies to either of this slice's tables), §4.5.7 (`app.party` and `payable_account_id`), §4.5.8 (`MODULE_READ_CODE`, `requireDocumentModuleRead`), §4.6.1 (the register rows for `document_link` and `landed_cost_allocation`), §4.7.1 (`costingEngine`, `Layer`, `CostingInput`, `CostingOutput`), §4.7.2 (`applyMovements`, `invalidateFrom`, `replay`), §4.7.3 (`inventory_movement`, `stock_on_hand`, `cost_layer`, `cost_consumption` and the `stock_on_hand` MERGE), §4.14 (the document-type register), §4.15 (the account-code register), §4.16.1 (the report register — 3C owns no code), §4.17 / §4.17.1 (the two helper registers).
 - **Interfaces produced:** §4.6.1's `document_link` and `landed_cost_allocation` rows verbatim; the four §4.14 rows `PURCHASE_ORDER`, `SHIPMENT`, `GOODS_RECEIPT`, `PURCHASE_RETURN` as seed-pack envelopes; the three §4.15 rows `2150`, `1310`, `5100` in `packages/db/seed/my/chart-of-accounts/3c-purchasing.json`; the four §3.6.2 permission codes `accounting.purchase.create`, `accounting.purchase.post`, `inventory.receipt.create`, `inventory.receipt.post`. Everything else this slice names is listed under **Contract additions** in the Self-Review and **must be carried into the contracts document before 3D consumes any of it** — 3D consumes `document_link` for `SALES_ORDER` → `DELIVERY_ORDER`, the `1310` and `5100` accounts, and `draftTypedDocument`.
 - **Owner decisions:** **OD-05** (§2.12; spec:38, 1014, 1036, 2404 — confirmation of every ⚠️ row in §3.0.3 and §3.0.4) → **Task 12**, isolated. The two rows that touch this slice are **Landed cost** (spec:1020) and **Purchase in foreign currency** (spec:1023); both are built to the spec text as written, which is §2.12's stated default. **OD-24** (screenshots + a two-minute operator description before any screen) → **Task 13**, isolated and blocked. No other OD item gates this slice; OD-06 (`avco`) is 3B's and is consumed as built, never re-gated.
-- **Part VI tests owned / re-run:** **owns none exclusively.** **Re-runs:** **5** (the landed-cost clause — Task 9), **7** (the supplier-return leg — Task 10), **14** (a real `PURCHASE_RETURN` type exists for the one-query test — Task 10), **15** (orders and the inventory-bearing consignment return as configured types — Tasks 5 and 11), plus **12** and **36** for the two new tables and the four new permission codes (Tasks 1, 7, 2, 14), **13** (every write on both new tables audited — Tasks 1, 7, 14), **18** (`assert_stock_available` on the purchase-return issue — Task 10), **27** (no SQL text across the API — Task 14, CI). **§3.0.4 rows owned:** **spec:1049** (goods receipt with a GRNI accrual, and an import-shipment document that carries freight, duty and clearance into landed cost per lot). **Contributes** `PURCHASE_ORDER` to spec:1050 (owned by 3D) and the free-of-charge receipt line to spec:1055 (owned by 3B). **Regression files created / appended:** creates **none**; **appends** a `— 3C` block to `tests/regression/sah-005.test.ts` (created by 0D — "transactional enqueue"; 3B appends the recost block before 3C), to `tests/regression/sah-017.test.ts` (**created by 3B**, which executes first — §3.7.3) and to `tests/regression/sah-049.test.ts` (created by 1B).
+- **Part VI tests owned / re-run:** **owns none exclusively.** **Re-runs:** **5** (the landed-cost clause — Task 9), **7** (the supplier-return leg — Task 10), **14** (a real `PURCHASE_RETURN` type exists for the one-query test — Task 10), **15** (orders and the inventory-bearing consignment return as configured types — Tasks 5 and 11), plus **12** and **36** for the two new tables and the four new permission codes (Tasks 1, 7, 2, 14), **13** (every write on both new tables audited — Tasks 1, 7, 14), **18** (`assert_stock_available` on the purchase-return issue — Task 10), **27** (no SQL text across the API — Task 14, CI). **§3.0.4 rows owned:** **spec:1049** (goods receipt with a GRNI accrual, and an import-shipment document that carries freight, duty and clearance into landed cost per lot). **Contributes** `PURCHASE_ORDER` to spec:1050 (owned by 3D) and the free-of-charge receipt line to spec:1055 (owned by 3B). **Regression files created / appended:** creates **none**; **appends** a `— 3C` block to `tests/regression/legacy-005.test.ts` (created by 0D — "transactional enqueue"; 3B appends the recost block before 3C), to `tests/regression/legacy-017.test.ts` (**created by 3B**, which executes first — §3.7.3) and to `tests/regression/legacy-049.test.ts` (created by 1B).
 - **Shared namespaces this slice writes into:** **document-type codes (§4.14)** — four, all seeded into the pack: **`PURCHASE_ORDER`** module `inventory` series `PO`, **`SHIPMENT`** module `inventory` series `SHP`, **`GOODS_RECEIPT`** module `inventory` series `GRN`, **`PURCHASE_RETURN`** module `inventory` series `PR`. All four are `inventory` and not `accounting` even though two post under `accounting.purchase.*`: §4.14's rule is that `document_type.module` answers "which module's read code may see this document's attachments", and the delivery note, halal certificate, import permit and customs form are filed and read by the warehouse (spec:1049 is an Inventory row). This slice additionally *re-runs* test 15 against 2C's registered test-only code **`CONSIGNMENT_RETURN`** in the inventory-bearing shape 2C deferred to 3C. **It also adds fourteen `test only` §4.14 rows** — `TYPED_TEST`, `TYPED_TEST_2` (T0), `LINK_ORDER`, `LINK_RECEIPT` (T1), `API_ORDER`, `API_RECEIPT` (T4) and the eight `LCA_*` (T7) — every one a `seedDocumentType` argument inside a single test file, never a file under `packages/db/seed/`. They are registered in **Task 0 Step 6**, before Task 1 uses the first of them, because §4.14's *test only* mark is a registration requirement and not an exemption from one (hazard 32); 2A, 2B, 3A and 8B registered their file-local codes on the same rule. None of the fourteen engages hazard 33: every one of their policies has `lines: []`, so no `account: { code }` literal exists in any of them. **Account codes (§4.15)** — **seeds three**: `2150` Goods received not invoiced (liability), `1310` Goods in transit (asset), `5100` Inventory write-off — expiry loss (expense), all in `packages/db/seed/my/chart-of-accounts/3c-purchasing.json`. `1310` and `5100` are **consumed by 3D** (`TRANSFER`/`TRANSFER_RECEIPT` and `EXPIRY_WRITE_OFF`) and 3D asserts they resolve rather than re-seeding them. **Consumed but seeded elsewhere:** `1300` inventory control, `2100` trade payables, `5000` COGS, `5920` FX rounding, `1000` Cash, `4000` Sales — all **0C's** (`0c-base.json`). The `account: { code }` literals in the policies this slice seeds are exactly **two**: **`2150`**, seeded here by Task 3, and **`1300` inventory control, which is 0C's** — the capitalised-freight debit of `GOODS_RECEIPT` and `SHIPMENT` (an `account`-kind line carries no `item_id`, so `item.inventory_account` has nothing to resolve against). Task 3 satisfies hazard 33 for both before Task 6 seeds the first policy that names them: it seeds `2150` and **asserts `1300` resolves without re-seeding it**, which is the rule for a consumed code. Every other account is resolved through `item.inventory_account`, `party.payable_account` or `line.account`. **Report codes (§4.16.1) and `DatasetId` members (§4.16.2)** — **none.** §4.16.1 gives 3C no row; the Phase 3 minimal set (`inventory.stock_on_hand`, `inventory.valuation`, `inventory.sales_by_item`) is **3D's**, and hazard 4 is satisfied for Phase 3 by 3D, not by this slice. **`fixtures.ts` helpers (§4.17)** — **`draftTypedDocument` and no others** (a contract addition, declared in the Self-Review). §4.17 assigns 3C no helper, and hazard 9 forbids inventing one beside the register — so this one is declared as a §4.17 amendment before Task 4 uses it, exactly as 2B declared `grantCodes`. Every other row this slice's tests need comes from an existing helper (`seedTenantV2`, `grantCodes`, `seedAccount`, `seedParty`, `seedDocumentType`, `seedUnit`, `seedItem`, `seedWarehouse`, `seedLot`, `seedBranch`, `seedCurrency`, `seedRate`, `postJournal`). **Shared test helpers (§4.17.1)** — **none added.** **`ERR_*` (§4.2.4)** — this slice adds exactly **`ERR_DOC_LINK_OVER_FULFILLED`** (422, already allocated in §4.2.4's table to 3C) to `ERRORS`, **in the same commit as migration 0037**, whose SQL text raises the token, because `scripts/lint/rules/error-codes.ts` scans `packages/db/migrations/**` as well as source and must be green at every commit (2B's precedent). `ERR_VALIDATION_FAILED`, `ERR_NOT_FOUND`, `ERR_RBAC_FORBIDDEN`, `ERR_POLICY_REQUIRES_MISSING`, `ERR_DOC_NO_LINES`, `ERR_STOCK_INSUFFICIENT`, `ERR_CONFLICT_REFERENCE` already exist and are re-used, never re-spelled.
 - **Three facts about `Seed` and the fixtures every task below depends on, stated once because getting any of them wrong is a silent failure.** (1) **`Seed` has no `branch` member.** It is `{ tenant; system; human; company; period; closedPeriod; lockedPeriod; cash; sales; docType; policy; branchType; hq }` (§4.1) and `app.document.branch_id` is NOT NULL, so every `branchId:` in this plan is `<seed>.hq`. (2) **`seedTenant` grants `s.human` no permission at all** (§4.1, pinned) — no `role`, no `role_permission`, no `role_assignment`. Every DB-tier test in this plan that posts or issues calls **`grantCodes`** (2B) first, once per `Seed` object; every route test calls `grantAdmin()` (0B) or `grantCodes` with the narrow list. (3) **`seedTenantV2` already creates `1000 Cash` (asset) and `4000 Sales` (income)** — plan0A's pinned constants — so a test needing `2150`, `1310`, `5100`, `1300`, `2100` or `5000` in a Testcontainers tenant creates it with **`seedAccount(db, s, { code, nameEn, type })`**, whose `type` is one of `('asset','liability','equity','income','expense')`.
 - **Never re-decide:** D1–D27 (spec:114–142); every name in the contracts document is frozen — a needed change goes to that document first.
@@ -28,7 +28,7 @@
 
 Copied verbatim from the spec and the contracts document; every task's requirements implicitly include this section.
 
-1. **Never**, at any phase, for any reason (spec:97–104): write to a ledger or movement table outside the posting service; represent money as a float, anywhere, including in TypeScript; build SQL by string concatenation (SAH-036/037/069); issue DDL from application code (SAH-053); disable an invariant, constraint or trigger "temporarily" (SAH-027, 041, 053); gate an audit write on any flag (SAH-030); hard-code a package version into a source file — the lockfile owns versions.
+1. **Never**, at any phase, for any reason (spec:97–104): write to a ledger or movement table outside the posting service; represent money as a float, anywhere, including in TypeScript; build SQL by string concatenation (LEGACY-036/037/069); issue DDL from application code (LEGACY-053); disable an invariant, constraint or trigger "temporarily" (LEGACY-027, 041, 053); gate an audit write on any flag (LEGACY-030); hard-code a package version into a source file — the lockfile owns versions.
 2. **Always**, for every new table (spec:106): `tenant_id`, an RLS policy, `created_at`, a migration, and a test that a second tenant cannot see it. For every new endpoint: Zod schema, OpenAPI entry, idempotency on unsafe methods, and a tenant-isolation test. For every UI screen: verified in both text directions before merge.
 3. **Binding form of a new table** (§3.3): `tenant_id`; RLS enabled **and forced** through `app_meta.enable_tenant_rls`; the policy named exactly `tenant_isolation`; `id uuid primary key default uuidv7()`; `created_at timestamptz not null default now()`; an `audit_row` trigger through `app_meta.attach_audit`; `stamp_<col>` for every `*_by` column through `app_meta.attach_stamp`; composite `(tenant_id, <parent>_id)` FKs to every tenant-scoped parent; a hand-written down file; a two-tenant test. `lintSchema` must report **zero** violations after every migration. **Neither of this slice's two tables has a `*_by` column and neither joins any linter set** (§3.5.3 lists both with dashes in every column), so **`packages/db/src/lint-schema.ts` is not edited by this slice at all** — hazard 13.
 4. **Money** is `numeric(19,4)` in Postgres and the opaque `Money` type from `@dulja/domain` in TypeScript; **no `number` ever holds a monetary value** (spec:2041; the `no-number-money` lint, §3.7.5). Quantities are `numeric(19,6)` and the opaque `Quantity`. Rates are `numeric(19,8)`. Every allocation in this slice goes through `Money.allocate`, never through a division and a fudge.
@@ -36,7 +36,7 @@ Copied verbatim from the spec and the contracts document; every task's requireme
 6. **Sign normalisation is contract, not implementation detail** (§4.4.2 amendment A9; the ⚠️ list names 3B, 3D, 5A, 6A, 8B — and 3C reads planned lines too). `PlannedLedgerLine.amount` is **never negative** and **`side` alone carries the direction**. No code in this slice tests `amount.isNegative()` to decide which way a value moves.
 7. **Every query, reads included, runs inside `withTenant`** (spec:2053). A bare `db.` call is a lint violation; only a `tx` obtained from `withTenant` may tag SQL. **`sql.unsafe` has exactly three homes and none is in this slice** (§3.3).
 8. **Nothing outside `packages/db/src/posting/` and `packages/db/src/costing/` writes ledger, movement, layer, projection or tax-transaction tables** (§4.3.2; the `posting-only-tables` lint, §3.7.5). This slice's landed-cost seam lives in `packages/db/src/costing/` for exactly that reason. `document_link` and `landed_cost_allocation` are **not** protected tables and are written by their routes.
-9. **One migration per PR** (spec:2057); each file runs whole in one transaction; every statement carries a comment naming the SAH-/spec reference it serves; SQL keywords lowercase; section banners `-- ── N. title ───`. No `create index concurrently`, no enum label added and used in one file (§3.4.4 — this slice adds none).
+9. **One migration per PR** (spec:2057); each file runs whole in one transaction; every statement carries a comment naming the LEGACY-/spec reference it serves; SQL keywords lowercase; section banners `-- ── N. title ───`. No `create index concurrently`, no enum label added and used in one file (§3.4.4 — this slice adds none).
 10. **Per-tenant rows cannot be written by a migration** (spec:1366; hazard 10). `document_type`, `posting_policy` and the chart of accounts are **seed-pack data** applied by `bun run seed --tenant <id> --only <sub-pack>`. Only `app.permission` is migration data.
 11. **Deletion** (spec:2049): financial rows never; master data `archived_at`; genuine deletion only for drafts and the erasure workflow. **§3.5.4's pinned DELETE grant list is closed and 2B is the only slice that extends it** — so **neither of this slice's tables ever receives a DELETE grant**, and both are designed around that: a link or an allocation is released by deleting the *draft target document* (cascade) or replaced by an upsert, never by a `DELETE` from `app_rw`.
 12. **The permission vocabulary and module list are closed** (§3.6.1, hazard 26). This slice introduces exactly the four codes §3.6.2 assigns it and no others.
@@ -136,9 +136,9 @@ tests/
 ├─ fixtures/document-types/CONSIGNMENT_RETURN.v2.json  NEW policy version 2, inventory-bearing      T11
 ├─ invariants/zero-code-document-type.test.ts    EDIT + the test-15 re-run describe block           T11
 ├─ invariants/probes.ts                          EDIT no new PROBES key — asserted in T14           T14
-├─ regression/sah-005.test.ts                    EDIT + a "— 3C" describe block                     T14
-├─ regression/sah-017.test.ts                    EDIT + a "— 3C" describe block                     T14
-└─ regression/sah-049.test.ts                    EDIT + a "— 3C" describe block                     T14
+├─ regression/legacy-005.test.ts                    EDIT + a "— 3C" describe block                     T14
+├─ regression/legacy-017.test.ts                    EDIT + a "— 3C" describe block                     T14
+└─ regression/legacy-049.test.ts                    EDIT + a "— 3C" describe block                     T14
 docs/ux/purchasing/                              (OWNER) three screenshots + the operator note      T13
 docs/adr/
 ├─ 0040-fulfilment-links-and-derived-open-quantity.md   NEW                                         T1
@@ -229,7 +229,7 @@ At the end of §4.7.2, after the paragraph about rows posted between 3A and 3B, 
 1. **`snapshot.lines[i].cost !== null` → that cost.** A4 makes it base currency and a magnitude already, so it is used as it stands. **This branch is reachable only because 3C adds one column to `reverseDocument`'s line copy — `l.cost`, unnegated.** 2A widened that copy to `kind, item_id, quantity, unit_price, discount, amount` and 3A to `warehouse_id, lot_id, unit_id, unit_quantity` (3a:4270); `cost` was left out, so a reversal of a stock **issue** — which emits a *receipt* of the returned goods — would reach branch 3 and value that receipt at the negated **sale** price instead of the carrying cost. `cost` is a magnitude, so it is copied and not negated, and step 5 of `applyMovements` overwrites it with the same number, which makes the copy idempotent. 3D's `DELIVERY_ORDER` and 4A's `SALES_INVOICE` reversals depend on this column.
 2. **else, a same-`lineNo` `issue` movement exists → that leg's computed value.** A `transfer` line emits an issue at `warehouse_id` and a receipt at `to_warehouse_id` (§4.7.3); the receipt leg's value is what left the first warehouse, never a re-priced `line.amount`. 3D's `TRANSFER`/`TRANSFER_RECEIPT` depend on this branch.
 3. **else → `receiptValue(line, landedCost, rate)`.** The genuine purchase-side receipt: `GOODS_RECEIPT`, `SHIPMENT`, 9B's `OPENING_STOCK`.
-4. **else — no line at all for the movement's `lineNo` → `null`, explicitly**, and `costingEngine` raises `ERR_COST_VALUE_MISSING` naming the movement (SAH-007). The fall-through is written out rather than defaulted to zero: a movement with no source line is an internal inconsistency, and a zero would silently create a free receipt and a zero-cost layer that every later margin reads.
+4. **else — no line at all for the movement's `lineNo` → `null`, explicitly**, and `costingEngine` raises `ERR_COST_VALUE_MISSING` naming the movement (LEGACY-007). The fall-through is written out rather than defaulted to zero: a movement with no source line is an internal inconsistency, and a zero would silently create a free receipt and a zero-cost layer that every later margin reads.
 
 **The allocation reaches the layer once, through the movement's value, and every later replay preserves it.** `inventory_movement` is immutable and 3B's `replay` recomputes a receipt's layer as `unit_cost = value / quantity` from that immutable value (3b:4073–4079), which is why 3B's own comment calls landed cost "the one thing that legitimately changes a receipt's value". Landed cost is therefore a **draft-only** operation: after post there is nothing to re-allocate, and a correction is `reverseDocument` plus a re-post.
 ```
@@ -279,18 +279,18 @@ Then amend §4.14's count sentence — `**Thirteen rows are marked *test only*, 
 | **4.14** | **3C's fourteen test-only codes** — `TYPED_TEST`/`TT`, `TYPED_TEST_2`/`TT2` (T0); `LINK_ORDER`/`LO`, `LINK_RECEIPT`/`LR` (T1); `API_ORDER`/`AO`, `API_RECEIPT`/`AR` (T4); `LCA_SHIP`/`LS`, `LCA_ZERO`/`LZ`, `LCA_BAD`/`LB`, `LCA_ISSUED`/`LI`, `LCA_CROSS`/`LX`, `LCA_CASCADE`/`LC`, `LCA_ISO`/`LO`, `LCA_AUDIT`/`LA` (T7) — all module `inventory`, all `direction: "none"` / `inventory.effect: "none"` / `lines: []`, none ever a file under `packages/db/seed/`. Registered because hazard 32 makes an unregistered document-type code review-blocking and §4.14's *test only* mark is a registration requirement, not an exemption. **`API_ORDER` and `API_RECEIPT` are the only two that name a 3C permission code**, which is what puts Task 2 before Task 4. **Hazard 33 does not engage on any of them** — `lines: []` means no `account: { code }` literal exists to resolve. The test-only count becomes **twenty-seven** | 3C | plan |
 | 4.6.1 | `app.document_open_quantity` is a **`security_invoker` VIEW**, not a projection table — §3.5.3 pre-declares no set membership for it and hazard 13 forbids adding one | 3C | correction |
 | 4.3.4, 4.3.2 | **3B's A4 stands: `document_line.cost` is BASE currency.** 3C's first draft claimed document currency and is withdrawn. What 3C records instead is the consequence A4 and A5 leave open: **a cost-derived ledger leg may only be paired with another cost-derived leg.** §4.3.2 step 6 runs `balanceInBase` before step 9 fills the cost, so a cost/`line.amount` pair is refused with `ERR_LEDGER_UNBALANCED` on the *first* evaluation and never reaches 3B's re-evaluation. A **receipt** policy is therefore all `line.amount` (3b:2580–2581's shape) with capitalised freight debiting `1300` from the freight line, and an **issue** policy is all `line.cost` (3b:2556–2557's shape). Binds 3D's `DELIVERY_ORDER`/`TRANSFER` and 4A's `SALES_INVOICE` | 3C, 3B | settlement |
-| 4.7.2 | **The receipt-value rule has four branches** — a non-null `LineSnapshot.cost`, else the same-`lineNo` issue leg's value (the `transfer` case), else **`receiptValue(line, landedCost, rate)`** = `toBase(line.amount + landedCost, rate)`, else **an explicit `null`** so `costingEngine` raises `ERR_COST_VALUE_MISSING` on a movement with no source line (SAH-007) rather than valuing it at zero. It supersedes 3A's provisional `unit_price × quantity` **and closes the null 3B leaves**: `planMovements` returns `value: null` and `costReceipt` refuses a null, so no receipt posts between 3B and 3C. `landedCostByLine(tx, documentId)` is the companion reader; landed cost is **draft-only**, because `replay` recomputes `unit_cost` from the immutable movement value | 3C | correction |
+| 4.7.2 | **The receipt-value rule has four branches** — a non-null `LineSnapshot.cost`, else the same-`lineNo` issue leg's value (the `transfer` case), else **`receiptValue(line, landedCost, rate)`** = `toBase(line.amount + landedCost, rate)`, else **an explicit `null`** so `costingEngine` raises `ERR_COST_VALUE_MISSING` on a movement with no source line (LEGACY-007) rather than valuing it at zero. It supersedes 3A's provisional `unit_price × quantity` **and closes the null 3B leaves**: `planMovements` returns `value: null` and `costReceipt` refuses a null, so no receipt posts between 3B and 3C. `landedCostByLine(tx, documentId)` is the companion reader; landed cost is **draft-only**, because `replay` recomputes `unit_cost` from the immutable movement value | 3C | correction |
 | 4.2.8 | **One money-on-the-wire exception, scoped to document sub-resources**: `DocumentLinkSchema.amount` and the four `inventory/landed-cost.ts` money fields are bare `z.string().regex(/^-?\d+\.\d{4}$/)` with no `currency` member, because `app.document_link` carries no currency column and every one of these rows is returned under a path that already names the document whose currency it is. The `Money` type still does the arithmetic and `no-number-money` still binds. A top-level money-bearing resource keeps `MoneySchema` | 3C | correction |
 | 4.5.4, 4.2.7 | **`requireDocumentPermission("create")` is for `POST …/documents` only.** Its `"create"` branch resolves the policy from `body.documentTypeCode` + `body.effectiveDate` and raises `ERR_NOT_FOUND` when either is absent (2a:2897–2906); every other stage loads `:documentId` (2a:2909–2915). A `POST` **sub-path** of an existing document therefore uses **`"submit"`**, which §4.5.4 maps to the same code (`approval.create ?? approval.post`, 2a:2867–2871). Binds 3C's `…/links` and `…/landed-cost`, 3D's `…/links` and `…/count-sheet`, and 4A's allocation sub-paths | 3C | correction |
 | 4.5.8 | **`MODULE_READ_CODE`, `requireAttachmentRead`, `readableModules` and `requireDocumentModuleRead` are in `apps/api/src/middleware/require-attachment-read.ts`**, not in `apps/api/src/routes/accounting/attachments.ts` as §4.5.8's prose says. 2C's merged plan puts all four in that one file and says why (2c:1794, 2c:4591 "the same file — one map, one home"), and 2C's own consumers import from there (2c:2144, 2c:5013). The prose is corrected to the file 2C shipped; the "one home, one map" rule it states is unchanged | 3C | correction |
-| 4.6.1 | `landed_cost_allocation` gains `unique (cost_line_id, target_line_id)` (the upsert key — SAH-049), `check (allocated_amount >= 0)`, and a `landed_cost_allocation_draft_only` trigger reusing `ERR_DOC_NOT_DRAFT`; `company_id` is in the standard set and `method` is NOT NULL | 3C | correction |
+| 4.6.1 | `landed_cost_allocation` gains `unique (cost_line_id, target_line_id)` (the upsert key — LEGACY-049), `check (allocated_amount >= 0)`, and a `landed_cost_allocation_draft_only` trigger reusing `ERR_DOC_NOT_DRAFT`; `company_id` is in the standard set and `method` is NOT NULL | 3C | correction |
 | 4.2.7, 4.2.8 | 3C's five `documents` sub-paths and its two contracts modules; **no new route module and no new `PROBES` key** | 3C | plan |
 | 2.4 (3C card), 4.6.1 | The card's prose `linked_quantity` yields to the register's `quantity`/`amount`; `linked_quantity` is the view's derived column | 3C | correction |
 | 2.4 (3C card) | §4.3.2's `document_link` write allowance for `postDocument` **goes unused** — links are written by the route on the draft target | 3C | plan |
 | 2.4 (3C card), 4.14 | `GOODS_RECEIPT` and `SHIPMENT` share **one** four-rule policy shape — the item line debits `item.inventory_account` and credits `2150` at `line.amount`; every freight/duty/clearance `account` line debits `1300` and credits `line.account` at `line.amount` — and differ only in `requires` and in which paperwork the warehouse files against them. The landed-cost route is what makes a `SHIPMENT` a shipment | 3C | plan |
 | 4.15 | **`1300` inventory control gains a second resolver: the freight/duty/clearance debit of `GOODS_RECEIPT` and `SHIPMENT` (3C).** The register row lists `item.inventory_account_id` default and `COST_ADJUSTMENT`; a receipt's capitalised-freight debit is the third, and it is an `account: { code }` literal, so hazard 33 applies — `1300` is **0C's** and Task 3 asserts it resolves rather than re-seeding it | 3C | correction |
 | 4.3.1 | **`reverseDocument`'s line copy gains `l.cost`, unnegated** — 2A widened it to six columns and 3A to four more, and the omission makes a reversal of a stock issue value the returned goods at the sale price. Binds 3D and 4A | 3C | correction |
-| 3.7.3 | `sah-005`'s creator is **0D** (§2.1's 0D card, "transactional enqueue"); 3B's header names 0B. 3C **appends** either way | 3C | correction |
+| 3.7.3 | `legacy-005`'s creator is **0D** (§2.1's 0D card, "transactional enqueue"); 3B's header names 0B. 3C **appends** either way | 3C | correction |
 ```
 
 - [ ] **Step 7: Commit the amendment**
@@ -522,7 +522,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
   - `ERRORS.ERR_DOC_LINK_OVER_FULFILLED = { status: 422, title: "Over-fulfilled", remedy: "…" }` in `packages/contracts/src/errors.ts`.
   - `documentLink` and `documentOpenQuantity` Drizzle mirrors in `packages/db/src/schema/`.
 
-**Why the guard is a trigger and the quantity is a view.** SAH-017 is "order-delivery tracking double-adds bonus on edit and never reverses on re-pointing" — a stored counter incremented by application code. SAH-018 is "returned quantity as a projection, never a stored column". Both are closed by the same shape: the link is a **row**, the open quantity is **derived from the rows every time it is read**, and the invariant `Σ linked ≤ ordered` is enforced **in the data layer** so it holds for the API, a job and a direct `app_rw` statement alike (test 18's standard, applied to fulfilment).
+**Why the guard is a trigger and the quantity is a view.** LEGACY-017 is "order-delivery tracking double-adds bonus on edit and never reverses on re-pointing" — a stored counter incremented by application code. LEGACY-018 is "returned quantity as a projection, never a stored column". Both are closed by the same shape: the link is a **row**, the open quantity is **derived from the rows every time it is read**, and the invariant `Σ linked ≤ ordered` is enforced **in the data layer** so it holds for the API, a job and a direct `app_rw` statement alike (test 18's standard, applied to fulfilment).
 
 - [ ] **Step 1: Write the failing test `packages/db/test/document-link.test.ts`**
 
@@ -572,7 +572,7 @@ beforeAll(async () => {
 }, 180_000);
 afterAll(async () => { await db.stop(); });
 
-describe("app.document_link — migration 0037 (contracts §4.6.1; SAH-017, SAH-018)", () => {
+describe("app.document_link — migration 0037 (contracts §4.6.1; LEGACY-017, LEGACY-018)", () => {
   it("the schema linter reports zero violations after 0037", async () => {
     const violations: Violation[] = await lintSchema(db.admin);
     expect(violations).toEqual([]);
@@ -604,7 +604,7 @@ describe("app.document_link — migration 0037 (contracts §4.6.1; SAH-017, SAH-
     expect(v!.opts).toContain("security_invoker=true");
     // The EXACT list, not "SELECT is present". Plan 0A's `alter default privileges … grant select, insert,
     // update on tables to app_rw` (plan0A:2564) applies to VIEWS as well as tables, so without 0037's
-    // explicit revoke this returns ["INSERT", "SELECT", "UPDATE"] — and Task 14's SAH-017 claim that the one
+    // explicit revoke this returns ["INSERT", "SELECT", "UPDATE"] — and Task 14's LEGACY-017 claim that the one
     // place the figure exists "cannot be written to at all" would be unsupported by the privilege surface.
     const grants = await db.admin<{ privilege_type: string }[]>`
       select privilege_type from information_schema.role_table_grants
@@ -675,7 +675,7 @@ describe("app.document_link — migration 0037 (contracts §4.6.1; SAH-017, SAH-
     ).rejects.toThrow(/ERR_DOC_LINK_OVER_FULFILLED: source line .* has 10\.000000 open of 10\.000000 ordered; 11\.000000 requested/);
   });
 
-  it("refuses the second of two links that together exceed the order (the double-add of SAH-017)", async () => {
+  it("refuses the second of two links that together exceed the order (the double-add of LEGACY-017)", async () => {
     const orderTy = await orderType(a);
     const receiptTy = await receiptType(a);
     const { itemId, baseUnitId } = await seedItem(db, a, { code: "DOUBLE-ITEM" });
@@ -844,10 +844,10 @@ Expected: **FAIL** — `relation "app.document_link" does not exist` on the firs
 -- Slice 3C. Order ↔ fulfilment links (contracts §4.6.1) and open quantity as a DERIVED VIEW.
 -- spec:1050  — sales and purchase orders are non-posting commitment documents with open-quantity tracking.
 -- spec:1049  — a GOODS_RECEIPT receives against a PURCHASE_ORDER and prices its GRNI accrual from it.
--- SAH-017    — the old system incremented a delivered-quantity counter in place: it double-added on edit and
+-- LEGACY-017    — the old system incremented a delivered-quantity counter in place: it double-added on edit and
 --              never reversed on re-pointing. Here the link is a row and the quantity is recomputed on read.
--- SAH-018    — fulfilled and returned quantity is a projection, never a stored column.
--- SAH-049    — an aggregate with no unique key duplicates under an upsert race. There is no aggregate row here
+-- LEGACY-018    — fulfilled and returned quantity is a projection, never a stored column.
+-- LEGACY-049    — an aggregate with no unique key duplicates under an upsert race. There is no aggregate row here
 --              at all; the two partial unique indexes below key the LINK, which is the only stored thing.
 
 -- ── 1. app.document_link ──────────────────────────────────────────────────────
@@ -871,7 +871,7 @@ create table app.document_link (
   unique (tenant_id, id),
   -- Composite FKs: an FK check bypasses RLS, so a plain reference would let tenant A point at tenant B's row.
   foreign key (tenant_id, company_id)         references app.company(tenant_id, id),
-  -- Source side: NO ACTION. An order line that has been received against cannot be deleted (SAH-018 in the
+  -- Source side: NO ACTION. An order line that has been received against cannot be deleted (LEGACY-018 in the
   -- opposite direction — losing the order would strand the receipt), and an issued order cannot be deleted anyway.
   foreign key (tenant_id, source_document_id) references app.document(tenant_id, id),
   foreign key (tenant_id, source_line_id)     references app.document_line(tenant_id, id),
@@ -884,7 +884,7 @@ create table app.document_link (
 
 -- One link per (source line, target line, kind); and for header-only links, one per (source doc, target doc, kind).
 -- Two partial indexes rather than one constraint, because a UNIQUE constraint treats NULLs as distinct and would
--- admit unlimited duplicate header links (SAH-049's shape).
+-- admit unlimited duplicate header links (LEGACY-049's shape).
 create unique index document_link_line_pair_key
   on app.document_link (source_line_id, target_line_id, link_kind) where source_line_id is not null;
 create unique index document_link_header_pair_key
@@ -896,7 +896,7 @@ call app_meta.enable_tenant_rls('app.document_link');
 call app_meta.attach_audit('app.document_link');
 -- app_rw receives select, insert, update through default privileges (plan0A). No DELETE: §3.5.4 is closed.
 
--- ── 2. app.document_open_quantity — the derived view (SAH-017, SAH-018) ───────
+-- ── 2. app.document_open_quantity — the derived view (LEGACY-017, LEGACY-018) ───────
 -- security_invoker = true is MANDATORY. Without it the view executes with its owner's (app_migrator's)
 -- privileges and RLS on both base tables is evaluated for app_migrator, not for the caller — which would make
 -- this view a cross-tenant read of every order in the database. With it, tenant_isolation applies as normal.
@@ -925,7 +925,7 @@ select l.tenant_id,
 -- Plan 0A's `alter default privileges … grant select, insert, update on tables to app_rw` (plan0A:2564)
 -- applies to VIEWS too, so without this revoke app_rw would hold INSERT and UPDATE on the one figure this
 -- slice exists to keep derived. The view is not auto-updatable (it joins and aggregates), so the grants are
--- inert in practice — but SAH-017's claim is about the privilege surface, and Task 14 asserts the exact list.
+-- inert in practice — but LEGACY-017's claim is about the privilege surface, and Task 14 asserts the exact list.
 revoke insert, update on app.document_open_quantity from app_rw;
 
 -- ── 3. The over-fulfilment guard (the data layer is the control — spec:2173) ──
@@ -958,7 +958,7 @@ begin
     return new;                                               -- a header-only or amount-only link has no quantity to bound
   end if;
 
-  -- SAH-017's concurrency face, and it is NOT closed by the read below on its own. `withTenant` runs at READ
+  -- LEGACY-017's concurrency face, and it is NOT closed by the read below on its own. `withTenant` runs at READ
   -- COMMITTED (§4.2.2; 3a:68), so without this lock two transactions each linking 6 against a 10-unit order
   -- line both read v_linked = 0, both satisfy the test, and both commit — 12 linked against 10 ordered, with
   -- no bypass and no override event. This is verbatim the class 3A found in its own step-9 guard and fixed
@@ -1092,14 +1092,14 @@ Expected: `lint` prints no violations and exits 0; the `up → down → up` test
 - **Status:** Accepted
 - **Date:** 2026-09-07
 - **Slice:** 3C
-- **Spec:** spec:1049, spec:1050; Part I SAH-017, SAH-018, SAH-049
+- **Spec:** spec:1049, spec:1050; Part I LEGACY-017, LEGACY-018, LEGACY-049
 
 ## Context
 
 An order commits to a quantity; one or more fulfilment documents consume it. The legacy system stored the
-consumed quantity on the order line and incremented it from application code. SAH-017 is the result: editing a
+consumed quantity on the order line and incremented it from application code. LEGACY-017 is the result: editing a
 fulfilment double-added the bonus quantity, and re-pointing it at another order never reversed the first.
-SAH-018 is the same defect on the returns side. SAH-049 is its concurrency face — an aggregate row with no
+LEGACY-018 is the same defect on the returns side. LEGACY-049 is its concurrency face — an aggregate row with no
 unique key duplicates under an upsert race and is then double-updated forever.
 
 ## Decision
@@ -1138,10 +1138,10 @@ git add packages/db/migrations/0037_create_document_link.sql packages/db/migrati
         docs/adr/0040-fulfilment-links-and-derived-open-quantity.md
 git commit -m "feat(db): add document_link, the derived open-quantity view and the over-fulfilment guard [3C T1]
 
-Open quantity is ordered minus every non-void link, recomputed on read (SAH-017, SAH-018);
+Open quantity is ordered minus every non-void link, recomputed on read (LEGACY-017, LEGACY-018);
 the view is security_invoker so RLS is the caller's, and app_rw holds SELECT on it and nothing
 else; app_rw gets no DELETE on the table (contracts 3.5.4). The guard locks the source line
-before it sums, so the invariant is not defeatable by concurrency alone (SAH-049, 3a:5719).
+before it sums, so the invariant is not defeatable by concurrency alone (LEGACY-049, 3a:5719).
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
@@ -2510,9 +2510,9 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 **Three design points, each of which a reviewer will otherwise ask about.**
 
-**(1) `unique (cost_line_id, target_line_id)` is the upsert key, and it is why there is no DELETE.** Re-allocating a shipment `by_quantity` after allocating it `by_value` must *replace* the split, not add a second one. `app_rw` holds no DELETE on this table and §3.5.4's grant list is closed (Global Constraint 11), so the only replacement mechanism is `insert … on conflict (cost_line_id, target_line_id) do update`, and that requires exactly this constraint. It is also the SAH-049 fix in its original form: the legacy defect was an aggregate row with no unique key that duplicated under an upsert race and was then double-updated forever. Task 9's handler writes **every** (cost line × goods line) pair on every call, zero shares included — which is why the CHECK is `allocated_amount >= 0` and not `> 0`: a `by_weight` split over a line with no weight, or a `by_value` split over a free-of-charge line, is a legitimate zero, and a row that is absent instead of zero would make a re-allocation leave a stale share behind.
+**(1) `unique (cost_line_id, target_line_id)` is the upsert key, and it is why there is no DELETE.** Re-allocating a shipment `by_quantity` after allocating it `by_value` must *replace* the split, not add a second one. `app_rw` holds no DELETE on this table and §3.5.4's grant list is closed (Global Constraint 11), so the only replacement mechanism is `insert … on conflict (cost_line_id, target_line_id) do update`, and that requires exactly this constraint. It is also the LEGACY-049 fix in its original form: the legacy defect was an aggregate row with no unique key that duplicated under an upsert race and was then double-updated forever. Task 9's handler writes **every** (cost line × goods line) pair on every call, zero shares included — which is why the CHECK is `allocated_amount >= 0` and not `> 0`: a `by_weight` split over a line with no weight, or a `by_value` split over a free-of-charge line, is a legitimate zero, and a row that is absent instead of zero would make a re-allocation leave a stale share behind.
 
-**(2) There is no `weight` column, deliberately.** The obvious convenience — storing the basis each share was computed from — is exactly the shape SAH-017 and SAH-018 name: a derived number kept beside the rows it was derived from, free to drift. The basis is `method` plus the target line's own `amount`, `quantity` or `custom_fields.weight_kg`, all of which are on `document_line` and all of which the guard in point (3) pins to the same document. Task 9's response body recomputes and returns the weights for display; nothing stores them.
+**(2) There is no `weight` column, deliberately.** The obvious convenience — storing the basis each share was computed from — is exactly the shape LEGACY-017 and LEGACY-018 name: a derived number kept beside the rows it was derived from, free to drift. The basis is `method` plus the target line's own `amount`, `quantity` or `custom_fields.weight_kg`, all of which are on `document_line` and all of which the guard in point (3) pins to the same document. Task 9's response body recomputes and returns the weights for display; nothing stores them.
 
 **(3) The trigger enforces two rules a CHECK cannot.** A CHECK constraint sees one row and no other table, so neither "the shipment is a draft" nor "both lines belong to that shipment" is expressible as one. Both are enforced in the data layer for the reason §4.5.2 and spec:2173 give — the rule then holds for the API, a job and a direct `app_rw` statement alike, and `fromDatabaseError` (0B) turns each token into the right `Problem` with no per-route mapping. **Draft-only** is not a convenience: 3B's `replay` recomputes a receipt's layer as `unit_cost = value / quantity` from the immutable `inventory_movement.value` (3b:4073–4079), so once a shipment is posted there is nothing left for an allocation to change — a correction is `reverseDocument` plus a re-post. **Same-document** closes a real hole: the composite FKs prove only that both lines belong to the same *tenant*, so without this rule tenant A could allocate its freight across another of its own documents' goods lines and inflate that document's layers.
 
@@ -2582,7 +2582,7 @@ async function accountIdOf(s: Seed, code: string): Promise<string> {
   return row!.id;
 }
 
-describe("app.landed_cost_allocation — migration 0038 (contracts §4.6.1; spec:1020, 1049; SAH-049)", () => {
+describe("app.landed_cost_allocation — migration 0038 (contracts §4.6.1; spec:1020, 1049; LEGACY-049)", () => {
   it("the schema linter reports zero violations after 0038", async () => {
     const violations: Violation[] = await lintSchema(db.admin);
     expect(violations).toEqual([]);
@@ -2777,10 +2777,10 @@ Expected: **FAIL** — `relation "app.landed_cost_allocation" does not exist` on
 -- spec:1020  — "Imported goods carry freight, duty, clearance and handling that must be allocated across a
 --               shipment and into unit cost — otherwise every margin figure is wrong."
 -- spec:1049  — the import-shipment document carries freight, duty and clearance into landed cost per lot.
--- SAH-049    — an aggregate with no unique key duplicates under an upsert race and is then double-updated
+-- LEGACY-049    — an aggregate with no unique key duplicates under an upsert race and is then double-updated
 --               forever. `unique (cost_line_id, target_line_id)` is that key, and it is the ONLY replacement
 --               mechanism this table has: app_rw holds no DELETE (contracts §3.5.4 is closed).
--- SAH-017/018 — nothing derived is stored. There is no `weight` column: the basis is `method` plus the target
+-- LEGACY-017/018 — nothing derived is stored. There is no `weight` column: the basis is `method` plus the target
 --               line's own amount / quantity / custom_fields.weight_kg, and the trigger pins both lines to the
 --               same document so those columns cannot come from somewhere else.
 
@@ -2801,7 +2801,7 @@ create table app.landed_cost_allocation (
   created_at            timestamptz not null default now(),
   check (cost_line_id <> target_line_id),                                -- a line never allocates onto itself
   unique (tenant_id, id),
-  unique (cost_line_id, target_line_id),                                 -- the upsert key (SAH-049)
+  unique (cost_line_id, target_line_id),                                 -- the upsert key (LEGACY-049)
   -- Composite FKs: an FK check bypasses RLS, so a plain reference would let tenant A point at tenant B's row.
   foreign key (tenant_id, company_id)           references app.company(tenant_id, id),
   -- Every reference cascades from the DRAFT document: re-lining or deleting the draft releases the allocation,
@@ -2923,7 +2923,7 @@ Status is **Proposed**, not Accepted: spec:95 requires an ADR proposal rather th
 - **Date:** 2026-09-07
 - **Slice:** 3C
 - **Spec:** spec:95 (an ADR proposal precedes a money-semantics change), spec:1020 (landed cost), spec:1049,
-  spec:1698 (purchase return); Part I SAH-007, SAH-009, SAH-049
+  spec:1698 (purchase return); Part I LEGACY-007, LEGACY-009, LEGACY-049
 
 ## Context
 
@@ -2995,7 +2995,7 @@ git add packages/db/migrations/0038_create_landed_cost_allocation.sql packages/d
 git commit -m "feat(db): add landed_cost_allocation with the upsert key and the draft-only guard [3C T7]
 
 One row per (cost line, target line); unique (cost_line_id, target_line_id) is the only replacement
-mechanism because app_rw holds no DELETE (SAH-049, contracts 3.5.4). Draft-only is arithmetic: replay
+mechanism because app_rw holds no DELETE (LEGACY-049, contracts 3.5.4). Draft-only is arithmetic: replay
 recomputes a layer from the immutable movement value. ADR 0041 is a proposal (spec:95).
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
@@ -3024,7 +3024,7 @@ export type LandedCostMethod = "by_value" | "by_quantity" | "by_weight";
 
 /** One goods line as a candidate for a share. `weightKg` is the §4.2.11 custom field `weight_kg`. */
 export interface AllocationTarget { lineId: string; amount: Money; quantity: Quantity | null; weightKg: Quantity | null }
-/** One computed share. `weight` is the basis, returned for display and NEVER stored (SAH-018). */
+/** One computed share. `weight` is the basis, returned for display and NEVER stored (LEGACY-018). */
 export interface AllocationShare { costLineId: string; targetLineId: string; method: LandedCostMethod; amount: Money; weight: bigint }
 export interface LandedCostRow { id: string; costLineId: string; targetLineId: string; method: LandedCostMethod; allocatedAmount: string; createdAt: string }
 export interface AllocateLandedCostInput { documentId: string; allocations: readonly { costLineId: string; method: LandedCostMethod }[] }
@@ -3045,7 +3045,7 @@ export async function listLandedCost(tx: Sql, documentId: string): Promise<Lande
  *  with no allocation, which is the ordinary goods-receipt case. */
 export async function landedCostByLine(tx: Sql, documentId: string): Promise<Map<string, string>>;
 /** Per goods line: the amount, the total allocated onto it and their sum. A READ MODEL — `landedAmount` is
- *  recomputed on every read and stored nowhere (SAH-018). Task 9's two routes return it as `summary`. */
+ *  recomputed on every read and stored nowhere (LEGACY-018). Task 9's two routes return it as `summary`. */
 export interface LandedCostSummaryRow {
   targetLineId: string; lineNo: number; itemId: string | null;
   lineAmount: string; allocated: string; landedAmount: string; quantity: string | null;
@@ -3062,7 +3062,7 @@ and, exported from `@dulja/db`: all nine names above. **`landedCostSummary` live
 1. **`snapshot.lines[i].cost !== null` → that cost.** A4 makes it base currency and a magnitude already. This branch is reachable only because Step 5 below adds `l.cost` to `reverseDocument`'s line copy: without it, reversing a stock **issue** — which emits a *receipt* of the returned goods — would fall through to branch 3 and value that receipt at the negated **sale** price instead of the carrying cost. `cost` is a magnitude, so it is copied unnegated, and step 5 of `applyMovements` writes the same number back, which makes the copy idempotent.
 2. **else, a same-`lineNo` `issue` movement already computed → that leg's value.** A `transfer` line emits an issue at `warehouse_id` then a receipt at `to_warehouse_id` in that order (§4.7.3), so by the time the receipt is reached the issue is in `computed`. What left the first warehouse is what arrives at the second; a re-priced `line.amount` would create value out of a movement. 3D's `TRANSFER`/`TRANSFER_RECEIPT` depend on this branch.
 3. **else → `receiptValue(line, landedCost, rate)`.** The genuine purchase-side receipt: `GOODS_RECEIPT`, `SHIPMENT`, 9B's `OPENING_STOCK`. `line.amount` and not `round(unit_price × quantity, 4)`: §4.3.4 defines `amount` as "excl. tax, document currency", which is the discount-correct figure, and 3A's provisional rule ignored `document_line.discount`.
-4. **No line at all → `null`**, and the engine raises `ERR_COST_VALUE_MISSING` naming the movement (SAH-007). The fall-through is left explicit rather than defaulted to zero: a movement with no source line is an internal inconsistency, not a free receipt.
+4. **No line at all → `null`**, and the engine raises `ERR_COST_VALUE_MISSING` naming the movement (LEGACY-007). The fall-through is left explicit rather than defaulted to zero: a movement with no source line is an internal inconsistency, not a free receipt.
 
 **The weights are `bigint` and the conversion is a string operation.** `Money.allocate` takes `readonly bigint[]`, and `Money.toString()` / `Quantity.toString()` are *fixed*-scale (4 and 6 decimal places), so `"1000.0000" → 10000000n` is exact by removing the point — no `Decimal` arithmetic, no rounding, nothing to get wrong. `by_value` weights at money scale, `by_quantity` and `by_weight` at quantity scale; the scales never mix within one call because the method is one value.
 
@@ -3314,7 +3314,7 @@ export interface AllocationTarget {
   weightKg: Quantity | null;
 }
 
-/** One computed share. `weight` is the BASIS, returned for display and never stored (SAH-017, SAH-018). */
+/** One computed share. `weight` is the BASIS, returned for display and never stored (LEGACY-017, LEGACY-018). */
 export interface AllocationShare {
   costLineId: string;
   targetLineId: string;
@@ -3466,7 +3466,7 @@ export async function allocateLandedCostForDocument(
 
   for (const share of shares) {
     // `on conflict` is the ONLY replacement mechanism: app_rw holds no DELETE (§3.5.4) and every pair is
-    // written on every call, so re-allocating by another method cannot leave a stale share behind (SAH-049).
+    // written on every call, so re-allocating by another method cannot leave a stale share behind (LEGACY-049).
     await tx`
       insert into app.landed_cost_allocation
         (tenant_id, company_id, shipment_document_id, cost_line_id, target_line_id, method, allocated_amount)
@@ -3510,7 +3510,7 @@ export interface LandedCostSummaryRow {
 
 /**
  * Per goods line: the amount, the total allocated onto it, and their sum. A READ MODEL — `landedAmount` is
- * recomputed here on every read and stored nowhere (SAH-018), and the arithmetic is `Money`, never a
+ * recomputed here on every read and stored nowhere (LEGACY-018), and the arithmetic is `Money`, never a
  * hand-rolled integer (Global Constraint 4). Task 9's two routes return it as `summary`.
  */
 export async function landedCostSummary(tx: Sql, documentId: string): Promise<LandedCostSummaryRow[]> {
@@ -3604,7 +3604,7 @@ Add two lines above the loop, and replace that expression with the four-branch r
         value = receiptValue(line, allocated === undefined ? Money.zero(docCurrency) : Money.of(allocated, docCurrency), snapshot.header.exchangeRate);
       } else {
         // 4. No source line at all — an internal inconsistency, not a free receipt. Left null on purpose so
-        //    the engine raises ERR_COST_VALUE_MISSING naming the movement (SAH-007).
+        //    the engine raises ERR_COST_VALUE_MISSING naming the movement (LEGACY-007).
         value = null;
       }
     }
@@ -3848,7 +3848,7 @@ Then append the four cases inside the existing `describe`, after the envelope ca
 Run: `cd packages/db && bun run test -- test/purchasing/landed-cost.test.ts test/purchasing/goods-receipt.test.ts`
 Expected: **PASS** — 10 in `landed-cost.test.ts` and **all 5** in `goods-receipt.test.ts` (the envelope case Task 6 landed plus the four Step 7 appended).
 
-Two failures worth naming in advance, both of them in the appended cases rather than in this task's code. `ERR_POLICY_REQUIRES_MISSING: 2150` means the two loaders ran in the wrong order — `chart-of-accounts` comes **before** `document-types` (hazard 33 in miniature). If the free-of-charge case reports `n: 1` layers, `applyMovements` is skipping a zero-value movement: a value of zero **is** a value (SAH-007 is about *null*), and the layer must exist so a later issue can consume it.
+Two failures worth naming in advance, both of them in the appended cases rather than in this task's code. `ERR_POLICY_REQUIRES_MISSING: 2150` means the two loaders ran in the wrong order — `chart-of-accounts` comes **before** `document-types` (hazard 33 in miniature). If the free-of-charge case reports `n: 1` layers, `applyMovements` is skipping a zero-value movement: a value of zero **is** a value (LEGACY-007 is about *null*), and the layer must exist so a later issue can consume it.
 
 Three failures worth naming in advance. `ERR_COST_VALUE_MISSING` still raised means Step 4's edit landed in the *issue* branch or the `find` matched no line — check that `snapshot.lines` is keyed on `lineNo` and not on array index, because a document whose first line is a `text` line has `lines[0].lineNo === 1` but a movement for line 2 at index 1. `unit_cost: "100.0000"` where the test expects `"112.0000"` means `landedCostByLine` returned an empty map: the allocation was written under a different `shipment_document_id`, or the test posted before allocating. And `ERR_MONEY_CURRENCY_MISMATCH` inside `receiptValue` means `docCurrency` was taken from `snapshot.company.baseCurrency` instead of `snapshot.header.currency` — the allocation is stored in **document** currency and `toBase` is the only conversion.
 
@@ -4452,7 +4452,7 @@ describe("POST/GET /v1/companies/{companyId}/documents/{documentId}/landed-cost 
 export { chartOfAccountsLoader } from "./chart-of-accounts";
 ```
 
-**And only that.** It is a re-export of a name 0C already owns and already exports from its own module — no new interface, no §4.2.13 amendment (§4.2.13 already names `chartOfAccountsLoader` as 0C's and every later slice consumes it unchanged), and **not** `packages/db/src/index.ts`: §3.1 and 0C's `tests/regression/sah-039.test.ts` forbid the main barrel carrying `export … from "./seed"` at any depth, because `packages/db/src/seed/auth-admin.ts` imports `@supabase/supabase-js`. Adding it to the seed barrel touches nothing on that import graph.
+**And only that.** It is a re-export of a name 0C already owns and already exports from its own module — no new interface, no §4.2.13 amendment (§4.2.13 already names `chartOfAccountsLoader` as 0C's and every later slice consumes it unchanged), and **not** `packages/db/src/index.ts`: §3.1 and 0C's `tests/regression/legacy-039.test.ts` forbid the main barrel carrying `export … from "./seed"` at any depth, because `packages/db/src/seed/auth-admin.ts` imports `@supabase/supabase-js`. Adding it to the seed barrel touches nothing on that import graph.
 
 - [ ] **Step 6: Run it to verify it fails**
 
@@ -4919,7 +4919,7 @@ describe("PURCHASE_RETURN — contracts §4.14, spec:1698, ADR 0041", () => {
     });
     await withTenant(db.rw, s.tenant, s.human, (tx) => postDocument(tx, ctx(s), { documentId: ret.documentId, jobs: recordingJobs() }));
 
-    // ONE costing answer (SAH-009): the valuation read, the layer residues and the consumption rows all agree.
+    // ONE costing answer (LEGACY-009): the valuation read, the layer residues and the consumption rows all agree.
     // `ValuationParams` is 3B's frozen shape: `{ companyId; asOf; itemId?; warehouseId?; cursor?; limit }`
     // (3b:4475–4486). There is no `itemIds`, and `limit` is REQUIRED — an excess property on an object
     // literal is a TypeScript error and a missing required one is another, so this call is the shape or the
@@ -4959,7 +4959,7 @@ describe("PURCHASE_RETURN — contracts §4.14, spec:1698, ADR 0041", () => {
     expect(who.map((r) => r.id)).toContain(s.human);
   });
 
-  it("links a return to the receipt it reverses, and the receipt's open quantity falls (SAH-018)", async () => {
+  it("links a return to the receipt it reverses, and the receipt's open quantity falls (LEGACY-018)", async () => {
     const { itemId, baseUnitId } = await seedItem(db, s, { code: "PR-ITEM-5" });
     const order = await draftTypedDocument(db, s, {
       documentTypeId: await typeId("PURCHASE_ORDER"), series: "PO", partyId, effectiveDate: "2026-05-03",
@@ -4982,7 +4982,7 @@ describe("PURCHASE_RETURN — contracts §4.14, spec:1698, ADR 0041", () => {
       lines: [{ kind: "item", itemId, unitId: baseUnitId, warehouseId, quantity: "4.000000", unitPrice: "10.0000", amount: "40.0000" }],
     });
     // link_kind 'returns' against the POSTED receipt: the guard admits a posted source (Task 1) and the
-    // returned quantity is a projection over these rows, never a column on the receipt line (SAH-018).
+    // returned quantity is a projection over these rows, never a column on the receipt line (LEGACY-018).
     await withTenant(db.rw, s.tenant, s.human, (tx) =>
       linkFulfilment(tx, ctx(s), {
         sourceDocumentId: receipt.documentId, targetDocumentId: ret.documentId, linkKind: "returns",
@@ -4994,7 +4994,7 @@ describe("PURCHASE_RETURN — contracts §4.14, spec:1698, ADR 0041", () => {
     const [returnedColumn] = await db.admin<{ n: number }[]>`
       select count(*)::int as n from information_schema.columns
        where table_schema = 'app' and table_name = 'document_line' and column_name like '%returned%'`;
-    expect(returnedColumn!.n).toBe(0);          // SAH-018 asserted structurally, not by inspection
+    expect(returnedColumn!.n).toBe(0);          // LEGACY-018 asserted structurally, not by inspection
   });
 });
 ```
@@ -5310,7 +5310,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 | ⚠️ row | Spec | Built as | If the owner says no |
 |---|---|---|---|
-| **Landed cost** — "Imported goods carry freight, duty, clearance and handling that must be allocated across a shipment and into unit cost" | spec:1020 | `app.landed_cost_allocation` (0038), the three methods, `receiptValue`, `SHIPMENT`, the two routes — Tasks 7, 8, 9 | The whole of Tasks 7 and 9 and migration 0038 drop; **Task 8 does not** — `receiptValue`'s branch 3 collapses to `toBase(line.amount, rate)` and every receipt still needs a value (SAH-007), so `landed-cost.ts` keeps `receiptValue` and loses `allocateLandedCost`, `allocateLandedCostForDocument`, `listLandedCost` and `landedCostByLine`. Tasks 1–6, 10 and 11 are untouched. |
+| **Landed cost** — "Imported goods carry freight, duty, clearance and handling that must be allocated across a shipment and into unit cost" | spec:1020 | `app.landed_cost_allocation` (0038), the three methods, `receiptValue`, `SHIPMENT`, the two routes — Tasks 7, 8, 9 | The whole of Tasks 7 and 9 and migration 0038 drop; **Task 8 does not** — `receiptValue`'s branch 3 collapses to `toBase(line.amount, rate)` and every receipt still needs a value (LEGACY-007), so `landed-cost.ts` keeps `receiptValue` and loses `allocateLandedCost`, `allocateLandedCostForDocument`, `listLandedCost` and `landedCostByLine`. Tasks 1–6, 10 and 11 are untouched. |
 | **Purchase in foreign currency** — "Importing means supplier invoices in USD/AED/EUR against MYR books, with FX difference on settlement" | spec:1023 | No code of its own. The header carries `currency` + `exchange_rate` (Plan 0A), every ledger amount goes through `toBase` (hazard 23), the GRNI accrual stays in the **supplier's** currency and the layer is base — Tasks 6, 8, 9. The **settlement** FX difference is 4B's. | Nothing drops. A refusal would mean "we buy only in MYR", which the built path already covers as the `UNIT_RATE` case. The question worth asking is narrower and is below. |
 
 - [ ] **Step 1: Write the owner question, verbatim, into the task tracker**
@@ -5488,7 +5488,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 - [ ] **Step 1: Record the owner request, verbatim**
 
-> **OD-24 (spec:2408).** Before we build the purchasing screens, please provide: **(a)** screenshots of the three Sahlisoft screens your staff use today for raising a purchase order, receiving goods against one, and entering an import shipment's freight and duty; **(b)** a two-minute description, from whoever does the job, of the order in which they type and what they tab between. Not a specification — the actual sequence, including the parts that are annoying.
+> **OD-24 (spec:2408).** Before we build the purchasing screens, please provide: **(a)** screenshots of the three legacy screens your staff use today for raising a purchase order, receiving goods against one, and entering an import shipment's freight and duty; **(b)** a two-minute description, from whoever does the job, of the order in which they type and what they tab between. Not a specification — the actual sequence, including the parts that are annoying.
 >
 > **Verify:** the description is attached to this task and the three screenshots are in `docs/ux/purchasing/`. **Until provided:** this task stays open and no component is written. Nothing else in slice 3C waits.
 
@@ -5519,31 +5519,31 @@ There is nothing to commit. The task stays open with the request and the table a
 ### Task 14: Slice exit — the regression blocks, the probe assertion, the contracts round-3 finalisation and full CI
 
 **Files:**
-- Modify: `tests/regression/sah-005.test.ts`, `tests/regression/sah-017.test.ts`, `tests/regression/sah-049.test.ts`
+- Modify: `tests/regression/legacy-005.test.ts`, `tests/regression/legacy-017.test.ts`, `tests/regression/legacy-049.test.ts`
 - Modify: `docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md`
 - Test: everything, at the repository root
 
 **Interfaces:**
-- Consumes: `sharedDb` (0B, §4.2.12) — reached **through** 3B's `costingContext(sah)` / `CostingFixture` (`tests/regression/support/costing.ts`, amendment A21(a)), which is what gives each regression file its own `seedTenantV2` tenant on the one shared container; `PROBES` (§4.2.7); the production `withTenant(sql, ctx, fn)` (hazard 15 — root `tests/` always uses it, never the 4-argument test helper); `recordingJobs`, `ensureOpenPeriods` (3B, `tests/invariants/support/post-inventory.ts`); `postDocument`, `allocateLandedCostForDocument`, `linkFulfilment`, `openQuantity` (Tasks 4, 8); `draftTypedDocument`, `seedAccount`, `seedItem`, `seedParty`, `grantCodes` (§4.17); everything Tasks 1–12 produced. **Not consumed: `thinRegression`** — it is a `describe`/`it` wrapper returning `void` (0b:5312–5326), not a fixture factory, and `sharedDb()`'s container must never be stopped by a file.
+- Consumes: `sharedDb` (0B, §4.2.12) — reached **through** 3B's `costingContext(legacyDefect)` / `CostingFixture` (`tests/regression/support/costing.ts`, amendment A21(a)), which is what gives each regression file its own `seedTenantV2` tenant on the one shared container; `PROBES` (§4.2.7); the production `withTenant(sql, ctx, fn)` (hazard 15 — root `tests/` always uses it, never the 4-argument test helper); `recordingJobs`, `ensureOpenPeriods` (3B, `tests/invariants/support/post-inventory.ts`); `postDocument`, `allocateLandedCostForDocument`, `linkFulfilment`, `openQuantity` (Tasks 4, 8); `draftTypedDocument`, `seedAccount`, `seedItem`, `seedParty`, `grantCodes` (§4.17); everything Tasks 1–12 produced. **Not consumed: `thinRegression`** — it is a `describe`/`it` wrapper returning `void` (0b:5312–5326), not a fixture factory, and `sharedDb()`'s container must never be stopped by a file.
 - Produces: the three appended regression blocks; the finalised §4.18 round-3 rows.
 
-**§3.7.3's ownership rule decides which file this task appends to and which it must not create.** `sah-005` is **0D's** (its §2.1 card says "transactional enqueue"); `sah-017` is **3B's**, which executes before 3C (§6.3); `sah-049` is **1B's**. This slice **creates none** and appends a `— 3C` describe block to each, which is exactly what §3.7.3 prescribes for a slice that touches a defect another slice already owns.
+**§3.7.3's ownership rule decides which file this task appends to and which it must not create.** `legacy-005` is **0D's** (its §2.1 card says "transactional enqueue"); `legacy-017` is **3B's**, which executes before 3C (§6.3); `legacy-049` is **1B's**. This slice **creates none** and appends a `— 3C` describe block to each, which is exactly what §3.7.3 prescribes for a slice that touches a defect another slice already owns.
 
 **The shared preamble all three blocks use, and why it is not `thinRegression`.** 0B's helper is
-`thinRegression(sah, heading, cites, body): void` — a `describe`/`it` wrapper that *invokes* its body inside a
+`thinRegression(legacyDefect, heading, cites, body): void` — a `describe`/`it` wrapper that *invokes* its body inside a
 running `it` (0b:5312–5326). It returns nothing, so `const { db, s } = await thinRegression("…")` neither
 compiles nor yields a tenant, and `sharedDb()`'s `Db` is **one container for the whole `tests` run**
 (§4.17.1) — calling `db.stop()` on it would break every regression file that runs after this one. The shape
 these three blocks use is 3B's, for the same reason 3B chose it: a plain `describe` with the ` — 3C` suffix
-§3.7.3 requires, over **`costingContext(sah)`** (`tests/regression/support/costing.ts`, 3B amendment
+§3.7.3 requires, over **`costingContext(legacyDefect)`** (`tests/regression/support/costing.ts`, 3B amendment
 A21(a)), which hands out one `seedTenantV2` tenant per regression file on the shared container and never
-stops it. `sah-005.test.ts` and `sah-017.test.ts` already carry `const ctx = costingContext("<sah>");` at
-module scope from 3B's own blocks — **reuse it, do not declare a second one**; `sah-049.test.ts` is 1B's and
+stops it. `legacy-005.test.ts` and `legacy-017.test.ts` already carry `const ctx = costingContext("<legacyDefect>");` at
+module scope from 3B's own blocks — **reuse it, do not declare a second one**; `legacy-049.test.ts` is 1B's and
 has none, so that block adds one.
 
-- [ ] **Step 1: Append the `— 3C` block to `tests/regression/sah-005.test.ts`**
+- [ ] **Step 1: Append the `— 3C` block to `tests/regression/legacy-005.test.ts`**
 
-SAH-005 is "the dirty flag was set from three of four write paths, so a back-dated purchase mis-costed a month and nothing noticed". 3B appended the recost block; 3C's contribution is that the *landed cost* path is the fourth path, and it is not a path at all — the allocation commits with the draft and the recost enqueues on the posting `tx`.
+LEGACY-005 is "the dirty flag was set from three of four write paths, so a back-dated purchase mis-costed a month and nothing noticed". 3B appended the recost block; 3C's contribution is that the *landed cost* path is the fourth path, and it is not a path at all — the allocation commits with the draft and the recost enqueues on the posting `tx`.
 
 Add to the file's existing import block (3B's block already imports `costingContext`, `recordingJobs`, `ensureOpenPeriods`, `describe`/`it`/`expect` and `withTenant`; these are the names only 3C's block needs):
 
@@ -5557,9 +5557,9 @@ import type { CostingFixture } from "./support/costing";
 Then the block, with its one helper written out:
 
 ```ts
-describe("SAH-005 — 3C: a back-dated SHIPMENT enqueues its recost on the posting transaction, or posts nothing", () => {
+describe("LEGACY-005 — 3C: a back-dated SHIPMENT enqueues its recost on the posting transaction, or posts nothing", () => {
   const ctxOf = (s: { tenant: string; human: string }) =>
-    ({ tenantId: s.tenant, actorId: s.human, requestId: "sah-005-3c" });
+    ({ tenantId: s.tenant, actorId: s.human, requestId: "legacy-005-3c" });
 
   /**
    * A posted September SHIPMENT, then a DRAFT August one carrying a freight line that has already been
@@ -5579,7 +5579,7 @@ describe("SAH-005 — 3C: a back-dated SHIPMENT enqueues its recost on the posti
     // `costingContext` calls `grantCodes(db, s)` with NO codes, which creates an empty role — so the two
     // receipt codes have to be granted here or every post below is ERR_RBAC_FORBIDDEN at 2B's R2 trigger.
     await grantCodes(db, s, { codes: ["inventory.receipt.create", "inventory.receipt.post"] });
-    const partyId = await seedParty(db, s, { kind: "vendor", code: "SAH005-VEND" });
+    const partyId = await seedParty(db, s, { kind: "vendor", code: "LEGACY005-VEND" });
     // The item code is a PARAMETER, so the two cases below never share a layer chain: each gets its own
     // September receipt and its own back-dated draft, and neither depends on the order Vitest runs them in.
     const { itemId, baseUnitId } = await seedItem(db, s, { code });
@@ -5614,7 +5614,7 @@ describe("SAH-005 — 3C: a back-dated SHIPMENT enqueues its recost on the posti
     const f = await ctx.inventory();
     await ensureOpenPeriods(f.db, f.s, 2026);
     const jobs = recordingJobs();
-    const prepared = await prepareBackDatedShipment(f, "SAH005-SHP-A");
+    const prepared = await prepareBackDatedShipment(f, "LEGACY005-SHP-A");
 
     await expect(
       withTenant(f.db.rw, ctxOf(f.s), async (tx) => {
@@ -5642,7 +5642,7 @@ describe("SAH-005 — 3C: a back-dated SHIPMENT enqueues its recost on the posti
   it("and a caller that supplies no JobClient is refused rather than silently skipping the recost", async () => {
     const f = await ctx.inventory();
     await ensureOpenPeriods(f.db, f.s, 2026);
-    const prepared = await prepareBackDatedShipment(f, "SAH005-SHP-B");
+    const prepared = await prepareBackDatedShipment(f, "LEGACY005-SHP-B");
     await expect(
       withTenant(f.db.rw, ctxOf(f.s), (tx) =>
         postDocument(tx, ctxOf(f.s), { documentId: prepared.documentId })),
@@ -5653,9 +5653,9 @@ describe("SAH-005 — 3C: a back-dated SHIPMENT enqueues its recost on the posti
 
 **Both cases share the memoised fixture and pass DIFFERENT item codes, which is what makes them order-independent.** `ctx.inventory()` returns one tenant per file, so the two cases share a company — and case 1 asserts `jobs.enqueued` is exactly `["inventory.cost.replay"]`, an absolute claim. Distinct items give each case its own layer chain and its own September receipt, so neither reading depends on which ran first (Vitest runs them in file order by default, but `--sequence.shuffle` exists and 3B's own regression files were reworked for exactly this reason, 3b:6802). `db.stop()` is **not** called: the container is `sharedDb()`'s and belongs to the whole `tests` run.
 
-- [ ] **Step 2: Append the `— 3C` block to `tests/regression/sah-017.test.ts`**
+- [ ] **Step 2: Append the `— 3C` block to `tests/regression/legacy-017.test.ts`**
 
-SAH-017 is "order-delivery tracking double-adds on edit and never reverses on re-pointing". 3B created the file; 3C's block asserts the *structural* fix rather than a behaviour, because that is what makes it unrepeatable — and then adds the two behaviours a structure alone does not prove: re-pointing, and concurrency.
+LEGACY-017 is "order-delivery tracking double-adds on edit and never reverses on re-pointing". 3B created the file; 3C's block asserts the *structural* fix rather than a behaviour, because that is what makes it unrepeatable — and then adds the two behaviours a structure alone does not prove: re-pointing, and concurrency.
 
 Add to the file's existing import block:
 
@@ -5666,9 +5666,9 @@ import type { CostingFixture } from "./support/costing";
 ```
 
 ```ts
-describe("SAH-017 — 3C: open quantity is a view over links, and there is no counter to double-add", () => {
+describe("LEGACY-017 — 3C: open quantity is a view over links, and there is no counter to double-add", () => {
   const ctxOf = (s: { tenant: string; human: string }) =>
-    ({ tenantId: s.tenant, actorId: s.human, requestId: "sah-017-3c" });
+    ({ tenantId: s.tenant, actorId: s.human, requestId: "legacy-017-3c" });
 
   /** An ISSUED 10-unit order of `f`'s own item, drafted and issued through the data layer. */
   async function issuedOrderOf(f: CostingFixture, code: string): Promise<{ documentId: string; lineId: string; itemId: string; baseUnitId: string; partyId: string }> {
@@ -5742,7 +5742,7 @@ describe("SAH-017 — 3C: open quantity is a view over links, and there is no co
     // Structural, and deliberately so: an interleaved two-transaction race is not deterministically
     // reproducible in a test (you cannot await "the other transaction is now blocked"), while the ORDER of
     // the two statements inside the trigger is exactly what closes the window. This is the shape 3B uses for
-    // sah-010, which asserts an ordering clause rather than trying to provoke the wrong answer.
+    // legacy-010, which asserts an ordering clause rather than trying to provoke the wrong answer.
     const [fn] = await db.admin<{ def: string }[]>`
       select pg_get_functiondef('app.assert_document_link_within_open_quantity()'::regprocedure) as def`;
     const def = fn!.def;
@@ -5758,7 +5758,7 @@ describe("SAH-017 — 3C: open quantity is a view over links, and there is no co
 
   it("a second transaction linking against the same line reads the FIRST one's committed sum and is refused", async () => {
     const f = await ctx.inventory();
-    const order = await issuedOrderOf(f, "SAH017A");
+    const order = await issuedOrderOf(f, "LEGACY017A");
     const r1 = await draftReceipt(f, order);
     const r2 = await draftReceipt(f, order);
 
@@ -5774,8 +5774,8 @@ describe("SAH-017 — 3C: open quantity is a view over links, and there is no co
     const f = await ctx.inventory();
     // Two orders for the same item; one draft receipt linked to the first, then deleted and linked to the
     // second. In the legacy system the first order's counter stayed incremented forever.
-    const first = await issuedOrderOf(f, "SAH017B");
-    const second = await issuedOrderOf(f, "SAH017C");
+    const first = await issuedOrderOf(f, "LEGACY017B");
+    const second = await issuedOrderOf(f, "LEGACY017C");
     const receipt = await draftReceipt(f, first);
 
     await linkTo(f.db, f.s, first, receipt, "10.000000");
@@ -5792,11 +5792,11 @@ describe("SAH-017 — 3C: open quantity is a view over links, and there is no co
 });
 ```
 
-`issuedOrderOf(f, "SAH017B")` and `issuedOrderOf(f, "SAH017C")` seed **different items**, which is what keeps the last case's two `openOf` readings independent: `openQuantity(tx, documentId)` is per document, so each order reports only its own line.
+`issuedOrderOf(f, "LEGACY017B")` and `issuedOrderOf(f, "LEGACY017C")` seed **different items**, which is what keeps the last case's two `openOf` readings independent: `openQuantity(tx, documentId)` is per document, so each order reports only its own line.
 
-- [ ] **Step 3: Append the `— 3C` block to `tests/regression/sah-049.test.ts`**
+- [ ] **Step 3: Append the `— 3C` block to `tests/regression/legacy-049.test.ts`**
 
-SAH-049 is "an aggregate with no unique key duplicates under an upsert race and is then double-updated forever". 1B created this file with a `thinRegression` call; 3C appends a plain `describe` beside it and adds the preamble that file does not yet have (the placement 3B used at 3b:6251 and 2A at 2a:4664).
+LEGACY-049 is "an aggregate with no unique key duplicates under an upsert race and is then double-updated forever". 1B created this file with a `thinRegression` call; 3C appends a plain `describe` beside it and adds the preamble that file does not yet have (the placement 3B used at 3b:6251 and 2A at 2a:4664).
 
 Add at the top of the file, beside 1B's existing import:
 
@@ -5810,17 +5810,17 @@ const ctx3c = costingContext("049-3c");
 ```
 
 ```ts
-describe("SAH-049 — 3C: the allocation's upsert key survives a concurrent re-allocation", () => {
+describe("LEGACY-049 — 3C: the allocation's upsert key survives a concurrent re-allocation", () => {
   const ctxOf = (s: { tenant: string; human: string }) =>
-    ({ tenantId: s.tenant, actorId: s.human, requestId: "sah-049-3c" });
+    ({ tenantId: s.tenant, actorId: s.human, requestId: "legacy-049-3c" });
 
   /** A DRAFT shipment with two goods lines and one 300.0000 freight line. `costLineId` is that freight line. */
   async function draftShipmentWithFreight(f: CostingFixture): Promise<{ documentId: string; costLineId: string }> {
     const { db, s, warehouse } = f;
     await seedAccount(db, s, { code: "2150", nameEn: "Goods received not invoiced", type: "liability" });
     await grantCodes(db, s, { codes: ["inventory.receipt.create", "inventory.receipt.post"] });
-    const partyId = await seedParty(db, s, { kind: "vendor", code: "SAH049-VEND" });
-    const { itemId, baseUnitId } = await seedItem(db, s, { code: "SAH049-ITEM" });
+    const partyId = await seedParty(db, s, { kind: "vendor", code: "LEGACY049-VEND" });
+    const { itemId, baseUnitId } = await seedItem(db, s, { code: "LEGACY049-ITEM" });
     const [shipmentType] = await withTenant(db.rw, ctxOf(s), (tx) => tx<{ id: string }[]>`
       select id from app.document_type where company_id = ${s.company} and code = 'SHIPMENT'`);
     const [freightAccount] = await withTenant(db.rw, ctxOf(s), (tx) => tx<{ id: string }[]>`
@@ -5845,7 +5845,7 @@ describe("SAH-049 — 3C: the allocation's upsert key survives a concurrent re-a
     const two = { costLineId: prepared.costLineId, method: "by_quantity" as const };
 
     // Both start before either commits. One wins the unique key and the other blocks on it, then updates —
-    // which is what `on conflict … do update` under a real constraint does, and what SAH-049 lacked.
+    // which is what `on conflict … do update` under a real constraint does, and what LEGACY-049 lacked.
     const results = await Promise.allSettled([
       withTenant(f.db.rw, ctxOf(f.s), (tx) => allocateLandedCostForDocument(tx, ctxOf(f.s), { documentId: prepared.documentId, allocations: [one] })),
       withTenant(f.db.rw, ctxOf(f.s), (tx) => allocateLandedCostForDocument(tx, ctxOf(f.s), { documentId: prepared.documentId, allocations: [two] })),
@@ -5875,7 +5875,7 @@ Task 0 landed the amendment before Task 1. Four findings arrived later and belon
 | 4.3.2, 4.3.4 | **A cost-derived ledger leg may only be paired with another cost-derived leg.** Step 6's `balanceInBase` runs before step 9 fills `LineSnapshot.cost`, so a `line.cost`/`line.amount` pair is refused with `ERR_LEDGER_UNBALANCED` on the first evaluation and never reaches 3B's re-evaluation (3b:3172–3180). A **receipt** policy is all `line.amount` with capitalised freight debiting `1300` from the cost line; an **issue** policy is all `line.cost`. Discovered writing 3C's `GOODS_RECEIPT`; the rule was already 3B's practice (3b:2556–2557 vs 2580–2581) and is now stated. Binds 3D and 4A | 3C | correction |
 | 4.15 | `1300` gains a third resolver — the freight/duty/clearance debit of a receipt policy, as an `account: { code }` literal. `1300` stays **0C's**; 3C asserts it resolves (Task 3) and does not re-seed it | 3C | correction |
 | 4.14 | `CONSIGNMENT_RETURN`'s inventory-bearing shape is **policy version 2 of the same code**, fixture `tests/fixtures/document-types/CONSIGNMENT_RETURN.v2.json`, `module` still `accounting`. No new §4.14 row, and the stronger reading of test 15: behaviour is configuration too | 3C | plan |
-| 4.7.2 | `LandedCostError` (`"ERR_VALIDATION_FAILED" \| "ERR_NOT_FOUND"`), `allocateLandedCost`, `allocateLandedCostForDocument`, `listLandedCost`, `landedCostSummary`, `LandedCostSummaryRow`, `AllocationTarget`, `AllocationShare`, `LandedCostRow`, `LandedCostMethod`, `AllocateLandedCostInput` — the eleven names beside `receiptValue` and `landedCostByLine`. The error class is `CostingError`'s shape (3B A2a) and needs no new `asAppError` branch. **`landedCostSummary` is in `packages/db`, not in the handler**: `landedAmount` is `Money` arithmetic (Global Constraint 4) and a second reader of the same figure in `apps/api` is what SAH-009 is | 3C | plan |
+| 4.7.2 | `LandedCostError` (`"ERR_VALIDATION_FAILED" \| "ERR_NOT_FOUND"`), `allocateLandedCost`, `allocateLandedCostForDocument`, `listLandedCost`, `landedCostSummary`, `LandedCostSummaryRow`, `AllocationTarget`, `AllocationShare`, `LandedCostRow`, `LandedCostMethod`, `AllocateLandedCostInput` — the eleven names beside `receiptValue` and `landedCostByLine`. The error class is `CostingError`'s shape (3B A2a) and needs no new `asAppError` branch. **`landedCostSummary` is in `packages/db`, not in the handler**: `landedAmount` is `Money` arithmetic (Global Constraint 4) and a second reader of the same figure in `apps/api` is what LEGACY-009 is | 3C | plan |
 ```
 
 - [ ] **Step 6: Run the whole thing**
@@ -5911,14 +5911,14 @@ Expected: every command exits 0. `lint:rules` covers `no-number-money`, `posting
 - [ ] **Step 8: Commit and open the PR**
 
 ```bash
-git add tests/regression/sah-005.test.ts tests/regression/sah-017.test.ts tests/regression/sah-049.test.ts \
+git add tests/regression/legacy-005.test.ts tests/regression/legacy-017.test.ts tests/regression/legacy-049.test.ts \
         docs/superpowers/plans/2026-09-05-dulja-plan-contracts.md
 git commit -m "test(regression): append the 3C blocks and finalise the contracts round-3 rows [3C T14]
 
-sah-005: a rolled-back back-dated post leaves no movement and no layer, keeps the draft's allocation,
-and a caller with no JobClient is refused. sah-017: no fulfilled-quantity column exists anywhere, the one
+legacy-005: a rolled-back back-dated post leaves no movement and no layer, keeps the draft's allocation,
+and a caller with no JobClient is refused. legacy-017: no fulfilled-quantity column exists anywhere, the one
 figure is a SELECT-only view, the guard locks the source line before it sums, and re-pointing releases
-with no compensating write. sah-049: a concurrent re-allocation yields two rows and one method, never
+with no compensating write. legacy-049: a concurrent re-allocation yields two rows and one method, never
 four. All three blocks are plain describes over 3B's costingContext, not thinRegression — that wrapper
 returns void and sharedDb()'s container belongs to the whole run.
 
@@ -5935,7 +5935,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 1. **The `GOODS_RECEIPT` policy debited `line.cost`.** It cannot post: §4.3.2 step 6 runs `balanceInBase` **before** step 9 fills the cost, so a cost leg paired against a `line.amount` leg plans `0` against the full amount and is refused with `ERR_LEDGER_UNBALANCED` before `applyMovements` is ever reached. 3B had already solved this in practice — its receipt policy is `line.amount` on both legs (3b:2580–2581) and only its *issue* policy is cost/cost (3b:2556–2557) — but nothing had stated the rule. Task 6 is now four rules, all `line.amount`, with capitalised freight debiting `1300` from the cost line's own row; Task 0 Step 3's §4.3.4 paragraph states the rule; Task 14 Step 5 registers it. The `sum` over the inventory accounts still equals the layer to the cent, reached by addition.
 2. **The DoD cases were dated June to September with no open period.** Plan 0A's `seedTenant` opens exactly one period (2026-01) and closes or locks the other two; every one of those cases would have died on `ERR_PERIOD_NOT_OPEN` before asserting anything. Task 9 Step 1 now adds `ensureOpenPeriods(db, s, 2026)` — 3B's helper — as the last line of the `beforeAll`, and says why.
-3. **`landed_cost_allocation` had a `weight` column.** It is derived from `method` plus the target line's own `amount`/`quantity`/`weight_kg`, and storing a derived number beside the rows it derives from is precisely the SAH-017/018 shape this slice exists to close. Removed; the weight is returned by `allocateLandedCost` for display and by the route's `summary`, and nothing persists it. This also keeps the table exactly as Task 0's amendment registered it.
+3. **`landed_cost_allocation` had a `weight` column.** It is derived from `method` plus the target line's own `amount`/`quantity`/`weight_kg`, and storing a derived number beside the rows it derives from is precisely the LEGACY-017/018 shape this slice exists to close. Removed; the weight is returned by `allocateLandedCost` for display and by the route's `summary`, and nothing persists it. This also keeps the table exactly as Task 0's amendment registered it.
 
 **Six further defects found on a second pass over the test code, all fixed above.** Each would have failed for a zero-context engineer at the step that claims *Expected: PASS*, and each is worth reading as a class of mistake rather than a typo.
 
@@ -5962,15 +5962,15 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 4. **The money schemas and the row types disagreed, which is a compile error and not a documentation nit.** `LandedCostAllocationSchema.allocatedAmount` and the three `LandedCostSummarySchema` money fields were `MoneySchema` (an object) while `LandedCostRow` and `LandedCostSummaryRow` are `string` and the route test asserts bare strings — and `RouteHandler` checks `c.json` against the declared schema. Resolved in the direction the design already implies: the four fields (and `DocumentLinkSchema.amount`, which had the same shape without saying so) are a 4-dp decimal string, and **Task 0 Step 5 now amends §4.2.8** with the exception and its two reasons — no currency column on `document_link`, and a path that already names the document. §4.2.8 requires the amendment before the exception, which is why it is in Task 0 and not in a comment.
 5. **Task 10 called `valuationAsOf` with a non-existent `itemIds` and no `limit`.** 3B's `ValuationParams` is `{ companyId; asOf; itemId?; warehouseId?; cursor?; limit }` (3b:4475–4486); an excess property on an object literal and a missing required one are two TypeScript errors, so the suite could not compile. Now `{ companyId, asOf, itemId, limit: 100 }`.
 6. **Task 4's price-from-source assertion was arithmetically impossible against its own helper.** `issuedOrder(quantity, unitPrice)` wrote `unitPrice` into **both** `unit_price` and `amount`, so `issuedOrder("100.000000", "500.0000")` gave a 500.0000 unit price and the copy produced `20000.0000` where the test expects `200.0000`. The helper now takes `amount` as a third argument — explicitly, because computing `quantity × unitPrice` in TypeScript would put a monetary value through a `number` — and all five call sites state all three figures. The same helper was economically wrong for every other call.
-7. **The over-fulfilment guard was defeatable by concurrency alone — the exact defect 3A found in itself.** `sum(x.quantity)` under no lock, at READ COMMITTED (3a:68): two transactions each linking 6 against a 10-unit line both read `v_linked = 0`, both satisfy the test and both commit. 3A fixed the same class with `pg_advisory_xact_lock(hashtextextended(key, 0))` before the read (3a:5719–5727); migration 0037 now takes that lock on `'document_link:' || new.source_line_id`, `linkFulfilment` sorts its lines by `sourceLineId` so two multi-line links cannot deadlock, ADR 0040's Decision 3 says both, and Task 14's SAH-017 block gained two cases — one structural (the lock precedes the sum in `pg_get_functiondef`, the shape 3B uses for sah-010) and one two-transaction.
+7. **The over-fulfilment guard was defeatable by concurrency alone — the exact defect 3A found in itself.** `sum(x.quantity)` under no lock, at READ COMMITTED (3a:68): two transactions each linking 6 against a 10-unit line both read `v_linked = 0`, both satisfy the test and both commit. 3A fixed the same class with `pg_advisory_xact_lock(hashtextextended(key, 0))` before the read (3a:5719–5727); migration 0037 now takes that lock on `'document_link:' || new.source_line_id`, `linkFulfilment` sorts its lines by `sourceLineId` so two multi-line links cannot deadlock, ADR 0040's Decision 3 says both, and Task 14's LEGACY-017 block gained two cases — one structural (the lock precedes the sum in `pg_get_functiondef`, the shape 3B uses for legacy-010) and one two-transaction.
 8. **Task 14 asserted the open-quantity view is SELECT-only, which 0037 did not make true.** Plan 0A's `alter default privileges … grant select, insert, update on tables to app_rw` (plan0A:2564) covers **views**, so the grant list was `["INSERT", "SELECT", "UPDATE"]` and Task 1's own case — which only asserted SELECT was *present* — concealed it. 0037 now issues `revoke insert, update on app.document_open_quantity from app_rw`, and both cases assert the exact list.
 9. **Task 1's "refuses to delete an ISSUED source line" expected SQLSTATE 23503 and gets 23514.** 2B's `forbid_line_delete_unless_draft()` is a BEFORE DELETE trigger raising `ERR_DOC_NOT_DRAFT` with `errcode = 'check_violation'` whenever the parent is not a draft (2b:1874–1887), and it fires before any FK check. The case is retitled and asserts `/ERR_DOC_NOT_DRAFT/`; the DDL comment already knew this ("an issued order cannot be deleted anyway"), and the finding's alternative — pinning the FK against a *draft* source — is unreachable, because the 0037 guard refuses a link whose source is not issued or posted.
 10. **Task 11 posted through `POST …/documents/{id}/post`, which does not exist.** 1A's `documentRoutes` declares four paths and `…/post` is none of them (1a:4768–4876); §4.5.4 makes `to = "posted"` on `…/transitions` the thing that calls `postDocument`, and 2C's own test-15 file posts that way (2c:5441). The case now uses `/transitions` with `{ to: "posted" }`, asserts `status`/`series` off `TransitionResultSchema`, and reads the pinned policy version from `app.document.posting_policy_id` — there is no `postingPolicyVersion` member on any declared schema.
 11. **Task 9's route test called `problemOf` on a parsed body and never awaited it.** `problemOf(res): Promise<Problem>` takes the `Response` (§4.17.1), so all five assertions compared `undefined`. Fixed to `(await problemOf(res)).code`, as Task 4's suite already does.
 12. **Task 10's layer-residue assertion had the wrong scale.** `numeric(19,6) × numeric(19,4)` has scale 10 in PostgreSQL and `sum()` keeps it, so `::text` yields `"210.0000000000"`. Now `round(…, 4)::text` against `"210.0000"` — the rounding `valuationAsOf` itself applies per layer (3b:1106), which is what makes the two readers agree.
 13. **Task 6 committed a deliberately red suite, against this plan's own Global Constraint 16.** Split instead: Task 6 lands the seed file and the one envelope case (green on disk alone), and **Task 8 Step 7** appends the four posting cases *and the `beforeAll` they need* in the commit that makes them pass. Applying that fix exposed the same defect in **Task 5** (two of its five cases needed Task 6's seed file) and a second-order one: leaving Task 6's full import block beside one case would fail `bun run lint` on unused imports. Both are fixed — Task 5 lands three cases and Task 6 Step 5 appends the other two, and each file's imports arrive with the cases that use them. The Execution handoff no longer carries a "land three tasks as one PR" escape hatch, because there is nothing to escape.
-14. **Five of Task 14's helpers existed only as prose instructions to copy code from elsewhere** — the one "similar to Task N" pattern in an otherwise fully-coded plan. All are written out, and writing them exposed the real defect underneath: the three blocks called `await thinRegression("…")` destructuring `{ db, s }` and then `db.stop()`. `thinRegression(sah, heading, cites, body)` returns **`void`** and invokes its body inside a running `it` (0b:5312–5326), and `sharedDb()`'s container is **one for the whole `tests` run** — stopping it would break every regression file after this one. All three blocks are now plain `describe`s over 3B's **`costingContext(sah)`** (amendment A21(a)), which is the shape 3B chose for exactly this reason, and none of them stops the container.
-15. **The §4.7.2 entry said three branches; the code lands four.** Task 0 Step 4, the §4.18 row, Task 8's prose and heading, the File Structure line and Task 8's commit body all now say four and name branch 4 as the explicit `null` that makes the engine raise `ERR_COST_VALUE_MISSING` (SAH-007).
+14. **Five of Task 14's helpers existed only as prose instructions to copy code from elsewhere** — the one "similar to Task N" pattern in an otherwise fully-coded plan. All are written out, and writing them exposed the real defect underneath: the three blocks called `await thinRegression("…")` destructuring `{ db, s }` and then `db.stop()`. `thinRegression(legacyDefect, heading, cites, body)` returns **`void`** and invokes its body inside a running `it` (0b:5312–5326), and `sharedDb()`'s container is **one for the whole `tests` run** — stopping it would break every regression file after this one. All three blocks are now plain `describe`s over 3B's **`costingContext(legacyDefect)`** (amendment A21(a)), which is the shape 3B chose for exactly this reason, and none of them stops the container.
+15. **The §4.7.2 entry said three branches; the code lands four.** Task 0 Step 4, the §4.18 row, Task 8's prose and heading, the File Structure line and Task 8's commit body all now say four and name branch 4 as the explicit `null` that makes the engine raise `ERR_COST_VALUE_MISSING` (LEGACY-007).
 16. **Five `Expected: PASS (n)` counts did not match the `it` blocks written**, and an executing engineer treats them as the pass criterion. Recounted from the blocks, not adjusted by eye, and then recounted again after findings 13 and 14 moved cases between files: 13 (`document-link`), 5 (`chart-of-accounts-3c`), 11 (`landed-cost-allocation`), 10 (Task 8's `landed-cost`), 16 (after Task 9's six), 1 then 5 (`goods-receipt`), 3 then 5 (`purchase-order`).
 17. **Three smaller ones.** `permissions.ts` was drawn under `packages/contracts/src/` in the File Structure block while Task 2's own Files list had it right — §3.6.1 fixes it at `packages/contracts/permissions.ts` (spec:2135), and the diagram is what an engineer scans first. `packages/contracts/src/inventory/landed-cost.ts` imported `z` from `"zod"` and then called `.openapi(…)`, which exists only on `@hono/zod-openapi`'s re-export — the same package's `accounting/document-link.ts` had it right. And `listLandedCost` cast `created_at::text`, which is `2026-01-15 10:00:00+00` and fails `TimestampSchema`'s RFC 3339; both readers now leave the column uncast, type it `Date` and call `.toISOString()`, so the same field is read the same way in both files.
 18. **Task 9's route test resolved the seed pack from a cwd-relative path.** §4.2.13's `packRoot` promises nothing about a working directory and Vitest runs that suite from `apps/api`, so `beforeAll` would have raised ENOENT before any case ran. Built absolutely from `import.meta.url`, as every `packages/db` suite in this plan does.
@@ -5993,7 +5993,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 26. **Three Task 9 route cases asserted 422 for `ERR_VALIDATION_FAILED`, whose registry status is 400.** §4.2.4 fixes that code at **400** ("Zod body/query failure") and `AppError` takes its status from `ERRORS[code].status`, so the "policy does not receive stock" refusal, the unknown-method Zod failure and the `by_weight`-without-`weight_kg` refusal all return 400. Task 4's own suite was already consistent with the registry (400 for `ERR_IDEMPOTENCY_KEY_MISSING`, 422 only for `ERR_DOC_LINK_OVER_FULFILLED`, which §4.2.4 does allocate at 422). All three now assert 400. **The finding's second half is half right and is applied in the corrected form:** `allocateLandedCostRoute.responses` did declare a 422 no code on that path can produce, and it now declares **400** instead — plus **409**, because migration 0038's draft-only trigger raises `ERR_DOC_NOT_DRAFT` and that has to be able to reach the client. `listLandedCostRoute.responses`, which the finding also named, never carried a 422: it is `200/403/404` and is unchanged.
 27. **Making that 409 true exposed a real hole: the landed-cost handlers swallowed database tokens.** Both `catch` blocks translated `LandedCostError` and then `throw error`, so 0038's draft-only refusal — an ordinary user error — would have left `packages/db` as a raw postgres error and reached the client as an unmapped `ERR_INTERNAL` 500. The file now carries Task 4's `asAppError` verbatim (`fromDatabaseError` for anything that is not a `ERR_*: ` token) and both handlers end `throw asAppError(error)`. `fromDatabaseError` is added to the `@dulja/contracts` import and to Task 9's Consumes block. **And the branch is tested, because a declared response with no case behind it is what Global Constraint 2 forbids:** Step 5 gains an eighth route case that drives a shipment to `issued` through `app_rw` — Tasks 1 and 7's pattern — POSTs the allocation and asserts `409` / `ERR_DOC_NOT_DRAFT`; Step 10's expected count is 8, and its "failures worth naming" list leads with the 500 that means `asAppError` was skipped.
 28. **Task 9's handler imported `IdempotencyHeader` from `@dulja/contracts`, which does not export it.** 0B Task 11 defines it once in **`apps/api/src/routes/index.ts`**, 2C imports it as `from "../index"`, and this plan's **own Task 4** already imports it correctly as `from "../routes/index"` — so the two handler files in one slice disagreed and the newer one did not compile. Moved to its own import line, and Step 8's "rules this file obeys" paragraph is now five rules rather than four, with the import home stated as rule 5.
-29. **Task 9's route suite imported `chartOfAccountsLoader` from `@dulja/db/seed`, which 0C's barrel does not re-export.** 0C's `packages/db/src/seed/index.ts` re-exports `SeedError`, `SUB_PACKS`, `SeedConfig`, `ConfigError`, `parseSeedArgs`, `assertPackShape`, `PHASE_0_SUB_PACK_DIRECTORIES`, `readPackFile`, `seed` and the auth-admin names (0c:2492ff, 0c:3508ff); `chartOfAccountsLoader` it only *imports*, to populate the private `LOADERS` map (0c:3813). This slice's `packages/db` suites hide the gap by importing `../../src/seed/chart-of-accounts` directly; a suite in `apps/api` cannot, so its `beforeAll` would have thrown and every case in the file errored before running. Closed the way **1A closed the identical gap for `documentTypesLoader`** (1a:5356): one line, `export { chartOfAccountsLoader } from "./chart-of-accounts";`, added to the seed barrel — never the main barrel, which §3.1 and 0C's `sah-039` regression keep free of `./seed` at any depth. `packages/db/src/seed/index.ts` is now in Task 9's Files list, its commit and the File Structure block. **Seeding the accounts with `seedAccount` instead was the other option and was rejected**: the suite needs the whole `0c-base.json` chart plus `3c-purchasing.json` for the policies it validates, and hand-listing them would put a second, drifting copy of the chart in a test.
+29. **Task 9's route suite imported `chartOfAccountsLoader` from `@dulja/db/seed`, which 0C's barrel does not re-export.** 0C's `packages/db/src/seed/index.ts` re-exports `SeedError`, `SUB_PACKS`, `SeedConfig`, `ConfigError`, `parseSeedArgs`, `assertPackShape`, `PHASE_0_SUB_PACK_DIRECTORIES`, `readPackFile`, `seed` and the auth-admin names (0c:2492ff, 0c:3508ff); `chartOfAccountsLoader` it only *imports*, to populate the private `LOADERS` map (0c:3813). This slice's `packages/db` suites hide the gap by importing `../../src/seed/chart-of-accounts` directly; a suite in `apps/api` cannot, so its `beforeAll` would have thrown and every case in the file errored before running. Closed the way **1A closed the identical gap for `documentTypesLoader`** (1a:5356): one line, `export { chartOfAccountsLoader } from "./chart-of-accounts";`, added to the seed barrel — never the main barrel, which §3.1 and 0C's `legacy-039` regression keep free of `./seed` at any depth. `packages/db/src/seed/index.ts` is now in Task 9's Files list, its commit and the File Structure block. **Seeding the accounts with `seedAccount` instead was the other option and was rejected**: the suite needs the whole `0c-base.json` chart plus `3c-purchasing.json` for the policies it validates, and hand-listing them would put a second, drifting copy of the chart in a test.
 30. **Fourteen document-type codes were configured without a §4.14 row, on a misreading of that section's own paragraph.** The plan argued they were "the shape §4.14's 'test only' paragraph permits" because none reaches a seed pack. That paragraph says the reverse: its rows "are registered here because hazard 32 makes an unregistered document-type code a review-blocking finding, **not** because they are packaged". 2A, 2B, 3A and 8B each registered their file-local codes on that rule. **Task 0 Step 6 now adds all fourteen** as four grouped rows (the shape 2B used for `NG_NG`/`NG_RC`/`NG_HT`), amends §4.14's count sentence from thirteen to twenty-seven, adds a §4.18 round-3 row, and records that hazard 33 does not engage because every one of the fourteen policies is `lines: []`. The Assumptions block's "seeds no new test-only code" and the namespace paragraph above, both of which repeated the misreading — and the latter of which listed only six of the fourteen — are corrected.
 31. **The phase gate told the executor to run a suite this plan itself says is red.** `bun run --cwd packages/db test -- test/costing` reads as a green check, but 3B's own Task 7 receipt case (3b:2736) fails from the moment 3B merges — `planMovements` returns `value: null`, `costReceipt` refuses a null — and Task 8 Step 9 says so outright. An executor seeing red there would conclude 3B had not merged. The gate now names the inheritance and says a *green* `test/costing` is itself a signal to stop. **It deliberately does not name a failure count.** The first rewrite said "red in exactly one place"; that is an assertion about 3B's fixtures, and how many of its replay, valuation and reversal cases build a layer by posting a receipt is 3B's business, not something this plan can pin without opening it. The discriminator is the **error code** — every inherited failure carries `ERR_COST_VALUE_MISSING` — which is robust whatever the count turns out to be. The "every task's commit is green" paragraph and **Global Constraint 16** are qualified the same way, and both now state the alternative — move Task 8 Steps 4–6 ahead of Task 1 — for a reader who wants zero red at every commit.
 32. **Task 8 Step 6's fallback export list said "seven names" and omitted `landedCostSummary`.** It miscounted (six values plus four types) and left off both `landedCostSummary` and `LandedCostSummaryRow` — which Task 9's handler imports from `@dulja/db` and returns as the `summary` half of both responses, so an engineer taking the named-re-export branch would break Task 9 two tasks later. Rewritten as all thirteen names, written out as real `export` / `export type` statements, with the reason `landedCostSummary` is not optional stated.

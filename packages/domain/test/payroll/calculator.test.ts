@@ -276,7 +276,7 @@ describe("payrollCalculator.calculate (§4.12.1)", () => {
     expect(out.employees[0]!.net).toEqual(m("1200.0000"));
   });
 
-  it("a quantity-based component with NO per-unit amount refuses, naming the employee (SAH-011)", () => {
+  it("a quantity-based component with NO per-unit amount refuses, naming the employee (LEGACY-011)", () => {
     expect(() =>
       run(
         [
@@ -331,7 +331,7 @@ describe("payrollCalculator.calculate (§4.12.1)", () => {
   it("an employee with NO compensation at all refuses too, and with the OTHER message", () => {
     // The two refusals are ordered: the component gate runs before the currency is derived, so the case above gets
     // the message naming its component and this one gets the currency message. If either case reports the other's
-    // message, the two are running in the wrong order and SAH-011's diagnosis is the thing lost.
+    // message, the two are running in the wrong order and LEGACY-011's diagnosis is the thing lost.
     expect(() => run([EMPLOYEE({ compensation: [] })], [])).toThrow(
       new PayrollCalculationError(
         "ERR_PAYROLL_INPUT_MISSING",
@@ -353,7 +353,7 @@ describe("payrollCalculator.calculate (§4.12.1)", () => {
     );
   });
 
-  it("a table whose effective range does not COVER the period refuses (test 29, SAH-020)", () => {
+  it("a table whose effective range does not COVER the period refuses (test 29, LEGACY-020)", () => {
     expect(() =>
       run([EMPLOYEE()], [REF({ effectiveFrom: "2026-01-15", effectiveTo: null })]),
     ).toThrow(

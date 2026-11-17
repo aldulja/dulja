@@ -11,8 +11,8 @@
 ## Context
 
 spec:2080: "This document states no rate, threshold, ceiling or formula." spec:2229 asks for "EPF, SOCSO, EIS
-and PCB/MTD as versioned, effective-dated, **verified** rate tables pinned per payroll line". SAH-020 is a legacy
-GST return that hard-coded a rate; SAH-013 is a legacy reversal that re-read _current_ flags instead of what was
+and PCB/MTD as versioned, effective-dated, **verified** rate tables pinned per payroll line". LEGACY-020 is a legacy
+GST return that hard-coded a rate; LEGACY-013 is a legacy reversal that re-read _current_ flags instead of what was
 originally applied. Both failures are the same shape: a figure that lives in code, or a figure that is re-derived
 at read time.
 
@@ -33,7 +33,7 @@ Three seams, and no fourth.
    does not (`RateTableValidationError`, `ERR_VALIDATION_FAILED`).
 3. **A run pins what it used.** `PayrollCalculator.calculate` returns `pinnedTables`, and the run service writes
    `payroll_run.pinned_tables` and `payroll_line.rate_table_id` / `rate_table_version`. Nothing re-reads
-   `statutory_rate_table` for a posted line, ever. That is SAH-013's fix applied to statutory rates.
+   `statutory_rate_table` for a posted line, ever. That is LEGACY-013's fix applied to statutory rates.
 
 Refusals rather than defaults: a table with `verified = false`, or whose effective range does not cover the pay
 period, raises `ERR_PAYROLL_RATE_TABLE_UNVERIFIED`, and the **whole run** refuses before a single figure is
@@ -41,14 +41,14 @@ computed; a scheme an employee's earnings feed with no table raises the same cod
 (`required_profile_fields`, or a relief the table reads) that is `null` or absent raises
 `ERR_PAYROLL_INPUT_MISSING` naming the employee, the table and the field; a base outside every band, or a
 chargeable amount outside every bracket, raises `ERR_PAYROLL_INPUT_MISSING` naming the employee and the table.
-**No calculator returns zero for an input it does not understand** — SAH-011 is precisely the failure where a NULL
+**No calculator returns zero for an input it does not understand** — LEGACY-011 is precisely the failure where a NULL
 became a figure.
 
 ## Consequences
 
 - Tests run on the clearly synthetic `SYNTH` table (§4.12.4) and on in-memory tables built in the test file. No
   file exists under `packages/db/seed/my/statutory/<SCHEME>/` until OD-23 supplies verified tables with `source`,
-  `loaded_by` and `verified_by`. `tests/regression/sah-020.test.ts` scans the package's executable source for any
+  `loaded_by` and `verified_by`. `tests/regression/legacy-020.test.ts` scans the package's executable source for any
   numeric literal other than `0` and `1`.
 - The `progressive_schedule` calculator computes on the period's chargeable amount and makes no annualisation
   claim. If the accountant's verified method annualises, that is a fourth `kind` in §4.12.3 and a fourth
@@ -56,7 +56,7 @@ became a figure.
 - `SchemeCalculator.compute` receives `ytd` and `period` and the three shipped calculators read neither. The
   parameters are in §4.12.1's frozen signature so a later `kind` that needs them does not change the seam.
 - Rounding is the table's declared `rounding_mode`, applied **once**, through `@dulja/domain`'s one `round`
-  (SAH-019). A table that omits the optional member rounds `HALF_AWAY_FROM_ZERO`, §4.2.1's base mode; the run
+  (LEGACY-019). A table that omits the optional member rounds `HALF_AWAY_FROM_ZERO`, §4.2.1's base mode; the run
   service copies the scheme row's own `rounding_mode` into such a definition, so the pure calculator stays total.
 - A prorated amount rounds `HALF_AWAY_FROM_ZERO` at scale 4 once, from the exact `eligible / period` factor
   (`prorationFactor` returns the integer pair, never a float). The rule (`calendar_days` or `working_days`) is

@@ -32,7 +32,7 @@ export const SERIES_GAP_CHECK: ProjectionCheck = {
             number: g.number,
           },
           side: "missing_in_projection",
-          detail: `number ${g.number} of series ${c.series} is neither an issued document nor a recorded void (spec:2222, SAH-051)`,
+          detail: `number ${g.number} of series ${c.series} is neither an issued document nor a recorded void (spec:2222, LEGACY-051)`,
         });
       }
     }

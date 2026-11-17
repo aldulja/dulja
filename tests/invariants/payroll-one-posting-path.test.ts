@@ -1,4 +1,4 @@
-// Acceptance test 28 (spec:2446, SAH-003, SAH-009) — "the run posts through the posting service": a posted PAYROLL
+// Acceptance test 28 (spec:2446, LEGACY-003, LEGACY-009) — "the run posts through the posting service": a posted PAYROLL
 // and a hand-keyed JOURNAL carrying the same lines produce identical ledger_entry and ledger_entry_dimension
 // multisets on hazard 18's fixed projection. 8B Task 13. Figures are the synthetic SYNTH table's (hazard 1).
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -61,7 +61,7 @@ afterAll(async () => {
   await db.stop();
 });
 
-describe("acceptance test 28 — one payroll posting path (spec:2446, SAH-003, SAH-009)", () => {
+describe("acceptance test 28 — one payroll posting path (spec:2446, LEGACY-003, LEGACY-009)", () => {
   it("a PAYROLL run and a hand-keyed JOURNAL with the same lines produce IDENTICAL ledger rows", async () => {
     // ── the PAYROLL side: employee A alone, so BRANCH is s.hq on both sides ──────────────────────────
     const run = await withTenant(db.rw, ctx(s.human), (tx) =>

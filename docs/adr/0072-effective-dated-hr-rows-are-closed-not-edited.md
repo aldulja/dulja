@@ -47,7 +47,7 @@ company of the same tenant.
   and whose `created_at` is after the run's `calculated_at`.
 - The audit log carries the whole history twice — once as the closed rows, once as before/after images. That is
   redundancy on purpose: the rows answer "what was in force", the audit answers "who changed it and when"
-  (spec:2105, SAH-029/030).
+  (spec:2105, LEGACY-029/030).
 - Genuine correction of a mistyped row is a *new* row, never an UPDATE of a business column. spec:2049 admits no
   deletion here.
 
