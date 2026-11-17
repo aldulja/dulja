@@ -21,31 +21,38 @@
 
 ## Allocation
 
-| Agent | Role | Branch | Base commit | Tasks or findings | File globs | Migration / ADR numbers |
-| ----- | ---- | ------ | ----------- | ----------------- | ---------- | ----------------------- |
+- **Branch:** <branch> · **Base commit:** `<sha>`
+- **Migration numbers:** <NNNN, … or "none"> · **ADR numbers:** <NNNN, … or "none">
+
+## Stage log
+
+| Stage | Role | Entered at commit | Left at commit | Gate met (what shows it) |
+| ----- | ---- | ----------------- | -------------- | ------------------------ |
 
 ## Tasks
 
-| Task | Builder | State | Failing-first evidence | Commit |
-| ---- | ------- | ----- | ---------------------- | ------ |
+| Task | State | Failing-first evidence | Commit |
+| ---- | ----- | ---------------------- | ------ |
 
 ## Findings
 
-| Id | Round | Severity | Title | Confirmed by orchestrator | Status (open / fixing / closed / recorded / owner) | Fix commit |
-| -- | ----- | -------- | ----- | ------------------------- | --------------------------------------------------- | ---------- |
+**Review independent?** <no — the session that built it reviewed it / yes — a fresh session, round N>
+
+| Id | Round | Severity | Title | Status (open / fixing / closed / recorded / owner) | Fix commit |
+| -- | ----- | -------- | ----- | --------------------------------------------------- | ---------- |
 
 ## Guard checks
 
-| Agent | Command | Result |
+| Stage | Command | Result |
 | ----- | ------- | ------ |
-| | `bun scripts/agents/role-guard.ts verify <role> --base <sha> …` | |
+| Build | `bun scripts/agents/role-guard.ts verify build --base <sha> --allow …` | |
 
 ## Definition of done
 
 | # | Clause | Proving test | Result |
 | - | ------ | ------------ | ------ |
 
-## Verification of the combined tree
+## Verification of the whole tree
 
 | Check | Result |
 | ----- | ------ |

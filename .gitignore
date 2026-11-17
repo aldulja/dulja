@@ -7,9 +7,9 @@ coverage/
 .env
 .env.*
 !.env.example
-# Local Claude Code settings stay untracked; the shared agent definitions are committed (ADR 0088, amended).
+# Local Claude Code state stays untracked — the workflow's role state among it; the project settings that
+# register the role guard's hook are committed (ADR 0088, amended).
 .claude/*
-!.claude/agents/
 !.claude/settings.json
 .DS_Store
 Thumbs.db

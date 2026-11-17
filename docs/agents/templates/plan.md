@@ -1,8 +1,8 @@
 # Plan — <feature title>
 
 **Feature folder:** `docs/features/<YYYY-MM-DD>-<slug>/`
-**Written by:** spec agent, <date>, against `main` at `<sha>`
-**Owner approval:** recorded in `approval.md` beside this file, by the orchestrator only. No `approval.md`, no build.
+**Written:** in the spec role, <date>, against `main` at `<sha>`
+**Owner approval:** recorded in `approval.md` beside this file, in the orchestrator role only. No `approval.md`, no build.
 
 ## 1. The request
 
@@ -33,7 +33,7 @@
 
 ## 5. Contracts
 
-- **Migrations:** <`NNNN_<verb>_<noun>.sql` + down, one line each — numbers are the orchestrator's — or "none">
+- **Migrations:** <`NNNN_<verb>_<noun>.sql` + down, one line each — numbers are allocated in stage 4 — or "none">
 - **Routes:** <method, path, permission code, Zod schema, idempotency, tenant-isolation test — or "none">
 - **Permission codes, `ERRORS` rows, document types, jobs:** <or "none">
 - **Exported names another workspace imports:** <or "none">
@@ -41,7 +41,7 @@
 
 ## 6. Tasks
 
-One task is one thing a builder can finish and verify. Test first, always.
+One task is one thing that can be finished and verified on its own. Test first, always.
 
 ### T1 — <title>
 
@@ -53,11 +53,11 @@ One task is one thing a builder can finish and verify. Test first, always.
 
 ### T2 — …
 
-## 7. Parallel groups
+## 7. Files the build may change
 
-| Group | Tasks | File globs | Can run beside |
-| ----- | ----- | ---------- | -------------- |
-| A | T1, T2 | `packages/db/**` | B |
+Globs, one per line. Stage 5's `verify` holds the build to them, so a file missing here sends the plan back to spec.
+
+- `<glob>`
 
 ## 8. Definition of done
 

@@ -4,6 +4,7 @@
 
 ## Summary
 
+- **Independent?** <no — written by the session that built the change / yes — a fresh session>
 - **Counts:** <blocker / high / medium / low>
 - **Read:** <files read in full>
 - **Ran:** <commands and their results>

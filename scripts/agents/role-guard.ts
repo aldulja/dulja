@@ -1,33 +1,34 @@
 /**
- * The feature workflow's role guard (AGENTS.md, "Feature Workflow"; the roles are `.claude/agents/<role>.md`).
+ * The feature workflow's role guard (AGENTS.md, "Feature Workflow"; the role briefs are `docs/agents/<role>.md`).
  *
- * A brief says what a role must not touch; this file is what holds it to that. It is used two ways:
+ * One session works a feature's stages in order — orchestrator, spec, build, review, fix — and never hands a
+ * stage to a subagent. A brief says what a role must not touch; this file is what holds the session to it
+ * while it is in that role.
  *
- *   bun scripts/agents/role-guard.ts hook [<role>]
- *       A Claude Code hook, registered once in `.claude/settings.json`. The role is the `agent_type` of the hook
- *       input — the agent's name — so one registration serves all five, and a call from the main conversation or
- *       from any other agent is let through untouched. Before a file tool runs it refuses a path outside the
- *       role's own; before a shell command it refuses a merge or a push to the default branch; and when a spec
- *       or review agent tries to finish it refuses while the tree differs from where the agent started in any
- *       file the role may not leave changed — which is what catches an edit made through the shell.
+ *   bun scripts/agents/role-guard.ts enter <role>
+ *       Puts the session in a role. It records where the tree stands, and refuses to move on while the role
+ *       being left has changed a file it may not leave changed (a review that edited product code, a spec that
+ *       touched anything outside its feature folder).
  *
- *       The hooks are in the settings file and not in each agent's frontmatter because Claude Code runs
- *       frontmatter hooks only in a folder whose trust dialog was accepted, and a cloud or `-p` session never
- *       shows that dialog: there, an agent's own hooks are silently skipped (seen on 2026-11-17, when a review
- *       agent wrote a product file unopposed), while a settings file's hooks run.
+ *   bun scripts/agents/role-guard.ts leave        ends the role, with the same check.
+ *   bun scripts/agents/role-guard.ts status       says which role is in force.
+ *
+ *   bun scripts/agents/role-guard.ts hook
+ *       A Claude Code hook, registered once in `.claude/settings.json`. While a role is in force it refuses a
+ *       file tool a path outside the role's own, refuses a merge, a push to the default branch and any
+ *       subagent, and tells the spec and review roles straight after a shell command that changed a file they
+ *       may not change. With no role in force it lets everything through: an ordinary session is not guarded.
  *
  *   bun scripts/agents/role-guard.ts verify <role> --base <sha> [--allow <glob>]...
- *       The orchestrator's check after an agent returns, and the one that holds whatever tool ran the agent:
- *       every path changed since <sha>, committed or not, must be one the role may leave changed. For build
- *       and fix, `--allow` narrows that to the files the agent was given.
+ *       Every path changed since <sha>, committed or not, must be one the role may leave changed; for build
+ *       and fix, `--allow` narrows that to the files the plan names. It needs no hook and no role in force.
  *
  * Paths are repository-relative with forward slashes. Nothing here reads a file's content or runs a test: it
  * answers "which files changed, and was this role allowed to change them" and nothing else.
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { isAbsolute, join, relative, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const ROLES = ["orchestrator", "spec", "build", "review", "fix"] as const;
@@ -36,24 +37,23 @@ export type Role = (typeof ROLES)[number];
 interface RoleRule {
   /** Globs the role's file tools may write while it works. */
   readonly write: readonly string[];
-  /** Globs that may differ from the starting tree when the role finishes; `null` is "not checked at the end". */
+  /** Globs that may differ from the tree the role started on when it is left; `null` is "not checked". */
   readonly leave: readonly string[] | null;
   /** Globs refused even when `write` or `leave` admits them. */
   readonly deny: readonly string[];
 }
 
-/** The guard and the agent definitions: no role edits what holds the roles in place. The owner changes these. */
-const GUARD = [".claude/**", "scripts/agents/**"] as const;
-/** The orchestrator's alone (AGENTS.md, "Feature Workflow"). The two register tables inside Plan Contracts
- *  §3.4.1 and §3.9 are the orchestrator's too, but a path cannot say which section of a file an edit touches,
- *  so that half stays a rule of the briefs. */
+/** The workflow itself — the guard, its hook registration and the briefs. The owner changes these, not a role. */
+const GUARD = [".claude/**", "scripts/agents/**", "docs/agents/**"] as const;
+/** The orchestrator role's alone (AGENTS.md, "Feature Workflow"). The two register tables inside Plan Contracts
+ *  §3.4.1 and §3.9 are that role's too, but a path cannot say which section of a file an edit touches, so that
+ *  half stays a rule of the briefs. */
 const ORCHESTRATOR_ONLY = ["AGENTS.md", "docs/status/**"] as const;
-/** A feature's record of the owner's approval and its ledger. A builder refuses a plan with no `approval.md`,
- *  so the file is worth something only if the roles that want the build to start cannot write it. */
+/** A feature's record of the owner's approval and its ledger. The build brief refuses a plan with no
+ *  `approval.md`, so the file is worth something only if the roles that want the build to start cannot write it. */
 const FEATURE_RECORD = ["docs/features/*/approval.md", "docs/features/*/ledger.md"] as const;
 
 export const RULES: Readonly<Record<Role, RoleRule>> = {
-  // Shares its tree with the agents it starts, so the end of its turn proves nothing about its own edits.
   orchestrator: { write: ["docs/**", "AGENTS.md"], leave: null, deny: GUARD },
   spec: {
     write: ["docs/features/**"],
@@ -66,8 +66,7 @@ export const RULES: Readonly<Record<Role, RoleRule>> = {
     leave: ["docs/features/*/findings/**"],
     deny: GUARD,
   },
-  // Product code is their work. The tree they leave is checked by `verify --allow`, not by the stop hook:
-  // which files are theirs is the orchestrator's allocation, different for every task.
+  // Product code is their work, so nothing is checked on leaving; `verify --allow` holds them to the plan's files.
   // They execute the plan and report against it; they do not edit it.
   build: {
     write: ["**"],
@@ -120,14 +119,22 @@ export function decideWrite(role: Role, path: string): Decision {
     reason:
       `The ${role} role may not write ${file}. It may write: ${rule.write.join(", ")}` +
       (rule.deny.length ? ` — except ${rule.deny.join(", ")}` : "") +
-      `. If the work needs this file, tell the orchestrator (.claude/agents/${role}.md).`,
+      `. If the stage needs this file, it belongs to another role: finish this stage and enter that one ` +
+      `(docs/agents/${role}.md).`,
   };
 }
 
+const STATE_FILE = ".claude/role-state.json";
 const DEFAULT_BRANCH = /^(?:\+?[^:\s]*:)?(?:refs\/heads\/)?(?:main|master)$/;
 
-/** May any role run this shell command? Merging is the owner's, and so is the default branch. */
+/** May a session in a role run this shell command? Merging is the owner's, and so is the default branch. */
 export function decideBash(command: string): Decision {
+  if (command.includes("role-state.json"))
+    return {
+      ok: false,
+      reason:
+        "The role state is changed only by `bun scripts/agents/role-guard.ts enter <role>` and `leave`.",
+    };
   for (const segment of command.split(/&&|\|\||[;|\n]/)) {
     if (/\bgh\s+pr\s+merge\b/.test(segment))
       return { ok: false, reason: "Merging a pull request is the owner's, never an agent's." };
@@ -137,8 +144,7 @@ export function decideBash(command: string): Decision {
     if (words.some((word) => word === "--all" || word === "--mirror" || DEFAULT_BRANCH.test(word)))
       return {
         ok: false,
-        reason:
-          "Pushing to the default branch is the owner's. Push to the branch the orchestrator gave you.",
+        reason: "Pushing to the default branch is the owner's. Push to the feature's branch.",
       };
   }
   return { ok: true };
@@ -158,13 +164,13 @@ const lines = (text: string): string[] => text.split("\0").filter(Boolean);
 export function changedSince(cwd: string, base: string): string[] {
   const tracked = lines(git(cwd, ["diff", "--name-only", "--no-renames", "-z", base]));
   const untracked = lines(git(cwd, ["ls-files", "--others", "--exclude-standard", "-z"]));
-  return [...new Set([...tracked, ...untracked])].toSorted();
+  return [...new Set([...tracked, ...untracked])].filter((path) => path !== STATE_FILE).toSorted();
 }
 
 export interface VerifyOptions {
   cwd: string;
   base: string;
-  /** Build and fix only: the files the orchestrator gave the agent. Defaults to everything the role may write. */
+  /** Build and fix only: the files the plan names. Defaults to everything the role may write. */
   allow?: readonly string[];
 }
 
@@ -180,32 +186,17 @@ export function verifyRole(role: Role, options: VerifyOptions): string[] {
   );
 }
 
-export interface HookInput {
-  hook_event_name?: string;
-  session_id?: string;
-  agent_id?: string;
-  /** The agent's name: present inside a subagent, and in a session started with `--agent`. */
-  agent_type?: string;
-  cwd?: string;
-  tool_name?: string;
-  tool_input?: Record<string, unknown>;
-}
-
-export interface HookResult {
-  /** 0 lets the action through, 2 refuses it and shows `message` to the agent, 1 is a warning that refuses nothing. */
-  exit: 0 | 1 | 2;
-  message: string;
-}
-
-interface Baseline {
+interface State {
+  role: Role;
+  /** The Claude Code session the role belongs to; `null` until that session's first hook call claims it. */
+  session: string | null;
   head: string;
-  /** Content hash of every file already dirty when the agent started: that dirt is not the agent's. */
+  /** Content hash of every file already dirty when the role was entered: that dirt is not the role's. */
   dirty: Record<string, string>;
-  blocks: number;
 }
 
-const MAX_BLOCKS = 3;
-const FILE_TOOLS = new Set(["Write", "Edit", "MultiEdit", "NotebookEdit"]);
+const isRole = (value: unknown): value is Role =>
+  typeof value === "string" && (ROLES as readonly string[]).includes(value);
 
 function hashes(root: string, paths: readonly string[]): Record<string, string> {
   const present = paths.filter((path) => existsSync(join(root, path)));
@@ -220,59 +211,129 @@ function hashes(root: string, paths: readonly string[]): Record<string, string> 
   return out;
 }
 
-const stateFile = (state: string, id: string, role: Role): string =>
-  join(state, `${id.replace(/[^A-Za-z0-9_-]/g, "_")}-${role}.json`);
-
-function readBaseline(file: string): Baseline | null {
+function readState(root: string): State | null {
   try {
-    return JSON.parse(readFileSync(file, "utf8")) as Baseline;
+    const state = JSON.parse(readFileSync(join(root, STATE_FILE), "utf8")) as State;
+    return isRole(state.role) ? state : null;
   } catch {
     return null;
   }
 }
 
-export interface HookOptions {
-  /** Where baselines are kept between hook calls. Defaults to a directory under the system temp directory. */
-  state?: string;
-  /** The repository; defaults to `CLAUDE_PROJECT_DIR`, then the hook's `cwd`. */
-  projectDir?: string;
+function writeState(root: string, state: State): void {
+  mkdirSync(dirname(join(root, STATE_FILE)), { recursive: true });
+  writeFileSync(join(root, STATE_FILE), `${JSON.stringify(state)}\n`);
 }
 
-export function runHook(role: Role, input: HookInput, options: HookOptions = {}): HookResult {
-  const pass: HookResult = { exit: 0, message: "" };
-  const start = options.projectDir ?? input.cwd ?? process.cwd();
-  let root: string;
-  try {
-    root = git(start, ["rev-parse", "--show-toplevel"]).trim();
-  } catch {
-    return pass; // Not a repository: there is nothing to guard.
-  }
-  const state = options.state ?? join(tmpdir(), "dulja-role-guard");
-  const rule = RULES[role];
-  // A hook inside a subagent may or may not carry `agent_id`; the session id is the fallback on both sides.
-  const ids = [input.agent_id, input.session_id, "unknown"].filter(
-    (id): id is string => typeof id === "string" && id.length > 0,
+/** What changed since the role was entered, was not already dirty then, and is outside `allow`. */
+function outside(root: string, state: State, allow: readonly string[]): string[] {
+  const changed = changedSince(root, state.head);
+  const now = hashes(root, changed);
+  return changed.filter(
+    (path) => state.dirty[path] !== now[path] && !admitted(path, allow, RULES[state.role].deny),
   );
-  const files = ids.map((id) => stateFile(state, id, role));
-  const existing = files.find((file) => existsSync(file));
+}
 
-  // The baseline is taken when the subagent starts. A session started with `--agent` has no such event, so
-  // the first guarded tool call takes it instead — still before that call has changed anything.
-  const starting =
-    input.hook_event_name === "SubagentStart" || input.hook_event_name === "PreToolUse";
-  if (starting && rule.leave && !existing) {
-    const head = git(root, ["rev-parse", "HEAD"]).trim();
-    const baseline: Baseline = { head, dirty: hashes(root, changedSince(root, head)), blocks: 0 };
-    mkdirSync(state, { recursive: true });
-    writeFileSync(files[0] ?? stateFile(state, "unknown", role), JSON.stringify(baseline));
+/** The files the role in force may not leave changed, and has. Empty when it may be left. */
+function blockingLeave(root: string, state: State | null): string[] {
+  const leave = state ? RULES[state.role].leave : null;
+  return state && leave ? outside(root, state, leave) : [];
+}
+
+export type RoleChange =
+  | { ok: true; role: Role | null; previous: Role | null }
+  | { ok: false; role: Role; violations: string[] };
+
+/** Put the session in `role`. Refused while the role being left has changed a file it may not leave changed. */
+export function enterRole(root: string, role: Role): RoleChange {
+  const previous = readState(root);
+  const violations = blockingLeave(root, previous);
+  if (previous && violations.length) return { ok: false, role: previous.role, violations };
+  const head = git(root, ["rev-parse", "HEAD"]).trim();
+  writeState(root, {
+    role,
+    session: previous?.session ?? null,
+    head,
+    dirty: hashes(root, changedSince(root, head)),
+  });
+  return { ok: true, role, previous: previous?.role ?? null };
+}
+
+/** End the role in force, with the same check as entering the next one. */
+export function leaveRole(root: string): RoleChange {
+  const previous = readState(root);
+  const violations = blockingLeave(root, previous);
+  if (previous && violations.length) return { ok: false, role: previous.role, violations };
+  rmSync(join(root, STATE_FILE), { force: true });
+  return { ok: true, role: null, previous: previous?.role ?? null };
+}
+
+/** The role in force for this session, or `null`. State another session claimed does not bind this one. */
+export function currentRole(root: string, session: string | undefined): Role | null {
+  const state = readState(root);
+  if (!state || (state.session && state.session !== session)) return null;
+  return state.role;
+}
+
+export interface HookInput {
+  hook_event_name?: string;
+  session_id?: string;
+  cwd?: string;
+  tool_name?: string;
+  tool_input?: Record<string, unknown>;
+}
+
+export interface HookResult {
+  /** 0 lets the action through; 2 refuses it (or, after a tool ran, reports it) and shows `message` to the agent. */
+  exit: 0 | 2;
+  message: string;
+}
+
+const FILE_TOOLS = new Set(["Write", "Edit", "MultiEdit", "NotebookEdit"]);
+const SUBAGENT_TOOLS = new Set(["Agent", "Task"]);
+const MERGE_TOOLS = new Set([
+  "mcp__github__merge_pull_request",
+  "mcp__github__enable_pr_auto_merge",
+]);
+
+const repositoryRoot = (start: string): string | null => {
+  try {
+    return git(start, ["rev-parse", "--show-toplevel"]).trim();
+  } catch {
+    return null;
   }
+};
+
+const refuse = (message: string): HookResult => ({ exit: 2, message });
+
+export function runHook(input: HookInput, options: { projectDir?: string } = {}): HookResult {
+  const pass: HookResult = { exit: 0, message: "" };
+  const root = repositoryRoot(options.projectDir ?? input.cwd ?? process.cwd());
+  if (!root) return pass;
+  const state = readState(root);
+  if (!state) return pass; // No role in force: an ordinary session is not guarded.
+  if (!state.session && input.session_id) {
+    // `enter` runs as a shell command and cannot know the session; the first hook call after it claims the role.
+    state.session = input.session_id;
+    writeState(root, state);
+  }
+  if (state.session && state.session !== input.session_id) return pass; // Another session's role.
+  const role = state.role;
+  const rule = RULES[role];
+  const tool = input.tool_name ?? "";
 
   if (input.hook_event_name === "PreToolUse") {
-    const tool = input.tool_name ?? "";
     if (tool === "Bash") {
       const decision = decideBash(String(input.tool_input?.["command"] ?? ""));
-      return decision.ok ? pass : { exit: 2, message: decision.reason };
+      return decision.ok ? pass : refuse(decision.reason);
     }
+    if (SUBAGENT_TOOLS.has(tool))
+      return refuse(
+        "The feature workflow runs in this session, one role at a time; it starts no subagent. " +
+          "Do the work yourself in the role it belongs to (`bun scripts/agents/role-guard.ts enter <role>`).",
+      );
+    if (MERGE_TOOLS.has(tool))
+      return refuse("Merging a pull request is the owner's, never an agent's.");
     if (FILE_TOOLS.has(tool)) {
       const target = input.tool_input?.["file_path"] ?? input.tool_input?.["notebook_path"];
       if (typeof target !== "string" || !target) return pass;
@@ -280,91 +341,67 @@ export function runHook(role: Role, input: HookInput, options: HookOptions = {})
       // Outside the repository — a scratch file, a temp directory — is not this guard's business.
       if (path.startsWith("..") || isAbsolute(path)) return pass;
       const decision = decideWrite(role, path);
-      return decision.ok ? pass : { exit: 2, message: decision.reason };
+      return decision.ok ? pass : refuse(decision.reason);
     }
     return pass;
   }
 
-  /** What changed since the baseline, was not already dirty then, and is outside `allow`. */
-  const outside = (baseline: Baseline, allow: readonly string[]): string[] => {
-    const changed = changedSince(root, baseline.head);
-    const now = hashes(root, changed);
-    return changed.filter(
-      (path) => baseline.dirty[path] !== now[path] && !admitted(path, allow, rule.deny),
-    );
-  };
-
-  // Straight after a shell command, while the agent can still repair it. This is the check that reaches the
-  // agent in practice: a refused stop is not always honoured (a subagent that hands back has already finished).
-  if (input.hook_event_name === "PostToolUse") {
-    if (!rule.leave || !existing || input.tool_name !== "Bash") return pass;
-    const baseline = readBaseline(existing);
-    if (!baseline) return pass;
-    const violations = outside(baseline, rule.write);
+  // Straight after a shell command, while it can still be repaired: the file-tool check cannot see a shell edit.
+  if (input.hook_event_name === "PostToolUse" && tool === "Bash" && rule.leave) {
+    const violations = outside(root, state, rule.write);
     if (!violations.length) return pass;
-    return {
-      exit: 2,
-      message:
-        `That command changed files the ${role} role may not change:\n` +
+    return refuse(
+      `That command changed files the ${role} role may not change:\n` +
         `${violations.map((path) => `  ${path}`).join("\n")}\n` +
         `Restore each one now (\`git checkout -- <path>\` for a tracked file, delete one you created) ` +
-        `before you do anything else. The orchestrator's \`role-guard.ts verify ${role}\` refuses a tree ` +
-        `that still has them.`,
-    };
-  }
-
-  if (input.hook_event_name === "Stop" || input.hook_event_name === "SubagentStop") {
-    if (!rule.leave || !existing) return pass;
-    const baseline = readBaseline(existing);
-    if (!baseline) return pass;
-    const violations = outside(baseline, rule.leave);
-    if (!violations.length) {
-      rmSync(existing, { force: true });
-      return pass;
-    }
-    const list = violations.map((path) => `  ${path}`).join("\n");
-    if (baseline.blocks >= MAX_BLOCKS) {
-      rmSync(existing, { force: true });
-      return {
-        exit: 1,
-        message:
-          `role-guard: the ${role} agent finished with files changed that it may not change:\n${list}\n` +
-          `The orchestrator's \`role-guard.ts verify ${role}\` will refuse this tree.`,
-      };
-    }
-    writeFileSync(existing, JSON.stringify({ ...baseline, blocks: baseline.blocks + 1 }));
-    return {
-      exit: 2,
-      message:
-        `The ${role} role may not finish with these files changed:\n${list}\n` +
-        `It may leave changed only: ${rule.leave.join(", ")}. Restore each file to how you found it ` +
-        `(\`git checkout -- <path>\` for a tracked file, delete one you created), then finish. ` +
-        `If one of these changes is needed, say so in your final message instead of keeping it.`,
-    };
+        `before you do anything else. You cannot leave the ${role} role while they differ.`,
+    );
   }
   return pass;
 }
 
-const isRole = (value: string | undefined): value is Role =>
-  (ROLES as readonly string[]).includes(value ?? "");
+const describeRule = (role: Role): string => {
+  const rule = RULES[role];
+  return (
+    `  may write:        ${rule.write.join(", ")}\n` +
+    `  never:            ${rule.deny.join(", ")}\n` +
+    `  may leave changed: ${rule.leave ? rule.leave.join(", ") : "not checked on leaving"}\n` +
+    `  brief:            docs/agents/${role}.md — read it now and follow it.\n`
+  );
+};
 
-/** The role a hook fired in, or `null` for the main conversation and for an agent that is not one of the five. */
-export const roleFromInput = (input: HookInput): Role | null =>
-  isRole(input.agent_type) ? input.agent_type : null;
+function reportChange(change: RoleChange): number {
+  if (!change.ok) {
+    process.stderr.write(
+      `role-guard: still in the ${change.role} role — it may not be left with these files changed:\n` +
+        `${change.violations.map((path) => `  ${path}`).join("\n")}\n` +
+        `Restore each one (\`git checkout -- <path>\` for a tracked file, delete one you created), ` +
+        `then run the command again.\n`,
+    );
+    return 1;
+  }
+  const from = change.previous ? `left the ${change.previous} role; ` : "";
+  process.stdout.write(
+    change.role
+      ? `role-guard: ${from}now in the ${change.role} role.\n${describeRule(change.role)}`
+      : `role-guard: ${from}no role is in force.\n`,
+  );
+  return 0;
+}
 
 function main(argv: readonly string[]): number {
   const [mode, named, ...rest] = argv;
-  const usable =
-    (mode === "hook" && (named === undefined || isRole(named))) ||
-    (mode === "verify" && isRole(named));
-  if (!usable) {
+  const usage = (): number => {
     process.stderr.write(
-      "usage: role-guard.ts hook [<role>]   (hook input on stdin; the role defaults to its agent_type)\n" +
+      "usage: role-guard.ts enter <role>\n" +
+        "       role-guard.ts leave\n" +
+        "       role-guard.ts status\n" +
+        "       role-guard.ts hook                 (hook input on stdin)\n" +
         "       role-guard.ts verify <role> --base <sha> [--allow <glob>]...\n" +
         `roles: ${ROLES.join(", ")}\n`,
     );
     return 64;
-  }
+  };
   if (mode === "hook") {
     let input: HookInput;
     try {
@@ -373,15 +410,28 @@ function main(argv: readonly string[]): number {
       process.stderr.write("role-guard: the hook input was not JSON; nothing was checked\n");
       return 1;
     }
-    const role = isRole(named) ? named : roleFromInput(input);
-    if (!role) return 0; // Not one of the five roles: nothing to guard.
     const projectDir = process.env["CLAUDE_PROJECT_DIR"];
-    const result = runHook(role, input, projectDir ? { projectDir } : {});
+    const result = runHook(input, projectDir ? { projectDir } : {});
     if (result.message) process.stderr.write(`${result.message}\n`);
     return result.exit;
   }
-  if (!isRole(named)) return 64;
-  const role = named;
+  const root = repositoryRoot(process.cwd());
+  if (!root) {
+    process.stderr.write("role-guard: not inside a git repository\n");
+    return 64;
+  }
+  if (mode === "enter") return isRole(named) ? reportChange(enterRole(root, named)) : usage();
+  if (mode === "leave") return reportChange(leaveRole(root));
+  if (mode === "status") {
+    const state = readState(root);
+    process.stdout.write(
+      state
+        ? `role-guard: in the ${state.role} role.\n${describeRule(state.role)}`
+        : "role-guard: no role is in force.\n",
+    );
+    return 0;
+  }
+  if (mode !== "verify" || !isRole(named)) return usage();
   let base: string | undefined;
   const allow: string[] = [];
   for (let index = 0; index < rest.length; index += 1) {
@@ -390,20 +440,18 @@ function main(argv: readonly string[]): number {
     if (rest[index] === "--allow" && value) allow.push(value);
   }
   if (!base) {
-    process.stderr.write(
-      "role-guard: verify needs --base <sha>, the commit the agent started from\n",
-    );
+    process.stderr.write("role-guard: verify needs --base <sha>\n");
     return 64;
   }
-  const violations = verifyRole(role, { cwd: process.cwd(), base, allow });
+  const violations = verifyRole(named, { cwd: root, base, allow });
   if (!violations.length) {
     process.stdout.write(
-      `role-guard: ${role} — every change since ${base} is in the role's paths\n`,
+      `role-guard: ${named} — every change since ${base} is in the role's paths\n`,
     );
     return 0;
   }
   process.stderr.write(
-    `role-guard: ${role} — changed since ${base} and outside the role's paths:\n` +
+    `role-guard: ${named} — changed since ${base} and outside the role's paths:\n` +
       `${violations.map((path) => `  ${path}`).join("\n")}\n`,
   );
   return 1;

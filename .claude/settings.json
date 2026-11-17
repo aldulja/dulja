@@ -2,7 +2,7 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash|Write|Edit|MultiEdit|NotebookEdit",
+        "matcher": "Bash|Write|Edit|MultiEdit|NotebookEdit|Agent|Task|mcp__github__merge_pull_request|mcp__github__enable_pr_auto_merge",
         "hooks": [
           {
             "type": "command",
@@ -14,38 +14,6 @@
     "PostToolUse": [
       {
         "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bun \"${CLAUDE_PROJECT_DIR}/scripts/agents/role-guard.ts\" hook"
-          }
-        ]
-      }
-    ],
-    "SubagentStart": [
-      {
-        "matcher": "spec|review",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bun \"${CLAUDE_PROJECT_DIR}/scripts/agents/role-guard.ts\" hook"
-          }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "matcher": "spec|review",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bun \"${CLAUDE_PROJECT_DIR}/scripts/agents/role-guard.ts\" hook"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
         "hooks": [
           {
             "type": "command",
